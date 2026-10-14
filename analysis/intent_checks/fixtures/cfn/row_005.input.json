@@ -1,0 +1,318 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "sam_expanded",
+  "warnings": [],
+  "gt_hash": "f262317f95f5a60dc4a5ab1cb0b00f88a0bbc9ff834c7bed0ace22305080197f",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "MyEventBus",
+   "cfg": "MyEventBus",
+   "type": "AWS::Events::EventBus",
+   "values": {
+    "Name": "stack-EventBus"
+   },
+   "refs": []
+  },
+  {
+   "id": "WorkflowExecutionRole",
+   "cfg": "WorkflowExecutionRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "states.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Policies": [
+     {
+      "PolicyName": "AllowEventBridgePutEvents",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "events:PutEvents"
+         ],
+         "Resource": {
+          "ref": "MyEventBus",
+          "attr": "Arn"
+         }
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": [
+    "MyEventBus"
+   ]
+  },
+  {
+   "id": "MyLogGroup",
+   "cfg": "MyLogGroup",
+   "type": "AWS::Logs::LogGroup",
+   "values": {
+    "LogGroupName": "/aws/events/stack"
+   },
+   "refs": []
+  },
+  {
+   "id": "EventBusLogRule",
+   "cfg": "EventBusLogRule",
+   "type": "AWS::Events::Rule",
+   "values": {
+    "Description": "Send all events to CloudWatch Logs",
+    "EventBusName": {
+     "ref": "MyEventBus"
+    },
+    "EventPattern": {
+     "source": [
+      {
+       "prefix": ""
+      }
+     ]
+    },
+    "State": "ENABLED",
+    "Targets": [
+     {
+      "Arn": "arn:aws:logs:us-east-1:123456789012:log-group:${MyLogGroup}",
+      "Id": "CloudWatchLogTarget"
+     }
+    ],
+    "__resource__": {
+     "DependsOn": [
+      "MyEventBus"
+     ]
+    }
+   },
+   "refs": [
+    "MyEventBus",
+    "MyLogGroup"
+   ]
+  },
+  {
+   "id": "MyStateMachine",
+   "cfg": "MyStateMachine",
+   "type": "AWS::StepFunctions::StateMachine",
+   "values": {
+    "DefinitionString": "{\n    \"StartAt\": \"SendCustomEvent\",\n    \"States\": {\n        \"SendCustomEvent\": {\n            \"End\": true,\n            \"Parameters\": {\n                \"Entries\": [\n                    {\n                        \"Detail\": {\n                            \"Message\": \"Hello from Step Functions!\"\n                        },\n                        \"DetailType\": \"MyTestMessage\",\n                        \"EventBusName\": \"${definition_substitution_1}\",\n                        \"Source\": \"MyTestApp\"\n                    }\n                ]\n            },\n            \"Resource\": \"arn:aws:states:::events:putEvents\",\n            \"Type\": \"Task\"\n        }\n    }\n}",
+    "RoleArn": {
+     "ref": "WorkflowExecutionRole",
+     "attr": "Arn"
+    },
+    "Tags": [
+     {
+      "Key": "stateMachine:createdBy",
+      "Value": "SAM"
+     }
+    ],
+    "DefinitionSubstitutions": {
+     "definition_substitution_1": {
+      "ref": "MyEventBus"
+     }
+    }
+   },
+   "refs": [
+    "MyEventBus",
+    "WorkflowExecutionRole"
+   ]
+  },
+  {
+   "id": "__output__.MyStateMachineArn",
+   "cfg": "__output__.MyStateMachineArn",
+   "type": "__output__",
+   "values": {
+    "name": "MyStateMachineArn",
+    "value": {
+     "ref": "MyStateMachine"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "MyStateMachine"
+   ]
+  },
+  {
+   "id": "__output__.MyLogGroup",
+   "cfg": "__output__.MyLogGroup",
+   "type": "__output__",
+   "values": {
+    "name": "MyLogGroup",
+    "value": {
+     "ref": "MyLogGroup"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "MyLogGroup"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::Events::EventBus.MyEventBus",
+   "cfg": "MyEventBus",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Events::EventBus",
+    "name": "MyEventBus",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "stack-EventBus"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.WorkflowExecutionRole",
+   "cfg": "WorkflowExecutionRole",
+   "type": "__declared__",
+   "refs": [
+    "MyEventBus"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "WorkflowExecutionRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "states.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Policies": [
+      {
+       "PolicyName": "AllowEventBridgePutEvents",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "events:PutEvents"
+          ],
+          "Resource": {
+           "ref": "MyEventBus",
+           "attr": "Arn"
+          }
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::LogGroup.MyLogGroup",
+   "cfg": "MyLogGroup",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Logs::LogGroup",
+    "name": "MyLogGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "LogGroupName": "/aws/events/stack"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Events::Rule.EventBusLogRule",
+   "cfg": "EventBusLogRule",
+   "type": "__declared__",
+   "refs": [
+    "MyEventBus",
+    "MyLogGroup"
+   ],
+   "values": {
+    "type": "AWS::Events::Rule",
+    "name": "EventBusLogRule",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Description": "Send all events to CloudWatch Logs",
+     "EventBusName": {
+      "ref": "MyEventBus"
+     },
+     "EventPattern": {
+      "source": [
+       {
+        "prefix": ""
+       }
+      ]
+     },
+     "State": "ENABLED",
+     "Targets": [
+      {
+       "Arn": "arn:aws:logs:us-east-1:123456789012:log-group:${MyLogGroup}",
+       "Id": "CloudWatchLogTarget"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::StepFunctions::StateMachine.MyStateMachine",
+   "cfg": "MyStateMachine",
+   "type": "__declared__",
+   "refs": [
+    "MyEventBus",
+    "WorkflowExecutionRole"
+   ],
+   "values": {
+    "type": "AWS::StepFunctions::StateMachine",
+    "name": "MyStateMachine",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "DefinitionString": "{\n    \"StartAt\": \"SendCustomEvent\",\n    \"States\": {\n        \"SendCustomEvent\": {\n            \"End\": true,\n            \"Parameters\": {\n                \"Entries\": [\n                    {\n                        \"Detail\": {\n                            \"Message\": \"Hello from Step Functions!\"\n                        },\n                        \"DetailType\": \"MyTestMessage\",\n                        \"EventBusName\": \"${definition_substitution_1}\",\n                        \"Source\": \"MyTestApp\"\n                    }\n                ]\n            },\n            \"Resource\": \"arn:aws:states:::events:putEvents\",\n            \"Type\": \"Task\"\n        }\n    }\n}",
+     "RoleArn": {
+      "ref": "WorkflowExecutionRole",
+      "attr": "Arn"
+     },
+     "Tags": [
+      {
+       "Key": "stateMachine:createdBy",
+       "Value": "SAM"
+      }
+     ],
+     "DefinitionSubstitutions": {
+      "definition_substitution_1": {
+       "ref": "MyEventBus"
+      }
+     }
+    }
+   }
+  }
+ ]
+}

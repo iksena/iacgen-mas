@@ -1,0 +1,789 @@
+# GENERATED from specs/tf/row_121.json by intent_checks/build.py -- do not edit.
+package intent.tf.row_121
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {
+  "vpc": {
+   "types": [
+    "aws_vpc"
+   ],
+   "where": [
+    {
+     "path": [
+      "cidr_block"
+     ],
+     "op": "eq",
+     "value": "10.1.0.0/16"
+    }
+   ]
+  },
+  "igw": {
+   "types": [
+    "aws_internet_gateway"
+   ],
+   "where": []
+  }
+ },
+ "checks": [
+  {
+   "id": "vpc_cidr",
+   "kind": "exists",
+   "select": "vpc",
+   "tier": "core",
+   "quote": "The core VPC must use a CIDR block configurable via vpcMainCidr (defaulting to \"10.1.0.0/16\")"
+  },
+  {
+   "id": "six_subnets",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_subnet"
+    ],
+    "where": []
+   },
+   "min": 6,
+   "max": 6,
+   "tier": "core",
+   "quote": "create six total subnets"
+  },
+  {
+   "id": "public_subnets",
+   "kind": "all_of",
+   "tier": "core",
+   "quote": "two public subnets using vpcMainSubPubACidr (\"10.1.10.0/24\") and vpcMainSubPubBCidr (\"10.1.110.0/24\")",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "10.1.10.0/24"
+       }
+      ]
+     },
+     "to": "vpc"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "10.1.110.0/24"
+       }
+      ]
+     },
+     "to": "vpc"
+    }
+   ]
+  },
+  {
+   "id": "mgmt_subnets",
+   "kind": "all_of",
+   "tier": "core",
+   "quote": "two management subnets using vpcMainSubMgmtACidr (\"10.1.1.0/24\") and vpcMainSubMgmtBCidr (\"10.1.101.0/24\")",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "10.1.1.0/24"
+       }
+      ]
+     },
+     "to": "vpc"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "10.1.101.0/24"
+       }
+      ]
+     },
+     "to": "vpc"
+    }
+   ]
+  },
+  {
+   "id": "private_subnets",
+   "kind": "all_of",
+   "tier": "core",
+   "quote": "two private subnets using vpcMainSubPrivACidr (\"10.1.20.0/24\") and vpcMainSubPrivBCidr (\"10.1.120.0/24\")",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "10.1.20.0/24"
+       }
+      ]
+     },
+     "to": "vpc"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "10.1.120.0/24"
+       }
+      ]
+     },
+     "to": "vpc"
+    }
+   ]
+  },
+  {
+   "id": "public_map_ip_false",
+   "kind": "all_of",
+   "tier": "detail",
+   "quote": "mapped with the map_public_ip_on_launch setting",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "10.1.10.0/24"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "map_public_ip_on_launch"
+      ],
+      "op": "falsy"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "10.1.110.0/24"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "map_public_ip_on_launch"
+      ],
+      "op": "falsy"
+     }
+    }
+   ]
+  },
+  {
+   "id": "subnets_across_two_azs",
+   "kind": "all_of",
+   "tier": "detail",
+   "quote": "Across the two resolved availability zones, create six total subnets",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "in",
+        "value": [
+         "10.1.10.0/24",
+         "10.1.110.0/24"
+        ]
+       }
+      ]
+     },
+     "distinct_path": [
+      "availability_zone"
+     ],
+     "min": 2
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "in",
+        "value": [
+         "10.1.1.0/24",
+         "10.1.101.0/24"
+        ]
+       }
+      ]
+     },
+     "distinct_path": [
+      "availability_zone"
+     ],
+     "min": 2
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "in",
+        "value": [
+         "10.1.20.0/24",
+         "10.1.120.0/24"
+        ]
+       }
+      ]
+     },
+     "distinct_path": [
+      "availability_zone"
+     ],
+     "min": 2
+    }
+   ],
+   "justify": "each A/B subnet pair (CIDRs stated in prompt) must span two distinct AZs; AZ names are not pinned"
+  },
+  {
+   "id": "igw_in_vpc",
+   "kind": "ref",
+   "from": "igw",
+   "to": "vpc",
+   "tier": "core",
+   "quote": "create an internet gateway for the VPC"
+  },
+  {
+   "id": "default_route_to_igw",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "a custom route table routing all outbound traffic \"0.0.0.0/0\" to the internet gateway",
+   "checks": [
+    {
+     "kind": "ref",
+     "to": "igw",
+     "from": {
+      "types": [
+       "aws_route_table"
+      ],
+      "where": [
+       {
+        "path": [
+         "route",
+         "*",
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "to": "igw",
+     "from": {
+      "types": [
+       "aws_route"
+      ],
+      "where": [
+       {
+        "path": [
+         "destination_cidr_block"
+        ],
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "route_table_in_vpc",
+   "kind": "ref",
+   "from": {
+    "types": [
+     "aws_route_table"
+    ],
+    "where": []
+   },
+   "to": "vpc",
+   "tier": "detail",
+   "quote": "a custom route table"
+  },
+  {
+   "id": "main_rtb_association",
+   "kind": "all_of",
+   "tier": "core",
+   "quote": "assign this route table explicitly as the VPC main route table association",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_main_route_table_association"
+      ],
+      "where": []
+     },
+     "to": {
+      "types": [
+       "aws_route_table"
+      ],
+      "where": []
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_main_route_table_association"
+      ],
+      "where": []
+     },
+     "to": "vpc"
+    }
+   ]
+  },
+  {
+   "id": "tag_variables",
+   "kind": "all_of",
+   "tier": "detail",
+   "quote": "projectPrefix (defaulting to \"f5-dcec\"), resourceOwner (defaulting to \"f5-user\"), buildSuffix (defaulting to \"YY\")",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "eq",
+        "value": "projectPrefix"
+       },
+       {
+        "path": [
+         "default"
+        ],
+        "op": "eq",
+        "value": "f5-dcec"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "eq",
+        "value": "resourceOwner"
+       },
+       {
+        "path": [
+         "default"
+        ],
+        "op": "eq",
+        "value": "f5-user"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "eq",
+        "value": "buildSuffix"
+       },
+       {
+        "path": [
+         "default"
+        ],
+        "op": "eq",
+        "value": "YY"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "map_public_ip_variable",
+   "kind": "exists",
+   "tier": "detail",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": [
+       "name"
+      ],
+      "op": "eq",
+      "value": "map_public_ip_on_launch"
+     },
+     {
+      "path": [
+       "default"
+      ],
+      "op": "eq",
+      "value": false
+     }
+    ]
+   },
+   "quote": "map_public_ip_on_launch (defaulting to false)"
+  },
+  {
+   "id": "region_variable",
+   "kind": "exists",
+   "tier": "detail",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": [
+       "name"
+      ],
+      "op": "eq",
+      "value": "awsRegion"
+     },
+     {
+      "path": [
+       "default"
+      ],
+      "op": "eq",
+      "value": "us-east-1"
+     }
+    ]
+   },
+   "quote": "an awsRegion variable defaulting to \"us-east-1\""
+  },
+  {
+   "id": "az_variables",
+   "kind": "all_of",
+   "tier": "detail",
+   "quote": "Two optional availability zone variables (awsAz1 and awsAz2, both defaulting to null)",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "eq",
+        "value": "awsAz1"
+       },
+       {
+        "path": [
+         "default"
+        ],
+        "op": "absent"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "eq",
+        "value": "awsAz2"
+       },
+       {
+        "path": [
+         "default"
+        ],
+        "op": "absent"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "cidr_variables",
+   "kind": "all_of",
+   "tier": "detail",
+   "quote": "configurable via vpcMainCidr",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "eq",
+        "value": "vpcMainCidr"
+       },
+       {
+        "path": [
+         "default"
+        ],
+        "op": "eq",
+        "value": "10.1.0.0/16"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "eq",
+        "value": "vpcMainSubPubACidr"
+       },
+       {
+        "path": [
+         "default"
+        ],
+        "op": "eq",
+        "value": "10.1.10.0/24"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "eq",
+        "value": "vpcMainSubPubBCidr"
+       },
+       {
+        "path": [
+         "default"
+        ],
+        "op": "eq",
+        "value": "10.1.110.0/24"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "eq",
+        "value": "vpcMainSubMgmtACidr"
+       },
+       {
+        "path": [
+         "default"
+        ],
+        "op": "eq",
+        "value": "10.1.1.0/24"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "eq",
+        "value": "vpcMainSubMgmtBCidr"
+       },
+       {
+        "path": [
+         "default"
+        ],
+        "op": "eq",
+        "value": "10.1.101.0/24"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "eq",
+        "value": "vpcMainSubPrivACidr"
+       },
+       {
+        "path": [
+         "default"
+        ],
+        "op": "eq",
+        "value": "10.1.20.0/24"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "eq",
+        "value": "vpcMainSubPrivBCidr"
+       },
+       {
+        "path": [
+         "default"
+        ],
+        "op": "eq",
+        "value": "10.1.120.0/24"
+       }
+      ]
+     }
+    }
+   ]
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

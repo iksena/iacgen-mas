@@ -1,0 +1,1865 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "5dc53910cdd27f53c452466f828d01f40ed18c2a32079329b2172e3b0d2119f2",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "SqsFifoQueue",
+   "cfg": "SqsFifoQueue",
+   "type": "AWS::SQS::Queue",
+   "values": {
+    "FifoQueue": true,
+    "KmsMasterKeyId": {
+     "ref": "KmsKey"
+    }
+   },
+   "refs": [
+    "KmsKey"
+   ]
+  },
+  {
+   "id": "SqsFifoQueuePolicy",
+   "cfg": "SqsFifoQueuePolicy",
+   "type": "AWS::SQS::QueuePolicy",
+   "values": {
+    "Queues": [
+     {
+      "ref": "SqsFifoQueue"
+     }
+    ],
+    "PolicyDocument": {
+     "Version": "2012-10-17",
+     "Id": {
+      "ref": "SqsFifoQueue",
+      "attr": "QueueName"
+     },
+     "Statement": [
+      {
+       "Sid": "Allow-Send-Recieve-Delete",
+       "Effect": "Allow",
+       "Action": [
+        "SQS:SendMessage",
+        "SQS:ReceiveMessage",
+        "SQS:DeleteMessage"
+       ],
+       "Principal": {
+        "Service": [
+         "ssm.amazonaws.com"
+        ],
+        "AWS": [
+         "123456789012"
+        ]
+       },
+       "Resource": {
+        "ref": "SqsFifoQueue",
+        "attr": "Arn"
+       }
+      }
+     ]
+    }
+   },
+   "refs": [
+    "SqsFifoQueue"
+   ]
+  },
+  {
+   "id": "SqsFifoQueueEnabledDlq",
+   "cfg": "SqsFifoQueueEnabledDlq",
+   "type": "AWS::SQS::Queue",
+   "values": {
+    "FifoQueue": true,
+    "KmsMasterKeyId": {
+     "ref": "KmsKey"
+    },
+    "RedrivePolicy": {
+     "deadLetterTargetArn": {
+      "ref": "SqsDlqForFifoQueue",
+      "attr": "Arn"
+     },
+     "maxReceiveCount": 5
+    }
+   },
+   "refs": [
+    "KmsKey",
+    "SqsDlqForFifoQueue"
+   ]
+  },
+  {
+   "id": "SqsFifoQueueEnabledDlqPolicy",
+   "cfg": "SqsFifoQueueEnabledDlqPolicy",
+   "type": "AWS::SQS::QueuePolicy",
+   "values": {
+    "Queues": [
+     {
+      "ref": "SqsFifoQueueEnabledDlq"
+     }
+    ],
+    "PolicyDocument": {
+     "Version": "2012-10-17",
+     "Id": {
+      "ref": "SqsFifoQueueEnabledDlq",
+      "attr": "QueueName"
+     },
+     "Statement": [
+      {
+       "Sid": "Allow-Send-Recieve-Delete",
+       "Effect": "Allow",
+       "Action": [
+        "SQS:SendMessage",
+        "SQS:ReceiveMessage",
+        "SQS:DeleteMessage"
+       ],
+       "Principal": {
+        "Service": [
+         "ssm.amazonaws.com"
+        ],
+        "AWS": [
+         "123456789012"
+        ]
+       },
+       "Resource": {
+        "ref": "SqsFifoQueueEnabledDlq",
+        "attr": "Arn"
+       }
+      }
+     ]
+    }
+   },
+   "refs": [
+    "SqsFifoQueueEnabledDlq"
+   ]
+  },
+  {
+   "id": "SqsDlqForFifoQueue",
+   "cfg": "SqsDlqForFifoQueue",
+   "type": "AWS::SQS::Queue",
+   "values": {
+    "KmsMasterKeyId": {
+     "ref": "KmsKey"
+    },
+    "FifoQueue": true
+   },
+   "refs": [
+    "KmsKey"
+   ]
+  },
+  {
+   "id": "SqsStandardQueue",
+   "cfg": "SqsStandardQueue",
+   "type": "AWS::SQS::Queue",
+   "values": {
+    "KmsMasterKeyId": {
+     "ref": "KmsKey"
+    },
+    "RedrivePolicy": {
+     "deadLetterTargetArn": {
+      "ref": "SqsDlqForStandardQueue",
+      "attr": "Arn"
+     },
+     "maxReceiveCount": 5
+    }
+   },
+   "refs": [
+    "KmsKey",
+    "SqsDlqForStandardQueue"
+   ]
+  },
+  {
+   "id": "SqsStandardQueuePolicy",
+   "cfg": "SqsStandardQueuePolicy",
+   "type": "AWS::SQS::QueuePolicy",
+   "values": {
+    "Queues": [
+     {
+      "ref": "SqsStandardQueue"
+     }
+    ],
+    "PolicyDocument": {
+     "Version": "2012-10-17",
+     "Id": {
+      "ref": "SqsStandardQueue",
+      "attr": "QueueName"
+     },
+     "Statement": [
+      {
+       "Sid": "Allow-Send-Recieve-Delete",
+       "Effect": "Allow",
+       "Action": [
+        "SQS:SendMessage",
+        "SQS:ReceiveMessage",
+        "SQS:DeleteMessage"
+       ],
+       "Principal": {
+        "Service": [
+         "ssm.amazonaws.com"
+        ],
+        "AWS": [
+         "123456789012"
+        ]
+       },
+       "Resource": {
+        "ref": "SqsStandardQueue",
+        "attr": "Arn"
+       }
+      }
+     ]
+    }
+   },
+   "refs": [
+    "SqsStandardQueue"
+   ]
+  },
+  {
+   "id": "SqsDlqForStandardQueue",
+   "cfg": "SqsDlqForStandardQueue",
+   "type": "AWS::SQS::Queue",
+   "values": {
+    "KmsMasterKeyId": {
+     "ref": "KmsKey"
+    }
+   },
+   "refs": [
+    "KmsKey"
+   ]
+  },
+  {
+   "id": "SQSNumberOfMessagesSentAlarm",
+   "cfg": "SQSNumberOfMessagesSentAlarm",
+   "type": "AWS::CloudWatch::Alarm",
+   "values": {
+    "AlarmDescription": "sqs:alarm:health_alarm_number_of_messages_sent:2020-11-26",
+    "ActionsEnabled": false,
+    "MetricName": "NumberOfMessagesSent",
+    "Namespace": "AWS/SQS",
+    "Statistic": "Sum",
+    "Dimensions": [
+     {
+      "Name": "QueueName",
+      "Value": {
+       "ref": "SqsStandardQueue",
+       "attr": "QueueName"
+      }
+     }
+    ],
+    "Period": 60,
+    "EvaluationPeriods": 1,
+    "DatapointsToAlarm": 1,
+    "Threshold": 1,
+    "ComparisonOperator": "LessThanThreshold",
+    "TreatMissingData": "breaching"
+   },
+   "refs": [
+    "SqsStandardQueue"
+   ]
+  },
+  {
+   "id": "SQSNumberOfMessagesSentBandAlarm",
+   "cfg": "SQSNumberOfMessagesSentBandAlarm",
+   "type": "AWS::CloudWatch::Alarm",
+   "values": {
+    "ActionsEnabled": false,
+    "AlarmDescription": "sqs:alarm:health_alarm_number_of_messages_sent:2020-11-26",
+    "EvaluationPeriods": 1,
+    "DatapointsToAlarm": 1,
+    "ComparisonOperator": "LessThanLowerThreshold",
+    "TreatMissingData": "breaching",
+    "Metrics": [
+     {
+      "Id": "m1",
+      "MetricStat": {
+       "Metric": {
+        "Namespace": "AWS/SQS",
+        "MetricName": "NumberOfMessagesSent",
+        "Dimensions": [
+         {
+          "Name": "QueueName",
+          "Value": {
+           "ref": "SqsFifoQueueEnabledDlq",
+           "attr": "QueueName"
+          }
+         }
+        ]
+       },
+       "Period": 60,
+       "Stat": "Average"
+      },
+      "ReturnData": true
+     },
+     {
+      "Id": "ad1",
+      "Expression": "ANOMALY_DETECTION_BAND(m1, 0.25)",
+      "Label": "NumberOfMessagesSent (expected)",
+      "ReturnData": true
+     }
+    ],
+    "ThresholdMetricId": "ad1"
+   },
+   "refs": [
+    "SqsFifoQueueEnabledDlq"
+   ]
+  },
+  {
+   "id": "SQSSentMessageSizeStandardQueueAlarm",
+   "cfg": "SQSSentMessageSizeStandardQueueAlarm",
+   "type": "AWS::CloudWatch::Alarm",
+   "values": {
+    "AlarmDescription": "sqs:alarm:health_alarm_sent_message_size:2020-11-26",
+    "ActionsEnabled": false,
+    "MetricName": "SentMessageSize",
+    "Namespace": "AWS/SQS",
+    "Statistic": "Maximum",
+    "Dimensions": [
+     {
+      "Name": "QueueName",
+      "Value": {
+       "ref": "SqsStandardQueue",
+       "attr": "QueueName"
+      }
+     }
+    ],
+    "Period": 60,
+    "EvaluationPeriods": 1,
+    "DatapointsToAlarm": 1,
+    "Threshold": 183500,
+    "ComparisonOperator": "GreaterThanThreshold",
+    "TreatMissingData": "notBreaching"
+   },
+   "refs": [
+    "SqsStandardQueue"
+   ]
+  },
+  {
+   "id": "SQSSentMessageSizeFifoQueueAlarm",
+   "cfg": "SQSSentMessageSizeFifoQueueAlarm",
+   "type": "AWS::CloudWatch::Alarm",
+   "values": {
+    "AlarmDescription": "sqs:alarm:health_alarm_sent_message_size:2020-11-26",
+    "ActionsEnabled": false,
+    "MetricName": "SentMessageSize",
+    "Namespace": "AWS/SQS",
+    "Statistic": "Maximum",
+    "Dimensions": [
+     {
+      "Name": "QueueName",
+      "Value": {
+       "ref": "SqsFifoQueue",
+       "attr": "QueueName"
+      }
+     }
+    ],
+    "Period": 60,
+    "EvaluationPeriods": 1,
+    "DatapointsToAlarm": 1,
+    "Threshold": 183500,
+    "ComparisonOperator": "GreaterThanThreshold",
+    "TreatMissingData": "notBreaching"
+   },
+   "refs": [
+    "SqsFifoQueue"
+   ]
+  },
+  {
+   "id": "SqsDlqMessageFifoQueueAlarm",
+   "cfg": "SqsDlqMessageFifoQueueAlarm",
+   "type": "AWS::CloudWatch::Alarm",
+   "values": {
+    "AlarmDescription": "sqs:alarm:health_alarm_dlq_message:2020-11-26",
+    "ActionsEnabled": false,
+    "MetricName": "ApproximateNumberOfMessagesVisible",
+    "Namespace": "AWS/SQS",
+    "Statistic": "Sum",
+    "Dimensions": [
+     {
+      "Name": "QueueName",
+      "Value": {
+       "ref": "SqsDlqForFifoQueue",
+       "attr": "QueueName"
+      }
+     }
+    ],
+    "Period": 60,
+    "EvaluationPeriods": 1,
+    "DatapointsToAlarm": 1,
+    "Threshold": 0,
+    "ComparisonOperator": "GreaterThanThreshold",
+    "TreatMissingData": "notBreaching"
+   },
+   "refs": [
+    "SqsDlqForFifoQueue"
+   ]
+  },
+  {
+   "id": "SqsDlqMessageStandardQueueAlarm",
+   "cfg": "SqsDlqMessageStandardQueueAlarm",
+   "type": "AWS::CloudWatch::Alarm",
+   "values": {
+    "AlarmDescription": "sqs:alarm:health_alarm_dlq_message:2020-11-26",
+    "ActionsEnabled": false,
+    "MetricName": "ApproximateNumberOfMessagesVisible",
+    "Namespace": "AWS/SQS",
+    "Statistic": "Sum",
+    "Dimensions": [
+     {
+      "Name": "QueueName",
+      "Value": {
+       "ref": "SqsDlqForStandardQueue",
+       "attr": "QueueName"
+      }
+     }
+    ],
+    "Period": 60,
+    "EvaluationPeriods": 1,
+    "DatapointsToAlarm": 1,
+    "Threshold": 0,
+    "ComparisonOperator": "GreaterThanThreshold",
+    "TreatMissingData": "notBreaching"
+   },
+   "refs": [
+    "SqsDlqForStandardQueue"
+   ]
+  },
+  {
+   "id": "SQSApproximateAgeOfOldestMessageMaximumAlarm",
+   "cfg": "SQSApproximateAgeOfOldestMessageMaximumAlarm",
+   "type": "AWS::CloudWatch::Alarm",
+   "values": {
+    "AlarmDescription": "sqs:alarm:health_alarm_approximate_age_of_oldest_message_maximum:2020-11-26",
+    "ActionsEnabled": false,
+    "MetricName": "ApproximateAgeOfOldestMessage",
+    "Namespace": "AWS/SQS",
+    "Statistic": "Maximum",
+    "Dimensions": [
+     {
+      "Name": "QueueName",
+      "Value": {
+       "ref": "SqsStandardQueue",
+       "attr": "QueueName"
+      }
+     }
+    ],
+    "Period": 60,
+    "EvaluationPeriods": 1,
+    "DatapointsToAlarm": 1,
+    "Threshold": 15,
+    "ComparisonOperator": "GreaterThanThreshold",
+    "TreatMissingData": "missing"
+   },
+   "refs": [
+    "SqsStandardQueue"
+   ]
+  },
+  {
+   "id": "SQSApproximateAgeOfOldestMessageMaximumFifoAlarm",
+   "cfg": "SQSApproximateAgeOfOldestMessageMaximumFifoAlarm",
+   "type": "AWS::CloudWatch::Alarm",
+   "values": {
+    "AlarmDescription": "sqs:alarm:health_alarm_approximate_age_of_oldest_message_maximum:2020-11-26",
+    "ActionsEnabled": false,
+    "MetricName": "ApproximateAgeOfOldestMessage",
+    "Namespace": "AWS/SQS",
+    "Statistic": "Maximum",
+    "Dimensions": [
+     {
+      "Name": "QueueName",
+      "Value": {
+       "ref": "SqsFifoQueue",
+       "attr": "QueueName"
+      }
+     }
+    ],
+    "Period": 60,
+    "EvaluationPeriods": 1,
+    "DatapointsToAlarm": 1,
+    "Threshold": 15,
+    "ComparisonOperator": "GreaterThanThreshold",
+    "TreatMissingData": "missing"
+   },
+   "refs": [
+    "SqsFifoQueue"
+   ]
+  },
+  {
+   "id": "SQSThresholdApproximateNumberOfMessagesNotVisibleStandardQueueAlarm",
+   "cfg": "SQSThresholdApproximateNumberOfMessagesNotVisibleStandardQueueAlarm",
+   "type": "AWS::CloudWatch::Alarm",
+   "values": {
+    "AlarmDescription": "sqs:alarm:health_alarm_threshold_approximate_number_of_messages_not_visible_standard_queue:2020-11-26",
+    "ActionsEnabled": false,
+    "MetricName": "ApproximateNumberOfMessagesNotVisible",
+    "Namespace": "AWS/SQS",
+    "Statistic": "Maximum",
+    "Dimensions": [
+     {
+      "Name": "QueueName",
+      "Value": {
+       "ref": "SqsStandardQueue",
+       "attr": "QueueName"
+      }
+     }
+    ],
+    "Period": 60,
+    "EvaluationPeriods": 1,
+    "DatapointsToAlarm": 1,
+    "Threshold": 108000,
+    "ComparisonOperator": "GreaterThanThreshold",
+    "TreatMissingData": "missing"
+   },
+   "refs": [
+    "SqsStandardQueue"
+   ]
+  },
+  {
+   "id": "SQSThresholdApproximateNumberOfMessagesNotVisibleFifoAlarm",
+   "cfg": "SQSThresholdApproximateNumberOfMessagesNotVisibleFifoAlarm",
+   "type": "AWS::CloudWatch::Alarm",
+   "values": {
+    "AlarmDescription": "sqs:alarm:health_alarm_threshold_approximate_number_of_messages_not_visible_fifo:2020-11-26",
+    "ActionsEnabled": false,
+    "MetricName": "ApproximateNumberOfMessagesNotVisible",
+    "Namespace": "AWS/SQS",
+    "Statistic": "Maximum",
+    "Dimensions": [
+     {
+      "Name": "QueueName",
+      "Value": {
+       "ref": "SqsFifoQueue",
+       "attr": "QueueName"
+      }
+     }
+    ],
+    "Period": 60,
+    "EvaluationPeriods": 1,
+    "DatapointsToAlarm": 1,
+    "Threshold": 18000,
+    "ComparisonOperator": "GreaterThanThreshold",
+    "TreatMissingData": "missing"
+   },
+   "refs": [
+    "SqsFifoQueue"
+   ]
+  },
+  {
+   "id": "SQSApproximateAgeOfOldestMessageDLQAlarm",
+   "cfg": "SQSApproximateAgeOfOldestMessageDLQAlarm",
+   "type": "AWS::CloudWatch::Alarm",
+   "values": {
+    "AlarmDescription": "sqs:alarm:recovery_alarm_approximate_age_of_oldest_message_dlq:2020-11-26",
+    "ActionsEnabled": false,
+    "MetricName": "ApproximateAgeOfOldestMessage",
+    "Namespace": "AWS/SQS",
+    "Statistic": "Maximum",
+    "Dimensions": [
+     {
+      "Name": "QueueName",
+      "Value": {
+       "ref": "SqsDlqForStandardQueue",
+       "attr": "QueueName"
+      }
+     }
+    ],
+    "Period": 60,
+    "EvaluationPeriods": 1,
+    "DatapointsToAlarm": 1,
+    "Threshold": 90,
+    "ComparisonOperator": "GreaterThanThreshold",
+    "TreatMissingData": "missing"
+   },
+   "refs": [
+    "SqsDlqForStandardQueue"
+   ]
+  },
+  {
+   "id": "SQSAlwaysOKAlarm",
+   "cfg": "SQSAlwaysOKAlarm",
+   "type": "AWS::CloudWatch::Alarm",
+   "values": {
+    "AlarmDescription": "sqs:alarm:always_ok:2021-03-24",
+    "ActionsEnabled": false,
+    "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+    "EvaluationPeriods": 1,
+    "MetricName": "AlwaysOK",
+    "Namespace": "AWS/SQS",
+    "Period": 60,
+    "Statistic": "Minimum",
+    "TreatMissingData": "notBreaching",
+    "Threshold": 100
+   },
+   "refs": []
+  },
+  {
+   "id": "KmsKey",
+   "cfg": "KmsKey",
+   "type": "AWS::KMS::Key",
+   "values": {
+    "KeyPolicy": {
+     "Version": "2012-10-17",
+     "Id": "kms-key-policy-id",
+     "Statement": [
+      {
+       "Sid": "Enable IAM User Permissions",
+       "Effect": "Allow",
+       "Principal": {
+        "AWS": [
+         "arn:aws:iam::123456789012:root"
+        ]
+       },
+       "Action": [
+        "kms:*"
+       ],
+       "Resource": [
+        "*"
+       ]
+      }
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.SqsQueueRedrivePolicyMaxReceiveCount",
+   "cfg": "__parameter__.SqsQueueRedrivePolicyMaxReceiveCount",
+   "type": "__parameter__",
+   "values": {
+    "name": "SqsQueueRedrivePolicyMaxReceiveCount",
+    "type": "Number",
+    "default": 5,
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.SentMessageSizeMaximumMinus30Percents",
+   "cfg": "__parameter__.SentMessageSizeMaximumMinus30Percents",
+   "type": "__parameter__",
+   "values": {
+    "name": "SentMessageSizeMaximumMinus30Percents",
+    "type": "Number",
+    "default": 183500,
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.AverageDurationToProcessSentMessagePlus10Percents",
+   "cfg": "__parameter__.AverageDurationToProcessSentMessagePlus10Percents",
+   "type": "__parameter__",
+   "values": {
+    "name": "AverageDurationToProcessSentMessagePlus10Percents",
+    "type": "Number",
+    "default": 15,
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.AverageNumberOfMessagesSentThreshold",
+   "cfg": "__parameter__.AverageNumberOfMessagesSentThreshold",
+   "type": "__parameter__",
+   "values": {
+    "name": "AverageNumberOfMessagesSentThreshold",
+    "type": "Number",
+    "default": 0.25,
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.NumberOfMessagesSentThreshold",
+   "cfg": "__parameter__.NumberOfMessagesSentThreshold",
+   "type": "__parameter__",
+   "values": {
+    "name": "NumberOfMessagesSentThreshold",
+    "type": "Number",
+    "default": 1,
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.ApproximateNumberOfMessagesNotVisibleThresholdStandardQueue",
+   "cfg": "__parameter__.ApproximateNumberOfMessagesNotVisibleThresholdStandardQueue",
+   "type": "__parameter__",
+   "values": {
+    "name": "ApproximateNumberOfMessagesNotVisibleThresholdStandardQueue",
+    "type": "Number",
+    "default": 108000,
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.ApproximateNumberOfMessagesNotVisibleThresholdFifo",
+   "cfg": "__parameter__.ApproximateNumberOfMessagesNotVisibleThresholdFifo",
+   "type": "__parameter__",
+   "values": {
+    "name": "ApproximateNumberOfMessagesNotVisibleThresholdFifo",
+    "type": "Number",
+    "default": 18000,
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.ApproximateAgeOfOldestMessageDLQThreshold",
+   "cfg": "__parameter__.ApproximateAgeOfOldestMessageDLQThreshold",
+   "type": "__parameter__",
+   "values": {
+    "name": "ApproximateAgeOfOldestMessageDLQThreshold",
+    "type": "Number",
+    "default": 90,
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.SqsFifoQueueArn",
+   "cfg": "__output__.SqsFifoQueueArn",
+   "type": "__output__",
+   "values": {
+    "name": "SqsFifoQueueArn",
+    "value": {
+     "ref": "SqsFifoQueue",
+     "attr": "Arn"
+    },
+    "description": "Fifo queue ARN",
+    "export": null
+   },
+   "refs": [
+    "SqsFifoQueue"
+   ]
+  },
+  {
+   "id": "__output__.SqsFifoQueueName",
+   "cfg": "__output__.SqsFifoQueueName",
+   "type": "__output__",
+   "values": {
+    "name": "SqsFifoQueueName",
+    "value": {
+     "ref": "SqsFifoQueue",
+     "attr": "QueueName"
+    },
+    "description": "Fifo queue name",
+    "export": null
+   },
+   "refs": [
+    "SqsFifoQueue"
+   ]
+  },
+  {
+   "id": "__output__.SqsFifoQueueUrl",
+   "cfg": "__output__.SqsFifoQueueUrl",
+   "type": "__output__",
+   "values": {
+    "name": "SqsFifoQueueUrl",
+    "value": {
+     "ref": "SqsFifoQueue"
+    },
+    "description": "Fifo queue URL",
+    "export": null
+   },
+   "refs": [
+    "SqsFifoQueue"
+   ]
+  },
+  {
+   "id": "__output__.SqsFifoQueueEnabledDlqArn",
+   "cfg": "__output__.SqsFifoQueueEnabledDlqArn",
+   "type": "__output__",
+   "values": {
+    "name": "SqsFifoQueueEnabledDlqArn",
+    "value": {
+     "ref": "SqsFifoQueueEnabledDlq",
+     "attr": "Arn"
+    },
+    "description": "ARN of Fifo queue with enabled DLQ",
+    "export": null
+   },
+   "refs": [
+    "SqsFifoQueueEnabledDlq"
+   ]
+  },
+  {
+   "id": "__output__.SqsFifoQueueEnabledDlqUrl",
+   "cfg": "__output__.SqsFifoQueueEnabledDlqUrl",
+   "type": "__output__",
+   "values": {
+    "name": "SqsFifoQueueEnabledDlqUrl",
+    "value": {
+     "ref": "SqsFifoQueueEnabledDlq"
+    },
+    "description": "Fifo queue URL",
+    "export": null
+   },
+   "refs": [
+    "SqsFifoQueueEnabledDlq"
+   ]
+  },
+  {
+   "id": "__output__.SqsFifoQueueEnabledDlqName",
+   "cfg": "__output__.SqsFifoQueueEnabledDlqName",
+   "type": "__output__",
+   "values": {
+    "name": "SqsFifoQueueEnabledDlqName",
+    "value": {
+     "ref": "SqsFifoQueueEnabledDlq",
+     "attr": "QueueName"
+    },
+    "description": "Name of Fifo queue with enabled DLQ",
+    "export": null
+   },
+   "refs": [
+    "SqsFifoQueueEnabledDlq"
+   ]
+  },
+  {
+   "id": "__output__.SqsDlqForFifoQueueArn",
+   "cfg": "__output__.SqsDlqForFifoQueueArn",
+   "type": "__output__",
+   "values": {
+    "name": "SqsDlqForFifoQueueArn",
+    "value": {
+     "ref": "SqsDlqForFifoQueue",
+     "attr": "Arn"
+    },
+    "description": "ARN of DLQ for Fifo queue",
+    "export": null
+   },
+   "refs": [
+    "SqsDlqForFifoQueue"
+   ]
+  },
+  {
+   "id": "__output__.SqsDlqForFifoQueueUrl",
+   "cfg": "__output__.SqsDlqForFifoQueueUrl",
+   "type": "__output__",
+   "values": {
+    "name": "SqsDlqForFifoQueueUrl",
+    "value": {
+     "ref": "SqsDlqForFifoQueue"
+    },
+    "description": "URL of DLQ for Fifo queue",
+    "export": null
+   },
+   "refs": [
+    "SqsDlqForFifoQueue"
+   ]
+  },
+  {
+   "id": "__output__.SqsStandardQueueArn",
+   "cfg": "__output__.SqsStandardQueueArn",
+   "type": "__output__",
+   "values": {
+    "name": "SqsStandardQueueArn",
+    "value": {
+     "ref": "SqsStandardQueue",
+     "attr": "Arn"
+    },
+    "description": "Standard queue ARN",
+    "export": null
+   },
+   "refs": [
+    "SqsStandardQueue"
+   ]
+  },
+  {
+   "id": "__output__.SqsStandardQueueUrl",
+   "cfg": "__output__.SqsStandardQueueUrl",
+   "type": "__output__",
+   "values": {
+    "name": "SqsStandardQueueUrl",
+    "value": {
+     "ref": "SqsStandardQueue"
+    },
+    "description": "Standard queue URL",
+    "export": null
+   },
+   "refs": [
+    "SqsStandardQueue"
+   ]
+  },
+  {
+   "id": "__output__.SqsStandardQueueName",
+   "cfg": "__output__.SqsStandardQueueName",
+   "type": "__output__",
+   "values": {
+    "name": "SqsStandardQueueName",
+    "value": {
+     "ref": "SqsStandardQueue",
+     "attr": "QueueName"
+    },
+    "description": "Standard queue URL",
+    "export": null
+   },
+   "refs": [
+    "SqsStandardQueue"
+   ]
+  },
+  {
+   "id": "__output__.SqsDlqForStandardQueueUrl",
+   "cfg": "__output__.SqsDlqForStandardQueueUrl",
+   "type": "__output__",
+   "values": {
+    "name": "SqsDlqForStandardQueueUrl",
+    "value": {
+     "ref": "SqsDlqForStandardQueue"
+    },
+    "description": "Dead letter queue URL",
+    "export": null
+   },
+   "refs": [
+    "SqsDlqForStandardQueue"
+   ]
+  },
+  {
+   "id": "__output__.SqsDlqForStandardQueueName",
+   "cfg": "__output__.SqsDlqForStandardQueueName",
+   "type": "__output__",
+   "values": {
+    "name": "SqsDlqForStandardQueueName",
+    "value": {
+     "ref": "SqsDlqForStandardQueue",
+     "attr": "QueueName"
+    },
+    "description": "Dead letter queue URL",
+    "export": null
+   },
+   "refs": [
+    "SqsDlqForStandardQueue"
+   ]
+  },
+  {
+   "id": "__output__.NumberOfMessagesSentAlarm",
+   "cfg": "__output__.NumberOfMessagesSentAlarm",
+   "type": "__output__",
+   "values": {
+    "name": "NumberOfMessagesSentAlarm",
+    "value": {
+     "ref": "SQSNumberOfMessagesSentAlarm"
+    },
+    "description": "Alarm",
+    "export": null
+   },
+   "refs": [
+    "SQSNumberOfMessagesSentAlarm"
+   ]
+  },
+  {
+   "id": "__output__.NumberOfMessagesSentBandAlarm",
+   "cfg": "__output__.NumberOfMessagesSentBandAlarm",
+   "type": "__output__",
+   "values": {
+    "name": "NumberOfMessagesSentBandAlarm",
+    "value": {
+     "ref": "SQSNumberOfMessagesSentBandAlarm"
+    },
+    "description": "Alarm",
+    "export": null
+   },
+   "refs": [
+    "SQSNumberOfMessagesSentBandAlarm"
+   ]
+  },
+  {
+   "id": "__output__.SentMessageSizeStandardQueueAlarm",
+   "cfg": "__output__.SentMessageSizeStandardQueueAlarm",
+   "type": "__output__",
+   "values": {
+    "name": "SentMessageSizeStandardQueueAlarm",
+    "value": {
+     "ref": "SQSSentMessageSizeStandardQueueAlarm"
+    },
+    "description": "Alarm",
+    "export": null
+   },
+   "refs": [
+    "SQSSentMessageSizeStandardQueueAlarm"
+   ]
+  },
+  {
+   "id": "__output__.SentMessageSizeFifoQueueAlarm",
+   "cfg": "__output__.SentMessageSizeFifoQueueAlarm",
+   "type": "__output__",
+   "values": {
+    "name": "SentMessageSizeFifoQueueAlarm",
+    "value": {
+     "ref": "SQSSentMessageSizeFifoQueueAlarm"
+    },
+    "description": "Alarm",
+    "export": null
+   },
+   "refs": [
+    "SQSSentMessageSizeFifoQueueAlarm"
+   ]
+  },
+  {
+   "id": "__output__.DlqMessageFifoQueueAlarm",
+   "cfg": "__output__.DlqMessageFifoQueueAlarm",
+   "type": "__output__",
+   "values": {
+    "name": "DlqMessageFifoQueueAlarm",
+    "value": {
+     "ref": "SqsDlqMessageFifoQueueAlarm"
+    },
+    "description": "Alarm",
+    "export": null
+   },
+   "refs": [
+    "SqsDlqMessageFifoQueueAlarm"
+   ]
+  },
+  {
+   "id": "__output__.DlqMessageStandardQueueAlarm",
+   "cfg": "__output__.DlqMessageStandardQueueAlarm",
+   "type": "__output__",
+   "values": {
+    "name": "DlqMessageStandardQueueAlarm",
+    "value": {
+     "ref": "SqsDlqMessageStandardQueueAlarm"
+    },
+    "description": "Alarm",
+    "export": null
+   },
+   "refs": [
+    "SqsDlqMessageStandardQueueAlarm"
+   ]
+  },
+  {
+   "id": "__output__.ApproximateAgeOfOldestMessageMaximumAlarm",
+   "cfg": "__output__.ApproximateAgeOfOldestMessageMaximumAlarm",
+   "type": "__output__",
+   "values": {
+    "name": "ApproximateAgeOfOldestMessageMaximumAlarm",
+    "value": {
+     "ref": "SQSApproximateAgeOfOldestMessageMaximumAlarm"
+    },
+    "description": "Alarm",
+    "export": null
+   },
+   "refs": [
+    "SQSApproximateAgeOfOldestMessageMaximumAlarm"
+   ]
+  },
+  {
+   "id": "__output__.ApproximateAgeOfOldestMessageMaximumFifoAlarm",
+   "cfg": "__output__.ApproximateAgeOfOldestMessageMaximumFifoAlarm",
+   "type": "__output__",
+   "values": {
+    "name": "ApproximateAgeOfOldestMessageMaximumFifoAlarm",
+    "value": {
+     "ref": "SQSApproximateAgeOfOldestMessageMaximumFifoAlarm"
+    },
+    "description": "Alarm",
+    "export": null
+   },
+   "refs": [
+    "SQSApproximateAgeOfOldestMessageMaximumFifoAlarm"
+   ]
+  },
+  {
+   "id": "__output__.ThresholdApproximateNumberOfMessagesNotVisibleStandardQueueAlarm",
+   "cfg": "__output__.ThresholdApproximateNumberOfMessagesNotVisibleStandardQueueAlarm",
+   "type": "__output__",
+   "values": {
+    "name": "ThresholdApproximateNumberOfMessagesNotVisibleStandardQueueAlarm",
+    "value": {
+     "ref": "SQSThresholdApproximateNumberOfMessagesNotVisibleStandardQueueAlarm"
+    },
+    "description": "Alarm",
+    "export": null
+   },
+   "refs": [
+    "SQSThresholdApproximateNumberOfMessagesNotVisibleStandardQueueAlarm"
+   ]
+  },
+  {
+   "id": "__output__.ThresholdApproximateNumberOfMessagesNotVisibleFifoAlarm",
+   "cfg": "__output__.ThresholdApproximateNumberOfMessagesNotVisibleFifoAlarm",
+   "type": "__output__",
+   "values": {
+    "name": "ThresholdApproximateNumberOfMessagesNotVisibleFifoAlarm",
+    "value": {
+     "ref": "SQSThresholdApproximateNumberOfMessagesNotVisibleFifoAlarm"
+    },
+    "description": "Alarm",
+    "export": null
+   },
+   "refs": [
+    "SQSThresholdApproximateNumberOfMessagesNotVisibleFifoAlarm"
+   ]
+  },
+  {
+   "id": "__output__.ApproximateAgeOfOldestMessageDLQAlarm",
+   "cfg": "__output__.ApproximateAgeOfOldestMessageDLQAlarm",
+   "type": "__output__",
+   "values": {
+    "name": "ApproximateAgeOfOldestMessageDLQAlarm",
+    "value": {
+     "ref": "SQSApproximateAgeOfOldestMessageDLQAlarm"
+    },
+    "description": "Alarm",
+    "export": null
+   },
+   "refs": [
+    "SQSApproximateAgeOfOldestMessageDLQAlarm"
+   ]
+  },
+  {
+   "id": "__output__.AlwaysOKAlarm",
+   "cfg": "__output__.AlwaysOKAlarm",
+   "type": "__output__",
+   "values": {
+    "name": "AlwaysOKAlarm",
+    "value": {
+     "ref": "SQSAlwaysOKAlarm"
+    },
+    "description": "Alarm",
+    "export": null
+   },
+   "refs": [
+    "SQSAlwaysOKAlarm"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::SQS::Queue.SqsFifoQueue",
+   "cfg": "SqsFifoQueue",
+   "type": "__declared__",
+   "refs": [
+    "KmsKey"
+   ],
+   "values": {
+    "type": "AWS::SQS::Queue",
+    "name": "SqsFifoQueue",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "FifoQueue": true,
+     "KmsMasterKeyId": {
+      "ref": "KmsKey"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SQS::QueuePolicy.SqsFifoQueuePolicy",
+   "cfg": "SqsFifoQueuePolicy",
+   "type": "__declared__",
+   "refs": [
+    "SqsFifoQueue"
+   ],
+   "values": {
+    "type": "AWS::SQS::QueuePolicy",
+    "name": "SqsFifoQueuePolicy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Queues": [
+      {
+       "ref": "SqsFifoQueue"
+      }
+     ],
+     "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Id": {
+       "ref": "SqsFifoQueue",
+       "attr": "QueueName"
+      },
+      "Statement": [
+       {
+        "Sid": "Allow-Send-Recieve-Delete",
+        "Effect": "Allow",
+        "Action": [
+         "SQS:SendMessage",
+         "SQS:ReceiveMessage",
+         "SQS:DeleteMessage"
+        ],
+        "Principal": {
+         "Service": [
+          "ssm.amazonaws.com"
+         ],
+         "AWS": [
+          "123456789012"
+         ]
+        },
+        "Resource": {
+         "ref": "SqsFifoQueue",
+         "attr": "Arn"
+        }
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SQS::Queue.SqsFifoQueueEnabledDlq",
+   "cfg": "SqsFifoQueueEnabledDlq",
+   "type": "__declared__",
+   "refs": [
+    "KmsKey",
+    "SqsDlqForFifoQueue"
+   ],
+   "values": {
+    "type": "AWS::SQS::Queue",
+    "name": "SqsFifoQueueEnabledDlq",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "FifoQueue": true,
+     "KmsMasterKeyId": {
+      "ref": "KmsKey"
+     },
+     "RedrivePolicy": {
+      "deadLetterTargetArn": {
+       "ref": "SqsDlqForFifoQueue",
+       "attr": "Arn"
+      },
+      "maxReceiveCount": 5
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SQS::QueuePolicy.SqsFifoQueueEnabledDlqPolicy",
+   "cfg": "SqsFifoQueueEnabledDlqPolicy",
+   "type": "__declared__",
+   "refs": [
+    "SqsFifoQueueEnabledDlq"
+   ],
+   "values": {
+    "type": "AWS::SQS::QueuePolicy",
+    "name": "SqsFifoQueueEnabledDlqPolicy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Queues": [
+      {
+       "ref": "SqsFifoQueueEnabledDlq"
+      }
+     ],
+     "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Id": {
+       "ref": "SqsFifoQueueEnabledDlq",
+       "attr": "QueueName"
+      },
+      "Statement": [
+       {
+        "Sid": "Allow-Send-Recieve-Delete",
+        "Effect": "Allow",
+        "Action": [
+         "SQS:SendMessage",
+         "SQS:ReceiveMessage",
+         "SQS:DeleteMessage"
+        ],
+        "Principal": {
+         "Service": [
+          "ssm.amazonaws.com"
+         ],
+         "AWS": [
+          "123456789012"
+         ]
+        },
+        "Resource": {
+         "ref": "SqsFifoQueueEnabledDlq",
+         "attr": "Arn"
+        }
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SQS::Queue.SqsDlqForFifoQueue",
+   "cfg": "SqsDlqForFifoQueue",
+   "type": "__declared__",
+   "refs": [
+    "KmsKey"
+   ],
+   "values": {
+    "type": "AWS::SQS::Queue",
+    "name": "SqsDlqForFifoQueue",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "KmsMasterKeyId": {
+      "ref": "KmsKey"
+     },
+     "FifoQueue": true
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SQS::Queue.SqsStandardQueue",
+   "cfg": "SqsStandardQueue",
+   "type": "__declared__",
+   "refs": [
+    "KmsKey",
+    "SqsDlqForStandardQueue"
+   ],
+   "values": {
+    "type": "AWS::SQS::Queue",
+    "name": "SqsStandardQueue",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "KmsMasterKeyId": {
+      "ref": "KmsKey"
+     },
+     "RedrivePolicy": {
+      "deadLetterTargetArn": {
+       "ref": "SqsDlqForStandardQueue",
+       "attr": "Arn"
+      },
+      "maxReceiveCount": 5
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SQS::QueuePolicy.SqsStandardQueuePolicy",
+   "cfg": "SqsStandardQueuePolicy",
+   "type": "__declared__",
+   "refs": [
+    "SqsStandardQueue"
+   ],
+   "values": {
+    "type": "AWS::SQS::QueuePolicy",
+    "name": "SqsStandardQueuePolicy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Queues": [
+      {
+       "ref": "SqsStandardQueue"
+      }
+     ],
+     "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Id": {
+       "ref": "SqsStandardQueue",
+       "attr": "QueueName"
+      },
+      "Statement": [
+       {
+        "Sid": "Allow-Send-Recieve-Delete",
+        "Effect": "Allow",
+        "Action": [
+         "SQS:SendMessage",
+         "SQS:ReceiveMessage",
+         "SQS:DeleteMessage"
+        ],
+        "Principal": {
+         "Service": [
+          "ssm.amazonaws.com"
+         ],
+         "AWS": [
+          "123456789012"
+         ]
+        },
+        "Resource": {
+         "ref": "SqsStandardQueue",
+         "attr": "Arn"
+        }
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SQS::Queue.SqsDlqForStandardQueue",
+   "cfg": "SqsDlqForStandardQueue",
+   "type": "__declared__",
+   "refs": [
+    "KmsKey"
+   ],
+   "values": {
+    "type": "AWS::SQS::Queue",
+    "name": "SqsDlqForStandardQueue",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "KmsMasterKeyId": {
+      "ref": "KmsKey"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::CloudWatch::Alarm.SQSNumberOfMessagesSentAlarm",
+   "cfg": "SQSNumberOfMessagesSentAlarm",
+   "type": "__declared__",
+   "refs": [
+    "SqsStandardQueue"
+   ],
+   "values": {
+    "type": "AWS::CloudWatch::Alarm",
+    "name": "SQSNumberOfMessagesSentAlarm",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AlarmDescription": "sqs:alarm:health_alarm_number_of_messages_sent:2020-11-26",
+     "ActionsEnabled": false,
+     "MetricName": "NumberOfMessagesSent",
+     "Namespace": "AWS/SQS",
+     "Statistic": "Sum",
+     "Dimensions": [
+      {
+       "Name": "QueueName",
+       "Value": {
+        "ref": "SqsStandardQueue",
+        "attr": "QueueName"
+       }
+      }
+     ],
+     "Period": 60,
+     "EvaluationPeriods": 1,
+     "DatapointsToAlarm": 1,
+     "Threshold": 1,
+     "ComparisonOperator": "LessThanThreshold",
+     "TreatMissingData": "breaching"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::CloudWatch::Alarm.SQSNumberOfMessagesSentBandAlarm",
+   "cfg": "SQSNumberOfMessagesSentBandAlarm",
+   "type": "__declared__",
+   "refs": [
+    "SqsFifoQueueEnabledDlq"
+   ],
+   "values": {
+    "type": "AWS::CloudWatch::Alarm",
+    "name": "SQSNumberOfMessagesSentBandAlarm",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ActionsEnabled": false,
+     "AlarmDescription": "sqs:alarm:health_alarm_number_of_messages_sent:2020-11-26",
+     "EvaluationPeriods": 1,
+     "DatapointsToAlarm": 1,
+     "ComparisonOperator": "LessThanLowerThreshold",
+     "TreatMissingData": "breaching",
+     "Metrics": [
+      {
+       "Id": "m1",
+       "MetricStat": {
+        "Metric": {
+         "Namespace": "AWS/SQS",
+         "MetricName": "NumberOfMessagesSent",
+         "Dimensions": [
+          {
+           "Name": "QueueName",
+           "Value": {
+            "ref": "SqsFifoQueueEnabledDlq",
+            "attr": "QueueName"
+           }
+          }
+         ]
+        },
+        "Period": 60,
+        "Stat": "Average"
+       },
+       "ReturnData": true
+      },
+      {
+       "Id": "ad1",
+       "Expression": "ANOMALY_DETECTION_BAND(m1, 0.25)",
+       "Label": "NumberOfMessagesSent (expected)",
+       "ReturnData": true
+      }
+     ],
+     "ThresholdMetricId": "ad1"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::CloudWatch::Alarm.SQSSentMessageSizeStandardQueueAlarm",
+   "cfg": "SQSSentMessageSizeStandardQueueAlarm",
+   "type": "__declared__",
+   "refs": [
+    "SqsStandardQueue"
+   ],
+   "values": {
+    "type": "AWS::CloudWatch::Alarm",
+    "name": "SQSSentMessageSizeStandardQueueAlarm",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AlarmDescription": "sqs:alarm:health_alarm_sent_message_size:2020-11-26",
+     "ActionsEnabled": false,
+     "MetricName": "SentMessageSize",
+     "Namespace": "AWS/SQS",
+     "Statistic": "Maximum",
+     "Dimensions": [
+      {
+       "Name": "QueueName",
+       "Value": {
+        "ref": "SqsStandardQueue",
+        "attr": "QueueName"
+       }
+      }
+     ],
+     "Period": 60,
+     "EvaluationPeriods": 1,
+     "DatapointsToAlarm": 1,
+     "Threshold": 183500,
+     "ComparisonOperator": "GreaterThanThreshold",
+     "TreatMissingData": "notBreaching"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::CloudWatch::Alarm.SQSSentMessageSizeFifoQueueAlarm",
+   "cfg": "SQSSentMessageSizeFifoQueueAlarm",
+   "type": "__declared__",
+   "refs": [
+    "SqsFifoQueue"
+   ],
+   "values": {
+    "type": "AWS::CloudWatch::Alarm",
+    "name": "SQSSentMessageSizeFifoQueueAlarm",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AlarmDescription": "sqs:alarm:health_alarm_sent_message_size:2020-11-26",
+     "ActionsEnabled": false,
+     "MetricName": "SentMessageSize",
+     "Namespace": "AWS/SQS",
+     "Statistic": "Maximum",
+     "Dimensions": [
+      {
+       "Name": "QueueName",
+       "Value": {
+        "ref": "SqsFifoQueue",
+        "attr": "QueueName"
+       }
+      }
+     ],
+     "Period": 60,
+     "EvaluationPeriods": 1,
+     "DatapointsToAlarm": 1,
+     "Threshold": 183500,
+     "ComparisonOperator": "GreaterThanThreshold",
+     "TreatMissingData": "notBreaching"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::CloudWatch::Alarm.SqsDlqMessageFifoQueueAlarm",
+   "cfg": "SqsDlqMessageFifoQueueAlarm",
+   "type": "__declared__",
+   "refs": [
+    "SqsDlqForFifoQueue"
+   ],
+   "values": {
+    "type": "AWS::CloudWatch::Alarm",
+    "name": "SqsDlqMessageFifoQueueAlarm",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AlarmDescription": "sqs:alarm:health_alarm_dlq_message:2020-11-26",
+     "ActionsEnabled": false,
+     "MetricName": "ApproximateNumberOfMessagesVisible",
+     "Namespace": "AWS/SQS",
+     "Statistic": "Sum",
+     "Dimensions": [
+      {
+       "Name": "QueueName",
+       "Value": {
+        "ref": "SqsDlqForFifoQueue",
+        "attr": "QueueName"
+       }
+      }
+     ],
+     "Period": 60,
+     "EvaluationPeriods": 1,
+     "DatapointsToAlarm": 1,
+     "Threshold": 0,
+     "ComparisonOperator": "GreaterThanThreshold",
+     "TreatMissingData": "notBreaching"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::CloudWatch::Alarm.SqsDlqMessageStandardQueueAlarm",
+   "cfg": "SqsDlqMessageStandardQueueAlarm",
+   "type": "__declared__",
+   "refs": [
+    "SqsDlqForStandardQueue"
+   ],
+   "values": {
+    "type": "AWS::CloudWatch::Alarm",
+    "name": "SqsDlqMessageStandardQueueAlarm",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AlarmDescription": "sqs:alarm:health_alarm_dlq_message:2020-11-26",
+     "ActionsEnabled": false,
+     "MetricName": "ApproximateNumberOfMessagesVisible",
+     "Namespace": "AWS/SQS",
+     "Statistic": "Sum",
+     "Dimensions": [
+      {
+       "Name": "QueueName",
+       "Value": {
+        "ref": "SqsDlqForStandardQueue",
+        "attr": "QueueName"
+       }
+      }
+     ],
+     "Period": 60,
+     "EvaluationPeriods": 1,
+     "DatapointsToAlarm": 1,
+     "Threshold": 0,
+     "ComparisonOperator": "GreaterThanThreshold",
+     "TreatMissingData": "notBreaching"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::CloudWatch::Alarm.SQSApproximateAgeOfOldestMessageMaximumAlarm",
+   "cfg": "SQSApproximateAgeOfOldestMessageMaximumAlarm",
+   "type": "__declared__",
+   "refs": [
+    "SqsStandardQueue"
+   ],
+   "values": {
+    "type": "AWS::CloudWatch::Alarm",
+    "name": "SQSApproximateAgeOfOldestMessageMaximumAlarm",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AlarmDescription": "sqs:alarm:health_alarm_approximate_age_of_oldest_message_maximum:2020-11-26",
+     "ActionsEnabled": false,
+     "MetricName": "ApproximateAgeOfOldestMessage",
+     "Namespace": "AWS/SQS",
+     "Statistic": "Maximum",
+     "Dimensions": [
+      {
+       "Name": "QueueName",
+       "Value": {
+        "ref": "SqsStandardQueue",
+        "attr": "QueueName"
+       }
+      }
+     ],
+     "Period": 60,
+     "EvaluationPeriods": 1,
+     "DatapointsToAlarm": 1,
+     "Threshold": 15,
+     "ComparisonOperator": "GreaterThanThreshold",
+     "TreatMissingData": "missing"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::CloudWatch::Alarm.SQSApproximateAgeOfOldestMessageMaximumFifoAlarm",
+   "cfg": "SQSApproximateAgeOfOldestMessageMaximumFifoAlarm",
+   "type": "__declared__",
+   "refs": [
+    "SqsFifoQueue"
+   ],
+   "values": {
+    "type": "AWS::CloudWatch::Alarm",
+    "name": "SQSApproximateAgeOfOldestMessageMaximumFifoAlarm",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AlarmDescription": "sqs:alarm:health_alarm_approximate_age_of_oldest_message_maximum:2020-11-26",
+     "ActionsEnabled": false,
+     "MetricName": "ApproximateAgeOfOldestMessage",
+     "Namespace": "AWS/SQS",
+     "Statistic": "Maximum",
+     "Dimensions": [
+      {
+       "Name": "QueueName",
+       "Value": {
+        "ref": "SqsFifoQueue",
+        "attr": "QueueName"
+       }
+      }
+     ],
+     "Period": 60,
+     "EvaluationPeriods": 1,
+     "DatapointsToAlarm": 1,
+     "Threshold": 15,
+     "ComparisonOperator": "GreaterThanThreshold",
+     "TreatMissingData": "missing"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::CloudWatch::Alarm.SQSThresholdApproximateNumberOfMessagesNotVisibleStandardQueueAlarm",
+   "cfg": "SQSThresholdApproximateNumberOfMessagesNotVisibleStandardQueueAlarm",
+   "type": "__declared__",
+   "refs": [
+    "SqsStandardQueue"
+   ],
+   "values": {
+    "type": "AWS::CloudWatch::Alarm",
+    "name": "SQSThresholdApproximateNumberOfMessagesNotVisibleStandardQueueAlarm",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AlarmDescription": "sqs:alarm:health_alarm_threshold_approximate_number_of_messages_not_visible_standard_queue:2020-11-26",
+     "ActionsEnabled": false,
+     "MetricName": "ApproximateNumberOfMessagesNotVisible",
+     "Namespace": "AWS/SQS",
+     "Statistic": "Maximum",
+     "Dimensions": [
+      {
+       "Name": "QueueName",
+       "Value": {
+        "ref": "SqsStandardQueue",
+        "attr": "QueueName"
+       }
+      }
+     ],
+     "Period": 60,
+     "EvaluationPeriods": 1,
+     "DatapointsToAlarm": 1,
+     "Threshold": 108000,
+     "ComparisonOperator": "GreaterThanThreshold",
+     "TreatMissingData": "missing"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::CloudWatch::Alarm.SQSThresholdApproximateNumberOfMessagesNotVisibleFifoAlarm",
+   "cfg": "SQSThresholdApproximateNumberOfMessagesNotVisibleFifoAlarm",
+   "type": "__declared__",
+   "refs": [
+    "SqsFifoQueue"
+   ],
+   "values": {
+    "type": "AWS::CloudWatch::Alarm",
+    "name": "SQSThresholdApproximateNumberOfMessagesNotVisibleFifoAlarm",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AlarmDescription": "sqs:alarm:health_alarm_threshold_approximate_number_of_messages_not_visible_fifo:2020-11-26",
+     "ActionsEnabled": false,
+     "MetricName": "ApproximateNumberOfMessagesNotVisible",
+     "Namespace": "AWS/SQS",
+     "Statistic": "Maximum",
+     "Dimensions": [
+      {
+       "Name": "QueueName",
+       "Value": {
+        "ref": "SqsFifoQueue",
+        "attr": "QueueName"
+       }
+      }
+     ],
+     "Period": 60,
+     "EvaluationPeriods": 1,
+     "DatapointsToAlarm": 1,
+     "Threshold": 18000,
+     "ComparisonOperator": "GreaterThanThreshold",
+     "TreatMissingData": "missing"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::CloudWatch::Alarm.SQSApproximateAgeOfOldestMessageDLQAlarm",
+   "cfg": "SQSApproximateAgeOfOldestMessageDLQAlarm",
+   "type": "__declared__",
+   "refs": [
+    "SqsDlqForStandardQueue"
+   ],
+   "values": {
+    "type": "AWS::CloudWatch::Alarm",
+    "name": "SQSApproximateAgeOfOldestMessageDLQAlarm",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AlarmDescription": "sqs:alarm:recovery_alarm_approximate_age_of_oldest_message_dlq:2020-11-26",
+     "ActionsEnabled": false,
+     "MetricName": "ApproximateAgeOfOldestMessage",
+     "Namespace": "AWS/SQS",
+     "Statistic": "Maximum",
+     "Dimensions": [
+      {
+       "Name": "QueueName",
+       "Value": {
+        "ref": "SqsDlqForStandardQueue",
+        "attr": "QueueName"
+       }
+      }
+     ],
+     "Period": 60,
+     "EvaluationPeriods": 1,
+     "DatapointsToAlarm": 1,
+     "Threshold": 90,
+     "ComparisonOperator": "GreaterThanThreshold",
+     "TreatMissingData": "missing"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::CloudWatch::Alarm.SQSAlwaysOKAlarm",
+   "cfg": "SQSAlwaysOKAlarm",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::CloudWatch::Alarm",
+    "name": "SQSAlwaysOKAlarm",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AlarmDescription": "sqs:alarm:always_ok:2021-03-24",
+     "ActionsEnabled": false,
+     "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+     "EvaluationPeriods": 1,
+     "MetricName": "AlwaysOK",
+     "Namespace": "AWS/SQS",
+     "Period": 60,
+     "Statistic": "Minimum",
+     "TreatMissingData": "notBreaching",
+     "Threshold": 100
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::KMS::Key.KmsKey",
+   "cfg": "KmsKey",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::KMS::Key",
+    "name": "KmsKey",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "KeyPolicy": {
+      "Version": "2012-10-17",
+      "Id": "kms-key-policy-id",
+      "Statement": [
+       {
+        "Sid": "Enable IAM User Permissions",
+        "Effect": "Allow",
+        "Principal": {
+         "AWS": [
+          "arn:aws:iam::123456789012:root"
+         ]
+        },
+        "Action": [
+         "kms:*"
+        ],
+        "Resource": [
+         "*"
+        ]
+       }
+      ]
+     }
+    }
+   }
+  }
+ ]
+}

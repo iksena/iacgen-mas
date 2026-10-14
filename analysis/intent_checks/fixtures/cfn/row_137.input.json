@@ -1,0 +1,865 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "5d45bf31200e2ee265ed6d0987450e814578b5970edb9850828bfa2f5aad8bf8",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "APIDataTableD1E8D052",
+   "cfg": "APIDataTableD1E8D052",
+   "type": "AWS::DynamoDB::Table",
+   "values": {
+    "KeySchema": [
+     {
+      "AttributeName": "hk",
+      "KeyType": "HASH"
+     },
+     {
+      "AttributeName": "sk",
+      "KeyType": "RANGE"
+     }
+    ],
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "hk",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "sk",
+      "AttributeType": "S"
+     }
+    ],
+    "BillingMode": "PAY_PER_REQUEST",
+    "SSESpecification": {
+     "SSEEnabled": false
+    },
+    "TableName": "APIDataTable",
+    "__resource__": {
+     "DeletionPolicy": "Retain",
+     "UpdateReplacePolicy": "Retain",
+     "Metadata": {
+      "aws:cdk:path": "InfraStack/APIDataTable/Resource"
+     }
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "APIAccessRoleB69CDA23",
+   "cfg": "APIAccessRoleB69CDA23",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "appsync.amazonaws.com"
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "Policies": [
+     {
+      "PolicyDocument": {
+       "Statement": [
+        {
+         "Action": [
+          "dynamodb:*"
+         ],
+         "Effect": "Allow",
+         "Resource": {
+          "ref": "APIDataTableD1E8D052",
+          "attr": "Arn"
+         },
+         "Sid": "APIAccessDynamoDB"
+        }
+       ],
+       "Version": "2012-10-17"
+      },
+      "PolicyName": "DDBAccess"
+     }
+    ],
+    "__resource__": {
+     "Metadata": {
+      "aws:cdk:path": "InfraStack/APIAccessRole/Resource"
+     }
+    }
+   },
+   "refs": [
+    "APIDataTableD1E8D052"
+   ]
+  },
+  {
+   "id": "APIAccessRoleDefaultPolicy55859C45",
+   "cfg": "APIAccessRoleDefaultPolicy55859C45",
+   "type": "AWS::IAM::Policy",
+   "values": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "dynamodb:BatchGetItem",
+        "dynamodb:GetRecords",
+        "dynamodb:GetShardIterator",
+        "dynamodb:Query",
+        "dynamodb:GetItem",
+        "dynamodb:Scan",
+        "dynamodb:ConditionCheckItem",
+        "dynamodb:BatchWriteItem",
+        "dynamodb:PutItem",
+        "dynamodb:UpdateItem",
+        "dynamodb:DeleteItem"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "ref": "APIDataTableD1E8D052",
+         "attr": "Arn"
+        }
+       ]
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "APIAccessRoleDefaultPolicy55859C45",
+    "Roles": [
+     {
+      "ref": "APIAccessRoleB69CDA23"
+     }
+    ],
+    "__resource__": {
+     "Metadata": {
+      "aws:cdk:path": "InfraStack/APIAccessRole/DefaultPolicy/Resource"
+     }
+    }
+   },
+   "refs": [
+    "APIAccessRoleB69CDA23",
+    "APIDataTableD1E8D052"
+   ]
+  },
+  {
+   "id": "AppSyncAPID0E760D2",
+   "cfg": "AppSyncAPID0E760D2",
+   "type": "AWS::AppSync::GraphQLApi",
+   "values": {
+    "AuthenticationType": "API_KEY",
+    "Name": "CryptoTickerAPI",
+    "__resource__": {
+     "Metadata": {
+      "aws:cdk:path": "InfraStack/AppSyncAPI/Resource"
+     }
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "AppSyncAPISchemaB1D44998",
+   "cfg": "AppSyncAPISchemaB1D44998",
+   "type": "AWS::AppSync::GraphQLSchema",
+   "values": {
+    "ApiId": {
+     "ref": "AppSyncAPID0E760D2",
+     "attr": "ApiId"
+    },
+    "Definition": "type Query {\n    # Our ticker resolver fetches data from coingecko's API and then inserts a historical price data object\n    # into our DynamoDB table using an AppSync pipeline resolver.\n    ticker(ticker: String!): TickerInfo\n}\n\n# Contains information about the ticker present in the URL.\ntype TickerInfo {\n    # The ticker & latestPrice are returned as part of the object returned by the Query.ticker resolver\n    ticker: String!\n    latestPrice: PriceData\n\n    # The priceHistory field has an attached unit resolver that reads the price history directly out of DynamoDB.\n    # You may pass the limit and nextToken arguments to paginate through the price data.\n    priceHistory(limit: Int, nextToken: String): HistoricalPriceConnection\n}\n\n# The purpose of the `XConnection` pattern is to provide pagination to resources with potentially\n# large numbers of items such as this price history. The limit & nextToken arguments on `TickerInfo.priceHistory`\n# are used to control the results in this connection.\ntype HistoricalPriceConnection {\n    nextToken: String\n    items: [HistoricalPriceData]\n}\ntype HistoricalPriceData {\n    ticker: String\n    priceUSD: Float\n    timestamp: String\n}\ntype PriceData {\n    usd: Float\n}",
+    "__resource__": {
+     "Metadata": {
+      "aws:cdk:path": "InfraStack/AppSyncAPI/Schema"
+     }
+    }
+   },
+   "refs": [
+    "AppSyncAPID0E760D2"
+   ]
+  },
+  {
+   "id": "AppSyncAPIDefaultApiKey016AAF21",
+   "cfg": "AppSyncAPIDefaultApiKey016AAF21",
+   "type": "AWS::AppSync::ApiKey",
+   "values": {
+    "ApiId": {
+     "ref": "AppSyncAPID0E760D2",
+     "attr": "ApiId"
+    },
+    "__resource__": {
+     "DependsOn": [
+      "AppSyncAPISchemaB1D44998"
+     ],
+     "Metadata": {
+      "aws:cdk:path": "InfraStack/AppSyncAPI/DefaultApiKey"
+     }
+    }
+   },
+   "refs": [
+    "AppSyncAPID0E760D2"
+   ]
+  },
+  {
+   "id": "DDBTableDataSource43262F9B",
+   "cfg": "DDBTableDataSource43262F9B",
+   "type": "AWS::AppSync::DataSource",
+   "values": {
+    "ApiId": {
+     "ref": "AppSyncAPID0E760D2",
+     "attr": "ApiId"
+    },
+    "Name": "APIDDBTable",
+    "Type": "AMAZON_DYNAMODB",
+    "DynamoDBConfig": {
+     "AwsRegion": "us-east-1",
+     "TableName": {
+      "ref": "APIDataTableD1E8D052"
+     }
+    },
+    "ServiceRoleArn": {
+     "ref": "APIAccessRoleB69CDA23",
+     "attr": "Arn"
+    },
+    "__resource__": {
+     "Metadata": {
+      "aws:cdk:path": "InfraStack/DDBTableDataSource/Resource"
+     }
+    }
+   },
+   "refs": [
+    "APIAccessRoleB69CDA23",
+    "APIDataTableD1E8D052",
+    "AppSyncAPID0E760D2"
+   ]
+  },
+  {
+   "id": "PriceDataSourceServiceRole6EDC2C43",
+   "cfg": "PriceDataSourceServiceRole6EDC2C43",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "appsync.amazonaws.com"
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "__resource__": {
+     "Metadata": {
+      "aws:cdk:path": "InfraStack/PriceDataSource/ServiceRole/Resource"
+     }
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "PriceDataSource1918AE11",
+   "cfg": "PriceDataSource1918AE11",
+   "type": "AWS::AppSync::DataSource",
+   "values": {
+    "ApiId": {
+     "ref": "AppSyncAPID0E760D2",
+     "attr": "ApiId"
+    },
+    "Name": "PricesAPI",
+    "Type": "HTTP",
+    "Description": "Use coingecko's API to get price data for free.",
+    "HttpConfig": {
+     "Endpoint": "https://api.coingecko.com"
+    },
+    "ServiceRoleArn": {
+     "ref": "PriceDataSourceServiceRole6EDC2C43",
+     "attr": "Arn"
+    },
+    "__resource__": {
+     "Metadata": {
+      "aws:cdk:path": "InfraStack/PriceDataSource/Resource"
+     }
+    }
+   },
+   "refs": [
+    "AppSyncAPID0E760D2",
+    "PriceDataSourceServiceRole6EDC2C43"
+   ]
+  },
+  {
+   "id": "GetPriceFunctionD6891917",
+   "cfg": "GetPriceFunctionD6891917",
+   "type": "AWS::AppSync::FunctionConfiguration",
+   "values": {
+    "ApiId": {
+     "ref": "AppSyncAPID0E760D2",
+     "attr": "ApiId"
+    },
+    "DataSourceName": "PricesAPI",
+    "FunctionVersion": "2018-05-29",
+    "Name": "GetPriceForTicker",
+    "RequestMappingTemplate": "      {\n          \"version\": \"2018-05-29\",\n          \"method\": \"GET\",\n          \"resourcePath\": \"/api/v3/simple/price?ids=${ctx.stash.get(\"ticker\")}&vs_currencies=usd\"\n      }",
+    "ResponseMappingTemplate": "\n        #set($bodyContent = $util.parseJson($ctx.result.body))\n        $util.toJson($bodyContent.get(\"$ctx.args.ticker\"))\n      ",
+    "__resource__": {
+     "DependsOn": [
+      "AppSyncAPISchemaB1D44998",
+      "PriceDataSource1918AE11"
+     ],
+     "Metadata": {
+      "aws:cdk:path": "InfraStack/GetPriceFunction/Resource"
+     }
+    }
+   },
+   "refs": [
+    "AppSyncAPID0E760D2"
+   ]
+  },
+  {
+   "id": "PutPriceFunctionBCEE0C38",
+   "cfg": "PutPriceFunctionBCEE0C38",
+   "type": "AWS::AppSync::FunctionConfiguration",
+   "values": {
+    "ApiId": {
+     "ref": "AppSyncAPID0E760D2",
+     "attr": "ApiId"
+    },
+    "DataSourceName": "APIDDBTable",
+    "FunctionVersion": "2018-05-29",
+    "Name": "PutPriceHistoryForTicker",
+    "RequestMappingTemplate": "      #set($now = $util.time.nowISO8601())\n      {\n        \"version\" : \"2018-05-29\",\n        \"operation\" : \"PutItem\",\n        \"key\": {\n            \"hk\": $util.dynamodb.toDynamoDBJson($ctx.stash.get(\"ticker\")),\n            \"sk\": $util.dynamodb.toDynamoDBJson(\"price_$now\")\n        },\n        \"attributeValues\" : {\n          \"ticker\": $util.dynamodb.toDynamoDBJson($ctx.stash.get(\"ticker\")),\n          \"timestamp\": $util.dynamodb.toDynamoDBJson($now),\n          \"priceUSD\": $util.dynamodb.toDynamoDBJson($ctx.prev.result.usd)\n        }\n      }",
+    "ResponseMappingTemplate": "\n        $util.toJson($ctx.prev.result)\n      ",
+    "__resource__": {
+     "DependsOn": [
+      "AppSyncAPISchemaB1D44998",
+      "DDBTableDataSource43262F9B"
+     ],
+     "Metadata": {
+      "aws:cdk:path": "InfraStack/PutPriceFunction/Resource"
+     }
+    }
+   },
+   "refs": [
+    "AppSyncAPID0E760D2"
+   ]
+  },
+  {
+   "id": "QueryTickerResolver3944763D",
+   "cfg": "QueryTickerResolver3944763D",
+   "type": "AWS::AppSync::Resolver",
+   "values": {
+    "ApiId": {
+     "ref": "AppSyncAPID0E760D2",
+     "attr": "ApiId"
+    },
+    "FieldName": "ticker",
+    "TypeName": "Query",
+    "Kind": "PIPELINE",
+    "PipelineConfig": {
+     "Functions": [
+      {
+       "ref": "GetPriceFunctionD6891917",
+       "attr": "FunctionId"
+      },
+      {
+       "ref": "PutPriceFunctionBCEE0C38",
+       "attr": "FunctionId"
+      }
+     ]
+    },
+    "RequestMappingTemplate": "      $util.qr($ctx.stash.put(\"ticker\", \"$ctx.args.ticker\"))\n      {}\n      ",
+    "ResponseMappingTemplate": "{\n        \"ticker\": \"$ctx.args.ticker\",\n        \"latestPrice\": $util.toJson($ctx.prev.result)\n      }",
+    "__resource__": {
+     "DependsOn": [
+      "AppSyncAPISchemaB1D44998"
+     ],
+     "Metadata": {
+      "aws:cdk:path": "InfraStack/QueryTickerResolver/Resource"
+     }
+    }
+   },
+   "refs": [
+    "AppSyncAPID0E760D2",
+    "GetPriceFunctionD6891917",
+    "PutPriceFunctionBCEE0C38"
+   ]
+  },
+  {
+   "id": "HistoricalPriceResolver48E369CF",
+   "cfg": "HistoricalPriceResolver48E369CF",
+   "type": "AWS::AppSync::Resolver",
+   "values": {
+    "ApiId": {
+     "ref": "AppSyncAPID0E760D2",
+     "attr": "ApiId"
+    },
+    "FieldName": "priceHistory",
+    "TypeName": "TickerInfo",
+    "DataSourceName": "APIDDBTable",
+    "Kind": "UNIT",
+    "RequestMappingTemplate": "{\n        \"version\" : \"2018-05-29\",\n        \"operation\" : \"Query\",\n        \"query\" : {\n            \"expression\" : \"#hk=:hk\",\n            \"expressionNames\" : {\n                \"#hk\" : \"hk\"\n            },\n            \"expressionValues\" : {\n                \":hk\": { \"S\": \"$ctx.source.ticker\" }\n            }\n        },\n        \"scanIndexForward\" : false,\n        \"limit\": $util.defaultIfNull($ctx.args.limit, 25),\n\n        #if (!$util.isNullOrEmpty($ctx.args.nextToken))\n          \"nextToken\": $util.defaultIfNullOrEmpty($ctx.args.nextToken, \"\")\n        #end\n      }",
+    "ResponseMappingTemplate": "$util.toJson($ctx.result)",
+    "__resource__": {
+     "DependsOn": [
+      "AppSyncAPISchemaB1D44998",
+      "DDBTableDataSource43262F9B"
+     ],
+     "Metadata": {
+      "aws:cdk:path": "InfraStack/HistoricalPriceResolver/Resource"
+     }
+    }
+   },
+   "refs": [
+    "AppSyncAPID0E760D2"
+   ]
+  },
+  {
+   "id": "CDKMetadata",
+   "cfg": "CDKMetadata",
+   "type": "AWS::CDK::Metadata",
+   "values": {
+    "Analytics": "v2:deflate64:H4sIAAAAAAAAE1WQTW7CMBCFz9K9MUqlSnQHImorlUWbcIGJMymGZOz6BxRZvjux00h0Ne97M/b4ueCvL7x42sLNrkR7WQehDPJQOxAXVqFV3ghke0XWGS8c23e0uJGlQ6EdCQbVNjwcoekxTWQRmYSBh0rNXq5fqpdiTDir6Qqt7UiCh3cD+vTb77RM7Uzfh/9UixMOkIzJ/8SRlXl12ZTgoP57aUcP9OGcfsDdvOzNk3BSURpe9JSwkz/eQG6kiP0VzRI36RgjI9UiP9v1tdjw4nn6t7OVcmU8OTkgr+Z6B4JHcJZTAQAA",
+    "__resource__": {
+     "Metadata": {
+      "aws:cdk:path": "InfraStack/CDKMetadata/Default"
+     }
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "__declared__.AWS::DynamoDB::Table.APIDataTableD1E8D052",
+   "cfg": "APIDataTableD1E8D052",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::DynamoDB::Table",
+    "name": "APIDataTableD1E8D052",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "KeySchema": [
+      {
+       "AttributeName": "hk",
+       "KeyType": "HASH"
+      },
+      {
+       "AttributeName": "sk",
+       "KeyType": "RANGE"
+      }
+     ],
+     "AttributeDefinitions": [
+      {
+       "AttributeName": "hk",
+       "AttributeType": "S"
+      },
+      {
+       "AttributeName": "sk",
+       "AttributeType": "S"
+      }
+     ],
+     "BillingMode": "PAY_PER_REQUEST",
+     "SSESpecification": {
+      "SSEEnabled": false
+     },
+     "TableName": "APIDataTable"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.APIAccessRoleB69CDA23",
+   "cfg": "APIAccessRoleB69CDA23",
+   "type": "__declared__",
+   "refs": [
+    "APIDataTableD1E8D052"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "APIAccessRoleB69CDA23",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "appsync.amazonaws.com"
+         ]
+        }
+       }
+      ],
+      "Version": "2012-10-17"
+     },
+     "Policies": [
+      {
+       "PolicyDocument": {
+        "Statement": [
+         {
+          "Action": [
+           "dynamodb:*"
+          ],
+          "Effect": "Allow",
+          "Resource": {
+           "ref": "APIDataTableD1E8D052",
+           "attr": "Arn"
+          },
+          "Sid": "APIAccessDynamoDB"
+         }
+        ],
+        "Version": "2012-10-17"
+       },
+       "PolicyName": "DDBAccess"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Policy.APIAccessRoleDefaultPolicy55859C45",
+   "cfg": "APIAccessRoleDefaultPolicy55859C45",
+   "type": "__declared__",
+   "refs": [
+    "APIAccessRoleB69CDA23",
+    "APIDataTableD1E8D052"
+   ],
+   "values": {
+    "type": "AWS::IAM::Policy",
+    "name": "APIAccessRoleDefaultPolicy55859C45",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "PolicyDocument": {
+      "Statement": [
+       {
+        "Action": [
+         "dynamodb:BatchGetItem",
+         "dynamodb:GetRecords",
+         "dynamodb:GetShardIterator",
+         "dynamodb:Query",
+         "dynamodb:GetItem",
+         "dynamodb:Scan",
+         "dynamodb:ConditionCheckItem",
+         "dynamodb:BatchWriteItem",
+         "dynamodb:PutItem",
+         "dynamodb:UpdateItem",
+         "dynamodb:DeleteItem"
+        ],
+        "Effect": "Allow",
+        "Resource": [
+         {
+          "ref": "APIDataTableD1E8D052",
+          "attr": "Arn"
+         }
+        ]
+       }
+      ],
+      "Version": "2012-10-17"
+     },
+     "PolicyName": "APIAccessRoleDefaultPolicy55859C45",
+     "Roles": [
+      {
+       "ref": "APIAccessRoleB69CDA23"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::AppSync::GraphQLApi.AppSyncAPID0E760D2",
+   "cfg": "AppSyncAPID0E760D2",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::AppSync::GraphQLApi",
+    "name": "AppSyncAPID0E760D2",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AuthenticationType": "API_KEY",
+     "Name": "CryptoTickerAPI"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::AppSync::GraphQLSchema.AppSyncAPISchemaB1D44998",
+   "cfg": "AppSyncAPISchemaB1D44998",
+   "type": "__declared__",
+   "refs": [
+    "AppSyncAPID0E760D2"
+   ],
+   "values": {
+    "type": "AWS::AppSync::GraphQLSchema",
+    "name": "AppSyncAPISchemaB1D44998",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "AppSyncAPID0E760D2",
+      "attr": "ApiId"
+     },
+     "Definition": "type Query {\n    # Our ticker resolver fetches data from coingecko's API and then inserts a historical price data object\n    # into our DynamoDB table using an AppSync pipeline resolver.\n    ticker(ticker: String!): TickerInfo\n}\n\n# Contains information about the ticker present in the URL.\ntype TickerInfo {\n    # The ticker & latestPrice are returned as part of the object returned by the Query.ticker resolver\n    ticker: String!\n    latestPrice: PriceData\n\n    # The priceHistory field has an attached unit resolver that reads the price history directly out of DynamoDB.\n    # You may pass the limit and nextToken arguments to paginate through the price data.\n    priceHistory(limit: Int, nextToken: String): HistoricalPriceConnection\n}\n\n# The purpose of the `XConnection` pattern is to provide pagination to resources with potentially\n# large numbers of items such as this price history. The limit & nextToken arguments on `TickerInfo.priceHistory`\n# are used to control the results in this connection.\ntype HistoricalPriceConnection {\n    nextToken: String\n    items: [HistoricalPriceData]\n}\ntype HistoricalPriceData {\n    ticker: String\n    priceUSD: Float\n    timestamp: String\n}\ntype PriceData {\n    usd: Float\n}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::AppSync::ApiKey.AppSyncAPIDefaultApiKey016AAF21",
+   "cfg": "AppSyncAPIDefaultApiKey016AAF21",
+   "type": "__declared__",
+   "refs": [
+    "AppSyncAPID0E760D2"
+   ],
+   "values": {
+    "type": "AWS::AppSync::ApiKey",
+    "name": "AppSyncAPIDefaultApiKey016AAF21",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "AppSyncAPID0E760D2",
+      "attr": "ApiId"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::AppSync::DataSource.DDBTableDataSource43262F9B",
+   "cfg": "DDBTableDataSource43262F9B",
+   "type": "__declared__",
+   "refs": [
+    "APIAccessRoleB69CDA23",
+    "APIDataTableD1E8D052",
+    "AppSyncAPID0E760D2"
+   ],
+   "values": {
+    "type": "AWS::AppSync::DataSource",
+    "name": "DDBTableDataSource43262F9B",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "AppSyncAPID0E760D2",
+      "attr": "ApiId"
+     },
+     "Name": "APIDDBTable",
+     "Type": "AMAZON_DYNAMODB",
+     "DynamoDBConfig": {
+      "AwsRegion": "us-east-1",
+      "TableName": {
+       "ref": "APIDataTableD1E8D052"
+      }
+     },
+     "ServiceRoleArn": {
+      "ref": "APIAccessRoleB69CDA23",
+      "attr": "Arn"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.PriceDataSourceServiceRole6EDC2C43",
+   "cfg": "PriceDataSourceServiceRole6EDC2C43",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "PriceDataSourceServiceRole6EDC2C43",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "appsync.amazonaws.com"
+         ]
+        }
+       }
+      ],
+      "Version": "2012-10-17"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::AppSync::DataSource.PriceDataSource1918AE11",
+   "cfg": "PriceDataSource1918AE11",
+   "type": "__declared__",
+   "refs": [
+    "AppSyncAPID0E760D2",
+    "PriceDataSourceServiceRole6EDC2C43"
+   ],
+   "values": {
+    "type": "AWS::AppSync::DataSource",
+    "name": "PriceDataSource1918AE11",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "AppSyncAPID0E760D2",
+      "attr": "ApiId"
+     },
+     "Name": "PricesAPI",
+     "Type": "HTTP",
+     "Description": "Use coingecko's API to get price data for free.",
+     "HttpConfig": {
+      "Endpoint": "https://api.coingecko.com"
+     },
+     "ServiceRoleArn": {
+      "ref": "PriceDataSourceServiceRole6EDC2C43",
+      "attr": "Arn"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::AppSync::FunctionConfiguration.GetPriceFunctionD6891917",
+   "cfg": "GetPriceFunctionD6891917",
+   "type": "__declared__",
+   "refs": [
+    "AppSyncAPID0E760D2"
+   ],
+   "values": {
+    "type": "AWS::AppSync::FunctionConfiguration",
+    "name": "GetPriceFunctionD6891917",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "AppSyncAPID0E760D2",
+      "attr": "ApiId"
+     },
+     "DataSourceName": "PricesAPI",
+     "FunctionVersion": "2018-05-29",
+     "Name": "GetPriceForTicker",
+     "RequestMappingTemplate": "      {\n          \"version\": \"2018-05-29\",\n          \"method\": \"GET\",\n          \"resourcePath\": \"/api/v3/simple/price?ids=${ctx.stash.get(\"ticker\")}&vs_currencies=usd\"\n      }",
+     "ResponseMappingTemplate": "\n        #set($bodyContent = $util.parseJson($ctx.result.body))\n        $util.toJson($bodyContent.get(\"$ctx.args.ticker\"))\n      "
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::AppSync::FunctionConfiguration.PutPriceFunctionBCEE0C38",
+   "cfg": "PutPriceFunctionBCEE0C38",
+   "type": "__declared__",
+   "refs": [
+    "AppSyncAPID0E760D2"
+   ],
+   "values": {
+    "type": "AWS::AppSync::FunctionConfiguration",
+    "name": "PutPriceFunctionBCEE0C38",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "AppSyncAPID0E760D2",
+      "attr": "ApiId"
+     },
+     "DataSourceName": "APIDDBTable",
+     "FunctionVersion": "2018-05-29",
+     "Name": "PutPriceHistoryForTicker",
+     "RequestMappingTemplate": "      #set($now = $util.time.nowISO8601())\n      {\n        \"version\" : \"2018-05-29\",\n        \"operation\" : \"PutItem\",\n        \"key\": {\n            \"hk\": $util.dynamodb.toDynamoDBJson($ctx.stash.get(\"ticker\")),\n            \"sk\": $util.dynamodb.toDynamoDBJson(\"price_$now\")\n        },\n        \"attributeValues\" : {\n          \"ticker\": $util.dynamodb.toDynamoDBJson($ctx.stash.get(\"ticker\")),\n          \"timestamp\": $util.dynamodb.toDynamoDBJson($now),\n          \"priceUSD\": $util.dynamodb.toDynamoDBJson($ctx.prev.result.usd)\n        }\n      }",
+     "ResponseMappingTemplate": "\n        $util.toJson($ctx.prev.result)\n      "
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::AppSync::Resolver.QueryTickerResolver3944763D",
+   "cfg": "QueryTickerResolver3944763D",
+   "type": "__declared__",
+   "refs": [
+    "AppSyncAPID0E760D2",
+    "GetPriceFunctionD6891917",
+    "PutPriceFunctionBCEE0C38"
+   ],
+   "values": {
+    "type": "AWS::AppSync::Resolver",
+    "name": "QueryTickerResolver3944763D",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "AppSyncAPID0E760D2",
+      "attr": "ApiId"
+     },
+     "FieldName": "ticker",
+     "TypeName": "Query",
+     "Kind": "PIPELINE",
+     "PipelineConfig": {
+      "Functions": [
+       {
+        "ref": "GetPriceFunctionD6891917",
+        "attr": "FunctionId"
+       },
+       {
+        "ref": "PutPriceFunctionBCEE0C38",
+        "attr": "FunctionId"
+       }
+      ]
+     },
+     "RequestMappingTemplate": "      $util.qr($ctx.stash.put(\"ticker\", \"$ctx.args.ticker\"))\n      {}\n      ",
+     "ResponseMappingTemplate": "{\n        \"ticker\": \"$ctx.args.ticker\",\n        \"latestPrice\": $util.toJson($ctx.prev.result)\n      }"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::AppSync::Resolver.HistoricalPriceResolver48E369CF",
+   "cfg": "HistoricalPriceResolver48E369CF",
+   "type": "__declared__",
+   "refs": [
+    "AppSyncAPID0E760D2"
+   ],
+   "values": {
+    "type": "AWS::AppSync::Resolver",
+    "name": "HistoricalPriceResolver48E369CF",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "AppSyncAPID0E760D2",
+      "attr": "ApiId"
+     },
+     "FieldName": "priceHistory",
+     "TypeName": "TickerInfo",
+     "DataSourceName": "APIDDBTable",
+     "Kind": "UNIT",
+     "RequestMappingTemplate": "{\n        \"version\" : \"2018-05-29\",\n        \"operation\" : \"Query\",\n        \"query\" : {\n            \"expression\" : \"#hk=:hk\",\n            \"expressionNames\" : {\n                \"#hk\" : \"hk\"\n            },\n            \"expressionValues\" : {\n                \":hk\": { \"S\": \"$ctx.source.ticker\" }\n            }\n        },\n        \"scanIndexForward\" : false,\n        \"limit\": $util.defaultIfNull($ctx.args.limit, 25),\n\n        #if (!$util.isNullOrEmpty($ctx.args.nextToken))\n          \"nextToken\": $util.defaultIfNullOrEmpty($ctx.args.nextToken, \"\")\n        #end\n      }",
+     "ResponseMappingTemplate": "$util.toJson($ctx.result)"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::CDK::Metadata.CDKMetadata",
+   "cfg": "CDKMetadata",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::CDK::Metadata",
+    "name": "CDKMetadata",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Analytics": "v2:deflate64:H4sIAAAAAAAAE1WQTW7CMBCFz9K9MUqlSnQHImorlUWbcIGJMymGZOz6BxRZvjux00h0Ne97M/b4ueCvL7x42sLNrkR7WQehDPJQOxAXVqFV3ghke0XWGS8c23e0uJGlQ6EdCQbVNjwcoekxTWQRmYSBh0rNXq5fqpdiTDir6Qqt7UiCh3cD+vTb77RM7Uzfh/9UixMOkIzJ/8SRlXl12ZTgoP57aUcP9OGcfsDdvOzNk3BSURpe9JSwkz/eQG6kiP0VzRI36RgjI9UiP9v1tdjw4nn6t7OVcmU8OTkgr+Z6B4JHcJZTAQAA"
+    }
+   }
+  }
+ ]
+}

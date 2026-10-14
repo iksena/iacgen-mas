@@ -1,0 +1,734 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "5f60899a4fb1b17fc784a09b25e99cfd339931a2305f1234c63ef7d8fdf3da6c",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "FlowLogsCloudWatchLogs",
+   "cfg": "FlowLogsCloudWatchLogs",
+   "type": "AWS::Logs::LogGroup",
+   "values": {
+    "LogGroupName": "flowlogscloudwatchlogs-us-east-1",
+    "RetentionInDays": 1827
+   },
+   "refs": []
+  },
+  {
+   "id": "FlowLogsRole",
+   "cfg": "FlowLogsRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "flowlogsrole-us-east-1",
+    "Policies": [
+     {
+      "PolicyName": "FlowLogsPolicy",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "cloudwatch:PutMetricData"
+         ],
+         "Resource": [
+          "*"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "ssm:StartAutomationExecution",
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents",
+          "logs:DescribeLogGroups",
+          "logs:DescribeLogStreams",
+          "iam:PassRole",
+          "ec2:*"
+         ],
+         "Resource": [
+          "*"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "cloudtrail:UpdateTrail",
+          "securityhub:UpdateFindings"
+         ],
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     }
+    ],
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "vpc-flow-logs.amazonaws.com",
+         "ec2.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "AutomationAssumeRole",
+   "cfg": "AutomationAssumeRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "changemgr-automationassumerole-us-east-1",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "ssm.amazonaws.com",
+         "events.amazonaws.com",
+         "ec2.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Path": "/",
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/IAMFullAccess",
+     "arn:aws:iam::aws:policy/AdministratorAccess"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "EnableVPCFlowLogsCF",
+   "cfg": "EnableVPCFlowLogsCF",
+   "type": "AWS::SSM::Document",
+   "values": {
+    "DocumentType": "Automation",
+    "Name": "Custom-EnableVPCFlowLogsCF",
+    "Content": {
+     "schemaVersion": "0.3",
+     "assumeRole": {
+      "Fn::Join": [
+       "",
+       [
+        "arn:aws:iam::",
+        "123456789012",
+        ":role/",
+        {
+         "ref": "AutomationAssumeRole"
+        }
+       ]
+      ]
+     },
+     "parameters": {
+      "CloudWatchLogGroupArn": {
+       "type": "String",
+       "default": "arn:aws:logs:us-east-1:123456789012:log-group:${FlowLogsCloudWatchLogs}"
+      },
+      "FlowLogRoleArn": {
+       "type": "String",
+       "default": {
+        "Fn::Join": [
+         "",
+         [
+          "arn:aws:iam::",
+          "123456789012",
+          ":role/",
+          {
+           "ref": "FlowLogsRole"
+          }
+         ]
+        ]
+       }
+      },
+      "CloudWatchLogGroupName": {
+       "type": "String",
+       "default": {
+        "ref": "FlowLogsCloudWatchLogs"
+       }
+      },
+      "VpcId": {
+       "type": "String"
+      },
+      "AutomationAssumeRole": {
+       "type": "String",
+       "default": {
+        "Fn::Join": [
+         "",
+         [
+          "arn:aws:iam::",
+          "123456789012",
+          ":role/",
+          {
+           "ref": "AutomationAssumeRole"
+          }
+         ]
+        ]
+       }
+      }
+     },
+     "mainSteps": [
+      {
+       "name": "EnableFlowLogs",
+       "action": "aws:executeScript",
+       "inputs": {
+        "Runtime": "python3.11",
+        "Handler": "enableflowlogs_handler",
+        "Script": "def enableflowlogs_handler(events, context):\r\n  import boto3\r\n  client = boto3.client('ec2')\r\n\r\n  CloudWatchLogGroupArn = events['CloudWatchLogGroupArn']\r\n  FlowLogRoleArn = events['FlowLogRoleArn']\r\n  CloudWatchLogGroupName = events['CloudWatchLogGroupName']\r\n  VpcId = events['VpcId']\r\n  AutomationAssumeRole = events['AutomationAssumeRole']\r\n\r\n  response = client.create_flow_logs(\r\n    DeliverLogsPermissionArn=FlowLogRoleArn,\r\n    ResourceIds=[\r\n        VpcId\r\n    ],\r\n    ResourceType='VPC',\r\n    TrafficType='REJECT',\r\n    LogDestinationType='cloud-watch-logs',\r\n    LogDestination=CloudWatchLogGroupArn\r\n  )",
+        "InputPayload": {
+         "CloudWatchLogGroupName": "{{CloudWatchLogGroupName}}",
+         "CloudWatchLogGroupArn": "{{CloudWatchLogGroupArn}}",
+         "AutomationAssumeRole": "{{AutomationAssumeRole}}",
+         "FlowLogRoleArn": "{{FlowLogRoleArn}}",
+         "VpcId": "{{VpcId}}"
+        }
+       }
+      }
+     ]
+    }
+   },
+   "refs": [
+    "AutomationAssumeRole",
+    "FlowLogsCloudWatchLogs",
+    "FlowLogsRole"
+   ]
+  },
+  {
+   "id": "EnableChangeManagerVPCFlowLogsCF",
+   "cfg": "EnableChangeManagerVPCFlowLogsCF",
+   "type": "AWS::SSM::Document",
+   "values": {
+    "DocumentType": "Automation",
+    "Name": "Custom-EnableChangeManagerVPCFlowLogs",
+    "Content": {
+     "schemaVersion": "0.3",
+     "assumeRole": {
+      "Fn::Join": [
+       "",
+       [
+        "arn:aws:iam::",
+        "123456789012",
+        ":role/",
+        {
+         "ref": "AutomationAssumeRole"
+        }
+       ]
+      ]
+     },
+     "parameters": {
+      "CloudWatchLogGroupArn": {
+       "type": "String",
+       "default": "arn:aws:logs:us-east-1:123456789012:log-group:${FlowLogsCloudWatchLogs}"
+      },
+      "FlowLogRoleArn": {
+       "type": "String",
+       "default": {
+        "Fn::Join": [
+         "",
+         [
+          "arn:aws:iam::",
+          "123456789012",
+          ":role/",
+          {
+           "ref": "FlowLogsRole"
+          }
+         ]
+        ]
+       }
+      },
+      "CloudWatchLogGroupName": {
+       "type": "String",
+       "default": {
+        "ref": "FlowLogsCloudWatchLogs"
+       }
+      },
+      "VpcId": {
+       "type": "String"
+      },
+      "AutomationAssumeRole": {
+       "type": "String",
+       "default": {
+        "Fn::Join": [
+         "",
+         [
+          "arn:aws:iam::",
+          "123456789012",
+          ":role/",
+          {
+           "ref": "AutomationAssumeRole"
+          }
+         ]
+        ]
+       }
+      }
+     },
+     "mainSteps": [
+      {
+       "name": "EnableChangeManagerVPCFlowLogs",
+       "action": "aws:executeScript",
+       "inputs": {
+        "Runtime": "python3.11",
+        "Handler": "script_handler",
+        "Script": "def script_handler(events, context):\n  import boto3\n  ssm_client = boto3.client('ssm')\n  CloudWatchLogGroupName = events['CloudWatchLogGroupName']\n  CloudWatchLogGroupArn = events['CloudWatchLogGroupArn']\n  FlowLogRoleArn = events['FlowLogRoleArn']\n  VpcId = events['VpcId']\n  AutomationAssumeRole = events['AutomationAssumeRole']\n  response = ssm_client.start_change_request_execution(\n    DocumentName='changemanager-enable-vpc-flow-logs',\n    Runbooks=[\n        {\n             'DocumentName': 'Custom-EnableVPCFlowLogsCF',\n             'Parameters': {\n                 'CloudWatchLogGroupName' : [CloudWatchLogGroupName],\n                 'CloudWatchLogGroupArn' : [CloudWatchLogGroupArn],\n                 'FlowLogRoleArn' : [FlowLogRoleArn],\n                 'AutomationAssumeRole': [AutomationAssumeRole],\n                 'VpcId': [VpcId]\n             }\n\n        }\n    ]\n  )\n",
+        "InputPayload": {
+         "CloudWatchLogGroupName": "{{CloudWatchLogGroupName}}",
+         "CloudWatchLogGroupArn": "{{CloudWatchLogGroupArn}}",
+         "AutomationAssumeRole": "{{AutomationAssumeRole}}",
+         "FlowLogRoleArn": "{{FlowLogRoleArn}}",
+         "VpcId": "{{VpcId}}"
+        }
+       }
+      }
+     ]
+    },
+    "__resource__": {
+     "DependsOn": [
+      "EnableVPCFlowLogsCF"
+     ]
+    }
+   },
+   "refs": [
+    "AutomationAssumeRole",
+    "FlowLogsCloudWatchLogs",
+    "FlowLogsRole"
+   ]
+  },
+  {
+   "id": "__output__.FlowLogsRoleArn",
+   "cfg": "__output__.FlowLogsRoleArn",
+   "type": "__output__",
+   "values": {
+    "name": "FlowLogsRoleArn",
+    "value": {
+     "Fn::Join": [
+      "",
+      [
+       "arn:aws:iam::",
+       "123456789012",
+       ":role/",
+       {
+        "ref": "FlowLogsRole"
+       }
+      ]
+     ]
+    },
+    "description": "Arn for FlowsLogsRole",
+    "export": "FlowLogsRoleArn"
+   },
+   "refs": [
+    "FlowLogsRole"
+   ]
+  },
+  {
+   "id": "__output__.AutomationAssumeRoleArn",
+   "cfg": "__output__.AutomationAssumeRoleArn",
+   "type": "__output__",
+   "values": {
+    "name": "AutomationAssumeRoleArn",
+    "value": {
+     "Fn::Join": [
+      "",
+      [
+       "arn:aws:iam::",
+       "123456789012",
+       ":role/",
+       {
+        "ref": "AutomationAssumeRole"
+       }
+      ]
+     ]
+    },
+    "description": "Arn for AutomationAssumeRole",
+    "export": "AutomationAssumeRoleArn"
+   },
+   "refs": [
+    "AutomationAssumeRole"
+   ]
+  },
+  {
+   "id": "__output__.FlowLogsCloudWatchLogGroupArn",
+   "cfg": "__output__.FlowLogsCloudWatchLogGroupArn",
+   "type": "__output__",
+   "values": {
+    "name": "FlowLogsCloudWatchLogGroupArn",
+    "value": "arn:aws:logs:us-east-1:123456789012:log-group:${FlowLogsCloudWatchLogs}",
+    "description": "Arn for FlowLogs CloudWatchLogs",
+    "export": "FlowLogsCloudWatchLogGroupArn"
+   },
+   "refs": [
+    "FlowLogsCloudWatchLogs"
+   ]
+  },
+  {
+   "id": "__output__.FlowLogsCloudWatchLogs",
+   "cfg": "__output__.FlowLogsCloudWatchLogs",
+   "type": "__output__",
+   "values": {
+    "name": "FlowLogsCloudWatchLogs",
+    "value": {
+     "ref": "FlowLogsCloudWatchLogs"
+    },
+    "description": "Name of FlowLogs CloudWatch Logs",
+    "export": "FlowLogsCloudWatchLogs"
+   },
+   "refs": [
+    "FlowLogsCloudWatchLogs"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::Logs::LogGroup.FlowLogsCloudWatchLogs",
+   "cfg": "FlowLogsCloudWatchLogs",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Logs::LogGroup",
+    "name": "FlowLogsCloudWatchLogs",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "LogGroupName": "flowlogscloudwatchlogs-us-east-1",
+     "RetentionInDays": 1827
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.FlowLogsRole",
+   "cfg": "FlowLogsRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "FlowLogsRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "flowlogsrole-us-east-1",
+     "Policies": [
+      {
+       "PolicyName": "FlowLogsPolicy",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "cloudwatch:PutMetricData"
+          ],
+          "Resource": [
+           "*"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "ssm:StartAutomationExecution",
+           "logs:CreateLogGroup",
+           "logs:CreateLogStream",
+           "logs:PutLogEvents",
+           "logs:DescribeLogGroups",
+           "logs:DescribeLogStreams",
+           "iam:PassRole",
+           "ec2:*"
+          ],
+          "Resource": [
+           "*"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "cloudtrail:UpdateTrail",
+           "securityhub:UpdateFindings"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      }
+     ],
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "vpc-flow-logs.amazonaws.com",
+          "ec2.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.AutomationAssumeRole",
+   "cfg": "AutomationAssumeRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "AutomationAssumeRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "changemgr-automationassumerole-us-east-1",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "ssm.amazonaws.com",
+          "events.amazonaws.com",
+          "ec2.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Path": "/",
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/IAMFullAccess",
+      "arn:aws:iam::aws:policy/AdministratorAccess"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SSM::Document.EnableVPCFlowLogsCF",
+   "cfg": "EnableVPCFlowLogsCF",
+   "type": "__declared__",
+   "refs": [
+    "AutomationAssumeRole",
+    "FlowLogsCloudWatchLogs",
+    "FlowLogsRole"
+   ],
+   "values": {
+    "type": "AWS::SSM::Document",
+    "name": "EnableVPCFlowLogsCF",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "DocumentType": "Automation",
+     "Name": "Custom-EnableVPCFlowLogsCF",
+     "Content": {
+      "schemaVersion": "0.3",
+      "assumeRole": {
+       "Fn::Join": [
+        "",
+        [
+         "arn:aws:iam::",
+         "123456789012",
+         ":role/",
+         {
+          "ref": "AutomationAssumeRole"
+         }
+        ]
+       ]
+      },
+      "parameters": {
+       "CloudWatchLogGroupArn": {
+        "type": "String",
+        "default": "arn:aws:logs:us-east-1:123456789012:log-group:${FlowLogsCloudWatchLogs}"
+       },
+       "FlowLogRoleArn": {
+        "type": "String",
+        "default": {
+         "Fn::Join": [
+          "",
+          [
+           "arn:aws:iam::",
+           "123456789012",
+           ":role/",
+           {
+            "ref": "FlowLogsRole"
+           }
+          ]
+         ]
+        }
+       },
+       "CloudWatchLogGroupName": {
+        "type": "String",
+        "default": {
+         "ref": "FlowLogsCloudWatchLogs"
+        }
+       },
+       "VpcId": {
+        "type": "String"
+       },
+       "AutomationAssumeRole": {
+        "type": "String",
+        "default": {
+         "Fn::Join": [
+          "",
+          [
+           "arn:aws:iam::",
+           "123456789012",
+           ":role/",
+           {
+            "ref": "AutomationAssumeRole"
+           }
+          ]
+         ]
+        }
+       }
+      },
+      "mainSteps": [
+       {
+        "name": "EnableFlowLogs",
+        "action": "aws:executeScript",
+        "inputs": {
+         "Runtime": "python3.11",
+         "Handler": "enableflowlogs_handler",
+         "Script": "def enableflowlogs_handler(events, context):\r\n  import boto3\r\n  client = boto3.client('ec2')\r\n\r\n  CloudWatchLogGroupArn = events['CloudWatchLogGroupArn']\r\n  FlowLogRoleArn = events['FlowLogRoleArn']\r\n  CloudWatchLogGroupName = events['CloudWatchLogGroupName']\r\n  VpcId = events['VpcId']\r\n  AutomationAssumeRole = events['AutomationAssumeRole']\r\n\r\n  response = client.create_flow_logs(\r\n    DeliverLogsPermissionArn=FlowLogRoleArn,\r\n    ResourceIds=[\r\n        VpcId\r\n    ],\r\n    ResourceType='VPC',\r\n    TrafficType='REJECT',\r\n    LogDestinationType='cloud-watch-logs',\r\n    LogDestination=CloudWatchLogGroupArn\r\n  )",
+         "InputPayload": {
+          "CloudWatchLogGroupName": "{{CloudWatchLogGroupName}}",
+          "CloudWatchLogGroupArn": "{{CloudWatchLogGroupArn}}",
+          "AutomationAssumeRole": "{{AutomationAssumeRole}}",
+          "FlowLogRoleArn": "{{FlowLogRoleArn}}",
+          "VpcId": "{{VpcId}}"
+         }
+        }
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SSM::Document.EnableChangeManagerVPCFlowLogsCF",
+   "cfg": "EnableChangeManagerVPCFlowLogsCF",
+   "type": "__declared__",
+   "refs": [
+    "AutomationAssumeRole",
+    "FlowLogsCloudWatchLogs",
+    "FlowLogsRole"
+   ],
+   "values": {
+    "type": "AWS::SSM::Document",
+    "name": "EnableChangeManagerVPCFlowLogsCF",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "DocumentType": "Automation",
+     "Name": "Custom-EnableChangeManagerVPCFlowLogs",
+     "Content": {
+      "schemaVersion": "0.3",
+      "assumeRole": {
+       "Fn::Join": [
+        "",
+        [
+         "arn:aws:iam::",
+         "123456789012",
+         ":role/",
+         {
+          "ref": "AutomationAssumeRole"
+         }
+        ]
+       ]
+      },
+      "parameters": {
+       "CloudWatchLogGroupArn": {
+        "type": "String",
+        "default": "arn:aws:logs:us-east-1:123456789012:log-group:${FlowLogsCloudWatchLogs}"
+       },
+       "FlowLogRoleArn": {
+        "type": "String",
+        "default": {
+         "Fn::Join": [
+          "",
+          [
+           "arn:aws:iam::",
+           "123456789012",
+           ":role/",
+           {
+            "ref": "FlowLogsRole"
+           }
+          ]
+         ]
+        }
+       },
+       "CloudWatchLogGroupName": {
+        "type": "String",
+        "default": {
+         "ref": "FlowLogsCloudWatchLogs"
+        }
+       },
+       "VpcId": {
+        "type": "String"
+       },
+       "AutomationAssumeRole": {
+        "type": "String",
+        "default": {
+         "Fn::Join": [
+          "",
+          [
+           "arn:aws:iam::",
+           "123456789012",
+           ":role/",
+           {
+            "ref": "AutomationAssumeRole"
+           }
+          ]
+         ]
+        }
+       }
+      },
+      "mainSteps": [
+       {
+        "name": "EnableChangeManagerVPCFlowLogs",
+        "action": "aws:executeScript",
+        "inputs": {
+         "Runtime": "python3.11",
+         "Handler": "script_handler",
+         "Script": "def script_handler(events, context):\n  import boto3\n  ssm_client = boto3.client('ssm')\n  CloudWatchLogGroupName = events['CloudWatchLogGroupName']\n  CloudWatchLogGroupArn = events['CloudWatchLogGroupArn']\n  FlowLogRoleArn = events['FlowLogRoleArn']\n  VpcId = events['VpcId']\n  AutomationAssumeRole = events['AutomationAssumeRole']\n  response = ssm_client.start_change_request_execution(\n    DocumentName='changemanager-enable-vpc-flow-logs',\n    Runbooks=[\n        {\n             'DocumentName': 'Custom-EnableVPCFlowLogsCF',\n             'Parameters': {\n                 'CloudWatchLogGroupName' : [CloudWatchLogGroupName],\n                 'CloudWatchLogGroupArn' : [CloudWatchLogGroupArn],\n                 'FlowLogRoleArn' : [FlowLogRoleArn],\n                 'AutomationAssumeRole': [AutomationAssumeRole],\n                 'VpcId': [VpcId]\n             }\n\n        }\n    ]\n  )\n",
+         "InputPayload": {
+          "CloudWatchLogGroupName": "{{CloudWatchLogGroupName}}",
+          "CloudWatchLogGroupArn": "{{CloudWatchLogGroupArn}}",
+          "AutomationAssumeRole": "{{AutomationAssumeRole}}",
+          "FlowLogRoleArn": "{{FlowLogRoleArn}}",
+          "VpcId": "{{VpcId}}"
+         }
+        }
+       }
+      ]
+     }
+    }
+   }
+  }
+ ]
+}

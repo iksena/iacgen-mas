@@ -1,0 +1,407 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "sam_expanded",
+  "warnings": [],
+  "gt_hash": "8e7834912243ea58731237590b6cb9dd8b466b64b5f40f3352d18056d7092ef2",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "PolicyStore",
+   "cfg": "PolicyStore",
+   "type": "AWS::VerifiedPermissions::PolicyStore",
+   "values": {
+    "Description": "Final version of the Cedar policy store that will be recreated independently.",
+    "ValidationSettings": {
+     "Mode": "STRICT"
+    },
+    "Schema": {
+     "CedarJson": "{\n  \"Bookstore\": {\n    \"actions\": {\n      \"View\": {\n        \"appliesTo\": {\n          \"resourceTypes\": [\n            \"Book\"\n          ],\n          \"context\": {\n            \"type\": \"Record\",\n            \"attributes\": {\n              \"region\": {\n                \"required\": true,\n                \"type\": \"String\"\n              }\n            }\n          },\n          \"principalTypes\": [\n            \"User\"\n          ]\n        },\n        \"memberOf\": []\n      },\n      \"ViewWithPremiumOffers\": {\n        \"appliesTo\": {\n          \"principalTypes\": [\n            \"User\"\n          ],\n          \"context\": {\n            \"type\": \"Record\",\n            \"attributes\": {\n              \"region\": {\n                \"required\": true,\n                \"type\": \"String\"\n              }\n            }\n          },\n          \"resourceTypes\": [\n            \"Book\"\n          ]\n        },\n        \"memberOf\": []\n      }\n    },\n    \"entityTypes\": {\n      \"Role\": {\n        \"memberOfTypes\": [],\n        \"shape\": {\n          \"type\": \"Record\",\n          \"attributes\": {}\n        }\n      },\n      \"User\": {\n        \"memberOfTypes\": [\n          \"Role\"\n        ],\n        \"shape\": {\n          \"type\": \"Record\",\n          \"attributes\": {\n            \"yearsAsMember\": {\n              \"type\": \"Long\",\n              \"required\": false\n            }\n          }\n        }\n      },\n      \"Book\": {\n        \"memberOfTypes\": [],\n        \"shape\": {\n          \"attributes\": {\n            \"owner\": {\n              \"type\": \"Entity\",\n              \"required\": true,\n              \"name\": \"User\"\n            }\n          },\n          \"type\": \"Record\"\n        }\n      }\n    }\n  }\n}\n"
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "PolicyStoreIdSSM",
+   "cfg": "PolicyStoreIdSSM",
+   "type": "AWS::SSM::Parameter",
+   "values": {
+    "Type": "String",
+    "Name": "/bookstore-demo-app-with-authz/authorization/policy-store-id",
+    "Value": {
+     "ref": "PolicyStore"
+    }
+   },
+   "refs": [
+    "PolicyStore"
+   ]
+  },
+  {
+   "id": "RbacAdminStaticPolicy",
+   "cfg": "RbacAdminStaticPolicy",
+   "type": "AWS::VerifiedPermissions::Policy",
+   "values": {
+    "PolicyStoreId": {
+     "ref": "PolicyStore"
+    },
+    "Definition": {
+     "Static": {
+      "Description": "Allows admins to list all books",
+      "Statement": "permit (\n  principal in Bookstore::Role::\"Admin\",\n  action in [ Bookstore::Action::\"View\" ],\n  resource\n);\n"
+     }
+    }
+   },
+   "refs": [
+    "PolicyStore"
+   ]
+  },
+  {
+   "id": "RbacAdminForbidStaticPolicy",
+   "cfg": "RbacAdminForbidStaticPolicy",
+   "type": "AWS::VerifiedPermissions::Policy",
+   "values": {
+    "PolicyStoreId": {
+     "ref": "PolicyStore"
+    },
+    "Definition": {
+     "Static": {
+      "Description": "Denies admin Frank to list all books",
+      "Statement": "forbid (\n  principal == Bookstore::User::\"Frank\",\n  action in [ Bookstore::Action::\"View\" ],\n  resource\n);\n"
+     }
+    }
+   },
+   "refs": [
+    "PolicyStore"
+   ]
+  },
+  {
+   "id": "RbacResourceOwnerStaticPolicy",
+   "cfg": "RbacResourceOwnerStaticPolicy",
+   "type": "AWS::VerifiedPermissions::Policy",
+   "values": {
+    "PolicyStoreId": {
+     "ref": "PolicyStore"
+    },
+    "Definition": {
+     "Static": {
+      "Description": "Allows publishers to list books they have published",
+      "Statement": "permit (\n  principal in Bookstore::Role::\"Publisher\",\n  action in [ Bookstore::Action::\"View\" ],\n  resource\n)\nwhen {\n  principal == resource.owner\n};\n"
+     }
+    }
+   },
+   "refs": [
+    "PolicyStore"
+   ]
+  },
+  {
+   "id": "RbacExplicitStaticPolicy",
+   "cfg": "RbacExplicitStaticPolicy",
+   "type": "AWS::VerifiedPermissions::Policy",
+   "values": {
+    "PolicyStoreId": {
+     "ref": "PolicyStore"
+    },
+    "Definition": {
+     "Static": {
+      "Description": "Allows specific Publisher to list a specific book",
+      "Statement": "permit (\n  principal == Bookstore::User::\"Dante\",\n  action in [ Bookstore::Action::\"View\" ],\n  resource == Bookstore::Book::\"em1oadaa-b22k-4ea8-kk33-f6m217604o3m\"\n);\n"
+     }
+    }
+   },
+   "refs": [
+    "PolicyStore"
+   ]
+  },
+  {
+   "id": "PermitAbacStaticPolicy",
+   "cfg": "PermitAbacStaticPolicy",
+   "type": "AWS::VerifiedPermissions::Policy",
+   "values": {
+    "PolicyStoreId": {
+     "ref": "PolicyStore"
+    },
+    "Definition": {
+     "Static": {
+      "Description": "Allows customers with specific value for yearsAsMember attribute to list premium offers",
+      "Statement": "permit (\n  principal in Bookstore::Role::\"Customer\",\n  action in [ Bookstore::Action::\"ViewWithPremiumOffers\" ],\n  resource\n)\nwhen { principal has yearsAsMember && principal.yearsAsMember >= 2 };\n"
+     }
+    }
+   },
+   "refs": [
+    "PolicyStore"
+   ]
+  },
+  {
+   "id": "DenyAbacStaticPolicy",
+   "cfg": "DenyAbacStaticPolicy",
+   "type": "AWS::VerifiedPermissions::Policy",
+   "values": {
+    "PolicyStoreId": {
+     "ref": "PolicyStore"
+    },
+    "Definition": {
+     "Static": {
+      "Description": "Denies customers with specific value for yearsAsMember attribute to list premium offers",
+      "Statement": "forbid (\n  principal in Bookstore::Role::\"Customer\",\n  action in [ Bookstore::Action::\"ViewWithPremiumOffers\" ],\n  resource\n)\nwhen { principal has yearsAsMember && principal.yearsAsMember < 2 };\n"
+     }
+    }
+   },
+   "refs": [
+    "PolicyStore"
+   ]
+  },
+  {
+   "id": "ContextStaticPolicy",
+   "cfg": "ContextStaticPolicy",
+   "type": "AWS::VerifiedPermissions::Policy",
+   "values": {
+    "PolicyStoreId": {
+     "ref": "PolicyStore"
+    },
+    "Definition": {
+     "Static": {
+      "Description": "Denies access for users outside the US region",
+      "Statement": "forbid (\n  principal,\n  action in [ Bookstore::Action::\"View\", Bookstore::Action::\"ViewWithPremiumOffers\" ],\n  resource\n)\nwhen { context.region != \"US\" };\n"
+     }
+    }
+   },
+   "refs": [
+    "PolicyStore"
+   ]
+  },
+  {
+   "id": "__output__.PolicyStoreId",
+   "cfg": "__output__.PolicyStoreId",
+   "type": "__output__",
+   "values": {
+    "name": "PolicyStoreId",
+    "value": {
+     "ref": "PolicyStore"
+    },
+    "description": "Identifier of the Amazon Verified Permissions policy store.",
+    "export": null
+   },
+   "refs": [
+    "PolicyStore"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::VerifiedPermissions::PolicyStore.PolicyStore",
+   "cfg": "PolicyStore",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::VerifiedPermissions::PolicyStore",
+    "name": "PolicyStore",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Description": "Final version of the Cedar policy store that will be recreated independently.",
+     "ValidationSettings": {
+      "Mode": "STRICT"
+     },
+     "Schema": {
+      "CedarJson": "{\n  \"Bookstore\": {\n    \"actions\": {\n      \"View\": {\n        \"appliesTo\": {\n          \"resourceTypes\": [\n            \"Book\"\n          ],\n          \"context\": {\n            \"type\": \"Record\",\n            \"attributes\": {\n              \"region\": {\n                \"required\": true,\n                \"type\": \"String\"\n              }\n            }\n          },\n          \"principalTypes\": [\n            \"User\"\n          ]\n        },\n        \"memberOf\": []\n      },\n      \"ViewWithPremiumOffers\": {\n        \"appliesTo\": {\n          \"principalTypes\": [\n            \"User\"\n          ],\n          \"context\": {\n            \"type\": \"Record\",\n            \"attributes\": {\n              \"region\": {\n                \"required\": true,\n                \"type\": \"String\"\n              }\n            }\n          },\n          \"resourceTypes\": [\n            \"Book\"\n          ]\n        },\n        \"memberOf\": []\n      }\n    },\n    \"entityTypes\": {\n      \"Role\": {\n        \"memberOfTypes\": [],\n        \"shape\": {\n          \"type\": \"Record\",\n          \"attributes\": {}\n        }\n      },\n      \"User\": {\n        \"memberOfTypes\": [\n          \"Role\"\n        ],\n        \"shape\": {\n          \"type\": \"Record\",\n          \"attributes\": {\n            \"yearsAsMember\": {\n              \"type\": \"Long\",\n              \"required\": false\n            }\n          }\n        }\n      },\n      \"Book\": {\n        \"memberOfTypes\": [],\n        \"shape\": {\n          \"attributes\": {\n            \"owner\": {\n              \"type\": \"Entity\",\n              \"required\": true,\n              \"name\": \"User\"\n            }\n          },\n          \"type\": \"Record\"\n        }\n      }\n    }\n  }\n}\n"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SSM::Parameter.PolicyStoreIdSSM",
+   "cfg": "PolicyStoreIdSSM",
+   "type": "__declared__",
+   "refs": [
+    "PolicyStore"
+   ],
+   "values": {
+    "type": "AWS::SSM::Parameter",
+    "name": "PolicyStoreIdSSM",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Type": "String",
+     "Name": "/bookstore-demo-app-with-authz/authorization/policy-store-id",
+     "Value": {
+      "ref": "PolicyStore"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::VerifiedPermissions::Policy.RbacAdminStaticPolicy",
+   "cfg": "RbacAdminStaticPolicy",
+   "type": "__declared__",
+   "refs": [
+    "PolicyStore"
+   ],
+   "values": {
+    "type": "AWS::VerifiedPermissions::Policy",
+    "name": "RbacAdminStaticPolicy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "PolicyStoreId": {
+      "ref": "PolicyStore"
+     },
+     "Definition": {
+      "Static": {
+       "Description": "Allows admins to list all books",
+       "Statement": "permit (\n  principal in Bookstore::Role::\"Admin\",\n  action in [ Bookstore::Action::\"View\" ],\n  resource\n);\n"
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::VerifiedPermissions::Policy.RbacAdminForbidStaticPolicy",
+   "cfg": "RbacAdminForbidStaticPolicy",
+   "type": "__declared__",
+   "refs": [
+    "PolicyStore"
+   ],
+   "values": {
+    "type": "AWS::VerifiedPermissions::Policy",
+    "name": "RbacAdminForbidStaticPolicy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "PolicyStoreId": {
+      "ref": "PolicyStore"
+     },
+     "Definition": {
+      "Static": {
+       "Description": "Denies admin Frank to list all books",
+       "Statement": "forbid (\n  principal == Bookstore::User::\"Frank\",\n  action in [ Bookstore::Action::\"View\" ],\n  resource\n);\n"
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::VerifiedPermissions::Policy.RbacResourceOwnerStaticPolicy",
+   "cfg": "RbacResourceOwnerStaticPolicy",
+   "type": "__declared__",
+   "refs": [
+    "PolicyStore"
+   ],
+   "values": {
+    "type": "AWS::VerifiedPermissions::Policy",
+    "name": "RbacResourceOwnerStaticPolicy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "PolicyStoreId": {
+      "ref": "PolicyStore"
+     },
+     "Definition": {
+      "Static": {
+       "Description": "Allows publishers to list books they have published",
+       "Statement": "permit (\n  principal in Bookstore::Role::\"Publisher\",\n  action in [ Bookstore::Action::\"View\" ],\n  resource\n)\nwhen {\n  principal == resource.owner\n};\n"
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::VerifiedPermissions::Policy.RbacExplicitStaticPolicy",
+   "cfg": "RbacExplicitStaticPolicy",
+   "type": "__declared__",
+   "refs": [
+    "PolicyStore"
+   ],
+   "values": {
+    "type": "AWS::VerifiedPermissions::Policy",
+    "name": "RbacExplicitStaticPolicy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "PolicyStoreId": {
+      "ref": "PolicyStore"
+     },
+     "Definition": {
+      "Static": {
+       "Description": "Allows specific Publisher to list a specific book",
+       "Statement": "permit (\n  principal == Bookstore::User::\"Dante\",\n  action in [ Bookstore::Action::\"View\" ],\n  resource == Bookstore::Book::\"em1oadaa-b22k-4ea8-kk33-f6m217604o3m\"\n);\n"
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::VerifiedPermissions::Policy.PermitAbacStaticPolicy",
+   "cfg": "PermitAbacStaticPolicy",
+   "type": "__declared__",
+   "refs": [
+    "PolicyStore"
+   ],
+   "values": {
+    "type": "AWS::VerifiedPermissions::Policy",
+    "name": "PermitAbacStaticPolicy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "PolicyStoreId": {
+      "ref": "PolicyStore"
+     },
+     "Definition": {
+      "Static": {
+       "Description": "Allows customers with specific value for yearsAsMember attribute to list premium offers",
+       "Statement": "permit (\n  principal in Bookstore::Role::\"Customer\",\n  action in [ Bookstore::Action::\"ViewWithPremiumOffers\" ],\n  resource\n)\nwhen { principal has yearsAsMember && principal.yearsAsMember >= 2 };\n"
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::VerifiedPermissions::Policy.DenyAbacStaticPolicy",
+   "cfg": "DenyAbacStaticPolicy",
+   "type": "__declared__",
+   "refs": [
+    "PolicyStore"
+   ],
+   "values": {
+    "type": "AWS::VerifiedPermissions::Policy",
+    "name": "DenyAbacStaticPolicy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "PolicyStoreId": {
+      "ref": "PolicyStore"
+     },
+     "Definition": {
+      "Static": {
+       "Description": "Denies customers with specific value for yearsAsMember attribute to list premium offers",
+       "Statement": "forbid (\n  principal in Bookstore::Role::\"Customer\",\n  action in [ Bookstore::Action::\"ViewWithPremiumOffers\" ],\n  resource\n)\nwhen { principal has yearsAsMember && principal.yearsAsMember < 2 };\n"
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::VerifiedPermissions::Policy.ContextStaticPolicy",
+   "cfg": "ContextStaticPolicy",
+   "type": "__declared__",
+   "refs": [
+    "PolicyStore"
+   ],
+   "values": {
+    "type": "AWS::VerifiedPermissions::Policy",
+    "name": "ContextStaticPolicy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "PolicyStoreId": {
+      "ref": "PolicyStore"
+     },
+     "Definition": {
+      "Static": {
+       "Description": "Denies access for users outside the US region",
+       "Statement": "forbid (\n  principal,\n  action in [ Bookstore::Action::\"View\", Bookstore::Action::\"ViewWithPremiumOffers\" ],\n  resource\n)\nwhen { context.region != \"US\" };\n"
+      }
+     }
+    }
+   }
+  }
+ ]
+}

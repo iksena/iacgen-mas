@@ -1,0 +1,259 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "sam_expanded",
+  "warnings": [],
+  "gt_hash": "d84388ae05883224cb0f1b0a8dade0a1f141219e77872b8f31e30b8d2f7dc348",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "MyDdbTable",
+   "cfg": "MyDdbTable",
+   "type": "AWS::DynamoDB::Table",
+   "values": {
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "id",
+      "AttributeType": "S"
+     }
+    ],
+    "BillingMode": "PAY_PER_REQUEST",
+    "KeySchema": [
+     {
+      "AttributeName": "id",
+      "KeyType": "HASH"
+     }
+    ],
+    "TableName": "my-table"
+   },
+   "refs": []
+  },
+  {
+   "id": "MyStateMachineExecutionRole",
+   "cfg": "MyStateMachineExecutionRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "states.us-east-1.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Path": "/",
+    "Policies": [
+     {
+      "PolicyName": "DDBPolicy",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "dynamodb:PutItem",
+          "dynamodb:GetItem"
+         ],
+         "Resource": {
+          "ref": "MyDdbTable",
+          "attr": "Arn"
+         }
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": [
+    "MyDdbTable"
+   ]
+  },
+  {
+   "id": "StateMachinetoDDB",
+   "cfg": "StateMachinetoDDB",
+   "type": "AWS::StepFunctions::StateMachine",
+   "values": {
+    "DefinitionString": "{\n    \"StartAt\": \"SendToDDB\",\n    \"States\": {\n        \"ReadFromDDB\": {\n            \"End\": true,\n            \"OutputPath\": \"$.output_from_ddb_get.Item\",\n            \"Parameters\": {\n                \"Key\": {\n                    \"id.$\": \"$.id\"\n                },\n                \"TableName\": \"${definition_substitution_1}\"\n            },\n            \"Resource\": \"arn:aws:states:::dynamodb:getItem\",\n            \"ResultPath\": \"$.output_from_ddb_get\",\n            \"Type\": \"Task\"\n        },\n        \"SendToDDB\": {\n            \"Next\": \"ReadFromDDB\",\n            \"Parameters\": {\n                \"Item\": {\n                    \"description.$\": \"States.Format('Hello, my id is {}.', $.id)\",\n                    \"id.$\": \"$.id\"\n                },\n                \"TableName\": \"${definition_substitution_2}\"\n            },\n            \"Resource\": \"arn:aws:states:::dynamodb:putItem\",\n            \"ResultPath\": \"$.output_from_ddb_put\",\n            \"Type\": \"Task\"\n        }\n    }\n}",
+    "RoleArn": {
+     "ref": "MyStateMachineExecutionRole",
+     "attr": "Arn"
+    },
+    "Tags": [
+     {
+      "Key": "stateMachine:createdBy",
+      "Value": "SAM"
+     }
+    ],
+    "DefinitionSubstitutions": {
+     "definition_substitution_1": "my-table",
+     "definition_substitution_2": "my-table"
+    }
+   },
+   "refs": [
+    "MyStateMachineExecutionRole"
+   ]
+  },
+  {
+   "id": "__parameter__.DdbTableName",
+   "cfg": "__parameter__.DdbTableName",
+   "type": "__parameter__",
+   "values": {
+    "name": "DdbTableName",
+    "type": "String",
+    "default": "my-table",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.StateMachinetoDDBArn",
+   "cfg": "__output__.StateMachinetoDDBArn",
+   "type": "__output__",
+   "values": {
+    "name": "StateMachinetoDDBArn",
+    "value": {
+     "ref": "StateMachinetoDDB"
+    },
+    "description": "StateMachinetoDDB Arn",
+    "export": null
+   },
+   "refs": [
+    "StateMachinetoDDB"
+   ]
+  },
+  {
+   "id": "__output__.TableName",
+   "cfg": "__output__.TableName",
+   "type": "__output__",
+   "values": {
+    "name": "TableName",
+    "value": "my-table",
+    "description": "DynamoDb Table Name",
+    "export": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__declared__.AWS::DynamoDB::Table.MyDdbTable",
+   "cfg": "MyDdbTable",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::DynamoDB::Table",
+    "name": "MyDdbTable",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AttributeDefinitions": [
+      {
+       "AttributeName": "id",
+       "AttributeType": "S"
+      }
+     ],
+     "BillingMode": "PAY_PER_REQUEST",
+     "KeySchema": [
+      {
+       "AttributeName": "id",
+       "KeyType": "HASH"
+      }
+     ],
+     "TableName": "my-table"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.MyStateMachineExecutionRole",
+   "cfg": "MyStateMachineExecutionRole",
+   "type": "__declared__",
+   "refs": [
+    "MyDdbTable"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "MyStateMachineExecutionRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "states.us-east-1.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Path": "/",
+     "Policies": [
+      {
+       "PolicyName": "DDBPolicy",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "dynamodb:PutItem",
+           "dynamodb:GetItem"
+          ],
+          "Resource": {
+           "ref": "MyDdbTable",
+           "attr": "Arn"
+          }
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::StepFunctions::StateMachine.StateMachinetoDDB",
+   "cfg": "StateMachinetoDDB",
+   "type": "__declared__",
+   "refs": [
+    "MyStateMachineExecutionRole"
+   ],
+   "values": {
+    "type": "AWS::StepFunctions::StateMachine",
+    "name": "StateMachinetoDDB",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "DefinitionString": "{\n    \"StartAt\": \"SendToDDB\",\n    \"States\": {\n        \"ReadFromDDB\": {\n            \"End\": true,\n            \"OutputPath\": \"$.output_from_ddb_get.Item\",\n            \"Parameters\": {\n                \"Key\": {\n                    \"id.$\": \"$.id\"\n                },\n                \"TableName\": \"${definition_substitution_1}\"\n            },\n            \"Resource\": \"arn:aws:states:::dynamodb:getItem\",\n            \"ResultPath\": \"$.output_from_ddb_get\",\n            \"Type\": \"Task\"\n        },\n        \"SendToDDB\": {\n            \"Next\": \"ReadFromDDB\",\n            \"Parameters\": {\n                \"Item\": {\n                    \"description.$\": \"States.Format('Hello, my id is {}.', $.id)\",\n                    \"id.$\": \"$.id\"\n                },\n                \"TableName\": \"${definition_substitution_2}\"\n            },\n            \"Resource\": \"arn:aws:states:::dynamodb:putItem\",\n            \"ResultPath\": \"$.output_from_ddb_put\",\n            \"Type\": \"Task\"\n        }\n    }\n}",
+     "RoleArn": {
+      "ref": "MyStateMachineExecutionRole",
+      "attr": "Arn"
+     },
+     "Tags": [
+      {
+       "Key": "stateMachine:createdBy",
+       "Value": "SAM"
+      }
+     ],
+     "DefinitionSubstitutions": {
+      "definition_substitution_1": "my-table",
+      "definition_substitution_2": "my-table"
+     }
+    }
+   }
+  }
+ ]
+}

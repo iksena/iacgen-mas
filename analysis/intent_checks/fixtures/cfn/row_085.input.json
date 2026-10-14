@@ -1,0 +1,731 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "133280b56a7686a198e62deff39d825f36ef5e34d4f2dbfcb48381f42f72290e",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "LogGroup",
+   "cfg": "LogGroup",
+   "type": "AWS::Logs::LogGroup",
+   "values": {
+    "LogGroupName": "/aws/vendedlogs/states/stack/id",
+    "RetentionInDays": 365
+   },
+   "refs": []
+  },
+  {
+   "id": "OrganizationsAccountClosureStateMachine",
+   "cfg": "OrganizationsAccountClosureStateMachine",
+   "type": "AWS::StepFunctions::StateMachine",
+   "values": {
+    "Definition": {
+     "Comment": "Close Organizations accounts tagged for closure",
+     "StartAt": "Set empty pagination token",
+     "States": {
+      "Additional pages?": {
+       "Choices": [
+        {
+         "Next": "Done paginating",
+         "StringEquals": "",
+         "Variable": "$.PaginationToken"
+        }
+       ],
+       "Default": "Find accounts tagged for closure",
+       "Type": "Choice"
+      },
+      "Done paginating": {
+       "Type": "Succeed"
+      },
+      "Find accounts tagged for closure": {
+       "Next": "For each account tagged REQUESTED",
+       "Parameters": {
+        "PaginationToken.$": "$.PaginationToken",
+        "ResourceTypeFilters": [
+         "organizations:account"
+        ],
+        "TagFilters": [
+         {
+          "Key": "organizations:account-closure",
+          "Values": [
+           "REQUESTED"
+          ]
+         }
+        ]
+       },
+       "Resource": "arn:aws:states:::aws-sdk:resourcegroupstaggingapi:getResources",
+       "Type": "Task"
+      },
+      "For each account tagged REQUESTED": {
+       "ItemsPath": "$.ResourceTagMappingList",
+       "Iterator": {
+        "StartAt": "Describe account",
+        "States": {
+         "Close account": {
+          "Catch": [
+           {
+            "Comment": "Account closure limit reached",
+            "ErrorEquals": [
+             "Organizations.ConstraintViolationException"
+            ],
+            "Next": "Nothing to do"
+           }
+          ],
+          "Next": "Tag with ACKNOWLEDGED",
+          "Parameters": {
+           "AccountId.$": "$.Account.Id"
+          },
+          "Resource": "arn:aws:states:::aws-sdk:organizations:closeAccount",
+          "Retry": [
+           {
+            "BackoffRate": 1,
+            "Comment": "Retry on throttle",
+            "ErrorEquals": [
+             "Organizations.TooManyRequestsException"
+            ],
+            "IntervalSeconds": 20,
+            "MaxAttempts": 2
+           }
+          ],
+          "Type": "Task"
+         },
+         "Describe account": {
+          "Catch": [
+           {
+            "Comment": "Potential eventual consistency issue",
+            "ErrorEquals": [
+             "Organizations.AccountNotFoundException"
+            ],
+            "Next": "Nothing to do"
+           }
+          ],
+          "Next": "Is account ACTIVE?",
+          "Parameters": {
+           "AccountId.$": "States.ArrayGetItem(States.StringSplit($.ResourceARN, '/'), 2)"
+          },
+          "Resource": "arn:aws:states:::aws-sdk:organizations:describeAccount",
+          "Type": "Task"
+         },
+         "Is account ACTIVE?": {
+          "Choices": [
+           {
+            "Next": "Close account",
+            "StringEquals": "ACTIVE",
+            "Variable": "$.Account.Status"
+           }
+          ],
+          "Default": "Tag with ACKNOWLEDGED",
+          "Type": "Choice"
+         },
+         "Nothing to do": {
+          "Type": "Succeed"
+         },
+         "Tag with ACKNOWLEDGED": {
+          "End": true,
+          "Parameters": {
+           "ResourceId.$": "$.Account.Id",
+           "Tags": [
+            {
+             "Key": "organizations:account-closure",
+             "Value": "ACKNOWLEDGED"
+            }
+           ]
+          },
+          "Resource": "arn:aws:states:::aws-sdk:organizations:tagResource",
+          "Type": "Task"
+         }
+        }
+       },
+       "MaxConcurrency": 1,
+       "Next": "Additional pages?",
+       "ResultPath": "$._MapResult",
+       "Type": "Map"
+      },
+      "Set empty pagination token": {
+       "Next": "Find accounts tagged for closure",
+       "Result": {
+        "PaginationToken": ""
+       },
+       "Type": "Pass"
+      }
+     },
+     "TimeoutSeconds": 300
+    },
+    "LoggingConfiguration": {
+     "Destinations": [
+      {
+       "CloudWatchLogsLogGroup": {
+        "LogGroupArn": {
+         "ref": "LogGroup",
+         "attr": "Arn"
+        }
+       }
+      }
+     ],
+     "IncludeExecutionData": true,
+     "Level": "ALL"
+    },
+    "RoleArn": {
+     "ref": "StateMachineRole",
+     "attr": "Arn"
+    },
+    "StateMachineType": "EXPRESS"
+   },
+   "refs": [
+    "LogGroup",
+    "StateMachineRole"
+   ]
+  },
+  {
+   "id": "Rule",
+   "cfg": "Rule",
+   "type": "AWS::Events::Rule",
+   "values": {
+    "ScheduleExpression": "rate(1 hour)",
+    "Targets": [
+     {
+      "Arn": {
+       "ref": "OrganizationsAccountClosureStateMachine"
+      },
+      "Id": "default",
+      "RoleArn": {
+       "ref": "RuleRole",
+       "attr": "Arn"
+      }
+     }
+    ]
+   },
+   "refs": [
+    "OrganizationsAccountClosureStateMachine",
+    "RuleRole"
+   ]
+  },
+  {
+   "id": "RuleRole",
+   "cfg": "RuleRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "events.amazonaws.com"
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "Policies": [
+     {
+      "PolicyDocument": {
+       "Statement": [
+        {
+         "Action": [
+          "states:StartExecution"
+         ],
+         "Effect": "Allow",
+         "Resource": [
+          {
+           "ref": "OrganizationsAccountClosureStateMachine",
+           "attr": "Arn"
+          }
+         ]
+        }
+       ],
+       "Version": "2012-10-17"
+      },
+      "PolicyName": "StateMachineInvoke"
+     }
+    ]
+   },
+   "refs": [
+    "OrganizationsAccountClosureStateMachine"
+   ]
+  },
+  {
+   "id": "StateMachineRole",
+   "cfg": "StateMachineRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "states.amazonaws.com"
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "Policies": [
+     {
+      "PolicyDocument": {
+       "Statement": [
+        {
+         "Action": [
+          "organizations:TagResource"
+         ],
+         "Condition": {
+          "ForAllValues:StringEquals": {
+           "aws:TagKeys": [
+            "organizations:account-closure"
+           ]
+          },
+          "StringEquals": {
+           "aws:RequestTag/organizations:account-closure": [
+            "ACKNOWLEDGED"
+           ],
+           "aws:ResourceTag/organizations:account-closure": [
+            "REQUESTED"
+           ]
+          }
+         },
+         "Effect": "Allow",
+         "Resource": [
+          "arn:aws:organizations::123456789012:account/*"
+         ]
+        },
+        {
+         "Action": [
+          "organizations:CloseAccount",
+          "organizations:DescribeAccount"
+         ],
+         "Condition": {
+          "StringEquals": {
+           "aws:ResourceTag/organizations:account-closure": [
+            "REQUESTED"
+           ]
+          }
+         },
+         "Effect": "Allow",
+         "Resource": [
+          "arn:aws:organizations::123456789012:account/*"
+         ]
+        },
+        {
+         "Action": [
+          "tag:GetResources"
+         ],
+         "Effect": "Allow",
+         "Resource": [
+          "*"
+         ]
+        },
+        {
+         "Action": [
+          "logs:CreateLogDelivery",
+          "logs:DeleteLogDelivery",
+          "logs:DescribeLogGroups",
+          "logs:DescribeResourcePolicies",
+          "logs:GetLogDelivery",
+          "logs:ListLogDeliveries",
+          "logs:PutLogEvents",
+          "logs:PutResourcePolicy",
+          "logs:UpdateLogDelivery"
+         ],
+         "Effect": "Allow",
+         "Resource": [
+          "*"
+         ]
+        }
+       ],
+       "Version": "2012-10-17"
+      },
+      "PolicyName": "OrganizationsAccountClosure"
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__declared__.AWS::Logs::LogGroup.LogGroup",
+   "cfg": "LogGroup",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Logs::LogGroup",
+    "name": "LogGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "LogGroupName": "/aws/vendedlogs/states/stack/id",
+     "RetentionInDays": 365
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::StepFunctions::StateMachine.OrganizationsAccountClosureStateMachine",
+   "cfg": "OrganizationsAccountClosureStateMachine",
+   "type": "__declared__",
+   "refs": [
+    "LogGroup",
+    "StateMachineRole"
+   ],
+   "values": {
+    "type": "AWS::StepFunctions::StateMachine",
+    "name": "OrganizationsAccountClosureStateMachine",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Definition": {
+      "Comment": "Close Organizations accounts tagged for closure",
+      "StartAt": "Set empty pagination token",
+      "States": {
+       "Additional pages?": {
+        "Choices": [
+         {
+          "Next": "Done paginating",
+          "StringEquals": "",
+          "Variable": "$.PaginationToken"
+         }
+        ],
+        "Default": "Find accounts tagged for closure",
+        "Type": "Choice"
+       },
+       "Done paginating": {
+        "Type": "Succeed"
+       },
+       "Find accounts tagged for closure": {
+        "Next": "For each account tagged REQUESTED",
+        "Parameters": {
+         "PaginationToken.$": "$.PaginationToken",
+         "ResourceTypeFilters": [
+          "organizations:account"
+         ],
+         "TagFilters": [
+          {
+           "Key": "organizations:account-closure",
+           "Values": [
+            "REQUESTED"
+           ]
+          }
+         ]
+        },
+        "Resource": "arn:aws:states:::aws-sdk:resourcegroupstaggingapi:getResources",
+        "Type": "Task"
+       },
+       "For each account tagged REQUESTED": {
+        "ItemsPath": "$.ResourceTagMappingList",
+        "Iterator": {
+         "StartAt": "Describe account",
+         "States": {
+          "Close account": {
+           "Catch": [
+            {
+             "Comment": "Account closure limit reached",
+             "ErrorEquals": [
+              "Organizations.ConstraintViolationException"
+             ],
+             "Next": "Nothing to do"
+            }
+           ],
+           "Next": "Tag with ACKNOWLEDGED",
+           "Parameters": {
+            "AccountId.$": "$.Account.Id"
+           },
+           "Resource": "arn:aws:states:::aws-sdk:organizations:closeAccount",
+           "Retry": [
+            {
+             "BackoffRate": 1,
+             "Comment": "Retry on throttle",
+             "ErrorEquals": [
+              "Organizations.TooManyRequestsException"
+             ],
+             "IntervalSeconds": 20,
+             "MaxAttempts": 2
+            }
+           ],
+           "Type": "Task"
+          },
+          "Describe account": {
+           "Catch": [
+            {
+             "Comment": "Potential eventual consistency issue",
+             "ErrorEquals": [
+              "Organizations.AccountNotFoundException"
+             ],
+             "Next": "Nothing to do"
+            }
+           ],
+           "Next": "Is account ACTIVE?",
+           "Parameters": {
+            "AccountId.$": "States.ArrayGetItem(States.StringSplit($.ResourceARN, '/'), 2)"
+           },
+           "Resource": "arn:aws:states:::aws-sdk:organizations:describeAccount",
+           "Type": "Task"
+          },
+          "Is account ACTIVE?": {
+           "Choices": [
+            {
+             "Next": "Close account",
+             "StringEquals": "ACTIVE",
+             "Variable": "$.Account.Status"
+            }
+           ],
+           "Default": "Tag with ACKNOWLEDGED",
+           "Type": "Choice"
+          },
+          "Nothing to do": {
+           "Type": "Succeed"
+          },
+          "Tag with ACKNOWLEDGED": {
+           "End": true,
+           "Parameters": {
+            "ResourceId.$": "$.Account.Id",
+            "Tags": [
+             {
+              "Key": "organizations:account-closure",
+              "Value": "ACKNOWLEDGED"
+             }
+            ]
+           },
+           "Resource": "arn:aws:states:::aws-sdk:organizations:tagResource",
+           "Type": "Task"
+          }
+         }
+        },
+        "MaxConcurrency": 1,
+        "Next": "Additional pages?",
+        "ResultPath": "$._MapResult",
+        "Type": "Map"
+       },
+       "Set empty pagination token": {
+        "Next": "Find accounts tagged for closure",
+        "Result": {
+         "PaginationToken": ""
+        },
+        "Type": "Pass"
+       }
+      },
+      "TimeoutSeconds": 300
+     },
+     "LoggingConfiguration": {
+      "Destinations": [
+       {
+        "CloudWatchLogsLogGroup": {
+         "LogGroupArn": {
+          "ref": "LogGroup",
+          "attr": "Arn"
+         }
+        }
+       }
+      ],
+      "IncludeExecutionData": true,
+      "Level": "ALL"
+     },
+     "RoleArn": {
+      "ref": "StateMachineRole",
+      "attr": "Arn"
+     },
+     "StateMachineType": "EXPRESS"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Events::Rule.Rule",
+   "cfg": "Rule",
+   "type": "__declared__",
+   "refs": [
+    "OrganizationsAccountClosureStateMachine",
+    "RuleRole"
+   ],
+   "values": {
+    "type": "AWS::Events::Rule",
+    "name": "Rule",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ScheduleExpression": "rate(1 hour)",
+     "Targets": [
+      {
+       "Arn": {
+        "ref": "OrganizationsAccountClosureStateMachine"
+       },
+       "Id": "default",
+       "RoleArn": {
+        "ref": "RuleRole",
+        "attr": "Arn"
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.RuleRole",
+   "cfg": "RuleRole",
+   "type": "__declared__",
+   "refs": [
+    "OrganizationsAccountClosureStateMachine"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "RuleRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "events.amazonaws.com"
+         ]
+        }
+       }
+      ],
+      "Version": "2012-10-17"
+     },
+     "Policies": [
+      {
+       "PolicyDocument": {
+        "Statement": [
+         {
+          "Action": [
+           "states:StartExecution"
+          ],
+          "Effect": "Allow",
+          "Resource": [
+           {
+            "ref": "OrganizationsAccountClosureStateMachine",
+            "attr": "Arn"
+           }
+          ]
+         }
+        ],
+        "Version": "2012-10-17"
+       },
+       "PolicyName": "StateMachineInvoke"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.StateMachineRole",
+   "cfg": "StateMachineRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "StateMachineRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "states.amazonaws.com"
+         ]
+        }
+       }
+      ],
+      "Version": "2012-10-17"
+     },
+     "Policies": [
+      {
+       "PolicyDocument": {
+        "Statement": [
+         {
+          "Action": [
+           "organizations:TagResource"
+          ],
+          "Condition": {
+           "ForAllValues:StringEquals": {
+            "aws:TagKeys": [
+             "organizations:account-closure"
+            ]
+           },
+           "StringEquals": {
+            "aws:RequestTag/organizations:account-closure": [
+             "ACKNOWLEDGED"
+            ],
+            "aws:ResourceTag/organizations:account-closure": [
+             "REQUESTED"
+            ]
+           }
+          },
+          "Effect": "Allow",
+          "Resource": [
+           "arn:aws:organizations::123456789012:account/*"
+          ]
+         },
+         {
+          "Action": [
+           "organizations:CloseAccount",
+           "organizations:DescribeAccount"
+          ],
+          "Condition": {
+           "StringEquals": {
+            "aws:ResourceTag/organizations:account-closure": [
+             "REQUESTED"
+            ]
+           }
+          },
+          "Effect": "Allow",
+          "Resource": [
+           "arn:aws:organizations::123456789012:account/*"
+          ]
+         },
+         {
+          "Action": [
+           "tag:GetResources"
+          ],
+          "Effect": "Allow",
+          "Resource": [
+           "*"
+          ]
+         },
+         {
+          "Action": [
+           "logs:CreateLogDelivery",
+           "logs:DeleteLogDelivery",
+           "logs:DescribeLogGroups",
+           "logs:DescribeResourcePolicies",
+           "logs:GetLogDelivery",
+           "logs:ListLogDeliveries",
+           "logs:PutLogEvents",
+           "logs:PutResourcePolicy",
+           "logs:UpdateLogDelivery"
+          ],
+          "Effect": "Allow",
+          "Resource": [
+           "*"
+          ]
+         }
+        ],
+        "Version": "2012-10-17"
+       },
+       "PolicyName": "OrganizationsAccountClosure"
+      }
+     ]
+    }
+   }
+  }
+ ]
+}

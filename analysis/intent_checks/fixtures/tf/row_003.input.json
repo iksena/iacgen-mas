@@ -1,0 +1,265 @@
+{
+ "meta": {
+  "lang": "tf",
+  "mode": "plan",
+  "warnings": [],
+  "gt_hash": "5ba87c5eceec6eebf4b13fc217fb57411b8b6ed7192434245fbc787a1b8021c9",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "aws_security_group.alb",
+   "cfg": "aws_security_group.alb",
+   "type": "aws_security_group",
+   "values": {
+    "description": "Allow HTTP inbound traffic",
+    "egress": [
+     {
+      "cidr_blocks": [
+       "10.0.0.0/16"
+      ],
+      "description": "",
+      "from_port": 0,
+      "ipv6_cidr_blocks": [],
+      "prefix_list_ids": [],
+      "protocol": "-1",
+      "security_groups": [],
+      "self": false,
+      "to_port": 0
+     }
+    ],
+    "ingress": [
+     {
+      "cidr_blocks": [
+       "0.0.0.0/0"
+      ],
+      "description": "HTTP Inbound",
+      "from_port": 80,
+      "ipv6_cidr_blocks": [],
+      "prefix_list_ids": [],
+      "protocol": "tcp",
+      "security_groups": [],
+      "self": false,
+      "to_port": 80
+     }
+    ],
+    "name": "alb",
+    "region": "us-east-1",
+    "revoke_rules_on_delete": false,
+    "tags": {
+     "Name": "alb"
+    },
+    "tags_all": {
+     "Name": "alb"
+    },
+    "timeouts": null
+   },
+   "refs": [
+    "aws_vpc.main"
+   ]
+  },
+  {
+   "id": "aws_security_group.allow_alb",
+   "cfg": "aws_security_group.allow_alb",
+   "type": "aws_security_group",
+   "values": {
+    "description": "Allow ALB inbound traffic",
+    "egress": [
+     {
+      "cidr_blocks": [
+       "10.0.0.0/16"
+      ],
+      "description": "",
+      "from_port": 0,
+      "ipv6_cidr_blocks": [],
+      "prefix_list_ids": [],
+      "protocol": "-1",
+      "security_groups": [],
+      "self": false,
+      "to_port": 0
+     }
+    ],
+    "ingress": [
+     {
+      "cidr_blocks": [],
+      "description": "HTTP Inbound",
+      "from_port": 80,
+      "ipv6_cidr_blocks": [],
+      "prefix_list_ids": [],
+      "protocol": "tcp",
+      "self": false,
+      "to_port": 80
+     }
+    ],
+    "name": "allow_alb",
+    "region": "us-east-1",
+    "revoke_rules_on_delete": false,
+    "tags": {
+     "Name": "allow_alb"
+    },
+    "tags_all": {
+     "Name": "allow_alb"
+    },
+    "timeouts": null
+   },
+   "refs": [
+    "aws_security_group.alb",
+    "aws_vpc.main"
+   ]
+  },
+  {
+   "id": "aws_vpc.main",
+   "cfg": "aws_vpc.main",
+   "type": "aws_vpc",
+   "values": {
+    "assign_generated_ipv6_cidr_block": null,
+    "cidr_block": "10.0.0.0/16",
+    "enable_dns_support": true,
+    "instance_tenancy": "default",
+    "ipv4_ipam_pool_id": null,
+    "ipv4_netmask_length": null,
+    "ipv6_ipam_pool_id": null,
+    "ipv6_netmask_length": null,
+    "region": "us-east-1",
+    "tags": {
+     "Name": "alb-ec2-vpc"
+    },
+    "tags_all": {
+     "Name": "alb-ec2-vpc"
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.alb_sg_id",
+   "cfg": "__output__.alb_sg_id",
+   "type": "__output__",
+   "values": {
+    "name": "alb_sg_id",
+    "value": null,
+    "description": "The Application Load Balance Security Group"
+   },
+   "refs": [
+    "aws_security_group.alb"
+   ]
+  },
+  {
+   "id": "__output__.ec2_sg_id",
+   "cfg": "__output__.ec2_sg_id",
+   "type": "__output__",
+   "values": {
+    "name": "ec2_sg_id",
+    "value": null,
+    "description": "The EC2 Security Group"
+   },
+   "refs": [
+    "aws_security_group.allow_alb"
+   ]
+  },
+  {
+   "id": "__declared__.aws_vpc.main",
+   "cfg": "aws_vpc.main",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_vpc",
+    "name": "main",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "cidr_block": "10.0.0.0/16",
+     "tags": {
+      "Name": "alb-ec2-vpc"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_security_group.alb",
+   "cfg": "aws_security_group.alb",
+   "type": "__declared__",
+   "refs": [
+    "aws_vpc.main"
+   ],
+   "values": {
+    "type": "aws_security_group",
+    "name": "alb",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "alb",
+     "description": "Allow HTTP inbound traffic",
+     "vpc_id": "${aws_vpc.main.id}",
+     "ingress": [
+      {
+       "description": "HTTP Inbound",
+       "from_port": 80,
+       "to_port": 80,
+       "protocol": "tcp",
+       "cidr_blocks": [
+        "0.0.0.0/0"
+       ]
+      }
+     ],
+     "egress": [
+      {
+       "from_port": 0,
+       "to_port": 0,
+       "protocol": "-1",
+       "cidr_blocks": [
+        "${aws_vpc.main.cidr_block}"
+       ]
+      }
+     ],
+     "tags": {
+      "Name": "alb"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_security_group.allow_alb",
+   "cfg": "aws_security_group.allow_alb",
+   "type": "__declared__",
+   "refs": [
+    "aws_security_group.alb",
+    "aws_vpc.main"
+   ],
+   "values": {
+    "type": "aws_security_group",
+    "name": "allow_alb",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "allow_alb",
+     "description": "Allow ALB inbound traffic",
+     "vpc_id": "${aws_vpc.main.id}",
+     "ingress": [
+      {
+       "description": "HTTP Inbound",
+       "from_port": 80,
+       "to_port": 80,
+       "protocol": "tcp",
+       "security_groups": [
+        "${aws_security_group.alb.id}"
+       ]
+      }
+     ],
+     "egress": [
+      {
+       "from_port": 0,
+       "to_port": 0,
+       "protocol": "-1",
+       "cidr_blocks": [
+        "${aws_vpc.main.cidr_block}"
+       ]
+      }
+     ],
+     "tags": {
+      "Name": "allow_alb"
+     }
+    }
+   }
+  }
+ ]
+}

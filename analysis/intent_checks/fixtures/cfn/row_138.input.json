@@ -1,0 +1,693 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [
+   "MediaPackageDashOriginEndpoint excluded: condition CreateDashEndPoint false under defaults",
+   "MediaPackageHlsAsset excluded: condition CreateHlsVODWorkflow false under defaults",
+   "MediaPackageDashAsset excluded: condition CreateDashVODWorkflow false under defaults",
+   "MediaPackagePackagingGroup excluded: condition CreateVODWorkflow false under defaults",
+   "MediaPackageHlsPackagingConfiguration excluded: condition CreateHlsVODWorkflow false under defaults",
+   "MediaPackageDashPackagingConfiguration excluded: condition CreateDashVODWorkflow false under defaults"
+  ],
+  "gt_hash": "70199a11df9ba7d36aca20dd5dbda2713dedca437881ac4039384f66a04a8057",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "IAMRoleForMediaPackage",
+   "cfg": "IAMRoleForMediaPackage",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "mediapackage.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Description": "A role required for MediaPackage to access S3.",
+    "Policies": [
+     {
+      "PolicyName": "SecretsManager",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "secretsmanager:GetSecretValue",
+          "secretsmanager:DescribeSecret",
+          "secretsmanager:ListSecrets",
+          "secretsmanager:ListSecretVersionIds"
+         ],
+         "Resource": [
+          "*"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "iam:GetRole",
+          "iam:PassRole"
+         ],
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     }
+    ],
+    "RoleName": "MediaPackage-MediaPackage-us-east-1",
+    "Tags": [
+     {
+      "Key": "environment",
+      "Value": "production"
+     },
+     {
+      "Key": "createdby",
+      "Value": "aws-cloudformation-templates"
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "MediaPackageChannel",
+   "cfg": "MediaPackageChannel",
+   "type": "AWS::MediaPackage::Channel",
+   "values": {
+    "Description": "Media Package Channel for MediaPackage",
+    "Id": "MediaPackage",
+    "Tags": [
+     {
+      "Key": "environment",
+      "Value": "production"
+     },
+     {
+      "Key": "createdby",
+      "Value": "aws-cloudformation-templates"
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "MediaPackageHlsOriginEndpoint",
+   "cfg": "MediaPackageHlsOriginEndpoint",
+   "type": "AWS::MediaPackage::OriginEndpoint",
+   "values": {
+    "ChannelId": {
+     "ref": "MediaPackageChannel"
+    },
+    "Description": "Media Package OriginEndpoint for MediaPackage",
+    "HlsPackage": {
+     "AdMarkers": "NONE",
+     "IncludeIframeOnlyStream": false,
+     "SegmentDurationSeconds": 3
+    },
+    "Id": "MediaPackage-Hls",
+    "ManifestName": "index",
+    "Origination": "ALLOW",
+    "StartoverWindowSeconds": 0,
+    "Tags": [
+     {
+      "Key": "environment",
+      "Value": "production"
+     },
+     {
+      "Key": "createdby",
+      "Value": "aws-cloudformation-templates"
+     }
+    ],
+    "TimeDelaySeconds": 0,
+    "__resource__": {
+     "Condition": "CreateHlsEndPoint"
+    }
+   },
+   "refs": [
+    "MediaPackageChannel"
+   ]
+  },
+  {
+   "id": "__parameter__.ArchiveBucket",
+   "cfg": "__parameter__.ArchiveBucket",
+   "type": "__parameter__",
+   "values": {
+    "name": "ArchiveBucket",
+    "type": "String",
+    "default": "",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.ManifestName",
+   "cfg": "__parameter__.ManifestName",
+   "type": "__parameter__",
+   "values": {
+    "name": "ManifestName",
+    "type": "String",
+    "default": "index",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.OutputType",
+   "cfg": "__parameter__.OutputType",
+   "type": "__parameter__",
+   "values": {
+    "name": "OutputType",
+    "type": "String",
+    "default": "APPLE_HLS",
+    "allowed_values": [
+     "APPLE_HLS",
+     "ISO_DASH",
+     "ALL"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.StartoverWindowSeconds",
+   "cfg": "__parameter__.StartoverWindowSeconds",
+   "type": "__parameter__",
+   "values": {
+    "name": "StartoverWindowSeconds",
+    "type": "Number",
+    "default": 0,
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.SegmentDurationSeconds",
+   "cfg": "__parameter__.SegmentDurationSeconds",
+   "type": "__parameter__",
+   "values": {
+    "name": "SegmentDurationSeconds",
+    "type": "String",
+    "default": 3,
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.VodSourceBucket",
+   "cfg": "__parameter__.VodSourceBucket",
+   "type": "__parameter__",
+   "values": {
+    "name": "VodSourceBucket",
+    "type": "String",
+    "default": "",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.LogicalName",
+   "cfg": "__parameter__.LogicalName",
+   "type": "__parameter__",
+   "values": {
+    "name": "LogicalName",
+    "type": "String",
+    "default": "MediaPackage",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.Environment",
+   "cfg": "__parameter__.Environment",
+   "type": "__parameter__",
+   "values": {
+    "name": "Environment",
+    "type": "String",
+    "default": "production",
+    "allowed_values": [
+     "production",
+     "test",
+     "development"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.TagKey",
+   "cfg": "__parameter__.TagKey",
+   "type": "__parameter__",
+   "values": {
+    "name": "TagKey",
+    "type": "String",
+    "default": "createdby",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.TagValue",
+   "cfg": "__parameter__.TagValue",
+   "type": "__parameter__",
+   "values": {
+    "name": "TagValue",
+    "type": "String",
+    "default": "aws-cloudformation-templates",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.ChannelId",
+   "cfg": "__output__.ChannelId",
+   "type": "__output__",
+   "values": {
+    "name": "ChannelId",
+    "value": {
+     "ref": "MediaPackageChannel"
+    },
+    "description": "Channel Id",
+    "export": null
+   },
+   "refs": [
+    "MediaPackageChannel"
+   ]
+  },
+  {
+   "id": "__output__.HlsEndpointUrl",
+   "cfg": "__output__.HlsEndpointUrl",
+   "type": "__output__",
+   "values": {
+    "name": "HlsEndpointUrl",
+    "value": {
+     "ref": "MediaPackageHlsOriginEndpoint",
+     "attr": "Url"
+    },
+    "description": "Endpoint Url",
+    "export": null
+   },
+   "refs": [
+    "MediaPackageHlsOriginEndpoint"
+   ]
+  },
+  {
+   "id": "__output__.ManifestFile",
+   "cfg": "__output__.ManifestFile",
+   "type": "__output__",
+   "values": {
+    "name": "ManifestFile",
+    "value": "index",
+    "description": "A short string that's appended to the end of the endpoint URL to create a unique path to this endpoint",
+    "export": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.DashEndpointUrl",
+   "cfg": "__output__.DashEndpointUrl",
+   "type": "__output__",
+   "values": {
+    "name": "DashEndpointUrl",
+    "value": "",
+    "description": "Endpoint Url",
+    "export": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.IAMRoleForMediaPackage",
+   "cfg": "IAMRoleForMediaPackage",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "IAMRoleForMediaPackage",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "mediapackage.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Description": "A role required for MediaPackage to access S3.",
+     "Policies": [
+      {
+       "PolicyName": "SecretsManager",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "secretsmanager:GetSecretValue",
+           "secretsmanager:DescribeSecret",
+           "secretsmanager:ListSecrets",
+           "secretsmanager:ListSecretVersionIds"
+          ],
+          "Resource": [
+           "*"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "iam:GetRole",
+           "iam:PassRole"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      }
+     ],
+     "RoleName": "MediaPackage-MediaPackage-us-east-1",
+     "Tags": [
+      {
+       "Key": "environment",
+       "Value": "production"
+      },
+      {
+       "Key": "createdby",
+       "Value": "aws-cloudformation-templates"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::MediaPackage::Channel.MediaPackageChannel",
+   "cfg": "MediaPackageChannel",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::MediaPackage::Channel",
+    "name": "MediaPackageChannel",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Description": "Media Package Channel for MediaPackage",
+     "Id": "MediaPackage",
+     "Tags": [
+      {
+       "Key": "environment",
+       "Value": "production"
+      },
+      {
+       "Key": "createdby",
+       "Value": "aws-cloudformation-templates"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::MediaPackage::OriginEndpoint.MediaPackageHlsOriginEndpoint",
+   "cfg": "MediaPackageHlsOriginEndpoint",
+   "type": "__declared__",
+   "refs": [
+    "MediaPackageChannel"
+   ],
+   "values": {
+    "type": "AWS::MediaPackage::OriginEndpoint",
+    "name": "MediaPackageHlsOriginEndpoint",
+    "gated": true,
+    "gate": "CreateHlsEndPoint",
+    "properties": {
+     "ChannelId": {
+      "ref": "MediaPackageChannel"
+     },
+     "Description": "Media Package OriginEndpoint for MediaPackage",
+     "HlsPackage": {
+      "AdMarkers": "NONE",
+      "IncludeIframeOnlyStream": false,
+      "SegmentDurationSeconds": 3
+     },
+     "Id": "MediaPackage-Hls",
+     "ManifestName": "index",
+     "Origination": "ALLOW",
+     "StartoverWindowSeconds": 0,
+     "Tags": [
+      {
+       "Key": "environment",
+       "Value": "production"
+      },
+      {
+       "Key": "createdby",
+       "Value": "aws-cloudformation-templates"
+      }
+     ],
+     "TimeDelaySeconds": 0
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::MediaPackage::OriginEndpoint.MediaPackageDashOriginEndpoint",
+   "cfg": "MediaPackageDashOriginEndpoint",
+   "type": "__declared__",
+   "refs": [
+    "MediaPackageChannel"
+   ],
+   "values": {
+    "type": "AWS::MediaPackage::OriginEndpoint",
+    "name": "MediaPackageDashOriginEndpoint",
+    "gated": true,
+    "gate": "CreateDashEndPoint",
+    "properties": {
+     "ChannelId": {
+      "ref": "MediaPackageChannel"
+     },
+     "DashPackage": {
+      "ManifestLayout": "FULL",
+      "ManifestWindowSeconds": 60,
+      "MinBufferTimeSeconds": 10,
+      "MinUpdatePeriodSeconds": 2,
+      "Profile": "NONE",
+      "SegmentDurationSeconds": 2,
+      "SegmentTemplateFormat": "NUMBER_WITH_TIMELINE",
+      "SuggestedPresentationDelaySeconds": 20
+     },
+     "Description": "Media Package OriginEndpoint for MediaPackage",
+     "Id": "MediaPackage-Dash",
+     "ManifestName": "index",
+     "Origination": "ALLOW",
+     "StartoverWindowSeconds": 0,
+     "Tags": [
+      {
+       "Key": "environment",
+       "Value": "production"
+      },
+      {
+       "Key": "createdby",
+       "Value": "aws-cloudformation-templates"
+      }
+     ],
+     "TimeDelaySeconds": 0
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::MediaPackage::Asset.MediaPackageHlsAsset",
+   "cfg": "MediaPackageHlsAsset",
+   "type": "__declared__",
+   "refs": [
+    "IAMRoleForMediaPackage",
+    "MediaPackagePackagingGroup"
+   ],
+   "values": {
+    "type": "AWS::MediaPackage::Asset",
+    "name": "MediaPackageHlsAsset",
+    "gated": true,
+    "gate": "CreateHlsVODWorkflow",
+    "properties": {
+     "Id": "MediaPackage-Hls",
+     "PackagingGroupId": {
+      "ref": "MediaPackagePackagingGroup"
+     },
+     "SourceArn": "arn:aws:s3:::",
+     "SourceRoleArn": {
+      "ref": "IAMRoleForMediaPackage",
+      "attr": "Arn"
+     },
+     "Tags": [
+      {
+       "Key": "environment",
+       "Value": "production"
+      },
+      {
+       "Key": "createdby",
+       "Value": "aws-cloudformation-templates"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::MediaPackage::Asset.MediaPackageDashAsset",
+   "cfg": "MediaPackageDashAsset",
+   "type": "__declared__",
+   "refs": [
+    "IAMRoleForMediaPackage",
+    "MediaPackagePackagingGroup"
+   ],
+   "values": {
+    "type": "AWS::MediaPackage::Asset",
+    "name": "MediaPackageDashAsset",
+    "gated": true,
+    "gate": "CreateDashVODWorkflow",
+    "properties": {
+     "Id": "MediaPackage-Dash",
+     "PackagingGroupId": {
+      "ref": "MediaPackagePackagingGroup"
+     },
+     "SourceArn": "arn:aws:s3:::",
+     "SourceRoleArn": {
+      "ref": "IAMRoleForMediaPackage",
+      "attr": "Arn"
+     },
+     "Tags": [
+      {
+       "Key": "environment",
+       "Value": "production"
+      },
+      {
+       "Key": "createdby",
+       "Value": "aws-cloudformation-templates"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::MediaPackage::PackagingGroup.MediaPackagePackagingGroup",
+   "cfg": "MediaPackagePackagingGroup",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::MediaPackage::PackagingGroup",
+    "name": "MediaPackagePackagingGroup",
+    "gated": true,
+    "gate": "CreateVODWorkflow",
+    "properties": {
+     "Id": "MediaPackage",
+     "Tags": [
+      {
+       "Key": "environment",
+       "Value": "production"
+      },
+      {
+       "Key": "createdby",
+       "Value": "aws-cloudformation-templates"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::MediaPackage::PackagingConfiguration.MediaPackageHlsPackagingConfiguration",
+   "cfg": "MediaPackageHlsPackagingConfiguration",
+   "type": "__declared__",
+   "refs": [
+    "MediaPackagePackagingGroup"
+   ],
+   "values": {
+    "type": "AWS::MediaPackage::PackagingConfiguration",
+    "name": "MediaPackageHlsPackagingConfiguration",
+    "gated": true,
+    "gate": "CreateHlsVODWorkflow",
+    "properties": {
+     "HlsPackage": {
+      "HlsManifests": [
+       {
+        "IncludeIframeOnlyStream": false,
+        "ManifestName": "index",
+        "RepeatExtXKey": false
+       }
+      ],
+      "SegmentDurationSeconds": 3,
+      "UseAudioRenditionGroup": false
+     },
+     "Id": "MediaPackage-Hls",
+     "PackagingGroupId": {
+      "ref": "MediaPackagePackagingGroup"
+     },
+     "Tags": [
+      {
+       "Key": "environment",
+       "Value": "production"
+      },
+      {
+       "Key": "createdby",
+       "Value": "aws-cloudformation-templates"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::MediaPackage::PackagingConfiguration.MediaPackageDashPackagingConfiguration",
+   "cfg": "MediaPackageDashPackagingConfiguration",
+   "type": "__declared__",
+   "refs": [
+    "MediaPackagePackagingGroup"
+   ],
+   "values": {
+    "type": "AWS::MediaPackage::PackagingConfiguration",
+    "name": "MediaPackageDashPackagingConfiguration",
+    "gated": true,
+    "gate": "CreateDashVODWorkflow",
+    "properties": {
+     "DashPackage": {
+      "DashManifests": [
+       {
+        "ManifestLayout": "FULL",
+        "ManifestName": "index",
+        "MinBufferTimeSeconds": 30,
+        "Profile": "NONE"
+       }
+      ],
+      "SegmentDurationSeconds": 3,
+      "SegmentTemplateFormat": "NUMBER_WITH_TIMELINE"
+     },
+     "Id": "MediaPackage-Dash",
+     "PackagingGroupId": {
+      "ref": "MediaPackagePackagingGroup"
+     },
+     "Tags": [
+      {
+       "Key": "environment",
+       "Value": "production"
+      },
+      {
+       "Key": "createdby",
+       "Value": "aws-cloudformation-templates"
+      }
+     ]
+    }
+   }
+  }
+ ]
+}

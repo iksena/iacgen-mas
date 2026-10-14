@@ -1,0 +1,140 @@
+{
+  "lang": "cfn",
+  "row_number": 5,
+  "source_hash": {
+    "gt": "f262317f95f5a60dc4a5ab1cb0b00f88a0bbc9ff834c7bed0ace22305080197f",
+    "prompt": "310cf215bd30ed259eecc85ed3f89c5c5d423b66fcee26d40babf3ae16ca0e11"
+  },
+  "selectors": {
+    "sm": {
+      "types": [
+        "AWS::StepFunctions::StateMachine"
+      ]
+    },
+    "bus": {
+      "types": [
+        "AWS::Events::EventBus"
+      ]
+    },
+    "rule": {
+      "types": [
+        "AWS::Events::Rule"
+      ]
+    },
+    "lg": {
+      "types": [
+        "AWS::Logs::LogGroup"
+      ]
+    }
+  },
+  "checks": [
+    {
+      "id": "state_machine",
+      "kind": "exists",
+      "select": "sm",
+      "tier": "core",
+      "quote": "a serverless workflow using Step Functions"
+    },
+    {
+      "id": "custom_event_bus",
+      "kind": "exists",
+      "select": "bus",
+      "tier": "core",
+      "quote": "a custom EventBridge event bus"
+    },
+    {
+      "id": "workflow_puts_events",
+      "kind": "attr",
+      "select": "sm",
+      "tier": "core",
+      "quote": "sends custom events",
+      "cond": {
+        "path": "",
+        "op": "regex",
+        "value": "(?i)(events|eventbridge):putevents"
+      },
+      "justify": "a Step Functions workflow sending events to EventBridge uses the events:putEvents (or aws-sdk:eventbridge:putEvents) integration"
+    },
+    {
+      "id": "workflow_targets_bus",
+      "kind": "any_of",
+      "tier": "detail",
+      "quote": "sends custom events to a custom EventBridge event bus",
+      "checks": [
+        {
+          "kind": "ref",
+          "from": "sm",
+          "to": "bus"
+        },
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "AWS::IAM::Role",
+              "AWS::IAM::Policy",
+              "AWS::IAM::ManagedPolicy"
+            ],
+            "where": [
+              {
+                "path": "",
+                "op": "regex",
+                "value": "(?i)events:(putevents|\\*)"
+              }
+            ]
+          },
+          "to": "bus"
+        }
+      ]
+    },
+    {
+      "id": "rule_on_bus",
+      "kind": "any_of",
+      "tier": "core",
+      "quote": "includes a rule on that bus",
+      "checks": [
+        {
+          "kind": "ref",
+          "from": "rule",
+          "to": "bus"
+        },
+        {
+          "kind": "join",
+          "from": "rule",
+          "from_path": "EventBusName",
+          "to": "bus",
+          "to_path": "Name"
+        }
+      ]
+    },
+    {
+      "id": "log_group",
+      "kind": "exists",
+      "select": "lg",
+      "tier": "core",
+      "quote": "a CloudWatch Logs log group"
+    },
+    {
+      "id": "rule_targets_log_group",
+      "kind": "any_of",
+      "tier": "core",
+      "quote": "forwards all events to a CloudWatch Logs log group",
+      "checks": [
+        {
+          "kind": "ref",
+          "from": "rule",
+          "to": "lg"
+        },
+        {
+          "kind": "attr",
+          "select": "rule",
+          "cond": {
+            "path": "Targets.*.Arn",
+            "op": "regex",
+            "value": "(?i)arn:aws[a-z-]*:logs:.*log-group"
+          }
+        }
+      ]
+    }
+  ],
+  "notes": "try_spec review: dropped rule_has_pattern (3/6 wrote EventPattern {} to mean all events); accept aws-sdk:eventbridge:putEvents integration."
+}

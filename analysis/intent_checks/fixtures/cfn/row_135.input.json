@@ -1,0 +1,733 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [
+   "AuditEventQueuePolicy excluded: condition IsNotDevEnvironment false under defaults",
+   "AuditEventDeadLetterQueue excluded: condition IsNotDevEnvironment false under defaults",
+   "AuditEventDeadLetterQueuePolicy excluded: condition IsNotDevEnvironment false under defaults",
+   "AuditEventQueueConsumerRole excluded: condition IsNotDevEnvironment false under defaults",
+   "AuditEventSQSOldMessagesAlarm excluded: condition IsNotDevLikeEnvironment false under defaults",
+   "AuditEventDLQMessagesVisibleAlarm excluded: condition IsNotDevLikeEnvironment false under defaults"
+  ],
+  "gt_hash": "c2d61cc38ffe20d0c3acb440eb772b157c3a4bc2fbcf4d66b111d1c6aea23e1e",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "AuditEventQueue",
+   "cfg": "AuditEventQueue",
+   "type": "AWS::SQS::Queue",
+   "values": {
+    "MessageRetentionPeriod": "3600",
+    "VisibilityTimeout": "30",
+    "KmsMasterKeyId": {
+     "ref": "AuditEventQueueEncryptionKeyAlias"
+    },
+    "ReceiveMessageWaitTimeSeconds": 20,
+    "RedriveAllowPolicy": {
+     "redrivePermission": "denyAll"
+    },
+    "Tags": [
+     {
+      "Key": "Service",
+      "Value": "ci/cd"
+     },
+     {
+      "Key": "Source",
+      "Value": "govuk-one-login/ipv-cri-common-infrastructure/txma/template.yaml"
+     }
+    ]
+   },
+   "refs": [
+    "AuditEventQueueEncryptionKeyAlias"
+   ]
+  },
+  {
+   "id": "AuditEventQueueEncryptionKey",
+   "cfg": "AuditEventQueueEncryptionKey",
+   "type": "AWS::KMS::Key",
+   "values": {
+    "Description": "Symmetric key used to encrypt audit messages at rest in SQS",
+    "EnableKeyRotation": true,
+    "KeySpec": "SYMMETRIC_DEFAULT",
+    "KeyPolicy": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Sid": "Enable root access",
+       "Effect": "Allow",
+       "Principal": {
+        "AWS": [
+         "arn:aws:iam::123456789012:root"
+        ]
+       },
+       "Action": [
+        "kms:*"
+       ],
+       "Resource": [
+        "*"
+       ]
+      }
+     ]
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "stack-auditEventQueueEncryptionKey"
+     },
+     {
+      "Key": "Service",
+      "Value": "ci/cd"
+     },
+     {
+      "Key": "Source",
+      "Value": "govuk-one-login/ipv-cri-common-infrastructure/txma/template.yaml"
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "AuditEventQueueEncryptionKeyAlias",
+   "cfg": "AuditEventQueueEncryptionKeyAlias",
+   "type": "AWS::KMS::Alias",
+   "values": {
+    "AliasName": "alias/stack/auditEventQueueEncryptionKey",
+    "TargetKeyId": {
+     "ref": "AuditEventQueueEncryptionKey"
+    }
+   },
+   "refs": [
+    "AuditEventQueueEncryptionKey"
+   ]
+  },
+  {
+   "id": "__parameter__.PermissionsBoundary",
+   "cfg": "__parameter__.PermissionsBoundary",
+   "type": "__parameter__",
+   "values": {
+    "name": "PermissionsBoundary",
+    "type": "String",
+    "default": "",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.Environment",
+   "cfg": "__parameter__.Environment",
+   "type": "__parameter__",
+   "values": {
+    "name": "Environment",
+    "type": "String",
+    "default": "dev",
+    "allowed_values": [
+     "dev",
+     "build",
+     "staging",
+     "integration",
+     "production"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.SupportManualURL",
+   "cfg": "__parameter__.SupportManualURL",
+   "type": "__parameter__",
+   "values": {
+    "name": "SupportManualURL",
+    "type": "String",
+    "default": "https://govukverify.atlassian.net/wiki/spaces/OJ/pages/3303931965/CRI+specific+support",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.ServiceName",
+   "cfg": "__parameter__.ServiceName",
+   "type": "__parameter__",
+   "values": {
+    "name": "ServiceName",
+    "type": "String",
+    "default": "none",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.BuildNotificationStackName",
+   "cfg": "__parameter__.BuildNotificationStackName",
+   "type": "__parameter__",
+   "values": {
+    "name": "BuildNotificationStackName",
+    "type": "String",
+    "default": "none",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.AuditEventQueueName",
+   "cfg": "__output__.AuditEventQueueName",
+   "type": "__output__",
+   "values": {
+    "name": "AuditEventQueueName",
+    "value": {
+     "ref": "AuditEventQueue",
+     "attr": "QueueName"
+    },
+    "description": "The name of the SQS audit event queue. Needed to give write permissions to lambdas",
+    "export": "stack-AuditEventQueueName"
+   },
+   "refs": [
+    "AuditEventQueue"
+   ]
+  },
+  {
+   "id": "__output__.AuditEventQueueNameToRemove",
+   "cfg": "__output__.AuditEventQueueNameToRemove",
+   "type": "__output__",
+   "values": {
+    "name": "AuditEventQueueNameToRemove",
+    "value": {
+     "ref": "AuditEventQueue",
+     "attr": "QueueName"
+    },
+    "description": "The name of the SQS audit event queue. Needed to give write permissions to lambdas",
+    "export": "AuditEventQueueName"
+   },
+   "refs": [
+    "AuditEventQueue"
+   ]
+  },
+  {
+   "id": "__output__.AuditEventQueueUrl",
+   "cfg": "__output__.AuditEventQueueUrl",
+   "type": "__output__",
+   "values": {
+    "name": "AuditEventQueueUrl",
+    "value": {
+     "ref": "AuditEventQueue"
+    },
+    "description": "The URL of the SQS audit event queue. Needed to write messages to the queue",
+    "export": "stack-AuditEventQueueUrl"
+   },
+   "refs": [
+    "AuditEventQueue"
+   ]
+  },
+  {
+   "id": "__output__.AuditEventQueueUrlToRemove",
+   "cfg": "__output__.AuditEventQueueUrlToRemove",
+   "type": "__output__",
+   "values": {
+    "name": "AuditEventQueueUrlToRemove",
+    "value": {
+     "ref": "AuditEventQueue"
+    },
+    "description": "The URL of the SQS audit event queue. Needed to write messages to the queue",
+    "export": "AuditEventQueueUrl"
+   },
+   "refs": [
+    "AuditEventQueue"
+   ]
+  },
+  {
+   "id": "__output__.AuditEventQueueArn",
+   "cfg": "__output__.AuditEventQueueArn",
+   "type": "__output__",
+   "values": {
+    "name": "AuditEventQueueArn",
+    "value": {
+     "ref": "AuditEventQueue",
+     "attr": "Arn"
+    },
+    "description": "The ARN of the SQS audit event queue. Needed to pull messages off the queue",
+    "export": "stack-AuditEventQueueArn"
+   },
+   "refs": [
+    "AuditEventQueue"
+   ]
+  },
+  {
+   "id": "__output__.AuditEventQueueEncryptionKeyArn",
+   "cfg": "__output__.AuditEventQueueEncryptionKeyArn",
+   "type": "__output__",
+   "values": {
+    "name": "AuditEventQueueEncryptionKeyArn",
+    "value": {
+     "ref": "AuditEventQueueEncryptionKey",
+     "attr": "Arn"
+    },
+    "description": "The ARN of the KMS key used to encrypt audit event messages in the SQS queue",
+    "export": "stack-AuditEventQueueEncryptionKeyArn"
+   },
+   "refs": [
+    "AuditEventQueueEncryptionKey"
+   ]
+  },
+  {
+   "id": "__output__.AuditEventQueueEncryptionKeyArnToRemove",
+   "cfg": "__output__.AuditEventQueueEncryptionKeyArnToRemove",
+   "type": "__output__",
+   "values": {
+    "name": "AuditEventQueueEncryptionKeyArnToRemove",
+    "value": {
+     "ref": "AuditEventQueueEncryptionKey",
+     "attr": "Arn"
+    },
+    "description": "The ARN of the KMS key used to encrypt audit event messages in the SQS queue",
+    "export": "AuditEventQueueEncryptionKeyArn"
+   },
+   "refs": [
+    "AuditEventQueueEncryptionKey"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::SQS::Queue.AuditEventQueue",
+   "cfg": "AuditEventQueue",
+   "type": "__declared__",
+   "refs": [
+    "AuditEventQueueEncryptionKeyAlias"
+   ],
+   "values": {
+    "type": "AWS::SQS::Queue",
+    "name": "AuditEventQueue",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "MessageRetentionPeriod": "3600",
+     "VisibilityTimeout": "30",
+     "KmsMasterKeyId": {
+      "ref": "AuditEventQueueEncryptionKeyAlias"
+     },
+     "ReceiveMessageWaitTimeSeconds": 20,
+     "RedriveAllowPolicy": {
+      "redrivePermission": "denyAll"
+     },
+     "Tags": [
+      {
+       "Key": "Service",
+       "Value": "ci/cd"
+      },
+      {
+       "Key": "Source",
+       "Value": "govuk-one-login/ipv-cri-common-infrastructure/txma/template.yaml"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SQS::QueuePolicy.AuditEventQueuePolicy",
+   "cfg": "AuditEventQueuePolicy",
+   "type": "__declared__",
+   "refs": [
+    "AuditEventQueue"
+   ],
+   "values": {
+    "type": "AWS::SQS::QueuePolicy",
+    "name": "AuditEventQueuePolicy",
+    "gated": true,
+    "gate": "IsNotDevEnvironment",
+    "properties": {
+     "Queues": [
+      {
+       "ref": "AuditEventQueue"
+      }
+     ],
+     "PolicyDocument": {
+      "Statement": [
+       {
+        "Sid": "Allow read by TxMA account",
+        "Effect": "Allow",
+        "Principal": {
+         "AWS": {
+          "Fn::FindInMap": [
+           "TxMARootMapping",
+           "Environment",
+           "dev"
+          ]
+         }
+        },
+        "Action": [
+         "sqs:ReceiveMessage",
+         "sqs:DeleteMessage",
+         "sqs:GetQueueAttributes"
+        ],
+        "Resource": {
+         "ref": "AuditEventQueue",
+         "attr": "Arn"
+        }
+       },
+       {
+        "Sid": "Allow EventBridge to send TxMA events",
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "events.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sqs:SendMessage"
+        ],
+        "Resource": {
+         "ref": "AuditEventQueue",
+         "attr": "Arn"
+        }
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SQS::Queue.AuditEventDeadLetterQueue",
+   "cfg": "AuditEventDeadLetterQueue",
+   "type": "__declared__",
+   "refs": [
+    "AuditEventQueueEncryptionKeyAlias"
+   ],
+   "values": {
+    "type": "AWS::SQS::Queue",
+    "name": "AuditEventDeadLetterQueue",
+    "gated": true,
+    "gate": "IsNotDevEnvironment",
+    "properties": {
+     "MessageRetentionPeriod": 1209600,
+     "VisibilityTimeout": 70,
+     "KmsMasterKeyId": {
+      "ref": "AuditEventQueueEncryptionKeyAlias"
+     },
+     "Tags": [
+      {
+       "Key": "Service",
+       "Value": "ci/cd"
+      },
+      {
+       "Key": "Source",
+       "Value": "govuk-one-login/ipv-cri-common-infrastructure/txma/template.yaml"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SQS::QueuePolicy.AuditEventDeadLetterQueuePolicy",
+   "cfg": "AuditEventDeadLetterQueuePolicy",
+   "type": "__declared__",
+   "refs": [
+    "AuditEventDeadLetterQueue"
+   ],
+   "values": {
+    "type": "AWS::SQS::QueuePolicy",
+    "name": "AuditEventDeadLetterQueuePolicy",
+    "gated": true,
+    "gate": "IsNotDevEnvironment",
+    "properties": {
+     "Queues": [
+      {
+       "ref": "AuditEventDeadLetterQueue"
+      }
+     ],
+     "PolicyDocument": {
+      "Statement": [
+       {
+        "Sid": "Allow EventBridge to send TxMA events",
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "events.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sqs:SendMessage"
+        ],
+        "Resource": {
+         "ref": "AuditEventDeadLetterQueue",
+         "attr": "Arn"
+        }
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::KMS::Key.AuditEventQueueEncryptionKey",
+   "cfg": "AuditEventQueueEncryptionKey",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::KMS::Key",
+    "name": "AuditEventQueueEncryptionKey",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Description": "Symmetric key used to encrypt audit messages at rest in SQS",
+     "EnableKeyRotation": true,
+     "KeySpec": "SYMMETRIC_DEFAULT",
+     "KeyPolicy": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Sid": "Enable root access",
+        "Effect": "Allow",
+        "Principal": {
+         "AWS": [
+          "arn:aws:iam::123456789012:root"
+         ]
+        },
+        "Action": [
+         "kms:*"
+        ],
+        "Resource": [
+         "*"
+        ]
+       }
+      ]
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "stack-auditEventQueueEncryptionKey"
+      },
+      {
+       "Key": "Service",
+       "Value": "ci/cd"
+      },
+      {
+       "Key": "Source",
+       "Value": "govuk-one-login/ipv-cri-common-infrastructure/txma/template.yaml"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::KMS::Alias.AuditEventQueueEncryptionKeyAlias",
+   "cfg": "AuditEventQueueEncryptionKeyAlias",
+   "type": "__declared__",
+   "refs": [
+    "AuditEventQueueEncryptionKey"
+   ],
+   "values": {
+    "type": "AWS::KMS::Alias",
+    "name": "AuditEventQueueEncryptionKeyAlias",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AliasName": "alias/stack/auditEventQueueEncryptionKey",
+     "TargetKeyId": {
+      "ref": "AuditEventQueueEncryptionKey"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.AuditEventQueueConsumerRole",
+   "cfg": "AuditEventQueueConsumerRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "AuditEventQueueConsumerRole",
+    "gated": true,
+    "gate": "IsNotDevEnvironment",
+    "properties": {
+     "Description": "A role to use in the SQS queue and KMS key policies. To be overridden in envs other than dev and build with supplied TXMA roles when they exist.\n",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Policies": [
+      {
+       "PolicyName": "AWSLambdaBasicExecutionRole",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "logs:CreateLogGroup",
+           "logs:CreateLogStream",
+           "logs:PutLogEvents"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      }
+     ],
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "stack-auditEventQueueConsumerRole"
+      },
+      {
+       "Key": "Service",
+       "Value": "ci/cd"
+      },
+      {
+       "Key": "Source",
+       "Value": "govuk-one-login/ipv-cri-common-infrastructure/txma/template.yaml"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::CloudWatch::Alarm.AuditEventSQSOldMessagesAlarm",
+   "cfg": "AuditEventSQSOldMessagesAlarm",
+   "type": "__declared__",
+   "refs": [
+    "AuditEventQueue"
+   ],
+   "values": {
+    "type": "AWS::CloudWatch::Alarm",
+    "name": "AuditEventSQSOldMessagesAlarm",
+    "gated": true,
+    "gate": "IsNotDevLikeEnvironment",
+    "properties": {
+     "AlarmName": "stack-AuditEventStayedOnQueueForMoreThan24HoursMessagesAlarm",
+     "AlarmDescription": "Triggers CloudWatch Alarm when a message has stayed on the queue for more than 24 Hours https://govukverify.atlassian.net/wiki/spaces/OJ/pages/3303931965/CRI+specific+support",
+     "ActionsEnabled": true,
+     "OKActions": [
+      {
+       "import": "none-WarningAlertsTopicArn"
+      }
+     ],
+     "AlarmActions": [
+      {
+       "import": "none-WarningAlertsTopicArn"
+      }
+     ],
+     "InsufficientDataActions": [],
+     "MetricName": "ApproximateAgeOfOldestMessage",
+     "Namespace": "AWS/SQS",
+     "Statistic": "Maximum",
+     "Dimensions": [
+      {
+       "Name": "QueueName",
+       "Value": {
+        "ref": "AuditEventQueue",
+        "attr": "QueueName"
+       }
+      }
+     ],
+     "Period": 60,
+     "EvaluationPeriods": 1,
+     "DatapointsToAlarm": 1,
+     "Threshold": 86400,
+     "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+     "TreatMissingData": "notBreaching"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::CloudWatch::Alarm.AuditEventDLQMessagesVisibleAlarm",
+   "cfg": "AuditEventDLQMessagesVisibleAlarm",
+   "type": "__declared__",
+   "refs": [
+    "AuditEventDeadLetterQueue"
+   ],
+   "values": {
+    "type": "AWS::CloudWatch::Alarm",
+    "name": "AuditEventDLQMessagesVisibleAlarm",
+    "gated": true,
+    "gate": "IsNotDevLikeEnvironment",
+    "properties": {
+     "AlarmName": "stack-AuditEventDLQMessagesVisibleAlarm",
+     "AlarmDescription": "Triggers CloudWatch Alarm when message gets added to audit event DLQ. https://govukverify.atlassian.net/wiki/spaces/OJ/pages/3303931965/CRI+specific+support",
+     "ActionsEnabled": true,
+     "OKActions": [
+      {
+       "import": "none-WarningAlertsTopicArn"
+      }
+     ],
+     "AlarmActions": [
+      {
+       "import": "none-WarningAlertsTopicArn"
+      }
+     ],
+     "InsufficientDataActions": [],
+     "Metrics": [
+      {
+       "Expression": "max-min",
+       "Id": "e1",
+       "Label": "ChangeInAmountOfVisibleMessages",
+       "ReturnData": true
+      },
+      {
+       "Id": "min",
+       "Label": "MessagesVisibleMin",
+       "MetricStat": {
+        "Metric": {
+         "Dimensions": [
+          {
+           "Name": "QueueName",
+           "Value": {
+            "ref": "AuditEventDeadLetterQueue",
+            "attr": "QueueName"
+           }
+          }
+         ],
+         "MetricName": "ApproximateNumberOfMessagesVisible",
+         "Namespace": "AWS/SQS"
+        },
+        "Period": 300,
+        "Stat": "Minimum",
+        "Unit": "Count"
+       },
+       "ReturnData": false
+      },
+      {
+       "Id": "max",
+       "Label": "MessagesVisibleMax",
+       "MetricStat": {
+        "Metric": {
+         "Dimensions": [
+          {
+           "Name": "QueueName",
+           "Value": {
+            "ref": "AuditEventDeadLetterQueue",
+            "attr": "QueueName"
+           }
+          }
+         ],
+         "MetricName": "ApproximateNumberOfMessagesVisible",
+         "Namespace": "AWS/SQS"
+        },
+        "Period": 300,
+        "Stat": "Maximum",
+        "Unit": "Count"
+       },
+       "ReturnData": false
+      }
+     ],
+     "EvaluationPeriods": 1,
+     "DatapointsToAlarm": 1,
+     "Threshold": 1,
+     "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+     "TreatMissingData": "notBreaching"
+    }
+   }
+  }
+ ]
+}

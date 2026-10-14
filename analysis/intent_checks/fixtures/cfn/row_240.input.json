@@ -1,0 +1,364 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "68535fd138f94d9c9c6e88df2f6f2fc05495756d0c269e65392c61b318b53b43",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "ShapefileGlueServiceRole",
+   "cfg": "ShapefileGlueServiceRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "MapAppraiserShapefileGlueServiceRole",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "glue.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/AWSGlueServiceRole"
+    ],
+    "Policies": [
+     {
+      "PolicyName": "S3AccessPolicy",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "s3:GetObject",
+          "s3:ListBucket"
+         ],
+         "Resource": [
+          "arn:aws:s3:::map-appraiser-data-raw-gis",
+          "arn:aws:s3:::map-appraiser-data-raw-gis/*"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "s3:PutObject",
+          "s3:GetObject",
+          "s3:ListBucket"
+         ],
+         "Resource": [
+          "arn:aws:s3:::map-appraiser-data-knowledge-base",
+          "arn:aws:s3:::map-appraiser-data-knowledge-base/*"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "s3:GetObject",
+          "s3:ListBucket"
+         ],
+         "Resource": [
+          "arn:aws:s3:::map-appraiser-glue-scripts",
+          "arn:aws:s3:::map-appraiser-glue-scripts/*"
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "PolicyName": "CloudWatchLogsPolicy",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+         ],
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "ShapefileToGeoJsonGlueJob",
+   "cfg": "ShapefileToGeoJsonGlueJob",
+   "type": "AWS::Glue::Job",
+   "values": {
+    "Name": "map-appraiser-shapefile-to-geojson-etl",
+    "Role": {
+     "ref": "ShapefileGlueServiceRole",
+     "attr": "Arn"
+    },
+    "Command": {
+     "Name": "glueetl",
+     "ScriptLocation": "s3://map-appraiser-glue-scripts/shapefile_to_geojson_etl.py",
+     "PythonVersion": "3"
+    },
+    "DefaultArguments": {
+     "--enable-metrics": "true",
+     "--enable-continuous-cloudwatch-log": "true",
+     "--enable-spark-ui": "true",
+     "--spark-event-logs-path": "s3://map-appraiser-glue-scripts/spark-logs/",
+     "--job-bookmark-option": "job-bookmark-enable",
+     "--job-language": "python",
+     "--TempDir": "s3://map-appraiser-glue-scripts/temp/",
+     "--additional-python-modules": "geopandas==0.14.1,shapely==2.0.2,pyproj==3.6.1,fiona==1.9.5"
+    },
+    "ExecutionProperty": {
+     "MaxConcurrentRuns": 1
+    },
+    "GlueVersion": "4.0",
+    "MaxRetries": 0,
+    "NumberOfWorkers": 5,
+    "WorkerType": "G.2X",
+    "Timeout": 2880,
+    "Description": "ETL job to convert Shapefiles to individual GeoJSON files for knowledge base"
+   },
+   "refs": [
+    "ShapefileGlueServiceRole"
+   ]
+  },
+  {
+   "id": "__parameter__.GlueJobName",
+   "cfg": "__parameter__.GlueJobName",
+   "type": "__parameter__",
+   "values": {
+    "name": "GlueJobName",
+    "type": "String",
+    "default": "map-appraiser-shapefile-to-geojson-etl",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.GlueScriptLocation",
+   "cfg": "__parameter__.GlueScriptLocation",
+   "type": "__parameter__",
+   "values": {
+    "name": "GlueScriptLocation",
+    "type": "String",
+    "default": "s3://map-appraiser-glue-scripts/shapefile_to_geojson_etl.py",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.GlueServiceRoleName",
+   "cfg": "__parameter__.GlueServiceRoleName",
+   "type": "__parameter__",
+   "values": {
+    "name": "GlueServiceRoleName",
+    "type": "String",
+    "default": "MapAppraiserShapefileGlueServiceRole",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.GlueJobName",
+   "cfg": "__output__.GlueJobName",
+   "type": "__output__",
+   "values": {
+    "name": "GlueJobName",
+    "value": {
+     "ref": "ShapefileToGeoJsonGlueJob"
+    },
+    "description": "Name of the created Glue job",
+    "export": null
+   },
+   "refs": [
+    "ShapefileToGeoJsonGlueJob"
+   ]
+  },
+  {
+   "id": "__output__.GlueServiceRoleArn",
+   "cfg": "__output__.GlueServiceRoleArn",
+   "type": "__output__",
+   "values": {
+    "name": "GlueServiceRoleArn",
+    "value": {
+     "ref": "ShapefileGlueServiceRole",
+     "attr": "Arn"
+    },
+    "description": "ARN of the Glue service role",
+    "export": null
+   },
+   "refs": [
+    "ShapefileGlueServiceRole"
+   ]
+  },
+  {
+   "id": "__output__.GlueScriptUploadCommand",
+   "cfg": "__output__.GlueScriptUploadCommand",
+   "type": "__output__",
+   "values": {
+    "name": "GlueScriptUploadCommand",
+    "value": "aws s3 cp shapefile_to_geojson_etl.py s3://map-appraiser-glue-scripts/shapefile_to_geojson_etl.py",
+    "description": "Command to upload the Glue script to S3",
+    "export": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.ShapefileGlueServiceRole",
+   "cfg": "ShapefileGlueServiceRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "ShapefileGlueServiceRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "MapAppraiserShapefileGlueServiceRole",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "glue.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AWSGlueServiceRole"
+     ],
+     "Policies": [
+      {
+       "PolicyName": "S3AccessPolicy",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "s3:GetObject",
+           "s3:ListBucket"
+          ],
+          "Resource": [
+           "arn:aws:s3:::map-appraiser-data-raw-gis",
+           "arn:aws:s3:::map-appraiser-data-raw-gis/*"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "s3:PutObject",
+           "s3:GetObject",
+           "s3:ListBucket"
+          ],
+          "Resource": [
+           "arn:aws:s3:::map-appraiser-data-knowledge-base",
+           "arn:aws:s3:::map-appraiser-data-knowledge-base/*"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "s3:GetObject",
+           "s3:ListBucket"
+          ],
+          "Resource": [
+           "arn:aws:s3:::map-appraiser-glue-scripts",
+           "arn:aws:s3:::map-appraiser-glue-scripts/*"
+          ]
+         }
+        ]
+       }
+      },
+      {
+       "PolicyName": "CloudWatchLogsPolicy",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "logs:CreateLogGroup",
+           "logs:CreateLogStream",
+           "logs:PutLogEvents"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Glue::Job.ShapefileToGeoJsonGlueJob",
+   "cfg": "ShapefileToGeoJsonGlueJob",
+   "type": "__declared__",
+   "refs": [
+    "ShapefileGlueServiceRole"
+   ],
+   "values": {
+    "type": "AWS::Glue::Job",
+    "name": "ShapefileToGeoJsonGlueJob",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "map-appraiser-shapefile-to-geojson-etl",
+     "Role": {
+      "ref": "ShapefileGlueServiceRole",
+      "attr": "Arn"
+     },
+     "Command": {
+      "Name": "glueetl",
+      "ScriptLocation": "s3://map-appraiser-glue-scripts/shapefile_to_geojson_etl.py",
+      "PythonVersion": "3"
+     },
+     "DefaultArguments": {
+      "--enable-metrics": "true",
+      "--enable-continuous-cloudwatch-log": "true",
+      "--enable-spark-ui": "true",
+      "--spark-event-logs-path": "s3://map-appraiser-glue-scripts/spark-logs/",
+      "--job-bookmark-option": "job-bookmark-enable",
+      "--job-language": "python",
+      "--TempDir": "s3://map-appraiser-glue-scripts/temp/",
+      "--additional-python-modules": "geopandas==0.14.1,shapely==2.0.2,pyproj==3.6.1,fiona==1.9.5"
+     },
+     "ExecutionProperty": {
+      "MaxConcurrentRuns": 1
+     },
+     "GlueVersion": "4.0",
+     "MaxRetries": 0,
+     "NumberOfWorkers": 5,
+     "WorkerType": "G.2X",
+     "Timeout": 2880,
+     "Description": "ETL job to convert Shapefiles to individual GeoJSON files for knowledge base"
+    }
+   }
+  }
+ ]
+}

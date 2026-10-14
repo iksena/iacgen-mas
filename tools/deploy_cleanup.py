@@ -1,0 +1,841 @@
+import json
+import os
+import tempfile
+from contextlib import contextmanager
+import boto3
+from botocore.exceptions import ClientError
+from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
+from config import DeployConfig, DeployTarget
+import requests
+import time
+
+try:
+    import fcntl
+except ImportError:
+    fcntl = None
+
+from tools.cfn_utils import build_cfn_client, wait_for_stack_deletion
+from scripts.nuke_vpc_dependencies import (
+    Actions as _NukeActions,
+    list_target_vpcs,
+    nuke_vpc_network,
+    nuke_elb,
+    wait_for_elbv2_deleted,
+    nuke_nat_gateways,
+    wait_for_nat_gateways_deleted,
+    nuke_rds,
+    nuke_rds_subnet_groups,
+    wait_for_rds_gone,
+    nuke_elasticache,
+    nuke_elasticache_subnet_groups,
+    nuke_efs_mount_targets,
+    nuke_efs_file_systems,
+    nuke_elastic_ips,
+    nuke_vpc_endpoints,
+    nuke_peering_connections,
+    nuke_transit_gateway_attachments,
+    nuke_vpn,
+    nuke_egress_only_igw,
+    nuke_one_kms_key,
+    nuke_one_eks_cluster,
+    nuke_s3_access_points,
+    nuke_multi_region_access_points,
+)
+
+EVAL_TAG_KEY = "ManagedBy"
+EVAL_TAG_VALUE = "iac-god-eval"
+
+
+def _reset_localstack_state(deploy_config: DeployConfig):
+    try:
+        resp = requests.post(
+            f"{deploy_config.localstack_endpoint}/_localstack/state/reset",
+            timeout=10,
+        )
+        if resp.status_code == 200:
+            print("[Deploy] LocalStack state reset OK")
+        else:
+            print(f"[Deploy] LocalStack reset returned HTTP {resp.status_code} — proceeding")
+    except requests.exceptions.ConnectionError:
+        print("[Deploy] ⚠️  Could not connect to LocalStack for reset. Is it running?")
+    except Exception as e:
+        print(f"[Deploy] Reset error: {e}")
+
+    time.sleep(deploy_config.localstack_reset_wait)
+
+    _delete_surviving_eval_stacks(deploy_config)
+
+
+def _delete_surviving_eval_stacks(deploy_config: DeployConfig):
+    cfn_client = build_cfn_client(deploy_config)
+    stack_prefix = "iac-god-eval-"
+
+    active_statuses = [
+        "CREATE_IN_PROGRESS", "CREATE_FAILED", "CREATE_COMPLETE",
+        "ROLLBACK_IN_PROGRESS", "ROLLBACK_FAILED", "ROLLBACK_COMPLETE",
+        "DELETE_IN_PROGRESS", "DELETE_FAILED",
+        "UPDATE_IN_PROGRESS", "UPDATE_COMPLETE_CLEANUP_IN_PROGRESS",
+        "UPDATE_COMPLETE", "UPDATE_ROLLBACK_IN_PROGRESS",
+        "UPDATE_ROLLBACK_FAILED", "UPDATE_ROLLBACK_COMPLETE_CLEANUP_IN_PROGRESS",
+        "UPDATE_ROLLBACK_COMPLETE", "REVIEW_IN_PROGRESS",
+        "IMPORT_IN_PROGRESS", "IMPORT_COMPLETE",
+        "IMPORT_ROLLBACK_IN_PROGRESS", "IMPORT_ROLLBACK_FAILED",
+        "IMPORT_ROLLBACK_COMPLETE",
+    ]
+
+    try:
+        paginator = cfn_client.get_paginator("list_stacks")
+        targets: list[tuple[str, str]] = []
+
+        for page in paginator.paginate(StackStatusFilter=active_statuses):
+            for summary in page.get("StackSummaries", []):
+                name = summary.get("StackName", "")
+                sid = summary.get("StackId", "")
+                if name.startswith(stack_prefix) and sid:
+                    targets.append((sid, name))
+
+        if not targets:
+            print("[Deploy] No surviving evaluation stacks found — clean slate confirmed")
+            return
+
+        print(f"[Deploy] Deleting {len(targets)} surviving evaluation stack(s) (in parallel)...")
+        for stack_id, stack_name in targets:
+            try:
+                cfn_client.delete_stack(StackName=stack_id)
+            except Exception as e:
+                print(f"  [Deploy] Warning: could not start delete of '{stack_name}': {e}")
+
+        def wait_one(target):
+            stack_id, stack_name = target
+            try:
+                wait_for_stack_deletion(cfn_client, stack_id, stack_name, deploy_config.stack_deletion_timeout)
+                print(f"  [Deploy] '{stack_name}' deleted ✓")
+            except Exception as e:
+                print(f"  [Deploy] Warning: could not delete '{stack_name}': {e}")
+
+        with ThreadPoolExecutor(max_workers=min(len(targets), 16)) as ex:
+            list(ex.map(wait_one, targets))
+
+    except Exception as e:
+        print(f"[Deploy] Stack sweep error: {e}")
+
+
+def _empty_and_delete_bucket(s3_client, bucket_name: str, session=None, region: str | None = None) -> None:
+    try:
+        s3_client.delete_bucket_policy(Bucket=bucket_name)
+    except ClientError:
+        pass
+
+    try:
+        lock_enabled = s3_client.get_object_lock_configuration(Bucket=bucket_name).get(
+            "ObjectLockConfiguration", {}
+        ).get("ObjectLockEnabled") == "Enabled"
+    except ClientError:
+        lock_enabled = False
+
+    paginator = s3_client.get_paginator("list_object_versions")
+    for page in paginator.paginate(Bucket=bucket_name):
+        versions = page.get("Versions", []) + page.get("DeleteMarkers", [])
+        if lock_enabled:
+            for v in versions:
+                key, version_id = v["Key"], v["VersionId"]
+                try:
+                    hold = s3_client.get_object_legal_hold(Bucket=bucket_name, Key=key, VersionId=version_id)
+                    if hold.get("LegalHold", {}).get("Status") == "ON":
+                        s3_client.put_object_legal_hold(
+                            Bucket=bucket_name, Key=key, VersionId=version_id,
+                            LegalHold={"Status": "OFF"},
+                        )
+                except ClientError:
+                    pass
+                try:
+                    mode = s3_client.get_object_retention(
+                        Bucket=bucket_name, Key=key, VersionId=version_id
+                    ).get("Retention", {}).get("Mode")
+                except ClientError:
+                    mode = None
+                if mode == "COMPLIANCE":
+                    continue
+
+        to_delete = [{"Key": v["Key"], "VersionId": v["VersionId"]} for v in versions]
+        for i in range(0, len(to_delete), 1000):
+            batch = to_delete[i:i + 1000]
+            s3_client.delete_objects(
+                Bucket=bucket_name,
+                Delete={"Objects": batch},
+                BypassGovernanceRetention=lock_enabled,
+            )
+
+    try:
+        s3_client.delete_bucket(Bucket=bucket_name)
+    except ClientError as e:
+        if e.response.get("Error", {}).get("Code") != "BucketHasAccessPointsAttached" or session is None:
+            raise
+        access_point_actions = _NukeActions(dry_run=False)
+        nuke_s3_access_points(session, region, access_point_actions, bucket=bucket_name)
+        nuke_multi_region_access_points(session, access_point_actions, bucket=bucket_name, force=True)
+        s3_client.delete_bucket(Bucket=bucket_name)
+
+
+def _delete_orphaned_ecs_cluster(ecs_client, cluster_arn: str) -> None:
+    services = ecs_client.list_services(cluster=cluster_arn).get("serviceArns", [])
+    for service_arn in services:
+        ecs_client.update_service(cluster=cluster_arn, service=service_arn, desiredCount=0)
+        ecs_client.delete_service(cluster=cluster_arn, service=service_arn, force=True)
+
+    tasks = ecs_client.list_tasks(cluster=cluster_arn).get("taskArns", [])
+    for task_arn in tasks:
+        ecs_client.stop_task(cluster=cluster_arn, task=task_arn)
+
+    ecs_client.delete_cluster(cluster=cluster_arn)
+
+
+_HANDLED_CACHE = Path(tempfile.gettempdir()) / "iac-god-handled-resources.json"
+_HANDLED_LOCK = _HANDLED_CACHE.with_suffix(".lock")
+_HANDLED_TTL_SECONDS = 35 * 24 * 3600
+
+
+@contextmanager
+def _handled_cache_lock():
+    lock_file = None
+    try:
+        lock_file = open(_HANDLED_LOCK, "a")
+        if fcntl:
+            fcntl.flock(lock_file, fcntl.LOCK_EX)
+    except Exception:
+        pass
+    try:
+        yield
+    finally:
+        if lock_file:
+            try:
+                if fcntl:
+                    fcntl.flock(lock_file, fcntl.LOCK_UN)
+                lock_file.close()
+            except Exception:
+                pass
+
+
+def _read_handled_file() -> dict[str, float]:
+    try:
+        raw = json.loads(_HANDLED_CACHE.read_text())
+        cutoff = time.time() - _HANDLED_TTL_SECONDS
+        return {k: v for k, v in raw.items() if v >= cutoff}
+    except Exception:
+        return {}
+
+
+def _load_handled() -> dict[str, float]:
+    return _read_handled_file()
+
+
+def _save_handled(handled: dict[str, float]) -> None:
+    try:
+        with _handled_cache_lock():
+            merged = _read_handled_file()
+            for k, ts in handled.items():
+                merged[k] = max(ts, merged.get(k, 0.0))
+            tmp = _HANDLED_CACHE.with_name(f"{_HANDLED_CACHE.name}.{os.getpid()}.tmp")
+            tmp.write_text(json.dumps(merged))
+            tmp.replace(_HANDLED_CACHE)
+            handled.update(merged)
+    except Exception:
+        pass
+
+
+def _is_not_found(e: ClientError) -> bool:
+    code = e.response.get("Error", {}).get("Code", "")
+    return any(t in code for t in ("NotFound", "NoSuch", "DoesNotExist"))
+
+
+def _unhandled(handled: dict[str, float], kind: str, region: str, ids: list[str]) -> list[str]:
+    return [i for i in ids if f"{kind}:{region}:{i}" not in handled]
+
+
+def _mark_handled(handled: dict[str, float], kind: str, region: str, ids) -> None:
+    now = time.time()
+    for i in ids:
+        handled[f"{kind}:{region}:{i}"] = now
+
+
+def _schedule_orphaned_kms_keys(session, region: str, key_ids: list[str], handled: dict[str, float]) -> None:
+    kms_client = session.client("kms", region_name=region)
+
+    def describe(key_id):
+        try:
+            m = kms_client.describe_key(KeyId=key_id)["KeyMetadata"]
+            return key_id, m["KeyState"], m["KeyManager"]
+        except ClientError as e:
+            gone = e.response.get("Error", {}).get("Code") == "NotFoundException"
+            return key_id, "Gone" if gone else None, None
+
+    with ThreadPoolExecutor(max_workers=16) as ex:
+        described = list(ex.map(describe, key_ids))
+
+    settled, active = [], []
+    for key_id, state, manager in described:
+        if state in ("PendingDeletion", "PendingReplicaDeletion", "Gone") or manager == "AWS":
+            settled.append(key_id)
+        elif state:
+            active.append(key_id)
+    _mark_handled(handled, "kms", region, settled)
+    print(f"[Deploy] {len(key_ids)} new tagged KMS key(s): {len(settled)} already pending deletion/gone, "
+          f"{len(active)} to schedule...")
+
+    if active:
+        try:
+            caller_arn = session.client("sts", region_name=region).get_caller_identity()["Arn"]
+        except Exception:
+            caller_arn = None
+        nuke_actions = _NukeActions(dry_run=False)
+        for key_id in active:
+            nuke_one_kms_key(kms_client, key_id, nuke_actions, caller_arn)
+
+
+_SWEEP_RESOURCE_TYPE_FILTERS = [
+    "s3", "cognito-idp:userpool", "ecs:cluster", "logs:log-group", "kms:key",
+    "elasticache:cluster", "elasticache:replicationgroup",
+    "elasticloadbalancing:loadbalancer", "secretsmanager:secret", "wafv2",
+    "codebuild:project", "eks:cluster", "codecommit", "sns",
+    "ec2:vpc-flow-log", "cognito-identity:identitypool",
+    "dynamodb:table", "dsql:cluster", "networkmanager",
+]
+
+_NETWORK_MANAGER_HOME_REGION = "us-west-2"
+
+
+def _delete_orphaned_eval_resources(deploy_config: DeployConfig):
+    session = boto3.Session(profile_name=deploy_config.aws_profile)
+    tagging_client = session.client(
+        "resourcegroupstaggingapi", region_name=deploy_config.aws_region
+    )
+
+    try:
+        paginator = tagging_client.get_paginator("get_resources")
+        mappings = []
+        for page in paginator.paginate(
+            TagFilters=[{"Key": EVAL_TAG_KEY, "Values": [EVAL_TAG_VALUE]}],
+            ResourceTypeFilters=_SWEEP_RESOURCE_TYPE_FILTERS,
+        ):
+            mappings.extend(page.get("ResourceTagMappingList", []))
+    except Exception as e:
+        print(f"[Deploy] Orphan resource sweep error (non-fatal): {e}")
+        return
+
+    if deploy_config.aws_region != _NETWORK_MANAGER_HOME_REGION:
+        try:
+            nm_tagging = session.client("resourcegroupstaggingapi", region_name=_NETWORK_MANAGER_HOME_REGION)
+            for page in nm_tagging.get_paginator("get_resources").paginate(
+                TagFilters=[{"Key": EVAL_TAG_KEY, "Values": [EVAL_TAG_VALUE]}],
+                ResourceTypeFilters=["networkmanager"],
+            ):
+                mappings.extend(page.get("ResourceTagMappingList", []))
+        except Exception as e:
+            print(f"[Deploy] Network Manager tag query error (non-fatal): {e}")
+
+    if not mappings:
+        return
+
+    s3_buckets: list[str] = []
+    cognito_pool_ids: list[str] = []
+    ecs_cluster_arns: list[str] = []
+    log_group_names: list[str] = []
+    kms_key_ids: list[str] = []
+    elasticache_cluster_ids: list[str] = []
+    elasticache_replgroup_ids: list[str] = []
+    elbv2_arns: list[str] = []
+    secret_arns: list[str] = []
+    webacl_arns: list[str] = []
+    codebuild_project_names: list[str] = []
+    eks_cluster_names: list[str] = []
+    codecommit_repo_names: list[str] = []
+    sns_topic_arns: list[str] = []
+    vpc_flow_log_ids: list[str] = []
+    cognito_identity_pool_ids: list[str] = []
+    dynamodb_table_names: list[str] = []
+    dsql_cluster_ids: list[str] = []
+    core_network_ids: list[str] = []
+    global_network_ids: list[str] = []
+    other: list[str] = []
+    for mapping in mappings:
+        arn = mapping.get("ResourceARN", "")
+        s3_prefix = "arn:aws:s3:::"
+        if arn.startswith(s3_prefix) and "/" not in arn[len(s3_prefix):]:
+            s3_buckets.append(arn[len(s3_prefix):])
+        elif ":cognito-idp:" in arn and "userpool/" in arn:
+            cognito_pool_ids.append(arn.rsplit("/", 1)[1])
+        elif ":ecs:" in arn and ":cluster/" in arn:
+            ecs_cluster_arns.append(arn)
+        elif ":logs:" in arn and ":log-group:" in arn:
+            log_group_names.append(arn.split(":log-group:", 1)[1])
+        elif ":kms:" in arn and ":key/" in arn:
+            kms_key_ids.append(arn.rsplit("/", 1)[1])
+        elif ":elasticache:" in arn and ":cluster:" in arn:
+            elasticache_cluster_ids.append(arn.rsplit(":", 1)[1])
+        elif ":elasticache:" in arn and ":replicationgroup:" in arn:
+            elasticache_replgroup_ids.append(arn.rsplit(":", 1)[1])
+        elif ":elasticloadbalancing:" in arn and ":loadbalancer/" in arn:
+            elbv2_arns.append(arn)
+        elif ":secretsmanager:" in arn and ":secret:" in arn:
+            secret_arns.append(arn)
+        elif ":wafv2:" in arn and "/webacl/" in arn:
+            webacl_arns.append(arn)
+        elif ":codebuild:" in arn and ":project/" in arn:
+            codebuild_project_names.append(arn.rsplit("/", 1)[1])
+        elif ":eks:" in arn and ":cluster/" in arn:
+            eks_cluster_names.append(arn.rsplit("/", 1)[1])
+        elif ":codecommit:" in arn:
+            codecommit_repo_names.append(arn.rsplit(":", 1)[1])
+        elif ":sns:" in arn:
+            sns_topic_arns.append(arn)
+        elif ":ec2:" in arn and ":vpc-flow-log/" in arn:
+            vpc_flow_log_ids.append(arn.rsplit("/", 1)[1])
+        elif ":cognito-identity:" in arn and "identitypool/" in arn:
+            cognito_identity_pool_ids.append(arn.rsplit("/", 1)[1])
+        elif ":dynamodb:" in arn and ":table/" in arn and "/" not in arn.split(":table/", 1)[1]:
+            dynamodb_table_names.append(arn.split(":table/", 1)[1])
+        elif ":dsql:" in arn and ":cluster/" in arn:
+            dsql_cluster_ids.append(arn.rsplit("/", 1)[1])
+        elif ":networkmanager::" in arn and ":core-network/" in arn:
+            core_network_ids.append(arn.rsplit("/", 1)[1])
+        elif ":networkmanager::" in arn and ":global-network/" in arn:
+            global_network_ids.append(arn.rsplit("/", 1)[1])
+        elif ":cloudformation:" in arn and ":stack/" in arn:
+            pass
+        else:
+            other.append(arn)
+
+    region = deploy_config.aws_region
+    handled = _load_handled()
+    cognito_pool_ids = _unhandled(handled, "cognito-pool", region, cognito_pool_ids)
+    kms_key_ids = _unhandled(handled, "kms", region, kms_key_ids)
+    elbv2_arns = _unhandled(handled, "elbv2", region, elbv2_arns)
+    secret_arns = _unhandled(handled, "secret", region, secret_arns)
+    webacl_arns = _unhandled(handled, "webacl", region, webacl_arns)
+    vpc_flow_log_ids = _unhandled(handled, "flowlog", region, vpc_flow_log_ids)
+    cognito_identity_pool_ids = _unhandled(handled, "idpool", region, cognito_identity_pool_ids)
+    dsql_cluster_ids = _unhandled(handled, "dsql", region, dsql_cluster_ids)
+    core_network_ids = _unhandled(handled, "corenet", region, core_network_ids)
+    global_network_ids = _unhandled(handled, "globalnet", region, global_network_ids)
+
+    if ecs_cluster_arns:
+        ecs_probe = session.client("ecs", region_name=region)
+        active_ecs: list[str] = []
+        for i in range(0, len(ecs_cluster_arns), 100):
+            try:
+                resp = ecs_probe.describe_clusters(clusters=ecs_cluster_arns[i:i + 100])
+                active_ecs += [c["clusterArn"] for c in resp.get("clusters", []) if c.get("status") != "INACTIVE"]
+            except ClientError:
+                active_ecs += ecs_cluster_arns[i:i + 100]
+        ecs_cluster_arns = active_ecs
+
+
+    if s3_buckets:
+        print(f"[Deploy] {len(s3_buckets)} orphaned eval S3 bucket(s) found — emptying and deleting...")
+        s3_client = session.client("s3", region_name=deploy_config.aws_region)
+        for bucket_name in s3_buckets:
+            try:
+                _empty_and_delete_bucket(s3_client, bucket_name, session=session, region=deploy_config.aws_region)
+                print(f"  [Deploy] Deleted orphaned bucket '{bucket_name}' ✓")
+            except Exception as e:
+                if isinstance(e, ClientError) and _is_not_found(e):
+                    continue
+                print(f"  [Deploy] Warning: could not delete orphaned bucket '{bucket_name}': {e}")
+
+    if cognito_pool_ids:
+        print(f"[Deploy] {len(cognito_pool_ids)} orphaned eval Cognito user pool(s) found — deleting...")
+        cognito_client = session.client("cognito-idp", region_name=deploy_config.aws_region)
+
+        def delete_pool(pool_id):
+            try:
+                try:
+                    pool = cognito_client.describe_user_pool(UserPoolId=pool_id)["UserPool"]
+                    if pool.get("DeletionProtection") == "ACTIVE":
+                        cognito_client.update_user_pool(UserPoolId=pool_id, DeletionProtection="INACTIVE")
+                except ClientError:
+                    pass
+                cognito_client.delete_user_pool(UserPoolId=pool_id)
+                return pool_id, True, f"  [Deploy] Deleted orphaned user pool '{pool_id}' ✓"
+            except ClientError as e:
+                if e.response.get("Error", {}).get("Code") == "ResourceNotFoundException":
+                    return pool_id, True, None
+                return pool_id, False, f"  [Deploy] Warning: could not delete orphaned user pool '{pool_id}': {e}"
+
+        with ThreadPoolExecutor(max_workers=8) as ex:
+            for pool_id, done, line in ex.map(delete_pool, cognito_pool_ids):
+                if done:
+                    _mark_handled(handled, "cognito-pool", region, [pool_id])
+                if line:
+                    print(line)
+
+    if ecs_cluster_arns:
+        print(f"[Deploy] {len(ecs_cluster_arns)} orphaned eval ECS cluster(s) found — draining and deleting...")
+        ecs_client = session.client("ecs", region_name=deploy_config.aws_region)
+        for cluster_arn in ecs_cluster_arns:
+            try:
+                _delete_orphaned_ecs_cluster(ecs_client, cluster_arn)
+                print(f"  [Deploy] Deleted orphaned ECS cluster '{cluster_arn}' ✓")
+            except ClientError as e:
+                if _is_not_found(e):
+                    continue
+                print(f"  [Deploy] Warning: could not delete orphaned ECS cluster '{cluster_arn}': {e}")
+
+    if log_group_names:
+        print(f"[Deploy] {len(log_group_names)} orphaned eval CloudWatch log group(s) found — deleting...")
+        logs_client = session.client("logs", region_name=deploy_config.aws_region)
+        for log_group_name in log_group_names:
+            try:
+                logs_client.delete_log_group(logGroupName=log_group_name)
+                print(f"  [Deploy] Deleted orphaned log group '{log_group_name}' ✓")
+            except ClientError as e:
+                if e.response.get("Error", {}).get("Code") == "ResourceNotFoundException":
+                    continue
+                print(f"  [Deploy] Warning: could not delete orphaned log group '{log_group_name}': {e}")
+
+    if elbv2_arns:
+        print(f"[Deploy] {len(elbv2_arns)} orphaned eval load balancer(s) found — clearing deletion "
+              f"protection and deleting...")
+        elbv2_client = session.client("elbv2", region_name=deploy_config.aws_region)
+        for lb_arn in elbv2_arns:
+            try:
+                attrs = elbv2_client.describe_load_balancer_attributes(LoadBalancerArn=lb_arn).get("Attributes", [])
+                if any(a.get("Key") == "deletion_protection.enabled" and a.get("Value") == "true" for a in attrs):
+                    elbv2_client.modify_load_balancer_attributes(
+                        LoadBalancerArn=lb_arn,
+                        Attributes=[{"Key": "deletion_protection.enabled", "Value": "false"}],
+                    )
+                elbv2_client.delete_load_balancer(LoadBalancerArn=lb_arn)
+                _mark_handled(handled, "elbv2", region, [lb_arn])
+                print(f"  [Deploy] Deleted orphaned load balancer '{lb_arn}' ✓")
+            except ClientError as e:
+                if e.response.get("Error", {}).get("Code", "").startswith("LoadBalancerNotFound"):
+                    _mark_handled(handled, "elbv2", region, [lb_arn])
+                    continue
+                print(f"  [Deploy] Warning: could not delete orphaned load balancer '{lb_arn}': {e}")
+
+    if elasticache_cluster_ids or elasticache_replgroup_ids:
+        n = len(elasticache_cluster_ids) + len(elasticache_replgroup_ids)
+        print(f"[Deploy] {n} orphaned eval ElastiCache resource(s) found — deleting...")
+        ec_client = session.client("elasticache", region_name=deploy_config.aws_region)
+        for repl_id in elasticache_replgroup_ids:
+            try:
+                ec_client.delete_replication_group(ReplicationGroupId=repl_id)
+                print(f"  [Deploy] Deleted orphaned ElastiCache replication group '{repl_id}' ✓")
+            except ClientError as e:
+                if e.response.get("Error", {}).get("Code") == "ReplicationGroupNotFoundFault":
+                    continue
+                print(f"  [Deploy] Warning: could not delete orphaned replication group '{repl_id}': {e}")
+        for cluster_id in elasticache_cluster_ids:
+            try:
+                ec_client.delete_cache_cluster(CacheClusterId=cluster_id)
+                print(f"  [Deploy] Deleted orphaned ElastiCache cluster '{cluster_id}' ✓")
+            except ClientError as e:
+                if e.response.get("Error", {}).get("Code", "").startswith("CacheClusterNotFound"):
+                    continue
+                print(f"  [Deploy] Warning: could not delete orphaned cache cluster '{cluster_id}': {e}")
+
+    if secret_arns:
+        print(f"[Deploy] {len(secret_arns)} orphaned eval Secrets Manager secret(s) found — deleting...")
+        sm_client = session.client("secretsmanager", region_name=deploy_config.aws_region)
+        for secret_arn in secret_arns:
+            try:
+                sm_client.delete_secret(SecretId=secret_arn, ForceDeleteWithoutRecovery=True)
+                _mark_handled(handled, "secret", region, [secret_arn])
+                print(f"  [Deploy] Deleted orphaned secret '{secret_arn}' ✓")
+            except ClientError as e:
+                if e.response.get("Error", {}).get("Code") == "ResourceNotFoundException":
+                    _mark_handled(handled, "secret", region, [secret_arn])
+                    continue
+                print(f"  [Deploy] Warning: could not delete orphaned secret '{secret_arn}': {e}")
+
+    if codebuild_project_names:
+        print(f"[Deploy] {len(codebuild_project_names)} orphaned eval CodeBuild project(s) found — deleting...")
+        cb_client = session.client("codebuild", region_name=deploy_config.aws_region)
+        for name in codebuild_project_names:
+            try:
+                cb_client.delete_project(name=name)
+                print(f"  [Deploy] Deleted orphaned CodeBuild project '{name}' ✓")
+            except ClientError as e:
+                if _is_not_found(e):
+                    continue
+                print(f"  [Deploy] Warning: could not delete orphaned CodeBuild project '{name}': {e}")
+
+    if webacl_arns:
+        print(f"[Deploy] {len(webacl_arns)} orphaned eval WAF web ACL(s) found — disassociating and deleting...")
+        for webacl_arn in webacl_arns:
+            try:
+                parts = webacl_arn.split(":")[-1].split("/")
+                scope = "CLOUDFRONT" if parts[0] == "global" else "REGIONAL"
+                name, webacl_id = parts[2], parts[3]
+                waf_region = "us-east-1" if scope == "CLOUDFRONT" else deploy_config.aws_region
+                waf_client = session.client("wafv2", region_name=waf_region)
+                for resource_arn in waf_client.list_resources_for_web_acl(
+                    WebACLArn=webacl_arn, ResourceType="APPLICATION_LOAD_BALANCER"
+                ).get("ResourceArns", []):
+                    waf_client.disassociate_web_acl(ResourceArn=resource_arn)
+                lock_token = waf_client.get_web_acl(Name=name, Scope=scope, Id=webacl_id)["LockToken"]
+                waf_client.delete_web_acl(Name=name, Scope=scope, Id=webacl_id, LockToken=lock_token)
+                _mark_handled(handled, "webacl", region, [webacl_arn])
+                print(f"  [Deploy] Deleted orphaned WAF web ACL '{name}' ✓")
+            except ClientError as e:
+                if e.response.get("Error", {}).get("Code") == "WAFNonexistentItemException":
+                    _mark_handled(handled, "webacl", region, [webacl_arn])
+                    continue
+                print(f"  [Deploy] Warning: could not delete orphaned WAF web ACL '{webacl_arn}': {e}")
+
+    if kms_key_ids:
+        _schedule_orphaned_kms_keys(session, region, kms_key_ids, handled)
+
+    if eks_cluster_names:
+        print(f"[Deploy] {len(eks_cluster_names)} orphaned eval EKS cluster(s) found — deleting "
+              f"nodegroups/Fargate profiles then the cluster (async — may need a follow-up pass)...")
+        eks_client = session.client("eks", region_name=deploy_config.aws_region)
+        eks_actions = _NukeActions(dry_run=False)
+        for cluster_name in eks_cluster_names:
+            nuke_one_eks_cluster(eks_client, cluster_name, eks_actions)
+
+    if codecommit_repo_names:
+        print(f"[Deploy] {len(codecommit_repo_names)} orphaned eval CodeCommit repo(s) found — deleting...")
+        cc_client = session.client("codecommit", region_name=deploy_config.aws_region)
+        for repo_name in codecommit_repo_names:
+            try:
+                cc_client.delete_repository(repositoryName=repo_name)
+                print(f"  [Deploy] Deleted orphaned CodeCommit repo '{repo_name}' ✓")
+            except ClientError as e:
+                if _is_not_found(e):
+                    continue
+                print(f"  [Deploy] Warning: could not delete orphaned CodeCommit repo '{repo_name}': {e}")
+
+    if sns_topic_arns:
+        print(f"[Deploy] {len(sns_topic_arns)} orphaned eval SNS topic(s) found — deleting...")
+        sns_client = session.client("sns", region_name=deploy_config.aws_region)
+        for topic_arn in sns_topic_arns:
+            try:
+                sns_client.delete_topic(TopicArn=topic_arn)
+                print(f"  [Deploy] Deleted orphaned SNS topic '{topic_arn}' ✓")
+            except ClientError as e:
+                if e.response.get("Error", {}).get("Code") == "NotFound":
+                    continue
+                print(f"  [Deploy] Warning: could not delete orphaned SNS topic '{topic_arn}': {e}")
+
+    if vpc_flow_log_ids:
+        ec2_client = session.client("ec2", region_name=region)
+        try:
+            existing = [f["FlowLogId"] for f in ec2_client.describe_flow_logs(
+                Filters=[{"Name": "flow-log-id", "Values": vpc_flow_log_ids}]).get("FlowLogs", [])]
+            if existing:
+                ec2_client.delete_flow_logs(FlowLogIds=existing)
+                print(f"  [Deploy] Deleted {len(existing)} orphaned VPC flow log(s) ✓")
+            _mark_handled(handled, "flowlog", region, vpc_flow_log_ids)
+        except ClientError as e:
+            print(f"  [Deploy] Warning: could not delete orphaned VPC flow log(s): {e}")
+
+    if cognito_identity_pool_ids:
+        print(f"[Deploy] {len(cognito_identity_pool_ids)} orphaned eval Cognito identity pool(s) "
+              f"found — deleting...")
+        ci_client = session.client("cognito-identity", region_name=deploy_config.aws_region)
+        for pool_id in cognito_identity_pool_ids:
+            try:
+                ci_client.delete_identity_pool(IdentityPoolId=pool_id)
+                _mark_handled(handled, "idpool", region, [pool_id])
+                print(f"  [Deploy] Deleted orphaned identity pool '{pool_id}' ✓")
+            except ClientError as e:
+                if e.response.get("Error", {}).get("Code") == "ResourceNotFoundException":
+                    _mark_handled(handled, "idpool", region, [pool_id])
+                    continue
+                print(f"  [Deploy] Warning: could not delete orphaned identity pool '{pool_id}': {e}")
+
+    if dynamodb_table_names:
+        ddb_client = session.client("dynamodb", region_name=region)
+
+        def delete_table(name):
+            try:
+                table = ddb_client.describe_table(TableName=name)["Table"]
+                if table.get("TableStatus") == "DELETING":
+                    return None
+                if table.get("DeletionProtectionEnabled"):
+                    ddb_client.update_table(TableName=name, DeletionProtectionEnabled=False)
+                for attempt in range(3):
+                    try:
+                        ddb_client.delete_table(TableName=name)
+                        return f"  [Deploy] Deleted orphaned DynamoDB table '{name}' ✓"
+                    except ClientError as e:
+                        if e.response.get("Error", {}).get("Code") != "ResourceInUseException" or attempt == 2:
+                            raise
+                        time.sleep(2)
+            except ClientError as e:
+                if _is_not_found(e) or e.response.get("Error", {}).get("Code") == "ResourceInUseException":
+                    return None
+                return f"  [Deploy] Warning: could not delete orphaned DynamoDB table '{name}': {e}"
+
+        with ThreadPoolExecutor(max_workers=8) as ex:
+            for line in ex.map(delete_table, dynamodb_table_names):
+                if line:
+                    print(line)
+
+    if dsql_cluster_ids:
+        dsql_client = session.client("dsql", region_name=region)
+        for cluster_id in dsql_cluster_ids:
+            try:
+                cluster = dsql_client.get_cluster(identifier=cluster_id)
+                status = cluster.get("status")
+                if status == "DELETED":
+                    _mark_handled(handled, "dsql", region, [cluster_id])
+                    continue
+                if status in ("DELETING", "PENDING_DELETE"):
+                    continue
+                if cluster.get("deletionProtectionEnabled"):
+                    dsql_client.update_cluster(identifier=cluster_id, deletionProtectionEnabled=False)
+                dsql_client.delete_cluster(identifier=cluster_id)
+                print(f"  [Deploy] Deleted orphaned DSQL cluster '{cluster_id}' ✓ (async)")
+            except ClientError as e:
+                if _is_not_found(e):
+                    _mark_handled(handled, "dsql", region, [cluster_id])
+                    continue
+                print(f"  [Deploy] Warning: could not delete orphaned DSQL cluster '{cluster_id}': {e}")
+
+    if core_network_ids or global_network_ids:
+        nm_client = session.client("networkmanager", region_name=_NETWORK_MANAGER_HOME_REGION)
+        for core_id in core_network_ids:
+            try:
+                state = nm_client.get_core_network(CoreNetworkId=core_id)["CoreNetwork"]["State"]
+                if state in ("CREATING", "UPDATING", "DELETING"):
+                    continue
+                pending_attachments = [
+                    a for a in nm_client.get_paginator("list_attachments").paginate(CoreNetworkId=core_id)
+                    .build_full_result().get("Attachments", []) if a.get("State") != "DELETING"
+                ]
+                for att in pending_attachments:
+                    nm_client.delete_attachment(AttachmentId=att["AttachmentId"])
+                if pending_attachments:
+                    print(f"  [Deploy] Deleting {len(pending_attachments)} attachment(s) of orphaned core network "
+                          f"'{core_id}' first (async — core network follows on the next pass)")
+                    continue
+                nm_client.delete_core_network(CoreNetworkId=core_id)
+                print(f"  [Deploy] Deleting orphaned Cloud WAN core network '{core_id}' (async ✓)")
+            except ClientError as e:
+                if _is_not_found(e):
+                    _mark_handled(handled, "corenet", region, [core_id])
+                    continue
+                print(f"  [Deploy] Warning: could not delete orphaned core network '{core_id}': {e}")
+
+        for global_id in global_network_ids:
+            try:
+                still_has_core = [
+                    c for c in nm_client.get_paginator("list_core_networks").paginate()
+                    .build_full_result().get("CoreNetworks", []) if c.get("GlobalNetworkId") == global_id
+                ]
+                if still_has_core:
+                    continue
+                nm_client.delete_global_network(GlobalNetworkId=global_id)
+                _mark_handled(handled, "globalnet", region, [global_id])
+                print(f"  [Deploy] Deleted orphaned global network '{global_id}' ✓")
+            except ClientError as e:
+                if _is_not_found(e):
+                    _mark_handled(handled, "globalnet", region, [global_id])
+                    continue
+                print(f"  [Deploy] Warning: could not delete orphaned global network '{global_id}': {e}")
+
+    _save_handled(handled)
+
+
+def _reset_aws_state(deploy_config: DeployConfig):
+    print("[Deploy] AWS state reset: scanning for prior evaluation stacks...")
+    _delete_surviving_eval_stacks(deploy_config)
+    _delete_orphaned_eval_resources(deploy_config)
+    _delete_all_non_default_vpcs(deploy_config)
+
+
+def reset_target_state(deploy_config: DeployConfig):
+    if deploy_config.target == DeployTarget.LOCALSTACK:
+        _reset_localstack_state(deploy_config)
+    elif deploy_config.target == DeployTarget.AWS:
+        _reset_aws_state(deploy_config)
+
+
+def cleanup_scenario_resources(deploy_config: DeployConfig) -> None:
+    if deploy_config.target != DeployTarget.AWS:
+        return
+    print("[Deploy] Scenario finished — running final AWS resource cleanup...")
+    reset_target_state(deploy_config)
+
+
+def _delete_all_non_default_vpcs(deploy_config: DeployConfig) -> None:
+    if deploy_config.target != DeployTarget.AWS:
+        return
+
+    session = boto3.Session(profile_name=deploy_config.aws_profile)
+    region = deploy_config.aws_region
+    ec2 = session.client("ec2", region_name=region)
+    actions = _NukeActions(dry_run=False)
+
+    vpcs = list_target_vpcs(ec2, include_default=False, only_ids=None)
+    if not vpcs:
+        return
+
+    print(f"[Deploy] VPC pre-flight: {len(vpcs)} non-default VPC(s) found — clearing dependencies...")
+
+    def _safe(fn, description: str) -> None:
+        try:
+            fn()
+        except Exception as e:
+            print(f"[Deploy] VPC pre-flight: {description} failed unexpectedly: {e} (continuing)")
+
+    elbv2_arns: list = []
+    nat_ids: list = []
+    _safe(lambda: elbv2_arns.extend(nuke_elb(session, region, actions)), "load balancer cleanup")
+    _safe(lambda: nuke_rds(session, region, actions), "RDS cleanup")
+    _safe(lambda: nuke_elasticache(session, region, actions), "ElastiCache cleanup")
+    _safe(lambda: nuke_efs_mount_targets(session, region, actions), "EFS mount target cleanup")
+    _safe(lambda: nat_ids.extend(nuke_nat_gateways(session, region, actions)), "NAT gateway cleanup")
+
+    _safe(lambda: wait_for_elbv2_deleted(session.client("elbv2", region_name=region), elbv2_arns),
+          "load balancer deletion wait")
+    _safe(lambda: wait_for_nat_gateways_deleted(ec2, nat_ids), "NAT gateway deletion wait")
+    _safe(lambda: wait_for_rds_gone(session.client("rds", region_name=region)), "RDS deletion wait")
+
+    _safe(lambda: nuke_rds_subnet_groups(session, region, actions), "RDS subnet group cleanup")
+    _safe(lambda: nuke_elasticache_subnet_groups(session, region, actions), "ElastiCache subnet group cleanup")
+    _safe(lambda: nuke_efs_file_systems(session, region, actions), "EFS file system cleanup")
+    _safe(lambda: nuke_elastic_ips(session, region, actions), "Elastic IP cleanup")
+    _safe(lambda: nuke_vpc_endpoints(session, region, actions), "VPC endpoint cleanup")
+    _safe(lambda: nuke_peering_connections(session, region, actions), "VPC peering cleanup")
+    _safe(lambda: nuke_transit_gateway_attachments(session, region, actions), "Transit Gateway attachment cleanup")
+    _safe(lambda: nuke_vpn(session, region, actions), "VPN gateway/connection cleanup")
+    _safe(lambda: nuke_egress_only_igw(session, region, actions), "egress-only IGW cleanup")
+
+    for vpc in vpcs:
+        _safe(lambda v=vpc: nuke_vpc_network(ec2, v, actions, dry_run=False),
+              f"VPC {vpc['VpcId']} network teardown")
+
+
+def check_vpc_quota(deploy_config: DeployConfig) -> str | None:
+    if deploy_config.target != DeployTarget.AWS:
+        return None
+
+    session = boto3.Session(profile_name=deploy_config.aws_profile)
+    ec2 = session.client("ec2", region_name=deploy_config.aws_region)
+
+    try:
+        vpcs = ec2.describe_vpcs()["Vpcs"]
+        quota = 5
+        try:
+            sq = session.client("service-quotas", region_name=deploy_config.aws_region)
+            quota = int(
+                sq.get_service_quota(
+                    ServiceCode="vpc", QuotaCode="L-F678F1CE"
+                )["Quota"]["Value"]
+            )
+        except Exception:
+            pass
+
+        if len(vpcs) >= quota:
+            return (
+                f"VPC_QUOTA_EXHAUSTED: {len(vpcs)}/{quota} VPCs in use in "
+                f"{deploy_config.aws_region} — free VPC quota before deploying"
+            )
+    except Exception:
+        pass
+
+    return None

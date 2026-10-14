@@ -1,0 +1,5141 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "sam_expanded",
+  "warnings": [
+   "VectorCollectionNetworkPolicy excluded: condition SemanticSearchEnabled false under defaults",
+   "VectorCollection excluded: condition SemanticSearchEnabled false under defaults",
+   "VectorCollectionAccessPolicy excluded: condition SemanticSearchEnabled false under defaults",
+   "VectorCollectionEncryptionPolicy excluded: condition SemanticSearchEnabled false under defaults",
+   "SegmentCustomersSemanticSearchPolicy excluded: condition SemanticSearchEnabled false under defaults"
+  ],
+  "gt_hash": "128564555be87b444382d294ea99a3d68578fd23ef764727c3c1ebee9c004f12",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "RateLimitsTable",
+   "cfg": "RateLimitsTable",
+   "type": "AWS::DynamoDB::Table",
+   "values": {
+    "TableName": "ai-cpaas-demo-rate-limits-dev",
+    "BillingMode": "PAY_PER_REQUEST",
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "limiter_key",
+      "AttributeType": "S"
+     }
+    ],
+    "KeySchema": [
+     {
+      "AttributeName": "limiter_key",
+      "KeyType": "HASH"
+     }
+    ],
+    "TimeToLiveSpecification": {
+     "Enabled": true,
+     "AttributeName": "ttl"
+    },
+    "PointInTimeRecoverySpecification": {
+     "PointInTimeRecoveryEnabled": true
+    },
+    "SSESpecification": {
+     "SSEEnabled": true,
+     "SSEType": "KMS",
+     "KMSMasterKeyId": {
+      "ref": "AppKmsKey"
+     }
+    }
+   },
+   "refs": [
+    "AppKmsKey"
+   ]
+  },
+  {
+   "id": "PredictChannelsFunctionRole",
+   "cfg": "PredictChannelsFunctionRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       }
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+     "arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess"
+    ],
+    "Policies": [
+     {
+      "PolicyName": "PredictChannelsFunctionRolePolicy1",
+      "PolicyDocument": {
+       "Statement": [
+        {
+         "Action": [
+          "dynamodb:GetItem",
+          "dynamodb:Scan",
+          "dynamodb:Query",
+          "dynamodb:BatchGetItem",
+          "dynamodb:DescribeTable"
+         ],
+         "Effect": "Allow",
+         "Resource": [
+          "arn:aws:dynamodb:us-east-1:123456789012:table/{'ref': 'CustomerProfilesTable'}",
+          "arn:aws:dynamodb:us-east-1:123456789012:table/{'ref': 'CustomerProfilesTable'}/index/*"
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "PolicyName": "PredictChannelsFunctionRolePolicy2",
+      "PolicyDocument": {
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "kms:Decrypt",
+          "kms:GenerateDataKey"
+         ],
+         "Resource": {
+          "ref": "AppKmsKey",
+          "attr": "Arn"
+         }
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "sagemaker:InvokeEndpoint"
+         ],
+         "Resource": [
+          "arn:aws:sagemaker:us-east-1:123456789012:endpoint/ai-cpaas-demo-channel-prediction-dev"
+         ]
+        }
+       ]
+      }
+     }
+    ],
+    "Tags": [
+     {
+      "Key": "lambda:createdBy",
+      "Value": "SAM"
+     },
+     {
+      "Key": "Project",
+      "Value": "ai-cpaas-demo"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     }
+    ]
+   },
+   "refs": [
+    "AppKmsKey",
+    "CustomerProfilesTable"
+   ]
+  },
+  {
+   "id": "DeliveryStatusProcessorFunctionWhatsAppDeliveryStatus",
+   "cfg": "DeliveryStatusProcessorFunctionWhatsAppDeliveryStatus",
+   "type": "AWS::Events::Rule",
+   "values": {
+    "EventPattern": {
+     "source": [
+      "aws.end-user-messaging"
+     ],
+     "detail-type": [
+      "WhatsApp Delivery Status"
+     ]
+    },
+    "Targets": [
+     {
+      "Arn": {
+       "ref": "DeliveryStatusProcessorFunction",
+       "attr": "Arn"
+      },
+      "Id": "DeliveryStatusProcessorFunctionWhatsAppDeliveryStatuLambdaTarget"
+     }
+    ]
+   },
+   "refs": [
+    "DeliveryStatusProcessorFunction"
+   ]
+  },
+  {
+   "id": "DeliveryStatusProcessorFunctionSmsDeliveryStatusPermission",
+   "cfg": "DeliveryStatusProcessorFunctionSmsDeliveryStatusPermission",
+   "type": "AWS::Lambda::Permission",
+   "values": {
+    "Action": "lambda:InvokeFunction",
+    "FunctionName": {
+     "ref": "DeliveryStatusProcessorFunction"
+    },
+    "Principal": "events.amazonaws.com",
+    "SourceArn": {
+     "ref": "DeliveryStatusProcessorFunctionSmsDeliveryStatus",
+     "attr": "Arn"
+    }
+   },
+   "refs": [
+    "DeliveryStatusProcessorFunction",
+    "DeliveryStatusProcessorFunctionSmsDeliveryStatus"
+   ]
+  },
+  {
+   "id": "CampaignApi",
+   "cfg": "CampaignApi",
+   "type": "AWS::ApiGatewayV2::Api",
+   "values": {
+    "Body": {
+     "info": {
+      "version": "1.0",
+      "description": "Campaign launcher API for ai-cpaas-demo-dev",
+      "title": "stack"
+     },
+     "paths": {
+      "/campaigns": {
+       "post": {
+        "x-amazon-apigateway-integration": {
+         "httpMethod": "POST",
+         "type": "aws_proxy",
+         "uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/${CampaignLauncherFunction.Arn}/invocations",
+         "payloadFormatVersion": "2.0"
+        },
+        "security": [
+         {
+          "CampaignCognitoAuthorizer": []
+         }
+        ],
+        "responses": {}
+       }
+      },
+      "/campaigns/{campaign_id}": {
+       "get": {
+        "x-amazon-apigateway-integration": {
+         "httpMethod": "POST",
+         "type": "aws_proxy",
+         "uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/${CampaignStatusFunction.Arn}/invocations",
+         "payloadFormatVersion": "2.0"
+        },
+        "security": [
+         {
+          "CampaignCognitoAuthorizer": []
+         }
+        ],
+        "parameters": [
+         {
+          "required": true,
+          "name": "campaign_id",
+          "in": "path"
+         }
+        ],
+        "responses": {}
+       }
+      }
+     },
+     "x-amazon-apigateway-cors": {
+      "allowOrigins": [
+       "*"
+      ],
+      "allowHeaders": [
+       "content-type",
+       "authorization"
+      ],
+      "allowMethods": [
+       "POST",
+       "GET",
+       "OPTIONS"
+      ],
+      "maxAge": 600
+     },
+     "tags": [
+      {
+       "name": "httpapi:createdBy",
+       "x-amazon-apigateway-tag-value": "SAM"
+      }
+     ],
+     "openapi": "3.0.1",
+     "components": {
+      "securitySchemes": {
+       "CampaignCognitoAuthorizer": {
+        "type": "oauth2",
+        "x-amazon-apigateway-authorizer": {
+         "jwtConfiguration": {
+          "audience": [
+           {
+            "ref": "CampaignUserPoolClient"
+           }
+          ],
+          "issuer": "https://cognito-idp.us-east-1.amazonaws.com/${CampaignUserPool}"
+         },
+         "identitySource": "$request.header.Authorization",
+         "type": "jwt"
+        }
+       }
+      }
+     }
+    }
+   },
+   "refs": [
+    "CampaignLauncherFunction",
+    "CampaignStatusFunction",
+    "CampaignUserPool",
+    "CampaignUserPoolClient"
+   ]
+  },
+  {
+   "id": "AdaptContentFunction",
+   "cfg": "AdaptContentFunction",
+   "type": "AWS::Lambda::Function",
+   "values": {
+    "Code": {
+     "ZipFile": "def lambda_handler(event, context):\n    return {\"statusCode\": 200}\n"
+    },
+    "Description": "Generate channel-specific message variants via Bedrock",
+    "FunctionName": "ai-cpaas-demo-adapt-content-dev",
+    "Handler": "index.lambda_handler",
+    "MemorySize": 1024,
+    "Role": {
+     "ref": "AdaptContentFunctionRole",
+     "attr": "Arn"
+    },
+    "Runtime": "python3.13",
+    "Timeout": 120,
+    "Environment": {
+     "Variables": {
+      "ENVIRONMENT": "dev",
+      "PROJECT_NAME": "ai-cpaas-demo",
+      "BEDROCK_MODEL_ID": "global.anthropic.claude-haiku-4-5-20251001-v1:0"
+     }
+    },
+    "Tags": [
+     {
+      "Key": "lambda:createdBy",
+      "Value": "SAM"
+     },
+     {
+      "Key": "Project",
+      "Value": "ai-cpaas-demo"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     }
+    ],
+    "TracingConfig": {
+     "Mode": "Active"
+    },
+    "Architectures": [
+     "arm64"
+    ]
+   },
+   "refs": [
+    "AdaptContentFunctionRole"
+   ]
+  },
+  {
+   "id": "CampaignStateMachineRole",
+   "cfg": "CampaignStateMachineRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "states.amazonaws.com"
+        ]
+       }
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/CloudWatchLogsFullAccess",
+     "arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess"
+    ],
+    "Policies": [
+     {
+      "PolicyName": "CampaignStateMachineRolePolicy0",
+      "PolicyDocument": {
+       "Statement": [
+        {
+         "Action": [
+          "lambda:InvokeFunction"
+         ],
+         "Effect": "Allow",
+         "Resource": [
+          "arn:aws:lambda:us-east-1:123456789012:function:{'ref': 'ParseInstructionFunction'}*"
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "PolicyName": "CampaignStateMachineRolePolicy1",
+      "PolicyDocument": {
+       "Statement": [
+        {
+         "Action": [
+          "lambda:InvokeFunction"
+         ],
+         "Effect": "Allow",
+         "Resource": [
+          "arn:aws:lambda:us-east-1:123456789012:function:{'ref': 'SegmentCustomersFunction'}*"
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "PolicyName": "CampaignStateMachineRolePolicy2",
+      "PolicyDocument": {
+       "Statement": [
+        {
+         "Action": [
+          "lambda:InvokeFunction"
+         ],
+         "Effect": "Allow",
+         "Resource": [
+          "arn:aws:lambda:us-east-1:123456789012:function:{'ref': 'PredictChannelsFunction'}*"
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "PolicyName": "CampaignStateMachineRolePolicy3",
+      "PolicyDocument": {
+       "Statement": [
+        {
+         "Action": [
+          "lambda:InvokeFunction"
+         ],
+         "Effect": "Allow",
+         "Resource": [
+          "arn:aws:lambda:us-east-1:123456789012:function:{'ref': 'CheckSafetyFunction'}*"
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "PolicyName": "CampaignStateMachineRolePolicy4",
+      "PolicyDocument": {
+       "Statement": [
+        {
+         "Action": [
+          "lambda:InvokeFunction"
+         ],
+         "Effect": "Allow",
+         "Resource": [
+          "arn:aws:lambda:us-east-1:123456789012:function:{'ref': 'AdaptContentFunction'}*"
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "PolicyName": "CampaignStateMachineRolePolicy5",
+      "PolicyDocument": {
+       "Statement": [
+        {
+         "Action": [
+          "lambda:InvokeFunction"
+         ],
+         "Effect": "Allow",
+         "Resource": [
+          "arn:aws:lambda:us-east-1:123456789012:function:{'ref': 'DeliverMessagesFunction'}*"
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "PolicyName": "CampaignStateMachineRolePolicy6",
+      "PolicyDocument": {
+       "Statement": [
+        {
+         "Action": [
+          "lambda:InvokeFunction"
+         ],
+         "Effect": "Allow",
+         "Resource": [
+          "arn:aws:lambda:us-east-1:123456789012:function:{'ref': 'RecordResultsFunction'}*"
+         ]
+        }
+       ]
+      }
+     }
+    ],
+    "Tags": [
+     {
+      "Key": "stateMachine:createdBy",
+      "Value": "SAM"
+     }
+    ]
+   },
+   "refs": [
+    "AdaptContentFunction",
+    "CheckSafetyFunction",
+    "DeliverMessagesFunction",
+    "ParseInstructionFunction",
+    "PredictChannelsFunction",
+    "RecordResultsFunction",
+    "SegmentCustomersFunction"
+   ]
+  },
+  {
+   "id": "StateMachineFailedExecutionsAlarm",
+   "cfg": "StateMachineFailedExecutionsAlarm",
+   "type": "AWS::CloudWatch::Alarm",
+   "values": {
+    "AlarmName": "ai-cpaas-demo-orchestrator-failures-dev",
+    "AlarmDescription": "Campaign orchestrator executions are failing",
+    "AlarmActions": [
+     {
+      "ref": "AlarmTopic"
+     }
+    ],
+    "MetricName": "ExecutionsFailed",
+    "Namespace": "AWS/States",
+    "Statistic": "Sum",
+    "Period": 300,
+    "EvaluationPeriods": 1,
+    "Threshold": 3,
+    "ComparisonOperator": "GreaterThanThreshold",
+    "TreatMissingData": "notBreaching",
+    "Dimensions": [
+     {
+      "Name": "StateMachineArn",
+      "Value": {
+       "ref": "CampaignStateMachine"
+      }
+     }
+    ]
+   },
+   "refs": [
+    "AlarmTopic",
+    "CampaignStateMachine"
+   ]
+  },
+  {
+   "id": "CampaignLauncherFunctionLaunchCampaignPermission",
+   "cfg": "CampaignLauncherFunctionLaunchCampaignPermission",
+   "type": "AWS::Lambda::Permission",
+   "values": {
+    "Action": "lambda:InvokeFunction",
+    "FunctionName": {
+     "ref": "CampaignLauncherFunction"
+    },
+    "Principal": "apigateway.amazonaws.com",
+    "SourceArn": "arn:aws:execute-api:us-east-1:123456789012:{'ref': 'CampaignApi'}/*/POST/campaigns"
+   },
+   "refs": [
+    "CampaignApi",
+    "CampaignLauncherFunction"
+   ]
+  },
+  {
+   "id": "DeliveryStatusProcessorFunctionWhatsAppDeliveryStatusPermission",
+   "cfg": "DeliveryStatusProcessorFunctionWhatsAppDeliveryStatusPermission",
+   "type": "AWS::Lambda::Permission",
+   "values": {
+    "Action": "lambda:InvokeFunction",
+    "FunctionName": {
+     "ref": "DeliveryStatusProcessorFunction"
+    },
+    "Principal": "events.amazonaws.com",
+    "SourceArn": {
+     "ref": "DeliveryStatusProcessorFunctionWhatsAppDeliveryStatus",
+     "attr": "Arn"
+    }
+   },
+   "refs": [
+    "DeliveryStatusProcessorFunction",
+    "DeliveryStatusProcessorFunctionWhatsAppDeliveryStatus"
+   ]
+  },
+  {
+   "id": "CampaignStatusFunction",
+   "cfg": "CampaignStatusFunction",
+   "type": "AWS::Lambda::Function",
+   "values": {
+    "Code": {
+     "ZipFile": "def lambda_handler(event, context):\n    return {\"statusCode\": 200}\n"
+    },
+    "Description": "Return the campaign summary for a given campaign_id",
+    "FunctionName": "ai-cpaas-demo-campaign-status-dev",
+    "Handler": "index.lambda_handler",
+    "MemorySize": 256,
+    "Role": {
+     "ref": "CampaignStatusFunctionRole",
+     "attr": "Arn"
+    },
+    "Runtime": "python3.13",
+    "Timeout": 10,
+    "Environment": {
+     "Variables": {
+      "ENVIRONMENT": "dev",
+      "PROJECT_NAME": "ai-cpaas-demo",
+      "BEDROCK_MODEL_ID": "global.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "DELIVERY_TRACKING_TABLE": {
+       "ref": "DeliveryTrackingTable"
+      }
+     }
+    },
+    "Tags": [
+     {
+      "Key": "lambda:createdBy",
+      "Value": "SAM"
+     },
+     {
+      "Key": "Project",
+      "Value": "ai-cpaas-demo"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     }
+    ],
+    "TracingConfig": {
+     "Mode": "Active"
+    },
+    "Architectures": [
+     "arm64"
+    ]
+   },
+   "refs": [
+    "CampaignStatusFunctionRole",
+    "DeliveryTrackingTable"
+   ]
+  },
+  {
+   "id": "CampaignAssetsBucket",
+   "cfg": "CampaignAssetsBucket",
+   "type": "AWS::S3::Bucket",
+   "values": {
+    "BucketName": "ai-cpaas-demo-assets-dev-123456789012",
+    "BucketEncryption": {
+     "ServerSideEncryptionConfiguration": [
+      {
+       "ServerSideEncryptionByDefault": {
+        "SSEAlgorithm": "aws:kms",
+        "KMSMasterKeyID": {
+         "ref": "AppKmsKey"
+        }
+       }
+      }
+     ]
+    },
+    "PublicAccessBlockConfiguration": {
+     "BlockPublicAcls": true,
+     "BlockPublicPolicy": true,
+     "IgnorePublicAcls": true,
+     "RestrictPublicBuckets": true
+    },
+    "VersioningConfiguration": {
+     "Status": "Enabled"
+    }
+   },
+   "refs": [
+    "AppKmsKey"
+   ]
+  },
+  {
+   "id": "DeliveryStatusProcessorFunctionRole",
+   "cfg": "DeliveryStatusProcessorFunctionRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       }
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+     "arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess"
+    ],
+    "Policies": [
+     {
+      "PolicyName": "DeliveryStatusProcessorFunctionRolePolicy1",
+      "PolicyDocument": {
+       "Statement": [
+        {
+         "Action": [
+          "dynamodb:GetItem",
+          "dynamodb:DeleteItem",
+          "dynamodb:PutItem",
+          "dynamodb:Scan",
+          "dynamodb:Query",
+          "dynamodb:UpdateItem",
+          "dynamodb:BatchWriteItem",
+          "dynamodb:BatchGetItem",
+          "dynamodb:DescribeTable",
+          "dynamodb:ConditionCheckItem"
+         ],
+         "Effect": "Allow",
+         "Resource": [
+          "arn:aws:dynamodb:us-east-1:123456789012:table/{'ref': 'DeliveryTrackingTable'}",
+          "arn:aws:dynamodb:us-east-1:123456789012:table/{'ref': 'DeliveryTrackingTable'}/index/*"
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "PolicyName": "DeliveryStatusProcessorFunctionRolePolicy2",
+      "PolicyDocument": {
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "kms:Decrypt",
+          "kms:GenerateDataKey"
+         ],
+         "Resource": {
+          "ref": "AppKmsKey",
+          "attr": "Arn"
+         }
+        }
+       ]
+      }
+     }
+    ],
+    "Tags": [
+     {
+      "Key": "lambda:createdBy",
+      "Value": "SAM"
+     },
+     {
+      "Key": "Project",
+      "Value": "ai-cpaas-demo"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     }
+    ]
+   },
+   "refs": [
+    "AppKmsKey",
+    "DeliveryTrackingTable"
+   ]
+  },
+  {
+   "id": "RecordResultsFunction",
+   "cfg": "RecordResultsFunction",
+   "type": "AWS::Lambda::Function",
+   "values": {
+    "Code": {
+     "ZipFile": "def lambda_handler(event, context):\n    return {\"statusCode\": 200}\n"
+    },
+    "Description": "Persist campaign summary to delivery tracking table",
+    "FunctionName": "ai-cpaas-demo-record-results-dev",
+    "Handler": "index.lambda_handler",
+    "MemorySize": 256,
+    "Role": {
+     "ref": "RecordResultsFunctionRole",
+     "attr": "Arn"
+    },
+    "Runtime": "python3.13",
+    "Timeout": 30,
+    "Environment": {
+     "Variables": {
+      "ENVIRONMENT": "dev",
+      "PROJECT_NAME": "ai-cpaas-demo",
+      "BEDROCK_MODEL_ID": "global.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "DELIVERY_TRACKING_TABLE": {
+       "ref": "DeliveryTrackingTable"
+      }
+     }
+    },
+    "Tags": [
+     {
+      "Key": "lambda:createdBy",
+      "Value": "SAM"
+     },
+     {
+      "Key": "Project",
+      "Value": "ai-cpaas-demo"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     }
+    ],
+    "TracingConfig": {
+     "Mode": "Active"
+    },
+    "Architectures": [
+     "arm64"
+    ]
+   },
+   "refs": [
+    "DeliveryTrackingTable",
+    "RecordResultsFunctionRole"
+   ]
+  },
+  {
+   "id": "SegmentCustomersFunctionRole",
+   "cfg": "SegmentCustomersFunctionRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+    ],
+    "Policies": [
+     {
+      "PolicyName": "SegmentStagePermissions",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "dynamodb:GetItem",
+          "dynamodb:Query",
+          "dynamodb:Scan",
+          "dynamodb:BatchGetItem"
+         ],
+         "Resource": {
+          "ref": "CustomerProfilesTable",
+          "attr": "Arn"
+         }
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "kms:Decrypt",
+          "kms:GenerateDataKey"
+         ],
+         "Resource": {
+          "ref": "AppKmsKey",
+          "attr": "Arn"
+         }
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": [
+    "AppKmsKey",
+    "CustomerProfilesTable"
+   ]
+  },
+  {
+   "id": "CampaignStateMachine",
+   "cfg": "CampaignStateMachine",
+   "type": "AWS::StepFunctions::StateMachine",
+   "values": {
+    "DefinitionString": "{\n    \"Comment\": \"Campaign orchestration pipeline\",\n    \"StartAt\": \"ParseInstruction\",\n    \"States\": {\n        \"AdaptContent\": {\n            \"Next\": \"DeliverMessages\",\n            \"Resource\": \"${AdaptArn}\",\n            \"Type\": \"Task\"\n        },\n        \"CheckSafety\": {\n            \"Next\": \"AdaptContent\",\n            \"Resource\": \"${SafetyArn}\",\n            \"Type\": \"Task\"\n        },\n        \"DeliverMessages\": {\n            \"Next\": \"RecordResults\",\n            \"Resource\": \"${DeliverArn}\",\n            \"Type\": \"Task\"\n        },\n        \"ParseInstruction\": {\n            \"Next\": \"SegmentCustomers\",\n            \"Resource\": \"${ParseArn}\",\n            \"Type\": \"Task\"\n        },\n        \"PredictChannels\": {\n            \"Next\": \"CheckSafety\",\n            \"Resource\": \"${PredictArn}\",\n            \"Type\": \"Task\"\n        },\n        \"RecordResults\": {\n            \"End\": true,\n            \"Resource\": \"${RecordArn}\",\n            \"Type\": \"Task\"\n        },\n        \"SegmentCustomers\": {\n            \"Next\": \"PredictChannels\",\n            \"Resource\": \"${SegmentArn}\",\n            \"Type\": \"Task\"\n        }\n    }\n}",
+    "LoggingConfiguration": {
+     "Level": "ALL",
+     "IncludeExecutionData": false,
+     "Destinations": [
+      {
+       "CloudWatchLogsLogGroup": {
+        "LogGroupArn": {
+         "ref": "StateMachineLogGroup",
+         "attr": "Arn"
+        }
+       }
+      }
+     ]
+    },
+    "RoleArn": {
+     "ref": "CampaignStateMachineRole",
+     "attr": "Arn"
+    },
+    "StateMachineName": "ai-cpaas-demo-orchestrator-dev",
+    "StateMachineType": "STANDARD",
+    "Tags": [
+     {
+      "Key": "stateMachine:createdBy",
+      "Value": "SAM"
+     }
+    ],
+    "DefinitionSubstitutions": {
+     "ParseArn": {
+      "ref": "ParseInstructionFunction",
+      "attr": "Arn"
+     },
+     "SegmentArn": {
+      "ref": "SegmentCustomersFunction",
+      "attr": "Arn"
+     },
+     "PredictArn": {
+      "ref": "PredictChannelsFunction",
+      "attr": "Arn"
+     },
+     "SafetyArn": {
+      "ref": "CheckSafetyFunction",
+      "attr": "Arn"
+     },
+     "AdaptArn": {
+      "ref": "AdaptContentFunction",
+      "attr": "Arn"
+     },
+     "DeliverArn": {
+      "ref": "DeliverMessagesFunction",
+      "attr": "Arn"
+     },
+     "RecordArn": {
+      "ref": "RecordResultsFunction",
+      "attr": "Arn"
+     }
+    },
+    "TracingConfiguration": {
+     "Enabled": true
+    }
+   },
+   "refs": [
+    "AdaptContentFunction",
+    "CampaignStateMachineRole",
+    "CheckSafetyFunction",
+    "DeliverMessagesFunction",
+    "ParseInstructionFunction",
+    "PredictChannelsFunction",
+    "RecordResultsFunction",
+    "SegmentCustomersFunction",
+    "StateMachineLogGroup"
+   ]
+  },
+  {
+   "id": "CheckSafetyFunctionRole",
+   "cfg": "CheckSafetyFunctionRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       }
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+     "arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess"
+    ],
+    "Policies": [
+     {
+      "PolicyName": "CheckSafetyFunctionRolePolicy1",
+      "PolicyDocument": {
+       "Statement": [
+        {
+         "Action": [
+          "dynamodb:GetItem",
+          "dynamodb:Scan",
+          "dynamodb:Query",
+          "dynamodb:BatchGetItem",
+          "dynamodb:DescribeTable"
+         ],
+         "Effect": "Allow",
+         "Resource": [
+          "arn:aws:dynamodb:us-east-1:123456789012:table/{'ref': 'CustomerProfilesTable'}",
+          "arn:aws:dynamodb:us-east-1:123456789012:table/{'ref': 'CustomerProfilesTable'}/index/*"
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "PolicyName": "CheckSafetyFunctionRolePolicy2",
+      "PolicyDocument": {
+       "Statement": [
+        {
+         "Action": [
+          "dynamodb:GetItem",
+          "dynamodb:Scan",
+          "dynamodb:Query",
+          "dynamodb:BatchGetItem",
+          "dynamodb:DescribeTable"
+         ],
+         "Effect": "Allow",
+         "Resource": [
+          "arn:aws:dynamodb:us-east-1:123456789012:table/{'ref': 'RateLimitsTable'}",
+          "arn:aws:dynamodb:us-east-1:123456789012:table/{'ref': 'RateLimitsTable'}/index/*"
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "PolicyName": "CheckSafetyFunctionRolePolicy3",
+      "PolicyDocument": {
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "kms:Decrypt",
+          "kms:GenerateDataKey"
+         ],
+         "Resource": {
+          "ref": "AppKmsKey",
+          "attr": "Arn"
+         }
+        }
+       ]
+      }
+     }
+    ],
+    "Tags": [
+     {
+      "Key": "lambda:createdBy",
+      "Value": "SAM"
+     },
+     {
+      "Key": "Project",
+      "Value": "ai-cpaas-demo"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     }
+    ]
+   },
+   "refs": [
+    "AppKmsKey",
+    "CustomerProfilesTable",
+    "RateLimitsTable"
+   ]
+  },
+  {
+   "id": "ParseInstructionFunctionRole",
+   "cfg": "ParseInstructionFunctionRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       }
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+     "arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess"
+    ],
+    "Policies": [
+     {
+      "PolicyName": "ParseInstructionFunctionRolePolicy1",
+      "PolicyDocument": {
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "bedrock:InvokeModel"
+         ],
+         "Resource": [
+          "arn:aws:bedrock:us-east-1:123456789012:inference-profile/global.anthropic.claude-haiku-4-5-20251001-v1:0",
+          "arn:aws:bedrock:*::foundation-model/anthropic.*"
+         ]
+        }
+       ]
+      }
+     }
+    ],
+    "Tags": [
+     {
+      "Key": "lambda:createdBy",
+      "Value": "SAM"
+     },
+     {
+      "Key": "Project",
+      "Value": "ai-cpaas-demo"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "CheckSafetyFunction",
+   "cfg": "CheckSafetyFunction",
+   "type": "AWS::Lambda::Function",
+   "values": {
+    "Code": {
+     "ZipFile": "def lambda_handler(event, context):\n    return {\"statusCode\": 200}\n"
+    },
+    "Description": "Suppress messages to fatigued or negative-sentiment customers",
+    "FunctionName": "ai-cpaas-demo-check-safety-dev",
+    "Handler": "index.lambda_handler",
+    "MemorySize": 1024,
+    "Role": {
+     "ref": "CheckSafetyFunctionRole",
+     "attr": "Arn"
+    },
+    "Runtime": "python3.13",
+    "Timeout": 60,
+    "Environment": {
+     "Variables": {
+      "ENVIRONMENT": "dev",
+      "PROJECT_NAME": "ai-cpaas-demo",
+      "BEDROCK_MODEL_ID": "global.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "CUSTOMER_PROFILES_TABLE": {
+       "ref": "CustomerProfilesTable"
+      },
+      "RATE_LIMITS_TABLE": {
+       "ref": "RateLimitsTable"
+      }
+     }
+    },
+    "Tags": [
+     {
+      "Key": "lambda:createdBy",
+      "Value": "SAM"
+     },
+     {
+      "Key": "Project",
+      "Value": "ai-cpaas-demo"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     }
+    ],
+    "TracingConfig": {
+     "Mode": "Active"
+    },
+    "Architectures": [
+     "arm64"
+    ]
+   },
+   "refs": [
+    "CheckSafetyFunctionRole",
+    "CustomerProfilesTable",
+    "RateLimitsTable"
+   ]
+  },
+  {
+   "id": "RecordResultsFunctionRole",
+   "cfg": "RecordResultsFunctionRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       }
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+     "arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess"
+    ],
+    "Policies": [
+     {
+      "PolicyName": "RecordResultsFunctionRolePolicy1",
+      "PolicyDocument": {
+       "Statement": [
+        {
+         "Action": [
+          "dynamodb:GetItem",
+          "dynamodb:DeleteItem",
+          "dynamodb:PutItem",
+          "dynamodb:Scan",
+          "dynamodb:Query",
+          "dynamodb:UpdateItem",
+          "dynamodb:BatchWriteItem",
+          "dynamodb:BatchGetItem",
+          "dynamodb:DescribeTable",
+          "dynamodb:ConditionCheckItem"
+         ],
+         "Effect": "Allow",
+         "Resource": [
+          "arn:aws:dynamodb:us-east-1:123456789012:table/{'ref': 'DeliveryTrackingTable'}",
+          "arn:aws:dynamodb:us-east-1:123456789012:table/{'ref': 'DeliveryTrackingTable'}/index/*"
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "PolicyName": "RecordResultsFunctionRolePolicy2",
+      "PolicyDocument": {
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "kms:Decrypt",
+          "kms:GenerateDataKey"
+         ],
+         "Resource": {
+          "ref": "AppKmsKey",
+          "attr": "Arn"
+         }
+        }
+       ]
+      }
+     }
+    ],
+    "Tags": [
+     {
+      "Key": "lambda:createdBy",
+      "Value": "SAM"
+     },
+     {
+      "Key": "Project",
+      "Value": "ai-cpaas-demo"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     }
+    ]
+   },
+   "refs": [
+    "AppKmsKey",
+    "DeliveryTrackingTable"
+   ]
+  },
+  {
+   "id": "AlarmTopic",
+   "cfg": "AlarmTopic",
+   "type": "AWS::SNS::Topic",
+   "values": {
+    "TopicName": "ai-cpaas-demo-alarms-dev",
+    "DisplayName": "ai-cpaas-demo alarms (dev)",
+    "KmsMasterKeyId": {
+     "ref": "AppKmsKey"
+    }
+   },
+   "refs": [
+    "AppKmsKey"
+   ]
+  },
+  {
+   "id": "AdaptContentFunctionRole",
+   "cfg": "AdaptContentFunctionRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       }
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+     "arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess"
+    ],
+    "Policies": [
+     {
+      "PolicyName": "AdaptContentFunctionRolePolicy1",
+      "PolicyDocument": {
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "bedrock:InvokeModel"
+         ],
+         "Resource": [
+          "arn:aws:bedrock:us-east-1:123456789012:inference-profile/global.anthropic.claude-haiku-4-5-20251001-v1:0",
+          "arn:aws:bedrock:*::foundation-model/anthropic.*"
+         ]
+        }
+       ]
+      }
+     }
+    ],
+    "Tags": [
+     {
+      "Key": "lambda:createdBy",
+      "Value": "SAM"
+     },
+     {
+      "Key": "Project",
+      "Value": "ai-cpaas-demo"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "AppKmsKey",
+   "cfg": "AppKmsKey",
+   "type": "AWS::KMS::Key",
+   "values": {
+    "Description": "CMK for ai-cpaas-demo - dev",
+    "EnableKeyRotation": true,
+    "KeyPolicy": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "AWS": [
+         "arn:aws:iam::123456789012:root"
+        ]
+       },
+       "Action": [
+        "kms:*"
+       ],
+       "Resource": [
+        "*"
+       ]
+      },
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com",
+         "sns.amazonaws.com",
+         "states.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "kms:GenerateDataKey*",
+        "kms:Decrypt"
+       ],
+       "Resource": [
+        "*"
+       ]
+      },
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "logs.us-east-1.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "kms:Encrypt*",
+        "kms:Decrypt*",
+        "kms:ReEncrypt*",
+        "kms:GenerateDataKey*",
+        "kms:Describe*"
+       ],
+       "Resource": [
+        "*"
+       ],
+       "Condition": {
+        "ArnLike": {
+         "kms:EncryptionContext:aws:logs:arn": "arn:aws:logs:us-east-1:123456789012:log-group:*"
+        }
+       }
+      }
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "SegmentCustomersFunction",
+   "cfg": "SegmentCustomersFunction",
+   "type": "AWS::Lambda::Function",
+   "values": {
+    "Code": {
+     "ZipFile": "def lambda_handler(event, context):\n    return {\"statusCode\": 200}\n"
+    },
+    "Description": "Match parsed criteria to customer profiles in DynamoDB, optionally combined with OpenSearch vector search",
+    "FunctionName": "ai-cpaas-demo-segment-customers-dev",
+    "Handler": "index.lambda_handler",
+    "MemorySize": 1024,
+    "Role": {
+     "ref": "SegmentCustomersFunctionRole",
+     "attr": "Arn"
+    },
+    "Runtime": "python3.13",
+    "Timeout": 60,
+    "Environment": {
+     "Variables": {
+      "ENVIRONMENT": "dev",
+      "PROJECT_NAME": "ai-cpaas-demo",
+      "BEDROCK_MODEL_ID": "global.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "CUSTOMER_PROFILES_TABLE": {
+       "ref": "CustomerProfilesTable"
+      },
+      "EMBEDDING_MODEL_ID": "amazon.titan-embed-text-v2:0",
+      "VECTOR_COLLECTION_ENDPOINT": "",
+      "VECTOR_INDEX_NAME": ""
+     }
+    },
+    "Tags": [
+     {
+      "Key": "lambda:createdBy",
+      "Value": "SAM"
+     },
+     {
+      "Key": "Project",
+      "Value": "ai-cpaas-demo"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     }
+    ],
+    "TracingConfig": {
+     "Mode": "Active"
+    },
+    "Architectures": [
+     "arm64"
+    ]
+   },
+   "refs": [
+    "CustomerProfilesTable",
+    "SegmentCustomersFunctionRole"
+   ]
+  },
+  {
+   "id": "DeliveryTrackingTable",
+   "cfg": "DeliveryTrackingTable",
+   "type": "AWS::DynamoDB::Table",
+   "values": {
+    "TableName": "ai-cpaas-demo-delivery-tracking-dev",
+    "BillingMode": "PAY_PER_REQUEST",
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "message_id",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "customer_id",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "timestamp",
+      "AttributeType": "N"
+     }
+    ],
+    "KeySchema": [
+     {
+      "AttributeName": "message_id",
+      "KeyType": "HASH"
+     }
+    ],
+    "GlobalSecondaryIndexes": [
+     {
+      "IndexName": "customer-index",
+      "KeySchema": [
+       {
+        "AttributeName": "customer_id",
+        "KeyType": "HASH"
+       },
+       {
+        "AttributeName": "timestamp",
+        "KeyType": "RANGE"
+       }
+      ],
+      "Projection": {
+       "ProjectionType": "ALL"
+      }
+     }
+    ],
+    "TimeToLiveSpecification": {
+     "Enabled": true,
+     "AttributeName": "ttl"
+    },
+    "PointInTimeRecoverySpecification": {
+     "PointInTimeRecoveryEnabled": true
+    },
+    "SSESpecification": {
+     "SSEEnabled": true,
+     "SSEType": "KMS",
+     "KMSMasterKeyId": {
+      "ref": "AppKmsKey"
+     }
+    }
+   },
+   "refs": [
+    "AppKmsKey"
+   ]
+  },
+  {
+   "id": "StateMachineLogGroup",
+   "cfg": "StateMachineLogGroup",
+   "type": "AWS::Logs::LogGroup",
+   "values": {
+    "LogGroupName": "/aws/states/ai-cpaas-demo-orchestrator-dev",
+    "RetentionInDays": 30,
+    "KmsKeyId": {
+     "ref": "AppKmsKey",
+     "attr": "Arn"
+    }
+   },
+   "refs": [
+    "AppKmsKey"
+   ]
+  },
+  {
+   "id": "CampaignStatusFunctionRole",
+   "cfg": "CampaignStatusFunctionRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       }
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+     "arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess"
+    ],
+    "Policies": [
+     {
+      "PolicyName": "CampaignStatusFunctionRolePolicy1",
+      "PolicyDocument": {
+       "Statement": [
+        {
+         "Action": [
+          "dynamodb:GetItem",
+          "dynamodb:Scan",
+          "dynamodb:Query",
+          "dynamodb:BatchGetItem",
+          "dynamodb:DescribeTable"
+         ],
+         "Effect": "Allow",
+         "Resource": [
+          "arn:aws:dynamodb:us-east-1:123456789012:table/{'ref': 'DeliveryTrackingTable'}",
+          "arn:aws:dynamodb:us-east-1:123456789012:table/{'ref': 'DeliveryTrackingTable'}/index/*"
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "PolicyName": "CampaignStatusFunctionRolePolicy2",
+      "PolicyDocument": {
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "kms:Decrypt"
+         ],
+         "Resource": {
+          "ref": "AppKmsKey",
+          "attr": "Arn"
+         }
+        }
+       ]
+      }
+     }
+    ],
+    "Tags": [
+     {
+      "Key": "lambda:createdBy",
+      "Value": "SAM"
+     },
+     {
+      "Key": "Project",
+      "Value": "ai-cpaas-demo"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     }
+    ]
+   },
+   "refs": [
+    "AppKmsKey",
+    "DeliveryTrackingTable"
+   ]
+  },
+  {
+   "id": "AppKmsKeyAlias",
+   "cfg": "AppKmsKeyAlias",
+   "type": "AWS::KMS::Alias",
+   "values": {
+    "AliasName": "alias/ai-cpaas-demo-dev",
+    "TargetKeyId": {
+     "ref": "AppKmsKey"
+    }
+   },
+   "refs": [
+    "AppKmsKey"
+   ]
+  },
+  {
+   "id": "DeliveryStatusProcessorFunction",
+   "cfg": "DeliveryStatusProcessorFunction",
+   "type": "AWS::Lambda::Function",
+   "values": {
+    "Code": {
+     "ZipFile": "def lambda_handler(event, context):\n    return {\"statusCode\": 200}\n"
+    },
+    "Description": "Update delivery tracking when AWS End User Messaging emits status events",
+    "FunctionName": "ai-cpaas-demo-delivery-processor-dev",
+    "Handler": "index.lambda_handler",
+    "MemorySize": 256,
+    "Role": {
+     "ref": "DeliveryStatusProcessorFunctionRole",
+     "attr": "Arn"
+    },
+    "Runtime": "python3.13",
+    "Timeout": 30,
+    "Environment": {
+     "Variables": {
+      "ENVIRONMENT": "dev",
+      "PROJECT_NAME": "ai-cpaas-demo",
+      "BEDROCK_MODEL_ID": "global.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "DELIVERY_TRACKING_TABLE": {
+       "ref": "DeliveryTrackingTable"
+      }
+     }
+    },
+    "Tags": [
+     {
+      "Key": "lambda:createdBy",
+      "Value": "SAM"
+     },
+     {
+      "Key": "Project",
+      "Value": "ai-cpaas-demo"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     }
+    ],
+    "TracingConfig": {
+     "Mode": "Active"
+    },
+    "Architectures": [
+     "arm64"
+    ]
+   },
+   "refs": [
+    "DeliveryStatusProcessorFunctionRole",
+    "DeliveryTrackingTable"
+   ]
+  },
+  {
+   "id": "DeliverMessagesFunction",
+   "cfg": "DeliverMessagesFunction",
+   "type": "AWS::Lambda::Function",
+   "values": {
+    "Code": {
+     "ZipFile": "def lambda_handler(event, context):\n    return {\"statusCode\": 200}\n"
+    },
+    "Description": "Dispatch messages via AWS End User Messaging and SES",
+    "FunctionName": "ai-cpaas-demo-deliver-messages-dev",
+    "Handler": "index.lambda_handler",
+    "MemorySize": 1024,
+    "Role": {
+     "ref": "DeliverMessagesFunctionRole",
+     "attr": "Arn"
+    },
+    "Runtime": "python3.13",
+    "Timeout": 300,
+    "Environment": {
+     "Variables": {
+      "ENVIRONMENT": "dev",
+      "PROJECT_NAME": "ai-cpaas-demo",
+      "BEDROCK_MODEL_ID": "global.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "PHONE_POOL_ID": "",
+      "WHATSAPP_PHONE_NUMBER_ID": "",
+      "SENDER_EMAIL": "noreply@example.com",
+      "DELIVERY_TRACKING_TABLE": {
+       "ref": "DeliveryTrackingTable"
+      },
+      "RATE_LIMITS_TABLE": {
+       "ref": "RateLimitsTable"
+      }
+     }
+    },
+    "Tags": [
+     {
+      "Key": "lambda:createdBy",
+      "Value": "SAM"
+     },
+     {
+      "Key": "Project",
+      "Value": "ai-cpaas-demo"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     }
+    ],
+    "TracingConfig": {
+     "Mode": "Active"
+    },
+    "Architectures": [
+     "arm64"
+    ]
+   },
+   "refs": [
+    "DeliverMessagesFunctionRole",
+    "DeliveryTrackingTable",
+    "RateLimitsTable"
+   ]
+  },
+  {
+   "id": "DeliveryStatusProcessorFunctionSmsDeliveryStatus",
+   "cfg": "DeliveryStatusProcessorFunctionSmsDeliveryStatus",
+   "type": "AWS::Events::Rule",
+   "values": {
+    "EventPattern": {
+     "source": [
+      "aws.end-user-messaging"
+     ],
+     "detail-type": [
+      "SMS Delivery Status"
+     ]
+    },
+    "Targets": [
+     {
+      "Arn": {
+       "ref": "DeliveryStatusProcessorFunction",
+       "attr": "Arn"
+      },
+      "Id": "DeliveryStatusProcessorFunctionSmsDeliveryStatusLambdaTarget"
+     }
+    ]
+   },
+   "refs": [
+    "DeliveryStatusProcessorFunction"
+   ]
+  },
+  {
+   "id": "DeliverMessagesFunctionRole",
+   "cfg": "DeliverMessagesFunctionRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       }
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+     "arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess"
+    ],
+    "Policies": [
+     {
+      "PolicyName": "DeliverMessagesFunctionRolePolicy1",
+      "PolicyDocument": {
+       "Statement": [
+        {
+         "Action": [
+          "dynamodb:GetItem",
+          "dynamodb:DeleteItem",
+          "dynamodb:PutItem",
+          "dynamodb:Scan",
+          "dynamodb:Query",
+          "dynamodb:UpdateItem",
+          "dynamodb:BatchWriteItem",
+          "dynamodb:BatchGetItem",
+          "dynamodb:DescribeTable",
+          "dynamodb:ConditionCheckItem"
+         ],
+         "Effect": "Allow",
+         "Resource": [
+          "arn:aws:dynamodb:us-east-1:123456789012:table/{'ref': 'DeliveryTrackingTable'}",
+          "arn:aws:dynamodb:us-east-1:123456789012:table/{'ref': 'DeliveryTrackingTable'}/index/*"
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "PolicyName": "DeliverMessagesFunctionRolePolicy2",
+      "PolicyDocument": {
+       "Statement": [
+        {
+         "Action": [
+          "dynamodb:GetItem",
+          "dynamodb:DeleteItem",
+          "dynamodb:PutItem",
+          "dynamodb:Scan",
+          "dynamodb:Query",
+          "dynamodb:UpdateItem",
+          "dynamodb:BatchWriteItem",
+          "dynamodb:BatchGetItem",
+          "dynamodb:DescribeTable",
+          "dynamodb:ConditionCheckItem"
+         ],
+         "Effect": "Allow",
+         "Resource": [
+          "arn:aws:dynamodb:us-east-1:123456789012:table/{'ref': 'RateLimitsTable'}",
+          "arn:aws:dynamodb:us-east-1:123456789012:table/{'ref': 'RateLimitsTable'}/index/*"
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "PolicyName": "DeliverMessagesFunctionRolePolicy3",
+      "PolicyDocument": {
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "kms:Decrypt",
+          "kms:GenerateDataKey"
+         ],
+         "Resource": {
+          "ref": "AppKmsKey",
+          "attr": "Arn"
+         }
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "sms-voice:SendTextMessage",
+          "social-messaging:SendWhatsAppMessage"
+         ],
+         "Resource": [
+          "*"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "ses:SendEmail",
+          "ses:SendRawEmail"
+         ],
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     }
+    ],
+    "Tags": [
+     {
+      "Key": "lambda:createdBy",
+      "Value": "SAM"
+     },
+     {
+      "Key": "Project",
+      "Value": "ai-cpaas-demo"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     }
+    ]
+   },
+   "refs": [
+    "AppKmsKey",
+    "DeliveryTrackingTable",
+    "RateLimitsTable"
+   ]
+  },
+  {
+   "id": "PredictChannelsFunction",
+   "cfg": "PredictChannelsFunction",
+   "type": "AWS::Lambda::Function",
+   "values": {
+    "Code": {
+     "ZipFile": "def lambda_handler(event, context):\n    return {\"statusCode\": 200}\n"
+    },
+    "Description": "Predict the best channel per customer using SageMaker + heuristic fallback",
+    "FunctionName": "ai-cpaas-demo-predict-channels-dev",
+    "Handler": "index.lambda_handler",
+    "MemorySize": 1024,
+    "Role": {
+     "ref": "PredictChannelsFunctionRole",
+     "attr": "Arn"
+    },
+    "Runtime": "python3.13",
+    "Timeout": 60,
+    "Environment": {
+     "Variables": {
+      "ENVIRONMENT": "dev",
+      "PROJECT_NAME": "ai-cpaas-demo",
+      "BEDROCK_MODEL_ID": "global.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "CUSTOMER_PROFILES_TABLE": {
+       "ref": "CustomerProfilesTable"
+      }
+     }
+    },
+    "Tags": [
+     {
+      "Key": "lambda:createdBy",
+      "Value": "SAM"
+     },
+     {
+      "Key": "Project",
+      "Value": "ai-cpaas-demo"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     }
+    ],
+    "TracingConfig": {
+     "Mode": "Active"
+    },
+    "Architectures": [
+     "arm64"
+    ]
+   },
+   "refs": [
+    "CustomerProfilesTable",
+    "PredictChannelsFunctionRole"
+   ]
+  },
+  {
+   "id": "CampaignUserPoolClient",
+   "cfg": "CampaignUserPoolClient",
+   "type": "AWS::Cognito::UserPoolClient",
+   "values": {
+    "ClientName": "ai-cpaas-demo-launcher-dev",
+    "UserPoolId": {
+     "ref": "CampaignUserPool"
+    },
+    "GenerateSecret": false,
+    "ExplicitAuthFlows": [
+     "ALLOW_USER_PASSWORD_AUTH",
+     "ALLOW_REFRESH_TOKEN_AUTH"
+    ],
+    "AccessTokenValidity": 60,
+    "IdTokenValidity": 60,
+    "RefreshTokenValidity": 30,
+    "TokenValidityUnits": {
+     "AccessToken": "minutes",
+     "IdToken": "minutes",
+     "RefreshToken": "days"
+    }
+   },
+   "refs": [
+    "CampaignUserPool"
+   ]
+  },
+  {
+   "id": "ParseInstructionFunction",
+   "cfg": "ParseInstructionFunction",
+   "type": "AWS::Lambda::Function",
+   "values": {
+    "Code": {
+     "ZipFile": "def lambda_handler(event, context):\n    return {\"statusCode\": 200}\n"
+    },
+    "Description": "Parse marketer instruction into structured campaign fields via Bedrock",
+    "FunctionName": "ai-cpaas-demo-parse-instruction-dev",
+    "Handler": "index.lambda_handler",
+    "MemorySize": 1024,
+    "Role": {
+     "ref": "ParseInstructionFunctionRole",
+     "attr": "Arn"
+    },
+    "Runtime": "python3.13",
+    "Timeout": 60,
+    "Environment": {
+     "Variables": {
+      "ENVIRONMENT": "dev",
+      "PROJECT_NAME": "ai-cpaas-demo",
+      "BEDROCK_MODEL_ID": "global.anthropic.claude-haiku-4-5-20251001-v1:0"
+     }
+    },
+    "Tags": [
+     {
+      "Key": "lambda:createdBy",
+      "Value": "SAM"
+     },
+     {
+      "Key": "Project",
+      "Value": "ai-cpaas-demo"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     }
+    ],
+    "TracingConfig": {
+     "Mode": "Active"
+    },
+    "Architectures": [
+     "arm64"
+    ]
+   },
+   "refs": [
+    "ParseInstructionFunctionRole"
+   ]
+  },
+  {
+   "id": "CampaignApiStage",
+   "cfg": "CampaignApiStage",
+   "type": "AWS::ApiGatewayV2::Stage",
+   "values": {
+    "DefaultRouteSettings": {
+     "ThrottlingBurstLimit": 100,
+     "ThrottlingRateLimit": 50
+    },
+    "ApiId": {
+     "ref": "CampaignApi"
+    },
+    "StageName": "dev",
+    "Tags": {
+     "httpapi:createdBy": "SAM"
+    },
+    "AutoDeploy": true
+   },
+   "refs": [
+    "CampaignApi"
+   ]
+  },
+  {
+   "id": "CampaignUserPool",
+   "cfg": "CampaignUserPool",
+   "type": "AWS::Cognito::UserPool",
+   "values": {
+    "UserPoolName": "ai-cpaas-demo-users-dev",
+    "AutoVerifiedAttributes": [
+     "email"
+    ],
+    "UsernameAttributes": [
+     "email"
+    ],
+    "AdminCreateUserConfig": {
+     "AllowAdminCreateUserOnly": true
+    },
+    "Policies": {
+     "PasswordPolicy": {
+      "MinimumLength": 12,
+      "RequireLowercase": true,
+      "RequireUppercase": true,
+      "RequireNumbers": true,
+      "RequireSymbols": true
+     }
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "CampaignLauncherFunctionRole",
+   "cfg": "CampaignLauncherFunctionRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       }
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+     "arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess"
+    ],
+    "Policies": [
+     {
+      "PolicyName": "CampaignLauncherFunctionRolePolicy1",
+      "PolicyDocument": {
+       "Statement": [
+        {
+         "Action": [
+          "states:StartExecution"
+         ],
+         "Effect": "Allow",
+         "Resource": [
+          "arn:aws:states:us-east-1:123456789012:stateMachine:{'ref': 'CampaignStateMachine', 'attr': 'Name'}"
+         ]
+        }
+       ]
+      }
+     }
+    ],
+    "Tags": [
+     {
+      "Key": "lambda:createdBy",
+      "Value": "SAM"
+     },
+     {
+      "Key": "Project",
+      "Value": "ai-cpaas-demo"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     }
+    ]
+   },
+   "refs": [
+    "CampaignStateMachine"
+   ]
+  },
+  {
+   "id": "CampaignStatusFunctionGetCampaignPermission",
+   "cfg": "CampaignStatusFunctionGetCampaignPermission",
+   "type": "AWS::Lambda::Permission",
+   "values": {
+    "Action": "lambda:InvokeFunction",
+    "FunctionName": {
+     "ref": "CampaignStatusFunction"
+    },
+    "Principal": "apigateway.amazonaws.com",
+    "SourceArn": "arn:aws:execute-api:us-east-1:123456789012:{'ref': 'CampaignApi'}/*/GET/campaigns/*"
+   },
+   "refs": [
+    "CampaignApi",
+    "CampaignStatusFunction"
+   ]
+  },
+  {
+   "id": "CampaignLauncherFunction",
+   "cfg": "CampaignLauncherFunction",
+   "type": "AWS::Lambda::Function",
+   "values": {
+    "Code": {
+     "ZipFile": "def lambda_handler(event, context):\n    return {\"statusCode\": 200}\n"
+    },
+    "Description": "API Gateway entry point that starts the campaign state machine",
+    "FunctionName": "ai-cpaas-demo-campaign-launcher-dev",
+    "Handler": "index.lambda_handler",
+    "MemorySize": 256,
+    "Role": {
+     "ref": "CampaignLauncherFunctionRole",
+     "attr": "Arn"
+    },
+    "Runtime": "python3.13",
+    "Timeout": 10,
+    "Environment": {
+     "Variables": {
+      "ENVIRONMENT": "dev",
+      "PROJECT_NAME": "ai-cpaas-demo",
+      "BEDROCK_MODEL_ID": "global.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "STATE_MACHINE_ARN": {
+       "ref": "CampaignStateMachine"
+      }
+     }
+    },
+    "Tags": [
+     {
+      "Key": "lambda:createdBy",
+      "Value": "SAM"
+     },
+     {
+      "Key": "Project",
+      "Value": "ai-cpaas-demo"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     }
+    ],
+    "TracingConfig": {
+     "Mode": "Active"
+    },
+    "Architectures": [
+     "arm64"
+    ]
+   },
+   "refs": [
+    "CampaignLauncherFunctionRole",
+    "CampaignStateMachine"
+   ]
+  },
+  {
+   "id": "CustomerProfilesTable",
+   "cfg": "CustomerProfilesTable",
+   "type": "AWS::DynamoDB::Table",
+   "values": {
+    "TableName": "ai-cpaas-demo-customer-profiles-dev",
+    "BillingMode": "PAY_PER_REQUEST",
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "customer_id",
+      "AttributeType": "S"
+     }
+    ],
+    "KeySchema": [
+     {
+      "AttributeName": "customer_id",
+      "KeyType": "HASH"
+     }
+    ],
+    "PointInTimeRecoverySpecification": {
+     "PointInTimeRecoveryEnabled": true
+    },
+    "SSESpecification": {
+     "SSEEnabled": true,
+     "SSEType": "KMS",
+     "KMSMasterKeyId": {
+      "ref": "AppKmsKey"
+     }
+    }
+   },
+   "refs": [
+    "AppKmsKey"
+   ]
+  },
+  {
+   "id": "__parameter__.EnableSemanticSearch",
+   "cfg": "__parameter__.EnableSemanticSearch",
+   "type": "__parameter__",
+   "values": {
+    "name": "EnableSemanticSearch",
+    "type": "String",
+    "default": "false",
+    "allowed_values": [
+     "true",
+     "false"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.BedrockModelId",
+   "cfg": "__parameter__.BedrockModelId",
+   "type": "__parameter__",
+   "values": {
+    "name": "BedrockModelId",
+    "type": "String",
+    "default": "global.anthropic.claude-haiku-4-5-20251001-v1:0",
+    "allowed_values": [
+     "global.anthropic.claude-haiku-4-5-20251001-v1:0",
+     "global.anthropic.claude-sonnet-4-5-20250929-v1:0"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.EmbeddingModelId",
+   "cfg": "__parameter__.EmbeddingModelId",
+   "type": "__parameter__",
+   "values": {
+    "name": "EmbeddingModelId",
+    "type": "String",
+    "default": "amazon.titan-embed-text-v2:0",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.ProjectName",
+   "cfg": "__parameter__.ProjectName",
+   "type": "__parameter__",
+   "values": {
+    "name": "ProjectName",
+    "type": "String",
+    "default": "ai-cpaas-demo",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.WhatsAppPhoneNumberId",
+   "cfg": "__parameter__.WhatsAppPhoneNumberId",
+   "type": "__parameter__",
+   "values": {
+    "name": "WhatsAppPhoneNumberId",
+    "type": "String",
+    "default": "",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.Environment",
+   "cfg": "__parameter__.Environment",
+   "type": "__parameter__",
+   "values": {
+    "name": "Environment",
+    "type": "String",
+    "default": "dev",
+    "allowed_values": [
+     "dev",
+     "staging",
+     "prod"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.SenderEmail",
+   "cfg": "__parameter__.SenderEmail",
+   "type": "__parameter__",
+   "values": {
+    "name": "SenderEmail",
+    "type": "String",
+    "default": "noreply@example.com",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.PhonePoolId",
+   "cfg": "__parameter__.PhonePoolId",
+   "type": "__parameter__",
+   "values": {
+    "name": "PhonePoolId",
+    "type": "String",
+    "default": "",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.SeederPrincipalArn",
+   "cfg": "__parameter__.SeederPrincipalArn",
+   "type": "__parameter__",
+   "values": {
+    "name": "SeederPrincipalArn",
+    "type": "String",
+    "default": "",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.CampaignApiEndpoint",
+   "cfg": "__output__.CampaignApiEndpoint",
+   "type": "__output__",
+   "values": {
+    "name": "CampaignApiEndpoint",
+    "value": "https://${CampaignApi}.execute-api.us-east-1.amazonaws.com/dev/campaigns",
+    "description": "HTTP API endpoint for launching campaigns (POST /campaigns)",
+    "export": null
+   },
+   "refs": [
+    "CampaignApi"
+   ]
+  },
+  {
+   "id": "__output__.UserPoolId",
+   "cfg": "__output__.UserPoolId",
+   "type": "__output__",
+   "values": {
+    "name": "UserPoolId",
+    "value": {
+     "ref": "CampaignUserPool"
+    },
+    "description": "Cognito user pool that authenticates campaign launcher requests",
+    "export": null
+   },
+   "refs": [
+    "CampaignUserPool"
+   ]
+  },
+  {
+   "id": "__output__.UserPoolClientId",
+   "cfg": "__output__.UserPoolClientId",
+   "type": "__output__",
+   "values": {
+    "name": "UserPoolClientId",
+    "value": {
+     "ref": "CampaignUserPoolClient"
+    },
+    "description": "Cognito app client used to obtain access tokens for the API",
+    "export": null
+   },
+   "refs": [
+    "CampaignUserPoolClient"
+   ]
+  },
+  {
+   "id": "__output__.StateMachineArn",
+   "cfg": "__output__.StateMachineArn",
+   "type": "__output__",
+   "values": {
+    "name": "StateMachineArn",
+    "value": {
+     "ref": "CampaignStateMachine"
+    },
+    "description": "Step Functions state machine ARN",
+    "export": null
+   },
+   "refs": [
+    "CampaignStateMachine"
+   ]
+  },
+  {
+   "id": "__output__.CustomerProfilesTableName",
+   "cfg": "__output__.CustomerProfilesTableName",
+   "type": "__output__",
+   "values": {
+    "name": "CustomerProfilesTableName",
+    "value": {
+     "ref": "CustomerProfilesTable"
+    },
+    "description": "DynamoDB table for customer profiles",
+    "export": null
+   },
+   "refs": [
+    "CustomerProfilesTable"
+   ]
+  },
+  {
+   "id": "__output__.DeliveryTrackingTableName",
+   "cfg": "__output__.DeliveryTrackingTableName",
+   "type": "__output__",
+   "values": {
+    "name": "DeliveryTrackingTableName",
+    "value": {
+     "ref": "DeliveryTrackingTable"
+    },
+    "description": "DynamoDB table for delivery tracking",
+    "export": null
+   },
+   "refs": [
+    "DeliveryTrackingTable"
+   ]
+  },
+  {
+   "id": "__output__.CampaignAssetsBucketName",
+   "cfg": "__output__.CampaignAssetsBucketName",
+   "type": "__output__",
+   "values": {
+    "name": "CampaignAssetsBucketName",
+    "value": {
+     "ref": "CampaignAssetsBucket"
+    },
+    "description": "S3 bucket for campaign assets",
+    "export": null
+   },
+   "refs": [
+    "CampaignAssetsBucket"
+   ]
+  },
+  {
+   "id": "__output__.AlarmTopicArn",
+   "cfg": "__output__.AlarmTopicArn",
+   "type": "__output__",
+   "values": {
+    "name": "AlarmTopicArn",
+    "value": {
+     "ref": "AlarmTopic"
+    },
+    "description": "SNS topic for orchestrator alarms (subscribe your email)",
+    "export": null
+   },
+   "refs": [
+    "AlarmTopic"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::DynamoDB::Table.RateLimitsTable",
+   "cfg": "RateLimitsTable",
+   "type": "__declared__",
+   "refs": [
+    "AppKmsKey"
+   ],
+   "values": {
+    "type": "AWS::DynamoDB::Table",
+    "name": "RateLimitsTable",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "TableName": "ai-cpaas-demo-rate-limits-dev",
+     "BillingMode": "PAY_PER_REQUEST",
+     "AttributeDefinitions": [
+      {
+       "AttributeName": "limiter_key",
+       "AttributeType": "S"
+      }
+     ],
+     "KeySchema": [
+      {
+       "AttributeName": "limiter_key",
+       "KeyType": "HASH"
+      }
+     ],
+     "TimeToLiveSpecification": {
+      "Enabled": true,
+      "AttributeName": "ttl"
+     },
+     "PointInTimeRecoverySpecification": {
+      "PointInTimeRecoveryEnabled": true
+     },
+     "SSESpecification": {
+      "SSEEnabled": true,
+      "SSEType": "KMS",
+      "KMSMasterKeyId": {
+       "ref": "AppKmsKey"
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.PredictChannelsFunctionRole",
+   "cfg": "PredictChannelsFunctionRole",
+   "type": "__declared__",
+   "refs": [
+    "AppKmsKey",
+    "CustomerProfilesTable"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "PredictChannelsFunctionRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        }
+       }
+      ]
+     },
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+      "arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess"
+     ],
+     "Policies": [
+      {
+       "PolicyName": "PredictChannelsFunctionRolePolicy1",
+       "PolicyDocument": {
+        "Statement": [
+         {
+          "Action": [
+           "dynamodb:GetItem",
+           "dynamodb:Scan",
+           "dynamodb:Query",
+           "dynamodb:BatchGetItem",
+           "dynamodb:DescribeTable"
+          ],
+          "Effect": "Allow",
+          "Resource": [
+           "arn:aws:dynamodb:us-east-1:123456789012:table/{'ref': 'CustomerProfilesTable'}",
+           "arn:aws:dynamodb:us-east-1:123456789012:table/{'ref': 'CustomerProfilesTable'}/index/*"
+          ]
+         }
+        ]
+       }
+      },
+      {
+       "PolicyName": "PredictChannelsFunctionRolePolicy2",
+       "PolicyDocument": {
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "kms:Decrypt",
+           "kms:GenerateDataKey"
+          ],
+          "Resource": {
+           "ref": "AppKmsKey",
+           "attr": "Arn"
+          }
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "sagemaker:InvokeEndpoint"
+          ],
+          "Resource": [
+           "arn:aws:sagemaker:us-east-1:123456789012:endpoint/ai-cpaas-demo-channel-prediction-dev"
+          ]
+         }
+        ]
+       }
+      }
+     ],
+     "Tags": [
+      {
+       "Key": "lambda:createdBy",
+       "Value": "SAM"
+      },
+      {
+       "Key": "Project",
+       "Value": "ai-cpaas-demo"
+      },
+      {
+       "Key": "Environment",
+       "Value": "dev"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Events::Rule.DeliveryStatusProcessorFunctionWhatsAppDeliveryStatus",
+   "cfg": "DeliveryStatusProcessorFunctionWhatsAppDeliveryStatus",
+   "type": "__declared__",
+   "refs": [
+    "DeliveryStatusProcessorFunction"
+   ],
+   "values": {
+    "type": "AWS::Events::Rule",
+    "name": "DeliveryStatusProcessorFunctionWhatsAppDeliveryStatus",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "EventPattern": {
+      "source": [
+       "aws.end-user-messaging"
+      ],
+      "detail-type": [
+       "WhatsApp Delivery Status"
+      ]
+     },
+     "Targets": [
+      {
+       "Arn": {
+        "ref": "DeliveryStatusProcessorFunction",
+        "attr": "Arn"
+       },
+       "Id": "DeliveryStatusProcessorFunctionWhatsAppDeliveryStatuLambdaTarget"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Permission.DeliveryStatusProcessorFunctionSmsDeliveryStatusPermission",
+   "cfg": "DeliveryStatusProcessorFunctionSmsDeliveryStatusPermission",
+   "type": "__declared__",
+   "refs": [
+    "DeliveryStatusProcessorFunction",
+    "DeliveryStatusProcessorFunctionSmsDeliveryStatus"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Permission",
+    "name": "DeliveryStatusProcessorFunctionSmsDeliveryStatusPermission",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Action": "lambda:InvokeFunction",
+     "FunctionName": {
+      "ref": "DeliveryStatusProcessorFunction"
+     },
+     "Principal": "events.amazonaws.com",
+     "SourceArn": {
+      "ref": "DeliveryStatusProcessorFunctionSmsDeliveryStatus",
+      "attr": "Arn"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::OpenSearchServerless::SecurityPolicy.VectorCollectionNetworkPolicy",
+   "cfg": "VectorCollectionNetworkPolicy",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::OpenSearchServerless::SecurityPolicy",
+    "name": "VectorCollectionNetworkPolicy",
+    "gated": true,
+    "gate": "SemanticSearchEnabled",
+    "properties": {
+     "Name": "ai-cpaas-demo-vec-net-dev",
+     "Type": "network",
+     "Policy": "[\n  {\n    \"Rules\": [\n      {\"ResourceType\": \"collection\", \"Resource\": [\"collection/ai-cpaas-demo-vec-dev\"]},\n      {\"ResourceType\": \"dashboard\", \"Resource\": [\"collection/ai-cpaas-demo-vec-dev\"]}\n    ],\n    \"AllowFromPublic\": true\n  }\n]\n"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGatewayV2::Api.CampaignApi",
+   "cfg": "CampaignApi",
+   "type": "__declared__",
+   "refs": [
+    "CampaignLauncherFunction",
+    "CampaignStatusFunction",
+    "CampaignUserPool",
+    "CampaignUserPoolClient"
+   ],
+   "values": {
+    "type": "AWS::ApiGatewayV2::Api",
+    "name": "CampaignApi",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Body": {
+      "info": {
+       "version": "1.0",
+       "description": "Campaign launcher API for ai-cpaas-demo-dev",
+       "title": "stack"
+      },
+      "paths": {
+       "/campaigns": {
+        "post": {
+         "x-amazon-apigateway-integration": {
+          "httpMethod": "POST",
+          "type": "aws_proxy",
+          "uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/${CampaignLauncherFunction.Arn}/invocations",
+          "payloadFormatVersion": "2.0"
+         },
+         "security": [
+          {
+           "CampaignCognitoAuthorizer": []
+          }
+         ],
+         "responses": {}
+        }
+       },
+       "/campaigns/{campaign_id}": {
+        "get": {
+         "x-amazon-apigateway-integration": {
+          "httpMethod": "POST",
+          "type": "aws_proxy",
+          "uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/${CampaignStatusFunction.Arn}/invocations",
+          "payloadFormatVersion": "2.0"
+         },
+         "security": [
+          {
+           "CampaignCognitoAuthorizer": []
+          }
+         ],
+         "parameters": [
+          {
+           "required": true,
+           "name": "campaign_id",
+           "in": "path"
+          }
+         ],
+         "responses": {}
+        }
+       }
+      },
+      "x-amazon-apigateway-cors": {
+       "allowOrigins": [
+        "*"
+       ],
+       "allowHeaders": [
+        "content-type",
+        "authorization"
+       ],
+       "allowMethods": [
+        "POST",
+        "GET",
+        "OPTIONS"
+       ],
+       "maxAge": 600
+      },
+      "tags": [
+       {
+        "name": "httpapi:createdBy",
+        "x-amazon-apigateway-tag-value": "SAM"
+       }
+      ],
+      "openapi": "3.0.1",
+      "components": {
+       "securitySchemes": {
+        "CampaignCognitoAuthorizer": {
+         "type": "oauth2",
+         "x-amazon-apigateway-authorizer": {
+          "jwtConfiguration": {
+           "audience": [
+            {
+             "ref": "CampaignUserPoolClient"
+            }
+           ],
+           "issuer": "https://cognito-idp.us-east-1.amazonaws.com/${CampaignUserPool}"
+          },
+          "identitySource": "$request.header.Authorization",
+          "type": "jwt"
+         }
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::OpenSearchServerless::Collection.VectorCollection",
+   "cfg": "VectorCollection",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::OpenSearchServerless::Collection",
+    "name": "VectorCollection",
+    "gated": true,
+    "gate": "SemanticSearchEnabled",
+    "properties": {
+     "Name": "ai-cpaas-demo-vec-dev",
+     "Type": "VECTORSEARCH",
+     "StandbyReplicas": "DISABLED",
+     "Description": "Customer profile embeddings for semantic segmentation"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Function.AdaptContentFunction",
+   "cfg": "AdaptContentFunction",
+   "type": "__declared__",
+   "refs": [
+    "AdaptContentFunctionRole"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Function",
+    "name": "AdaptContentFunction",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Code": {
+      "ZipFile": "def lambda_handler(event, context):\n    return {\"statusCode\": 200}\n"
+     },
+     "Description": "Generate channel-specific message variants via Bedrock",
+     "FunctionName": "ai-cpaas-demo-adapt-content-dev",
+     "Handler": "index.lambda_handler",
+     "MemorySize": 1024,
+     "Role": {
+      "ref": "AdaptContentFunctionRole",
+      "attr": "Arn"
+     },
+     "Runtime": "python3.13",
+     "Timeout": 120,
+     "Environment": {
+      "Variables": {
+       "ENVIRONMENT": "dev",
+       "PROJECT_NAME": "ai-cpaas-demo",
+       "BEDROCK_MODEL_ID": "global.anthropic.claude-haiku-4-5-20251001-v1:0"
+      }
+     },
+     "Tags": [
+      {
+       "Key": "lambda:createdBy",
+       "Value": "SAM"
+      },
+      {
+       "Key": "Project",
+       "Value": "ai-cpaas-demo"
+      },
+      {
+       "Key": "Environment",
+       "Value": "dev"
+      }
+     ],
+     "TracingConfig": {
+      "Mode": "Active"
+     },
+     "Architectures": [
+      "arm64"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.CampaignStateMachineRole",
+   "cfg": "CampaignStateMachineRole",
+   "type": "__declared__",
+   "refs": [
+    "AdaptContentFunction",
+    "CheckSafetyFunction",
+    "DeliverMessagesFunction",
+    "ParseInstructionFunction",
+    "PredictChannelsFunction",
+    "RecordResultsFunction",
+    "SegmentCustomersFunction"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "CampaignStateMachineRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "states.amazonaws.com"
+         ]
+        }
+       }
+      ]
+     },
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/CloudWatchLogsFullAccess",
+      "arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess"
+     ],
+     "Policies": [
+      {
+       "PolicyName": "CampaignStateMachineRolePolicy0",
+       "PolicyDocument": {
+        "Statement": [
+         {
+          "Action": [
+           "lambda:InvokeFunction"
+          ],
+          "Effect": "Allow",
+          "Resource": [
+           "arn:aws:lambda:us-east-1:123456789012:function:{'ref': 'ParseInstructionFunction'}*"
+          ]
+         }
+        ]
+       }
+      },
+      {
+       "PolicyName": "CampaignStateMachineRolePolicy1",
+       "PolicyDocument": {
+        "Statement": [
+         {
+          "Action": [
+           "lambda:InvokeFunction"
+          ],
+          "Effect": "Allow",
+          "Resource": [
+           "arn:aws:lambda:us-east-1:123456789012:function:{'ref': 'SegmentCustomersFunction'}*"
+          ]
+         }
+        ]
+       }
+      },
+      {
+       "PolicyName": "CampaignStateMachineRolePolicy2",
+       "PolicyDocument": {
+        "Statement": [
+         {
+          "Action": [
+           "lambda:InvokeFunction"
+          ],
+          "Effect": "Allow",
+          "Resource": [
+           "arn:aws:lambda:us-east-1:123456789012:function:{'ref': 'PredictChannelsFunction'}*"
+          ]
+         }
+        ]
+       }
+      },
+      {
+       "PolicyName": "CampaignStateMachineRolePolicy3",
+       "PolicyDocument": {
+        "Statement": [
+         {
+          "Action": [
+           "lambda:InvokeFunction"
+          ],
+          "Effect": "Allow",
+          "Resource": [
+           "arn:aws:lambda:us-east-1:123456789012:function:{'ref': 'CheckSafetyFunction'}*"
+          ]
+         }
+        ]
+       }
+      },
+      {
+       "PolicyName": "CampaignStateMachineRolePolicy4",
+       "PolicyDocument": {
+        "Statement": [
+         {
+          "Action": [
+           "lambda:InvokeFunction"
+          ],
+          "Effect": "Allow",
+          "Resource": [
+           "arn:aws:lambda:us-east-1:123456789012:function:{'ref': 'AdaptContentFunction'}*"
+          ]
+         }
+        ]
+       }
+      },
+      {
+       "PolicyName": "CampaignStateMachineRolePolicy5",
+       "PolicyDocument": {
+        "Statement": [
+         {
+          "Action": [
+           "lambda:InvokeFunction"
+          ],
+          "Effect": "Allow",
+          "Resource": [
+           "arn:aws:lambda:us-east-1:123456789012:function:{'ref': 'DeliverMessagesFunction'}*"
+          ]
+         }
+        ]
+       }
+      },
+      {
+       "PolicyName": "CampaignStateMachineRolePolicy6",
+       "PolicyDocument": {
+        "Statement": [
+         {
+          "Action": [
+           "lambda:InvokeFunction"
+          ],
+          "Effect": "Allow",
+          "Resource": [
+           "arn:aws:lambda:us-east-1:123456789012:function:{'ref': 'RecordResultsFunction'}*"
+          ]
+         }
+        ]
+       }
+      }
+     ],
+     "Tags": [
+      {
+       "Key": "stateMachine:createdBy",
+       "Value": "SAM"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::CloudWatch::Alarm.StateMachineFailedExecutionsAlarm",
+   "cfg": "StateMachineFailedExecutionsAlarm",
+   "type": "__declared__",
+   "refs": [
+    "AlarmTopic",
+    "CampaignStateMachine"
+   ],
+   "values": {
+    "type": "AWS::CloudWatch::Alarm",
+    "name": "StateMachineFailedExecutionsAlarm",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AlarmName": "ai-cpaas-demo-orchestrator-failures-dev",
+     "AlarmDescription": "Campaign orchestrator executions are failing",
+     "AlarmActions": [
+      {
+       "ref": "AlarmTopic"
+      }
+     ],
+     "MetricName": "ExecutionsFailed",
+     "Namespace": "AWS/States",
+     "Statistic": "Sum",
+     "Period": 300,
+     "EvaluationPeriods": 1,
+     "Threshold": 3,
+     "ComparisonOperator": "GreaterThanThreshold",
+     "TreatMissingData": "notBreaching",
+     "Dimensions": [
+      {
+       "Name": "StateMachineArn",
+       "Value": {
+        "ref": "CampaignStateMachine"
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Permission.CampaignLauncherFunctionLaunchCampaignPermission",
+   "cfg": "CampaignLauncherFunctionLaunchCampaignPermission",
+   "type": "__declared__",
+   "refs": [
+    "CampaignApi",
+    "CampaignLauncherFunction"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Permission",
+    "name": "CampaignLauncherFunctionLaunchCampaignPermission",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Action": "lambda:InvokeFunction",
+     "FunctionName": {
+      "ref": "CampaignLauncherFunction"
+     },
+     "Principal": "apigateway.amazonaws.com",
+     "SourceArn": "arn:aws:execute-api:us-east-1:123456789012:{'ref': 'CampaignApi'}/*/POST/campaigns"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Permission.DeliveryStatusProcessorFunctionWhatsAppDeliveryStatusPermission",
+   "cfg": "DeliveryStatusProcessorFunctionWhatsAppDeliveryStatusPermission",
+   "type": "__declared__",
+   "refs": [
+    "DeliveryStatusProcessorFunction",
+    "DeliveryStatusProcessorFunctionWhatsAppDeliveryStatus"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Permission",
+    "name": "DeliveryStatusProcessorFunctionWhatsAppDeliveryStatusPermission",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Action": "lambda:InvokeFunction",
+     "FunctionName": {
+      "ref": "DeliveryStatusProcessorFunction"
+     },
+     "Principal": "events.amazonaws.com",
+     "SourceArn": {
+      "ref": "DeliveryStatusProcessorFunctionWhatsAppDeliveryStatus",
+      "attr": "Arn"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::OpenSearchServerless::AccessPolicy.VectorCollectionAccessPolicy",
+   "cfg": "VectorCollectionAccessPolicy",
+   "type": "__declared__",
+   "refs": [
+    "SegmentCustomersFunctionRole"
+   ],
+   "values": {
+    "type": "AWS::OpenSearchServerless::AccessPolicy",
+    "name": "VectorCollectionAccessPolicy",
+    "gated": true,
+    "gate": "SemanticSearchEnabled",
+    "properties": {
+     "Name": "ai-cpaas-demo-vec-acc-dev",
+     "Type": "data",
+     "Policy": "[\n  {\n    \"Rules\": [\n      {\n        \"ResourceType\": \"collection\",\n        \"Resource\": [\"collection/ai-cpaas-demo-vec-dev\"],\n        \"Permission\": [\"aoss:CreateCollectionItems\", \"aoss:UpdateCollectionItems\", \"aoss:DescribeCollectionItems\"]\n      },\n      {\n        \"ResourceType\": \"index\",\n        \"Resource\": [\"index/ai-cpaas-demo-vec-dev/*\"],\n        \"Permission\": [\"aoss:CreateIndex\", \"aoss:DescribeIndex\", \"aoss:ReadDocument\", \"aoss:WriteDocument\", \"aoss:UpdateIndex\"]\n      }\n    ],\n    \"Principal\": [\n      \"${SegmentCustomersFunctionRole.Arn}\",\n      \"\"\n    ]\n  }\n]\n"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Function.CampaignStatusFunction",
+   "cfg": "CampaignStatusFunction",
+   "type": "__declared__",
+   "refs": [
+    "CampaignStatusFunctionRole",
+    "DeliveryTrackingTable"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Function",
+    "name": "CampaignStatusFunction",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Code": {
+      "ZipFile": "def lambda_handler(event, context):\n    return {\"statusCode\": 200}\n"
+     },
+     "Description": "Return the campaign summary for a given campaign_id",
+     "FunctionName": "ai-cpaas-demo-campaign-status-dev",
+     "Handler": "index.lambda_handler",
+     "MemorySize": 256,
+     "Role": {
+      "ref": "CampaignStatusFunctionRole",
+      "attr": "Arn"
+     },
+     "Runtime": "python3.13",
+     "Timeout": 10,
+     "Environment": {
+      "Variables": {
+       "ENVIRONMENT": "dev",
+       "PROJECT_NAME": "ai-cpaas-demo",
+       "BEDROCK_MODEL_ID": "global.anthropic.claude-haiku-4-5-20251001-v1:0",
+       "DELIVERY_TRACKING_TABLE": {
+        "ref": "DeliveryTrackingTable"
+       }
+      }
+     },
+     "Tags": [
+      {
+       "Key": "lambda:createdBy",
+       "Value": "SAM"
+      },
+      {
+       "Key": "Project",
+       "Value": "ai-cpaas-demo"
+      },
+      {
+       "Key": "Environment",
+       "Value": "dev"
+      }
+     ],
+     "TracingConfig": {
+      "Mode": "Active"
+     },
+     "Architectures": [
+      "arm64"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::S3::Bucket.CampaignAssetsBucket",
+   "cfg": "CampaignAssetsBucket",
+   "type": "__declared__",
+   "refs": [
+    "AppKmsKey"
+   ],
+   "values": {
+    "type": "AWS::S3::Bucket",
+    "name": "CampaignAssetsBucket",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "BucketName": "ai-cpaas-demo-assets-dev-123456789012",
+     "BucketEncryption": {
+      "ServerSideEncryptionConfiguration": [
+       {
+        "ServerSideEncryptionByDefault": {
+         "SSEAlgorithm": "aws:kms",
+         "KMSMasterKeyID": {
+          "ref": "AppKmsKey"
+         }
+        }
+       }
+      ]
+     },
+     "PublicAccessBlockConfiguration": {
+      "BlockPublicAcls": true,
+      "BlockPublicPolicy": true,
+      "IgnorePublicAcls": true,
+      "RestrictPublicBuckets": true
+     },
+     "VersioningConfiguration": {
+      "Status": "Enabled"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.DeliveryStatusProcessorFunctionRole",
+   "cfg": "DeliveryStatusProcessorFunctionRole",
+   "type": "__declared__",
+   "refs": [
+    "AppKmsKey",
+    "DeliveryTrackingTable"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "DeliveryStatusProcessorFunctionRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        }
+       }
+      ]
+     },
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+      "arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess"
+     ],
+     "Policies": [
+      {
+       "PolicyName": "DeliveryStatusProcessorFunctionRolePolicy1",
+       "PolicyDocument": {
+        "Statement": [
+         {
+          "Action": [
+           "dynamodb:GetItem",
+           "dynamodb:DeleteItem",
+           "dynamodb:PutItem",
+           "dynamodb:Scan",
+           "dynamodb:Query",
+           "dynamodb:UpdateItem",
+           "dynamodb:BatchWriteItem",
+           "dynamodb:BatchGetItem",
+           "dynamodb:DescribeTable",
+           "dynamodb:ConditionCheckItem"
+          ],
+          "Effect": "Allow",
+          "Resource": [
+           "arn:aws:dynamodb:us-east-1:123456789012:table/{'ref': 'DeliveryTrackingTable'}",
+           "arn:aws:dynamodb:us-east-1:123456789012:table/{'ref': 'DeliveryTrackingTable'}/index/*"
+          ]
+         }
+        ]
+       }
+      },
+      {
+       "PolicyName": "DeliveryStatusProcessorFunctionRolePolicy2",
+       "PolicyDocument": {
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "kms:Decrypt",
+           "kms:GenerateDataKey"
+          ],
+          "Resource": {
+           "ref": "AppKmsKey",
+           "attr": "Arn"
+          }
+         }
+        ]
+       }
+      }
+     ],
+     "Tags": [
+      {
+       "Key": "lambda:createdBy",
+       "Value": "SAM"
+      },
+      {
+       "Key": "Project",
+       "Value": "ai-cpaas-demo"
+      },
+      {
+       "Key": "Environment",
+       "Value": "dev"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Function.RecordResultsFunction",
+   "cfg": "RecordResultsFunction",
+   "type": "__declared__",
+   "refs": [
+    "DeliveryTrackingTable",
+    "RecordResultsFunctionRole"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Function",
+    "name": "RecordResultsFunction",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Code": {
+      "ZipFile": "def lambda_handler(event, context):\n    return {\"statusCode\": 200}\n"
+     },
+     "Description": "Persist campaign summary to delivery tracking table",
+     "FunctionName": "ai-cpaas-demo-record-results-dev",
+     "Handler": "index.lambda_handler",
+     "MemorySize": 256,
+     "Role": {
+      "ref": "RecordResultsFunctionRole",
+      "attr": "Arn"
+     },
+     "Runtime": "python3.13",
+     "Timeout": 30,
+     "Environment": {
+      "Variables": {
+       "ENVIRONMENT": "dev",
+       "PROJECT_NAME": "ai-cpaas-demo",
+       "BEDROCK_MODEL_ID": "global.anthropic.claude-haiku-4-5-20251001-v1:0",
+       "DELIVERY_TRACKING_TABLE": {
+        "ref": "DeliveryTrackingTable"
+       }
+      }
+     },
+     "Tags": [
+      {
+       "Key": "lambda:createdBy",
+       "Value": "SAM"
+      },
+      {
+       "Key": "Project",
+       "Value": "ai-cpaas-demo"
+      },
+      {
+       "Key": "Environment",
+       "Value": "dev"
+      }
+     ],
+     "TracingConfig": {
+      "Mode": "Active"
+     },
+     "Architectures": [
+      "arm64"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::OpenSearchServerless::SecurityPolicy.VectorCollectionEncryptionPolicy",
+   "cfg": "VectorCollectionEncryptionPolicy",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::OpenSearchServerless::SecurityPolicy",
+    "name": "VectorCollectionEncryptionPolicy",
+    "gated": true,
+    "gate": "SemanticSearchEnabled",
+    "properties": {
+     "Name": "ai-cpaas-demo-vec-enc-dev",
+     "Type": "encryption",
+     "Policy": "{\n  \"Rules\": [\n    {\"ResourceType\": \"collection\", \"Resource\": [\"collection/ai-cpaas-demo-vec-dev\"]}\n  ],\n  \"AWSOwnedKey\": true\n}\n"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.SegmentCustomersFunctionRole",
+   "cfg": "SegmentCustomersFunctionRole",
+   "type": "__declared__",
+   "refs": [
+    "AppKmsKey",
+    "CustomerProfilesTable"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "SegmentCustomersFunctionRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+     ],
+     "Policies": [
+      {
+       "PolicyName": "SegmentStagePermissions",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "dynamodb:GetItem",
+           "dynamodb:Query",
+           "dynamodb:Scan",
+           "dynamodb:BatchGetItem"
+          ],
+          "Resource": {
+           "ref": "CustomerProfilesTable",
+           "attr": "Arn"
+          }
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "kms:Decrypt",
+           "kms:GenerateDataKey"
+          ],
+          "Resource": {
+           "ref": "AppKmsKey",
+           "attr": "Arn"
+          }
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::StepFunctions::StateMachine.CampaignStateMachine",
+   "cfg": "CampaignStateMachine",
+   "type": "__declared__",
+   "refs": [
+    "AdaptContentFunction",
+    "CampaignStateMachineRole",
+    "CheckSafetyFunction",
+    "DeliverMessagesFunction",
+    "ParseInstructionFunction",
+    "PredictChannelsFunction",
+    "RecordResultsFunction",
+    "SegmentCustomersFunction",
+    "StateMachineLogGroup"
+   ],
+   "values": {
+    "type": "AWS::StepFunctions::StateMachine",
+    "name": "CampaignStateMachine",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "DefinitionString": "{\n    \"Comment\": \"Campaign orchestration pipeline\",\n    \"StartAt\": \"ParseInstruction\",\n    \"States\": {\n        \"AdaptContent\": {\n            \"Next\": \"DeliverMessages\",\n            \"Resource\": \"${AdaptArn}\",\n            \"Type\": \"Task\"\n        },\n        \"CheckSafety\": {\n            \"Next\": \"AdaptContent\",\n            \"Resource\": \"${SafetyArn}\",\n            \"Type\": \"Task\"\n        },\n        \"DeliverMessages\": {\n            \"Next\": \"RecordResults\",\n            \"Resource\": \"${DeliverArn}\",\n            \"Type\": \"Task\"\n        },\n        \"ParseInstruction\": {\n            \"Next\": \"SegmentCustomers\",\n            \"Resource\": \"${ParseArn}\",\n            \"Type\": \"Task\"\n        },\n        \"PredictChannels\": {\n            \"Next\": \"CheckSafety\",\n            \"Resource\": \"${PredictArn}\",\n            \"Type\": \"Task\"\n        },\n        \"RecordResults\": {\n            \"End\": true,\n            \"Resource\": \"${RecordArn}\",\n            \"Type\": \"Task\"\n        },\n        \"SegmentCustomers\": {\n            \"Next\": \"PredictChannels\",\n            \"Resource\": \"${SegmentArn}\",\n            \"Type\": \"Task\"\n        }\n    }\n}",
+     "LoggingConfiguration": {
+      "Level": "ALL",
+      "IncludeExecutionData": false,
+      "Destinations": [
+       {
+        "CloudWatchLogsLogGroup": {
+         "LogGroupArn": {
+          "ref": "StateMachineLogGroup",
+          "attr": "Arn"
+         }
+        }
+       }
+      ]
+     },
+     "RoleArn": {
+      "ref": "CampaignStateMachineRole",
+      "attr": "Arn"
+     },
+     "StateMachineName": "ai-cpaas-demo-orchestrator-dev",
+     "StateMachineType": "STANDARD",
+     "Tags": [
+      {
+       "Key": "stateMachine:createdBy",
+       "Value": "SAM"
+      }
+     ],
+     "DefinitionSubstitutions": {
+      "ParseArn": {
+       "ref": "ParseInstructionFunction",
+       "attr": "Arn"
+      },
+      "SegmentArn": {
+       "ref": "SegmentCustomersFunction",
+       "attr": "Arn"
+      },
+      "PredictArn": {
+       "ref": "PredictChannelsFunction",
+       "attr": "Arn"
+      },
+      "SafetyArn": {
+       "ref": "CheckSafetyFunction",
+       "attr": "Arn"
+      },
+      "AdaptArn": {
+       "ref": "AdaptContentFunction",
+       "attr": "Arn"
+      },
+      "DeliverArn": {
+       "ref": "DeliverMessagesFunction",
+       "attr": "Arn"
+      },
+      "RecordArn": {
+       "ref": "RecordResultsFunction",
+       "attr": "Arn"
+      }
+     },
+     "TracingConfiguration": {
+      "Enabled": true
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.CheckSafetyFunctionRole",
+   "cfg": "CheckSafetyFunctionRole",
+   "type": "__declared__",
+   "refs": [
+    "AppKmsKey",
+    "CustomerProfilesTable",
+    "RateLimitsTable"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "CheckSafetyFunctionRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        }
+       }
+      ]
+     },
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+      "arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess"
+     ],
+     "Policies": [
+      {
+       "PolicyName": "CheckSafetyFunctionRolePolicy1",
+       "PolicyDocument": {
+        "Statement": [
+         {
+          "Action": [
+           "dynamodb:GetItem",
+           "dynamodb:Scan",
+           "dynamodb:Query",
+           "dynamodb:BatchGetItem",
+           "dynamodb:DescribeTable"
+          ],
+          "Effect": "Allow",
+          "Resource": [
+           "arn:aws:dynamodb:us-east-1:123456789012:table/{'ref': 'CustomerProfilesTable'}",
+           "arn:aws:dynamodb:us-east-1:123456789012:table/{'ref': 'CustomerProfilesTable'}/index/*"
+          ]
+         }
+        ]
+       }
+      },
+      {
+       "PolicyName": "CheckSafetyFunctionRolePolicy2",
+       "PolicyDocument": {
+        "Statement": [
+         {
+          "Action": [
+           "dynamodb:GetItem",
+           "dynamodb:Scan",
+           "dynamodb:Query",
+           "dynamodb:BatchGetItem",
+           "dynamodb:DescribeTable"
+          ],
+          "Effect": "Allow",
+          "Resource": [
+           "arn:aws:dynamodb:us-east-1:123456789012:table/{'ref': 'RateLimitsTable'}",
+           "arn:aws:dynamodb:us-east-1:123456789012:table/{'ref': 'RateLimitsTable'}/index/*"
+          ]
+         }
+        ]
+       }
+      },
+      {
+       "PolicyName": "CheckSafetyFunctionRolePolicy3",
+       "PolicyDocument": {
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "kms:Decrypt",
+           "kms:GenerateDataKey"
+          ],
+          "Resource": {
+           "ref": "AppKmsKey",
+           "attr": "Arn"
+          }
+         }
+        ]
+       }
+      }
+     ],
+     "Tags": [
+      {
+       "Key": "lambda:createdBy",
+       "Value": "SAM"
+      },
+      {
+       "Key": "Project",
+       "Value": "ai-cpaas-demo"
+      },
+      {
+       "Key": "Environment",
+       "Value": "dev"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.ParseInstructionFunctionRole",
+   "cfg": "ParseInstructionFunctionRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "ParseInstructionFunctionRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        }
+       }
+      ]
+     },
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+      "arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess"
+     ],
+     "Policies": [
+      {
+       "PolicyName": "ParseInstructionFunctionRolePolicy1",
+       "PolicyDocument": {
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "bedrock:InvokeModel"
+          ],
+          "Resource": [
+           "arn:aws:bedrock:us-east-1:123456789012:inference-profile/global.anthropic.claude-haiku-4-5-20251001-v1:0",
+           "arn:aws:bedrock:*::foundation-model/anthropic.*"
+          ]
+         }
+        ]
+       }
+      }
+     ],
+     "Tags": [
+      {
+       "Key": "lambda:createdBy",
+       "Value": "SAM"
+      },
+      {
+       "Key": "Project",
+       "Value": "ai-cpaas-demo"
+      },
+      {
+       "Key": "Environment",
+       "Value": "dev"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Function.CheckSafetyFunction",
+   "cfg": "CheckSafetyFunction",
+   "type": "__declared__",
+   "refs": [
+    "CheckSafetyFunctionRole",
+    "CustomerProfilesTable",
+    "RateLimitsTable"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Function",
+    "name": "CheckSafetyFunction",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Code": {
+      "ZipFile": "def lambda_handler(event, context):\n    return {\"statusCode\": 200}\n"
+     },
+     "Description": "Suppress messages to fatigued or negative-sentiment customers",
+     "FunctionName": "ai-cpaas-demo-check-safety-dev",
+     "Handler": "index.lambda_handler",
+     "MemorySize": 1024,
+     "Role": {
+      "ref": "CheckSafetyFunctionRole",
+      "attr": "Arn"
+     },
+     "Runtime": "python3.13",
+     "Timeout": 60,
+     "Environment": {
+      "Variables": {
+       "ENVIRONMENT": "dev",
+       "PROJECT_NAME": "ai-cpaas-demo",
+       "BEDROCK_MODEL_ID": "global.anthropic.claude-haiku-4-5-20251001-v1:0",
+       "CUSTOMER_PROFILES_TABLE": {
+        "ref": "CustomerProfilesTable"
+       },
+       "RATE_LIMITS_TABLE": {
+        "ref": "RateLimitsTable"
+       }
+      }
+     },
+     "Tags": [
+      {
+       "Key": "lambda:createdBy",
+       "Value": "SAM"
+      },
+      {
+       "Key": "Project",
+       "Value": "ai-cpaas-demo"
+      },
+      {
+       "Key": "Environment",
+       "Value": "dev"
+      }
+     ],
+     "TracingConfig": {
+      "Mode": "Active"
+     },
+     "Architectures": [
+      "arm64"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.RecordResultsFunctionRole",
+   "cfg": "RecordResultsFunctionRole",
+   "type": "__declared__",
+   "refs": [
+    "AppKmsKey",
+    "DeliveryTrackingTable"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "RecordResultsFunctionRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        }
+       }
+      ]
+     },
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+      "arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess"
+     ],
+     "Policies": [
+      {
+       "PolicyName": "RecordResultsFunctionRolePolicy1",
+       "PolicyDocument": {
+        "Statement": [
+         {
+          "Action": [
+           "dynamodb:GetItem",
+           "dynamodb:DeleteItem",
+           "dynamodb:PutItem",
+           "dynamodb:Scan",
+           "dynamodb:Query",
+           "dynamodb:UpdateItem",
+           "dynamodb:BatchWriteItem",
+           "dynamodb:BatchGetItem",
+           "dynamodb:DescribeTable",
+           "dynamodb:ConditionCheckItem"
+          ],
+          "Effect": "Allow",
+          "Resource": [
+           "arn:aws:dynamodb:us-east-1:123456789012:table/{'ref': 'DeliveryTrackingTable'}",
+           "arn:aws:dynamodb:us-east-1:123456789012:table/{'ref': 'DeliveryTrackingTable'}/index/*"
+          ]
+         }
+        ]
+       }
+      },
+      {
+       "PolicyName": "RecordResultsFunctionRolePolicy2",
+       "PolicyDocument": {
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "kms:Decrypt",
+           "kms:GenerateDataKey"
+          ],
+          "Resource": {
+           "ref": "AppKmsKey",
+           "attr": "Arn"
+          }
+         }
+        ]
+       }
+      }
+     ],
+     "Tags": [
+      {
+       "Key": "lambda:createdBy",
+       "Value": "SAM"
+      },
+      {
+       "Key": "Project",
+       "Value": "ai-cpaas-demo"
+      },
+      {
+       "Key": "Environment",
+       "Value": "dev"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SNS::Topic.AlarmTopic",
+   "cfg": "AlarmTopic",
+   "type": "__declared__",
+   "refs": [
+    "AppKmsKey"
+   ],
+   "values": {
+    "type": "AWS::SNS::Topic",
+    "name": "AlarmTopic",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "TopicName": "ai-cpaas-demo-alarms-dev",
+     "DisplayName": "ai-cpaas-demo alarms (dev)",
+     "KmsMasterKeyId": {
+      "ref": "AppKmsKey"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.AdaptContentFunctionRole",
+   "cfg": "AdaptContentFunctionRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "AdaptContentFunctionRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        }
+       }
+      ]
+     },
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+      "arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess"
+     ],
+     "Policies": [
+      {
+       "PolicyName": "AdaptContentFunctionRolePolicy1",
+       "PolicyDocument": {
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "bedrock:InvokeModel"
+          ],
+          "Resource": [
+           "arn:aws:bedrock:us-east-1:123456789012:inference-profile/global.anthropic.claude-haiku-4-5-20251001-v1:0",
+           "arn:aws:bedrock:*::foundation-model/anthropic.*"
+          ]
+         }
+        ]
+       }
+      }
+     ],
+     "Tags": [
+      {
+       "Key": "lambda:createdBy",
+       "Value": "SAM"
+      },
+      {
+       "Key": "Project",
+       "Value": "ai-cpaas-demo"
+      },
+      {
+       "Key": "Environment",
+       "Value": "dev"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::KMS::Key.AppKmsKey",
+   "cfg": "AppKmsKey",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::KMS::Key",
+    "name": "AppKmsKey",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Description": "CMK for ai-cpaas-demo - dev",
+     "EnableKeyRotation": true,
+     "KeyPolicy": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "AWS": [
+          "arn:aws:iam::123456789012:root"
+         ]
+        },
+        "Action": [
+         "kms:*"
+        ],
+        "Resource": [
+         "*"
+        ]
+       },
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com",
+          "sns.amazonaws.com",
+          "states.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "kms:GenerateDataKey*",
+         "kms:Decrypt"
+        ],
+        "Resource": [
+         "*"
+        ]
+       },
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "logs.us-east-1.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "kms:Encrypt*",
+         "kms:Decrypt*",
+         "kms:ReEncrypt*",
+         "kms:GenerateDataKey*",
+         "kms:Describe*"
+        ],
+        "Resource": [
+         "*"
+        ],
+        "Condition": {
+         "ArnLike": {
+          "kms:EncryptionContext:aws:logs:arn": "arn:aws:logs:us-east-1:123456789012:log-group:*"
+         }
+        }
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Function.SegmentCustomersFunction",
+   "cfg": "SegmentCustomersFunction",
+   "type": "__declared__",
+   "refs": [
+    "CustomerProfilesTable",
+    "SegmentCustomersFunctionRole"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Function",
+    "name": "SegmentCustomersFunction",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Code": {
+      "ZipFile": "def lambda_handler(event, context):\n    return {\"statusCode\": 200}\n"
+     },
+     "Description": "Match parsed criteria to customer profiles in DynamoDB, optionally combined with OpenSearch vector search",
+     "FunctionName": "ai-cpaas-demo-segment-customers-dev",
+     "Handler": "index.lambda_handler",
+     "MemorySize": 1024,
+     "Role": {
+      "ref": "SegmentCustomersFunctionRole",
+      "attr": "Arn"
+     },
+     "Runtime": "python3.13",
+     "Timeout": 60,
+     "Environment": {
+      "Variables": {
+       "ENVIRONMENT": "dev",
+       "PROJECT_NAME": "ai-cpaas-demo",
+       "BEDROCK_MODEL_ID": "global.anthropic.claude-haiku-4-5-20251001-v1:0",
+       "CUSTOMER_PROFILES_TABLE": {
+        "ref": "CustomerProfilesTable"
+       },
+       "EMBEDDING_MODEL_ID": "amazon.titan-embed-text-v2:0",
+       "VECTOR_COLLECTION_ENDPOINT": "",
+       "VECTOR_INDEX_NAME": ""
+      }
+     },
+     "Tags": [
+      {
+       "Key": "lambda:createdBy",
+       "Value": "SAM"
+      },
+      {
+       "Key": "Project",
+       "Value": "ai-cpaas-demo"
+      },
+      {
+       "Key": "Environment",
+       "Value": "dev"
+      }
+     ],
+     "TracingConfig": {
+      "Mode": "Active"
+     },
+     "Architectures": [
+      "arm64"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::DynamoDB::Table.DeliveryTrackingTable",
+   "cfg": "DeliveryTrackingTable",
+   "type": "__declared__",
+   "refs": [
+    "AppKmsKey"
+   ],
+   "values": {
+    "type": "AWS::DynamoDB::Table",
+    "name": "DeliveryTrackingTable",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "TableName": "ai-cpaas-demo-delivery-tracking-dev",
+     "BillingMode": "PAY_PER_REQUEST",
+     "AttributeDefinitions": [
+      {
+       "AttributeName": "message_id",
+       "AttributeType": "S"
+      },
+      {
+       "AttributeName": "customer_id",
+       "AttributeType": "S"
+      },
+      {
+       "AttributeName": "timestamp",
+       "AttributeType": "N"
+      }
+     ],
+     "KeySchema": [
+      {
+       "AttributeName": "message_id",
+       "KeyType": "HASH"
+      }
+     ],
+     "GlobalSecondaryIndexes": [
+      {
+       "IndexName": "customer-index",
+       "KeySchema": [
+        {
+         "AttributeName": "customer_id",
+         "KeyType": "HASH"
+        },
+        {
+         "AttributeName": "timestamp",
+         "KeyType": "RANGE"
+        }
+       ],
+       "Projection": {
+        "ProjectionType": "ALL"
+       }
+      }
+     ],
+     "TimeToLiveSpecification": {
+      "Enabled": true,
+      "AttributeName": "ttl"
+     },
+     "PointInTimeRecoverySpecification": {
+      "PointInTimeRecoveryEnabled": true
+     },
+     "SSESpecification": {
+      "SSEEnabled": true,
+      "SSEType": "KMS",
+      "KMSMasterKeyId": {
+       "ref": "AppKmsKey"
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Policy.SegmentCustomersSemanticSearchPolicy",
+   "cfg": "SegmentCustomersSemanticSearchPolicy",
+   "type": "__declared__",
+   "refs": [
+    "SegmentCustomersFunctionRole",
+    "VectorCollection"
+   ],
+   "values": {
+    "type": "AWS::IAM::Policy",
+    "name": "SegmentCustomersSemanticSearchPolicy",
+    "gated": true,
+    "gate": "SemanticSearchEnabled",
+    "properties": {
+     "PolicyName": "SemanticSearchAccess",
+     "Roles": [
+      {
+       "ref": "SegmentCustomersFunctionRole"
+      }
+     ],
+     "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Action": [
+         "bedrock:InvokeModel"
+        ],
+        "Resource": [
+         "arn:aws:bedrock:us-east-1::foundation-model/amazon.titan-embed-text-v2:0"
+        ]
+       },
+       {
+        "Effect": "Allow",
+        "Action": [
+         "aoss:APIAccessAll"
+        ],
+        "Resource": {
+         "ref": "VectorCollection",
+         "attr": "Arn"
+        }
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::LogGroup.StateMachineLogGroup",
+   "cfg": "StateMachineLogGroup",
+   "type": "__declared__",
+   "refs": [
+    "AppKmsKey"
+   ],
+   "values": {
+    "type": "AWS::Logs::LogGroup",
+    "name": "StateMachineLogGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "LogGroupName": "/aws/states/ai-cpaas-demo-orchestrator-dev",
+     "RetentionInDays": 30,
+     "KmsKeyId": {
+      "ref": "AppKmsKey",
+      "attr": "Arn"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.CampaignStatusFunctionRole",
+   "cfg": "CampaignStatusFunctionRole",
+   "type": "__declared__",
+   "refs": [
+    "AppKmsKey",
+    "DeliveryTrackingTable"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "CampaignStatusFunctionRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        }
+       }
+      ]
+     },
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+      "arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess"
+     ],
+     "Policies": [
+      {
+       "PolicyName": "CampaignStatusFunctionRolePolicy1",
+       "PolicyDocument": {
+        "Statement": [
+         {
+          "Action": [
+           "dynamodb:GetItem",
+           "dynamodb:Scan",
+           "dynamodb:Query",
+           "dynamodb:BatchGetItem",
+           "dynamodb:DescribeTable"
+          ],
+          "Effect": "Allow",
+          "Resource": [
+           "arn:aws:dynamodb:us-east-1:123456789012:table/{'ref': 'DeliveryTrackingTable'}",
+           "arn:aws:dynamodb:us-east-1:123456789012:table/{'ref': 'DeliveryTrackingTable'}/index/*"
+          ]
+         }
+        ]
+       }
+      },
+      {
+       "PolicyName": "CampaignStatusFunctionRolePolicy2",
+       "PolicyDocument": {
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "kms:Decrypt"
+          ],
+          "Resource": {
+           "ref": "AppKmsKey",
+           "attr": "Arn"
+          }
+         }
+        ]
+       }
+      }
+     ],
+     "Tags": [
+      {
+       "Key": "lambda:createdBy",
+       "Value": "SAM"
+      },
+      {
+       "Key": "Project",
+       "Value": "ai-cpaas-demo"
+      },
+      {
+       "Key": "Environment",
+       "Value": "dev"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::KMS::Alias.AppKmsKeyAlias",
+   "cfg": "AppKmsKeyAlias",
+   "type": "__declared__",
+   "refs": [
+    "AppKmsKey"
+   ],
+   "values": {
+    "type": "AWS::KMS::Alias",
+    "name": "AppKmsKeyAlias",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AliasName": "alias/ai-cpaas-demo-dev",
+     "TargetKeyId": {
+      "ref": "AppKmsKey"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Function.DeliveryStatusProcessorFunction",
+   "cfg": "DeliveryStatusProcessorFunction",
+   "type": "__declared__",
+   "refs": [
+    "DeliveryStatusProcessorFunctionRole",
+    "DeliveryTrackingTable"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Function",
+    "name": "DeliveryStatusProcessorFunction",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Code": {
+      "ZipFile": "def lambda_handler(event, context):\n    return {\"statusCode\": 200}\n"
+     },
+     "Description": "Update delivery tracking when AWS End User Messaging emits status events",
+     "FunctionName": "ai-cpaas-demo-delivery-processor-dev",
+     "Handler": "index.lambda_handler",
+     "MemorySize": 256,
+     "Role": {
+      "ref": "DeliveryStatusProcessorFunctionRole",
+      "attr": "Arn"
+     },
+     "Runtime": "python3.13",
+     "Timeout": 30,
+     "Environment": {
+      "Variables": {
+       "ENVIRONMENT": "dev",
+       "PROJECT_NAME": "ai-cpaas-demo",
+       "BEDROCK_MODEL_ID": "global.anthropic.claude-haiku-4-5-20251001-v1:0",
+       "DELIVERY_TRACKING_TABLE": {
+        "ref": "DeliveryTrackingTable"
+       }
+      }
+     },
+     "Tags": [
+      {
+       "Key": "lambda:createdBy",
+       "Value": "SAM"
+      },
+      {
+       "Key": "Project",
+       "Value": "ai-cpaas-demo"
+      },
+      {
+       "Key": "Environment",
+       "Value": "dev"
+      }
+     ],
+     "TracingConfig": {
+      "Mode": "Active"
+     },
+     "Architectures": [
+      "arm64"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Function.DeliverMessagesFunction",
+   "cfg": "DeliverMessagesFunction",
+   "type": "__declared__",
+   "refs": [
+    "DeliverMessagesFunctionRole",
+    "DeliveryTrackingTable",
+    "RateLimitsTable"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Function",
+    "name": "DeliverMessagesFunction",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Code": {
+      "ZipFile": "def lambda_handler(event, context):\n    return {\"statusCode\": 200}\n"
+     },
+     "Description": "Dispatch messages via AWS End User Messaging and SES",
+     "FunctionName": "ai-cpaas-demo-deliver-messages-dev",
+     "Handler": "index.lambda_handler",
+     "MemorySize": 1024,
+     "Role": {
+      "ref": "DeliverMessagesFunctionRole",
+      "attr": "Arn"
+     },
+     "Runtime": "python3.13",
+     "Timeout": 300,
+     "Environment": {
+      "Variables": {
+       "ENVIRONMENT": "dev",
+       "PROJECT_NAME": "ai-cpaas-demo",
+       "BEDROCK_MODEL_ID": "global.anthropic.claude-haiku-4-5-20251001-v1:0",
+       "PHONE_POOL_ID": "",
+       "WHATSAPP_PHONE_NUMBER_ID": "",
+       "SENDER_EMAIL": "noreply@example.com",
+       "DELIVERY_TRACKING_TABLE": {
+        "ref": "DeliveryTrackingTable"
+       },
+       "RATE_LIMITS_TABLE": {
+        "ref": "RateLimitsTable"
+       }
+      }
+     },
+     "Tags": [
+      {
+       "Key": "lambda:createdBy",
+       "Value": "SAM"
+      },
+      {
+       "Key": "Project",
+       "Value": "ai-cpaas-demo"
+      },
+      {
+       "Key": "Environment",
+       "Value": "dev"
+      }
+     ],
+     "TracingConfig": {
+      "Mode": "Active"
+     },
+     "Architectures": [
+      "arm64"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Events::Rule.DeliveryStatusProcessorFunctionSmsDeliveryStatus",
+   "cfg": "DeliveryStatusProcessorFunctionSmsDeliveryStatus",
+   "type": "__declared__",
+   "refs": [
+    "DeliveryStatusProcessorFunction"
+   ],
+   "values": {
+    "type": "AWS::Events::Rule",
+    "name": "DeliveryStatusProcessorFunctionSmsDeliveryStatus",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "EventPattern": {
+      "source": [
+       "aws.end-user-messaging"
+      ],
+      "detail-type": [
+       "SMS Delivery Status"
+      ]
+     },
+     "Targets": [
+      {
+       "Arn": {
+        "ref": "DeliveryStatusProcessorFunction",
+        "attr": "Arn"
+       },
+       "Id": "DeliveryStatusProcessorFunctionSmsDeliveryStatusLambdaTarget"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.DeliverMessagesFunctionRole",
+   "cfg": "DeliverMessagesFunctionRole",
+   "type": "__declared__",
+   "refs": [
+    "AppKmsKey",
+    "DeliveryTrackingTable",
+    "RateLimitsTable"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "DeliverMessagesFunctionRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        }
+       }
+      ]
+     },
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+      "arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess"
+     ],
+     "Policies": [
+      {
+       "PolicyName": "DeliverMessagesFunctionRolePolicy1",
+       "PolicyDocument": {
+        "Statement": [
+         {
+          "Action": [
+           "dynamodb:GetItem",
+           "dynamodb:DeleteItem",
+           "dynamodb:PutItem",
+           "dynamodb:Scan",
+           "dynamodb:Query",
+           "dynamodb:UpdateItem",
+           "dynamodb:BatchWriteItem",
+           "dynamodb:BatchGetItem",
+           "dynamodb:DescribeTable",
+           "dynamodb:ConditionCheckItem"
+          ],
+          "Effect": "Allow",
+          "Resource": [
+           "arn:aws:dynamodb:us-east-1:123456789012:table/{'ref': 'DeliveryTrackingTable'}",
+           "arn:aws:dynamodb:us-east-1:123456789012:table/{'ref': 'DeliveryTrackingTable'}/index/*"
+          ]
+         }
+        ]
+       }
+      },
+      {
+       "PolicyName": "DeliverMessagesFunctionRolePolicy2",
+       "PolicyDocument": {
+        "Statement": [
+         {
+          "Action": [
+           "dynamodb:GetItem",
+           "dynamodb:DeleteItem",
+           "dynamodb:PutItem",
+           "dynamodb:Scan",
+           "dynamodb:Query",
+           "dynamodb:UpdateItem",
+           "dynamodb:BatchWriteItem",
+           "dynamodb:BatchGetItem",
+           "dynamodb:DescribeTable",
+           "dynamodb:ConditionCheckItem"
+          ],
+          "Effect": "Allow",
+          "Resource": [
+           "arn:aws:dynamodb:us-east-1:123456789012:table/{'ref': 'RateLimitsTable'}",
+           "arn:aws:dynamodb:us-east-1:123456789012:table/{'ref': 'RateLimitsTable'}/index/*"
+          ]
+         }
+        ]
+       }
+      },
+      {
+       "PolicyName": "DeliverMessagesFunctionRolePolicy3",
+       "PolicyDocument": {
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "kms:Decrypt",
+           "kms:GenerateDataKey"
+          ],
+          "Resource": {
+           "ref": "AppKmsKey",
+           "attr": "Arn"
+          }
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "sms-voice:SendTextMessage",
+           "social-messaging:SendWhatsAppMessage"
+          ],
+          "Resource": [
+           "*"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "ses:SendEmail",
+           "ses:SendRawEmail"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      }
+     ],
+     "Tags": [
+      {
+       "Key": "lambda:createdBy",
+       "Value": "SAM"
+      },
+      {
+       "Key": "Project",
+       "Value": "ai-cpaas-demo"
+      },
+      {
+       "Key": "Environment",
+       "Value": "dev"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Function.PredictChannelsFunction",
+   "cfg": "PredictChannelsFunction",
+   "type": "__declared__",
+   "refs": [
+    "CustomerProfilesTable",
+    "PredictChannelsFunctionRole"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Function",
+    "name": "PredictChannelsFunction",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Code": {
+      "ZipFile": "def lambda_handler(event, context):\n    return {\"statusCode\": 200}\n"
+     },
+     "Description": "Predict the best channel per customer using SageMaker + heuristic fallback",
+     "FunctionName": "ai-cpaas-demo-predict-channels-dev",
+     "Handler": "index.lambda_handler",
+     "MemorySize": 1024,
+     "Role": {
+      "ref": "PredictChannelsFunctionRole",
+      "attr": "Arn"
+     },
+     "Runtime": "python3.13",
+     "Timeout": 60,
+     "Environment": {
+      "Variables": {
+       "ENVIRONMENT": "dev",
+       "PROJECT_NAME": "ai-cpaas-demo",
+       "BEDROCK_MODEL_ID": "global.anthropic.claude-haiku-4-5-20251001-v1:0",
+       "CUSTOMER_PROFILES_TABLE": {
+        "ref": "CustomerProfilesTable"
+       }
+      }
+     },
+     "Tags": [
+      {
+       "Key": "lambda:createdBy",
+       "Value": "SAM"
+      },
+      {
+       "Key": "Project",
+       "Value": "ai-cpaas-demo"
+      },
+      {
+       "Key": "Environment",
+       "Value": "dev"
+      }
+     ],
+     "TracingConfig": {
+      "Mode": "Active"
+     },
+     "Architectures": [
+      "arm64"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolClient.CampaignUserPoolClient",
+   "cfg": "CampaignUserPoolClient",
+   "type": "__declared__",
+   "refs": [
+    "CampaignUserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolClient",
+    "name": "CampaignUserPoolClient",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ClientName": "ai-cpaas-demo-launcher-dev",
+     "UserPoolId": {
+      "ref": "CampaignUserPool"
+     },
+     "GenerateSecret": false,
+     "ExplicitAuthFlows": [
+      "ALLOW_USER_PASSWORD_AUTH",
+      "ALLOW_REFRESH_TOKEN_AUTH"
+     ],
+     "AccessTokenValidity": 60,
+     "IdTokenValidity": 60,
+     "RefreshTokenValidity": 30,
+     "TokenValidityUnits": {
+      "AccessToken": "minutes",
+      "IdToken": "minutes",
+      "RefreshToken": "days"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Function.ParseInstructionFunction",
+   "cfg": "ParseInstructionFunction",
+   "type": "__declared__",
+   "refs": [
+    "ParseInstructionFunctionRole"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Function",
+    "name": "ParseInstructionFunction",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Code": {
+      "ZipFile": "def lambda_handler(event, context):\n    return {\"statusCode\": 200}\n"
+     },
+     "Description": "Parse marketer instruction into structured campaign fields via Bedrock",
+     "FunctionName": "ai-cpaas-demo-parse-instruction-dev",
+     "Handler": "index.lambda_handler",
+     "MemorySize": 1024,
+     "Role": {
+      "ref": "ParseInstructionFunctionRole",
+      "attr": "Arn"
+     },
+     "Runtime": "python3.13",
+     "Timeout": 60,
+     "Environment": {
+      "Variables": {
+       "ENVIRONMENT": "dev",
+       "PROJECT_NAME": "ai-cpaas-demo",
+       "BEDROCK_MODEL_ID": "global.anthropic.claude-haiku-4-5-20251001-v1:0"
+      }
+     },
+     "Tags": [
+      {
+       "Key": "lambda:createdBy",
+       "Value": "SAM"
+      },
+      {
+       "Key": "Project",
+       "Value": "ai-cpaas-demo"
+      },
+      {
+       "Key": "Environment",
+       "Value": "dev"
+      }
+     ],
+     "TracingConfig": {
+      "Mode": "Active"
+     },
+     "Architectures": [
+      "arm64"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGatewayV2::Stage.CampaignApiStage",
+   "cfg": "CampaignApiStage",
+   "type": "__declared__",
+   "refs": [
+    "CampaignApi"
+   ],
+   "values": {
+    "type": "AWS::ApiGatewayV2::Stage",
+    "name": "CampaignApiStage",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "DefaultRouteSettings": {
+      "ThrottlingBurstLimit": 100,
+      "ThrottlingRateLimit": 50
+     },
+     "ApiId": {
+      "ref": "CampaignApi"
+     },
+     "StageName": "dev",
+     "Tags": {
+      "httpapi:createdBy": "SAM"
+     },
+     "AutoDeploy": true
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPool.CampaignUserPool",
+   "cfg": "CampaignUserPool",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Cognito::UserPool",
+    "name": "CampaignUserPool",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "UserPoolName": "ai-cpaas-demo-users-dev",
+     "AutoVerifiedAttributes": [
+      "email"
+     ],
+     "UsernameAttributes": [
+      "email"
+     ],
+     "AdminCreateUserConfig": {
+      "AllowAdminCreateUserOnly": true
+     },
+     "Policies": {
+      "PasswordPolicy": {
+       "MinimumLength": 12,
+       "RequireLowercase": true,
+       "RequireUppercase": true,
+       "RequireNumbers": true,
+       "RequireSymbols": true
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.CampaignLauncherFunctionRole",
+   "cfg": "CampaignLauncherFunctionRole",
+   "type": "__declared__",
+   "refs": [
+    "CampaignStateMachine"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "CampaignLauncherFunctionRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        }
+       }
+      ]
+     },
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+      "arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess"
+     ],
+     "Policies": [
+      {
+       "PolicyName": "CampaignLauncherFunctionRolePolicy1",
+       "PolicyDocument": {
+        "Statement": [
+         {
+          "Action": [
+           "states:StartExecution"
+          ],
+          "Effect": "Allow",
+          "Resource": [
+           "arn:aws:states:us-east-1:123456789012:stateMachine:{'ref': 'CampaignStateMachine', 'attr': 'Name'}"
+          ]
+         }
+        ]
+       }
+      }
+     ],
+     "Tags": [
+      {
+       "Key": "lambda:createdBy",
+       "Value": "SAM"
+      },
+      {
+       "Key": "Project",
+       "Value": "ai-cpaas-demo"
+      },
+      {
+       "Key": "Environment",
+       "Value": "dev"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Permission.CampaignStatusFunctionGetCampaignPermission",
+   "cfg": "CampaignStatusFunctionGetCampaignPermission",
+   "type": "__declared__",
+   "refs": [
+    "CampaignApi",
+    "CampaignStatusFunction"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Permission",
+    "name": "CampaignStatusFunctionGetCampaignPermission",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Action": "lambda:InvokeFunction",
+     "FunctionName": {
+      "ref": "CampaignStatusFunction"
+     },
+     "Principal": "apigateway.amazonaws.com",
+     "SourceArn": "arn:aws:execute-api:us-east-1:123456789012:{'ref': 'CampaignApi'}/*/GET/campaigns/*"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Function.CampaignLauncherFunction",
+   "cfg": "CampaignLauncherFunction",
+   "type": "__declared__",
+   "refs": [
+    "CampaignLauncherFunctionRole",
+    "CampaignStateMachine"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Function",
+    "name": "CampaignLauncherFunction",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Code": {
+      "ZipFile": "def lambda_handler(event, context):\n    return {\"statusCode\": 200}\n"
+     },
+     "Description": "API Gateway entry point that starts the campaign state machine",
+     "FunctionName": "ai-cpaas-demo-campaign-launcher-dev",
+     "Handler": "index.lambda_handler",
+     "MemorySize": 256,
+     "Role": {
+      "ref": "CampaignLauncherFunctionRole",
+      "attr": "Arn"
+     },
+     "Runtime": "python3.13",
+     "Timeout": 10,
+     "Environment": {
+      "Variables": {
+       "ENVIRONMENT": "dev",
+       "PROJECT_NAME": "ai-cpaas-demo",
+       "BEDROCK_MODEL_ID": "global.anthropic.claude-haiku-4-5-20251001-v1:0",
+       "STATE_MACHINE_ARN": {
+        "ref": "CampaignStateMachine"
+       }
+      }
+     },
+     "Tags": [
+      {
+       "Key": "lambda:createdBy",
+       "Value": "SAM"
+      },
+      {
+       "Key": "Project",
+       "Value": "ai-cpaas-demo"
+      },
+      {
+       "Key": "Environment",
+       "Value": "dev"
+      }
+     ],
+     "TracingConfig": {
+      "Mode": "Active"
+     },
+     "Architectures": [
+      "arm64"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::DynamoDB::Table.CustomerProfilesTable",
+   "cfg": "CustomerProfilesTable",
+   "type": "__declared__",
+   "refs": [
+    "AppKmsKey"
+   ],
+   "values": {
+    "type": "AWS::DynamoDB::Table",
+    "name": "CustomerProfilesTable",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "TableName": "ai-cpaas-demo-customer-profiles-dev",
+     "BillingMode": "PAY_PER_REQUEST",
+     "AttributeDefinitions": [
+      {
+       "AttributeName": "customer_id",
+       "AttributeType": "S"
+      }
+     ],
+     "KeySchema": [
+      {
+       "AttributeName": "customer_id",
+       "KeyType": "HASH"
+      }
+     ],
+     "PointInTimeRecoverySpecification": {
+      "PointInTimeRecoveryEnabled": true
+     },
+     "SSESpecification": {
+      "SSEEnabled": true,
+      "SSEType": "KMS",
+      "KMSMasterKeyId": {
+       "ref": "AppKmsKey"
+      }
+     }
+    }
+   }
+  }
+ ]
+}

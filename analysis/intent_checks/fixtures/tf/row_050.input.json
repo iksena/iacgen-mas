@@ -1,0 +1,307 @@
+{
+ "meta": {
+  "lang": "tf",
+  "mode": "plan",
+  "warnings": [],
+  "gt_hash": "cdaa8357b6532eaa2b813685b93575420738fb502c14859b26ad0cffb07db2b2",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "aws_iam_policy.grafana",
+   "cfg": "aws_iam_policy.grafana",
+   "type": "aws_iam_policy",
+   "values": {
+    "delay_after_policy_creation_in_ms": null,
+    "description": null,
+    "name": "grafana",
+    "path": "/",
+    "policy": "{\"Statement\":[{\"Action\":[\"aps:QueryMetrics\",\"aps:ListWorkspaces\",\"aps:ListRules\",\"aps:ListAlertManagerSilences\",\"aps:ListAlertManagerAlerts\",\"aps:ListAlertManagerAlertGroups\",\"aps:GetSeries\",\"aps:GetMetricMetadata\",\"aps:GetLabels\",\"aps:GetAlertManagerStatus\",\"aps:DescribeWorkspace\"],\"Effect\":\"Allow\",\"Resource\":\"*\",\"Sid\":\"AllowPrometheus\"}],\"Version\":\"2012-10-17\"}",
+    "tags": null
+   },
+   "refs": [
+    "data.aws_iam_policy_document.grafana"
+   ]
+  },
+  {
+   "id": "aws_iam_role.this",
+   "cfg": "aws_iam_role.this",
+   "type": "aws_iam_role",
+   "values": {
+    "assume_role_policy": "{\"Statement\":[{\"Action\":\"sts:AssumeRole\",\"Condition\":{\"StringEquals\":{\"iam:ResourceTag/grafana.workspace.Grafana\":\"true\"}},\"Effect\":\"Allow\",\"Principal\":{\"AWS\":\"arn:aws:iam::000000000000:root\"}}],\"Version\":\"2012-10-17\"}",
+    "description": null,
+    "force_detach_policies": false,
+    "max_session_duration": 3600,
+    "name": "grafana",
+    "path": "/",
+    "permissions_boundary": null,
+    "tags": {
+     "grafana.workspace.Grafana": "true"
+    },
+    "tags_all": {
+     "grafana.workspace.Grafana": "true"
+    }
+   },
+   "refs": [
+    "data.aws_iam_policy_document.trust"
+   ]
+  },
+  {
+   "id": "aws_iam_role_policy_attachment.cloudwatch",
+   "cfg": "aws_iam_role_policy_attachment.cloudwatch",
+   "type": "aws_iam_role_policy_attachment",
+   "values": {
+    "policy_arn": "arn:aws:iam::aws:policy/service-role/AmazonGrafanaCloudWatchAccess",
+    "role": "grafana"
+   },
+   "refs": [
+    "aws_iam_role.this",
+    "data.aws_iam_policy.cloudwatch"
+   ]
+  },
+  {
+   "id": "aws_iam_role_policy_attachment.grafana",
+   "cfg": "aws_iam_role_policy_attachment.grafana",
+   "type": "aws_iam_role_policy_attachment",
+   "values": {
+    "role": "grafana"
+   },
+   "refs": [
+    "aws_iam_policy.grafana",
+    "aws_iam_role.this"
+   ]
+  },
+  {
+   "id": "__parameter__.grafana_workspace_name",
+   "cfg": "__parameter__.grafana_workspace_name",
+   "type": "__parameter__",
+   "values": {
+    "name": "grafana_workspace_name",
+    "default": "Grafana"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.monitoring_account_ids",
+   "cfg": "__parameter__.monitoring_account_ids",
+   "type": "__parameter__",
+   "values": {
+    "name": "monitoring_account_ids",
+    "default": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.name",
+   "cfg": "__parameter__.name",
+   "type": "__parameter__",
+   "values": {
+    "name": "name",
+    "default": "grafana"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.tags",
+   "cfg": "__parameter__.tags",
+   "type": "__parameter__",
+   "values": {
+    "name": "tags",
+    "default": {}
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.arn",
+   "cfg": "__output__.arn",
+   "type": "__output__",
+   "values": {
+    "name": "arn",
+    "value": null,
+    "description": "ARN of the created IAM role"
+   },
+   "refs": [
+    "aws_iam_role.this"
+   ]
+  },
+  {
+   "id": "__declared__.aws_iam_role.this",
+   "cfg": "aws_iam_role.this",
+   "type": "__declared__",
+   "refs": [
+    "data.aws_iam_policy_document.trust"
+   ],
+   "values": {
+    "type": "aws_iam_role",
+    "name": "this",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "assume_role_policy": "${data.aws_iam_policy_document.trust.json}",
+     "name": "grafana",
+     "tags": "${merge(var.tags,{'grafana.workspace.${var.grafana_workspace_name}': 'true'})}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role_policy_attachment.grafana",
+   "cfg": "aws_iam_role_policy_attachment.grafana",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_policy.grafana",
+    "aws_iam_role.this"
+   ],
+   "values": {
+    "type": "aws_iam_role_policy_attachment",
+    "name": "grafana",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "policy_arn": "${aws_iam_policy.grafana.arn}",
+     "role": "${aws_iam_role.this.name}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role_policy_attachment.cloudwatch",
+   "cfg": "aws_iam_role_policy_attachment.cloudwatch",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_role.this",
+    "data.aws_iam_policy.cloudwatch"
+   ],
+   "values": {
+    "type": "aws_iam_role_policy_attachment",
+    "name": "cloudwatch",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "policy_arn": "${data.aws_iam_policy.cloudwatch.arn}",
+     "role": "${aws_iam_role.this.name}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_policy.grafana",
+   "cfg": "aws_iam_policy.grafana",
+   "type": "__declared__",
+   "refs": [
+    "data.aws_iam_policy_document.grafana"
+   ],
+   "values": {
+    "type": "aws_iam_policy",
+    "name": "grafana",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "grafana",
+     "policy": "${data.aws_iam_policy_document.grafana.json}",
+     "tags": [
+      {}
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.data.aws_iam_policy_document.grafana",
+   "cfg": "data.aws_iam_policy_document.grafana",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "data.aws_iam_policy_document",
+    "name": "grafana",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "statement": [
+      {
+       "sid": "AllowPrometheus",
+       "resources": [
+        "*"
+       ],
+       "actions": [
+        "aps:DescribeWorkspace",
+        "aps:GetAlertManagerStatus",
+        "aps:GetLabels",
+        "aps:GetMetricMetadata",
+        "aps:GetSeries",
+        "aps:ListAlertManagerAlertGroups",
+        "aps:ListAlertManagerAlerts",
+        "aps:ListAlertManagerSilences",
+        "aps:ListWorkspaces",
+        "aps:ListRules",
+        "aps:QueryMetrics"
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.data.aws_iam_policy_document.trust",
+   "cfg": "data.aws_iam_policy_document.trust",
+   "type": "__declared__",
+   "refs": [
+    "data.aws_caller_identity.this"
+   ],
+   "values": {
+    "type": "data.aws_iam_policy_document",
+    "name": "trust",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "statement": [
+      {
+       "actions": [
+        "sts:AssumeRole"
+       ],
+       "principals": [
+        {
+         "type": "AWS",
+         "identifiers": "${[for account_id in local.monitoring_account_ids : \"arn:aws:iam::${account_id}:root\"]}"
+        }
+       ],
+       "condition": [
+        {
+         "test": "StringEquals",
+         "variable": "iam:ResourceTag/grafana.workspace.${var.grafana_workspace_name}",
+         "values": [
+          "true"
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.data.aws_iam_policy.cloudwatch",
+   "cfg": "data.aws_iam_policy.cloudwatch",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "data.aws_iam_policy",
+    "name": "cloudwatch",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "AmazonGrafanaCloudWatchAccess"
+    }
+   }
+  },
+  {
+   "id": "__declared__.data.aws_caller_identity.this",
+   "cfg": "data.aws_caller_identity.this",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "data.aws_caller_identity",
+    "name": "this",
+    "gated": false,
+    "gate": null,
+    "properties": {}
+   }
+  }
+ ]
+}

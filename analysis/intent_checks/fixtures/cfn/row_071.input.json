@@ -1,0 +1,665 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "f47a1985ff8267c5eeaa11d254c3788723064a9b901eaaf1396a898533766881",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "AutomationAssumeRole",
+   "cfg": "AutomationAssumeRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "pciautomationassumerole-us-east-1",
+    "Policies": [
+     {
+      "PolicyName": "PCISSMRemidationPolicy",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "ec2:ReleaseAddress",
+          "ec2:DescribeSecurityGroups",
+          "ec2:DeleteSecurityGroup",
+          "ec2:RevokeSecurityGroupEgress",
+          "ec2:RevokeSecurityGroupIngress"
+         ],
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     }
+    ],
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "ssm.amazonaws.com",
+         "events.amazonaws.com",
+         "ec2.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Path": "/"
+   },
+   "refs": []
+  },
+  {
+   "id": "RestrictSecurityGroupPublicAccess",
+   "cfg": "RestrictSecurityGroupPublicAccess",
+   "type": "AWS::SSM::Document",
+   "values": {
+    "DocumentType": "Automation",
+    "Name": "Custom-RestrictSecurityGroup",
+    "Content": {
+     "schemaVersion": "0.3",
+     "assumeRole": {
+      "Fn::Join": [
+       "",
+       [
+        "arn:aws:iam::",
+        "123456789012",
+        ":role/",
+        {
+         "ref": "AutomationAssumeRole"
+        }
+       ]
+      ]
+     },
+     "parameters": {
+      "groupId": {
+       "type": "String"
+      },
+      "IpAddressToBlock": {
+       "type": "String",
+       "default": "0.0.0.0/0"
+      },
+      "AutomationAssumeRole": {
+       "type": "String",
+       "default": {
+        "Fn::Join": [
+         "",
+         [
+          "arn:aws:iam::",
+          "123456789012",
+          ":role/",
+          {
+           "ref": "AutomationAssumeRole"
+          }
+         ]
+        ]
+       }
+      }
+     },
+     "mainSteps": [
+      {
+       "name": "RestrictSecurityGroup",
+       "action": "aws:executeScript",
+       "inputs": {
+        "Runtime": "python3.6",
+        "Handler": "restrict_sg",
+        "Script": "def restrict_sg(events, context):\r\n  import boto3\r\n  import json\r\n  import os\r\n  ec2 = boto3.resource('ec2')\r\n  defaultSecGroupId = events['groupId']\r\n  try:\r\n      defaultSG = ec2.SecurityGroup(defaultSecGroupId)\r\n      defaultIngress = defaultSG.ip_permissions\r\n      defaultEgress = defaultSG.ip_permissions_egress\r\n      revokeIngress = defaultSG.revoke_ingress(IpPermissions=defaultIngress)\r\n      revokeEgress = defaultSG.revoke_egress(IpPermissions=defaultEgress)\r\n  except Exception as e:\r\n      print(e)",
+        "InputPayload": {
+         "AutomationAssumeRole": "{{AutomationAssumeRole}}",
+         "groupId": "{{groupId}}",
+         "IpAddressToBlock": "{{IpAddressToBlock}}"
+        }
+       }
+      }
+     ]
+    }
+   },
+   "refs": [
+    "AutomationAssumeRole"
+   ]
+  },
+  {
+   "id": "RemoveSecurityGroup",
+   "cfg": "RemoveSecurityGroup",
+   "type": "AWS::SSM::Document",
+   "values": {
+    "DocumentType": "Automation",
+    "Name": "Custom-RemoveSecurityGroup",
+    "Content": {
+     "schemaVersion": "0.3",
+     "assumeRole": {
+      "Fn::Join": [
+       "",
+       [
+        "arn:aws:iam::",
+        "123456789012",
+        ":role/",
+        {
+         "ref": "AutomationAssumeRole"
+        }
+       ]
+      ]
+     },
+     "parameters": {
+      "groupId": {
+       "type": "String"
+      },
+      "AutomationAssumeRole": {
+       "type": "String",
+       "default": {
+        "Fn::Join": [
+         "",
+         [
+          "arn:aws:iam::",
+          "123456789012",
+          ":role/",
+          {
+           "ref": "AutomationAssumeRole"
+          }
+         ]
+        ]
+       }
+      }
+     },
+     "mainSteps": [
+      {
+       "name": "RemoveSecurityGroup",
+       "action": "aws:executeScript",
+       "inputs": {
+        "Runtime": "python3.6",
+        "Handler": "script_handler",
+        "Script": "def script_handler(events, context):\r\n  import boto3\r\n  ec2 = boto3.client('ec2')\r\n\r\n  groupId = events['groupId']\r\n  \r\n  response = ec2.delete_security_group(\r\n    GroupId= groupId\r\n  )\r\n ",
+        "InputPayload": {
+         "AutomationAssumeRole": "{{AutomationAssumeRole}}",
+         "groupId": "{{groupId}}"
+        }
+       }
+      }
+     ]
+    }
+   },
+   "refs": [
+    "AutomationAssumeRole"
+   ]
+  },
+  {
+   "id": "ReleaseEIP",
+   "cfg": "ReleaseEIP",
+   "type": "AWS::SSM::Document",
+   "values": {
+    "DocumentType": "Automation",
+    "Name": "Custom-ReleaseEIP",
+    "Content": {
+     "schemaVersion": "0.3",
+     "assumeRole": {
+      "Fn::Join": [
+       "",
+       [
+        "arn:aws:iam::",
+        "123456789012",
+        ":role/",
+        {
+         "ref": "AutomationAssumeRole"
+        }
+       ]
+      ]
+     },
+     "parameters": {
+      "AutomationAssumeRole": {
+       "type": "String",
+       "default": {
+        "Fn::Join": [
+         "",
+         [
+          "arn:aws:iam::",
+          "123456789012",
+          ":role/",
+          {
+           "ref": "AutomationAssumeRole"
+          }
+         ]
+        ]
+       }
+      },
+      "allocationId": {
+       "type": "String"
+      }
+     },
+     "mainSteps": [
+      {
+       "name": "ReleaseEIP",
+       "action": "aws:executeScript",
+       "inputs": {
+        "Runtime": "python3.6",
+        "Handler": "script_handler",
+        "Script": "def script_handler(events, context):\r\n  import boto3\r\n  client = boto3.client('ec2')\r\n\r\n  allocationId = events['allocationId']\r\n\r\n  response = client.release_address(\r\n    AllocationId= allocationId\r\n  )",
+        "InputPayload": {
+         "AutomationAssumeRole": "{{AutomationAssumeRole}}",
+         "allocationId": "{{allocationId}}"
+        }
+       }
+      }
+     ]
+    }
+   },
+   "refs": [
+    "AutomationAssumeRole"
+   ]
+  },
+  {
+   "id": "AutoScalingELBHealthCheck",
+   "cfg": "AutoScalingELBHealthCheck",
+   "type": "AWS::SSM::Document",
+   "values": {
+    "DocumentType": "Automation",
+    "Name": "Custom-AutoScalingELBHealthCheck",
+    "Content": {
+     "schemaVersion": "0.3",
+     "assumeRole": {
+      "Fn::Join": [
+       "",
+       [
+        "arn:aws:iam::",
+        "123456789012",
+        ":role/",
+        {
+         "ref": "AutomationAssumeRole"
+        }
+       ]
+      ]
+     },
+     "parameters": {
+      "AutomationAssumeRole": {
+       "type": "String",
+       "default": {
+        "Fn::Join": [
+         "",
+         [
+          "arn:aws:iam::",
+          "123456789012",
+          ":role/",
+          {
+           "ref": "AutomationAssumeRole"
+          }
+         ]
+        ]
+       }
+      },
+      "ASGGroupArn": {
+       "type": "String"
+      }
+     },
+     "mainSteps": [
+      {
+       "name": "AutoScalingELBHealthCheck",
+       "action": "aws:executeScript",
+       "inputs": {
+        "Runtime": "python3.6",
+        "Handler": "script_handler",
+        "Script": "def script_handler(events, context):\n  import boto3\n  import json\n  import os\n  client = boto3.client('autoscaling')\n  try:\n     ASGGroupArn = events['ASGGroupArn']\n     ASGId_1 = ASGGroupArn.split(':')[-1]\n     ASGGroupName = ASGId_1.replace(\"autoScalingGroupName/\",\"\")\n     response = client.update_auto_scaling_group(\n        AutoScalingGroupName= ASGGroupName,\n        HealthCheckType='ELB',\n        HealthCheckGracePeriod=300\n     )\n  except Exception as e:\n     print(e)\n     raise\n",
+        "InputPayload": {
+         "AutomationAssumeRole": "{{AutomationAssumeRole}}",
+         "ASGGroupArn": "{{ASGGroupArn}}"
+        }
+       }
+      }
+     ]
+    }
+   },
+   "refs": [
+    "AutomationAssumeRole"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.AutomationAssumeRole",
+   "cfg": "AutomationAssumeRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "AutomationAssumeRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "pciautomationassumerole-us-east-1",
+     "Policies": [
+      {
+       "PolicyName": "PCISSMRemidationPolicy",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "ec2:ReleaseAddress",
+           "ec2:DescribeSecurityGroups",
+           "ec2:DeleteSecurityGroup",
+           "ec2:RevokeSecurityGroupEgress",
+           "ec2:RevokeSecurityGroupIngress"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      }
+     ],
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "ssm.amazonaws.com",
+          "events.amazonaws.com",
+          "ec2.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Path": "/"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SSM::Document.RestrictSecurityGroupPublicAccess",
+   "cfg": "RestrictSecurityGroupPublicAccess",
+   "type": "__declared__",
+   "refs": [
+    "AutomationAssumeRole"
+   ],
+   "values": {
+    "type": "AWS::SSM::Document",
+    "name": "RestrictSecurityGroupPublicAccess",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "DocumentType": "Automation",
+     "Name": "Custom-RestrictSecurityGroup",
+     "Content": {
+      "schemaVersion": "0.3",
+      "assumeRole": {
+       "Fn::Join": [
+        "",
+        [
+         "arn:aws:iam::",
+         "123456789012",
+         ":role/",
+         {
+          "ref": "AutomationAssumeRole"
+         }
+        ]
+       ]
+      },
+      "parameters": {
+       "groupId": {
+        "type": "String"
+       },
+       "IpAddressToBlock": {
+        "type": "String",
+        "default": "0.0.0.0/0"
+       },
+       "AutomationAssumeRole": {
+        "type": "String",
+        "default": {
+         "Fn::Join": [
+          "",
+          [
+           "arn:aws:iam::",
+           "123456789012",
+           ":role/",
+           {
+            "ref": "AutomationAssumeRole"
+           }
+          ]
+         ]
+        }
+       }
+      },
+      "mainSteps": [
+       {
+        "name": "RestrictSecurityGroup",
+        "action": "aws:executeScript",
+        "inputs": {
+         "Runtime": "python3.6",
+         "Handler": "restrict_sg",
+         "Script": "def restrict_sg(events, context):\r\n  import boto3\r\n  import json\r\n  import os\r\n  ec2 = boto3.resource('ec2')\r\n  defaultSecGroupId = events['groupId']\r\n  try:\r\n      defaultSG = ec2.SecurityGroup(defaultSecGroupId)\r\n      defaultIngress = defaultSG.ip_permissions\r\n      defaultEgress = defaultSG.ip_permissions_egress\r\n      revokeIngress = defaultSG.revoke_ingress(IpPermissions=defaultIngress)\r\n      revokeEgress = defaultSG.revoke_egress(IpPermissions=defaultEgress)\r\n  except Exception as e:\r\n      print(e)",
+         "InputPayload": {
+          "AutomationAssumeRole": "{{AutomationAssumeRole}}",
+          "groupId": "{{groupId}}",
+          "IpAddressToBlock": "{{IpAddressToBlock}}"
+         }
+        }
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SSM::Document.RemoveSecurityGroup",
+   "cfg": "RemoveSecurityGroup",
+   "type": "__declared__",
+   "refs": [
+    "AutomationAssumeRole"
+   ],
+   "values": {
+    "type": "AWS::SSM::Document",
+    "name": "RemoveSecurityGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "DocumentType": "Automation",
+     "Name": "Custom-RemoveSecurityGroup",
+     "Content": {
+      "schemaVersion": "0.3",
+      "assumeRole": {
+       "Fn::Join": [
+        "",
+        [
+         "arn:aws:iam::",
+         "123456789012",
+         ":role/",
+         {
+          "ref": "AutomationAssumeRole"
+         }
+        ]
+       ]
+      },
+      "parameters": {
+       "groupId": {
+        "type": "String"
+       },
+       "AutomationAssumeRole": {
+        "type": "String",
+        "default": {
+         "Fn::Join": [
+          "",
+          [
+           "arn:aws:iam::",
+           "123456789012",
+           ":role/",
+           {
+            "ref": "AutomationAssumeRole"
+           }
+          ]
+         ]
+        }
+       }
+      },
+      "mainSteps": [
+       {
+        "name": "RemoveSecurityGroup",
+        "action": "aws:executeScript",
+        "inputs": {
+         "Runtime": "python3.6",
+         "Handler": "script_handler",
+         "Script": "def script_handler(events, context):\r\n  import boto3\r\n  ec2 = boto3.client('ec2')\r\n\r\n  groupId = events['groupId']\r\n  \r\n  response = ec2.delete_security_group(\r\n    GroupId= groupId\r\n  )\r\n ",
+         "InputPayload": {
+          "AutomationAssumeRole": "{{AutomationAssumeRole}}",
+          "groupId": "{{groupId}}"
+         }
+        }
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SSM::Document.ReleaseEIP",
+   "cfg": "ReleaseEIP",
+   "type": "__declared__",
+   "refs": [
+    "AutomationAssumeRole"
+   ],
+   "values": {
+    "type": "AWS::SSM::Document",
+    "name": "ReleaseEIP",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "DocumentType": "Automation",
+     "Name": "Custom-ReleaseEIP",
+     "Content": {
+      "schemaVersion": "0.3",
+      "assumeRole": {
+       "Fn::Join": [
+        "",
+        [
+         "arn:aws:iam::",
+         "123456789012",
+         ":role/",
+         {
+          "ref": "AutomationAssumeRole"
+         }
+        ]
+       ]
+      },
+      "parameters": {
+       "AutomationAssumeRole": {
+        "type": "String",
+        "default": {
+         "Fn::Join": [
+          "",
+          [
+           "arn:aws:iam::",
+           "123456789012",
+           ":role/",
+           {
+            "ref": "AutomationAssumeRole"
+           }
+          ]
+         ]
+        }
+       },
+       "allocationId": {
+        "type": "String"
+       }
+      },
+      "mainSteps": [
+       {
+        "name": "ReleaseEIP",
+        "action": "aws:executeScript",
+        "inputs": {
+         "Runtime": "python3.6",
+         "Handler": "script_handler",
+         "Script": "def script_handler(events, context):\r\n  import boto3\r\n  client = boto3.client('ec2')\r\n\r\n  allocationId = events['allocationId']\r\n\r\n  response = client.release_address(\r\n    AllocationId= allocationId\r\n  )",
+         "InputPayload": {
+          "AutomationAssumeRole": "{{AutomationAssumeRole}}",
+          "allocationId": "{{allocationId}}"
+         }
+        }
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SSM::Document.AutoScalingELBHealthCheck",
+   "cfg": "AutoScalingELBHealthCheck",
+   "type": "__declared__",
+   "refs": [
+    "AutomationAssumeRole"
+   ],
+   "values": {
+    "type": "AWS::SSM::Document",
+    "name": "AutoScalingELBHealthCheck",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "DocumentType": "Automation",
+     "Name": "Custom-AutoScalingELBHealthCheck",
+     "Content": {
+      "schemaVersion": "0.3",
+      "assumeRole": {
+       "Fn::Join": [
+        "",
+        [
+         "arn:aws:iam::",
+         "123456789012",
+         ":role/",
+         {
+          "ref": "AutomationAssumeRole"
+         }
+        ]
+       ]
+      },
+      "parameters": {
+       "AutomationAssumeRole": {
+        "type": "String",
+        "default": {
+         "Fn::Join": [
+          "",
+          [
+           "arn:aws:iam::",
+           "123456789012",
+           ":role/",
+           {
+            "ref": "AutomationAssumeRole"
+           }
+          ]
+         ]
+        }
+       },
+       "ASGGroupArn": {
+        "type": "String"
+       }
+      },
+      "mainSteps": [
+       {
+        "name": "AutoScalingELBHealthCheck",
+        "action": "aws:executeScript",
+        "inputs": {
+         "Runtime": "python3.6",
+         "Handler": "script_handler",
+         "Script": "def script_handler(events, context):\n  import boto3\n  import json\n  import os\n  client = boto3.client('autoscaling')\n  try:\n     ASGGroupArn = events['ASGGroupArn']\n     ASGId_1 = ASGGroupArn.split(':')[-1]\n     ASGGroupName = ASGId_1.replace(\"autoScalingGroupName/\",\"\")\n     response = client.update_auto_scaling_group(\n        AutoScalingGroupName= ASGGroupName,\n        HealthCheckType='ELB',\n        HealthCheckGracePeriod=300\n     )\n  except Exception as e:\n     print(e)\n     raise\n",
+         "InputPayload": {
+          "AutomationAssumeRole": "{{AutomationAssumeRole}}",
+          "ASGGroupArn": "{{ASGGroupArn}}"
+         }
+        }
+       }
+      ]
+     }
+    }
+   }
+  }
+ ]
+}

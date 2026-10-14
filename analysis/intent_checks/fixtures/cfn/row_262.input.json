@@ -1,0 +1,786 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "b799f2e4f3d6a5fdff2423c739ea9b5f061268b901eb9322521aa677b91667f4",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "TodoAPI",
+   "cfg": "TodoAPI",
+   "type": "AWS::AppSync::GraphQLApi",
+   "values": {
+    "AuthenticationType": "API_KEY",
+    "Name": "SimpleTodoAPI"
+   },
+   "refs": []
+  },
+  {
+   "id": "TodoAPISchema",
+   "cfg": "TodoAPISchema",
+   "type": "AWS::AppSync::GraphQLSchema",
+   "values": {
+    "ApiId": {
+     "ref": "TodoAPI",
+     "attr": "ApiId"
+    },
+    "Definition": "input CreateTodoInput {\n  title: String\n  description: String\n  owner: String\n}\n\ninput DeleteTodoInput {\n  id: ID!\n}\n\ntype Mutation {\n  createTodo(input: CreateTodoInput!): Todo\n  updateTodo(input: UpdateTodoInput!): Todo\n  deleteTodo(input: DeleteTodoInput!): Todo\n}\n\ntype Query {\n  getTodo(id: ID!): Todo\n  listTodos(filter: TableTodoFilterInput, limit: Int, nextToken: String): TodoConnection\n  queryTodosByOwnerIndex(owner: String!, first: Int, after: String): TodoConnection\n}\n\ntype Subscription {\n  onCreateTodo(id: ID, title: String, description: String, owner: String): Todo @aws_subscribe(mutations: [\"createTodo\"])\n  onUpdateTodo(id: ID, title: String, description: String, owner: String): Todo @aws_subscribe(mutations: [\"updateTodo\"])\n  onDeleteTodo(id: ID, title: String, description: String, owner: String): Todo @aws_subscribe(mutations: [\"deleteTodo\"])\n}\n\ninput TableBooleanFilterInput {\n  ne: Boolean\n  eq: Boolean\n}\n\ninput TableFloatFilterInput {\n  ne: Float\n  eq: Float\n  le: Float\n  lt: Float\n  ge: Float\n  gt: Float\n  contains: Float\n  notContains: Float\n  between: [Float]\n}\n\ninput TableIDFilterInput {\n  ne: ID\n  eq: ID\n  le: ID\n  lt: ID\n  ge: ID\n  gt: ID\n  contains: ID\n  notContains: ID\n  between: [ID]\n  beginsWith: ID\n}\n\ninput TableIntFilterInput {\n  ne: Int\n  eq: Int\n  le: Int\n  lt: Int\n  ge: Int\n  gt: Int\n  contains: Int\n  notContains: Int\n  between: [Int]\n}\n\ninput TableStringFilterInput {\n  ne: String\n  eq: String\n  le: String\n  lt: String\n  ge: String\n  gt: String\n  contains: String\n  notContains: String\n  between: [String]\n  beginsWith: String\n}\n\ninput TableTodoFilterInput {\n  id: TableIDFilterInput\n  title: TableStringFilterInput\n  description: TableStringFilterInput\n  owner: TableStringFilterInput\n}\n\ntype Todo {\n  id: ID!\n  title: String\n  description: String\n  owner: String\n}\n\ntype TodoConnection {\n  items: [Todo]\n  nextToken: String\n}\n\ninput UpdateTodoInput {\n  id: ID!\n  title: String\n  description: String\n  owner: String\n}\n"
+   },
+   "refs": [
+    "TodoAPI"
+   ]
+  },
+  {
+   "id": "DefaultAPIKey",
+   "cfg": "DefaultAPIKey",
+   "type": "AWS::AppSync::ApiKey",
+   "values": {
+    "ApiId": {
+     "ref": "TodoAPI",
+     "attr": "ApiId"
+    },
+    "__resource__": {
+     "DependsOn": [
+      "TodoAPISchema"
+     ]
+    }
+   },
+   "refs": [
+    "TodoAPI"
+   ]
+  },
+  {
+   "id": "DataSourceServiceRole",
+   "cfg": "DataSourceServiceRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "appsync.amazonaws.com"
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "ServiceRoleDefaultPolicy",
+   "cfg": "ServiceRoleDefaultPolicy",
+   "type": "AWS::IAM::Policy",
+   "values": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "dynamodb:BatchGetItem",
+        "dynamodb:BatchWriteItem",
+        "dynamodb:ConditionCheckItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:DescribeTable",
+        "dynamodb:GetItem",
+        "dynamodb:GetRecords",
+        "dynamodb:GetShardIterator",
+        "dynamodb:PutItem",
+        "dynamodb:Query",
+        "dynamodb:Scan",
+        "dynamodb:UpdateItem"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "ref": "TodoTable",
+         "attr": "Arn"
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "ref": "TodoTable",
+            "attr": "Arn"
+           },
+           "/index/*"
+          ]
+         ]
+        }
+       ]
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "ServiceRoleDefaultPolicy",
+    "Roles": [
+     {
+      "ref": "DataSourceServiceRole"
+     }
+    ]
+   },
+   "refs": [
+    "DataSourceServiceRole",
+    "TodoTable"
+   ]
+  },
+  {
+   "id": "TodoTableDataSource",
+   "cfg": "TodoTableDataSource",
+   "type": "AWS::AppSync::DataSource",
+   "values": {
+    "ApiId": {
+     "ref": "TodoAPI",
+     "attr": "ApiId"
+    },
+    "Name": "table",
+    "Type": "AMAZON_DYNAMODB",
+    "DynamoDBConfig": {
+     "AwsRegion": "us-east-1",
+     "TableName": {
+      "ref": "TodoTable"
+     }
+    },
+    "ServiceRoleArn": {
+     "ref": "DataSourceServiceRole",
+     "attr": "Arn"
+    }
+   },
+   "refs": [
+    "DataSourceServiceRole",
+    "TodoAPI",
+    "TodoTable"
+   ]
+  },
+  {
+   "id": "CreateTodoResolver",
+   "cfg": "CreateTodoResolver",
+   "type": "AWS::AppSync::Resolver",
+   "values": {
+    "ApiId": {
+     "ref": "TodoAPI",
+     "attr": "ApiId"
+    },
+    "FieldName": "createTodo",
+    "TypeName": "Mutation",
+    "DataSourceName": "table",
+    "Runtime": {
+     "Name": "APPSYNC_JS",
+     "RuntimeVersion": "1.0.0"
+    },
+    "Code": "import { util } from '@aws-appsync/utils';\n\nexport function request(ctx) {\n  const { input: values } = ctx.arguments;\n  const key = { id: util.autoId() };\n  const condition = { and: [{ id: { attributeExists: false } }] };\n  console.log('--> create todo with requested values: ', values);\n  return dynamodbPutRequest({ key, values, condition });\n}\n\nexport function response(ctx) {\n  const { error, result } = ctx;\n  if (error) {\n    return util.error(error.message, error.type, result);\n  }\n  return ctx.result;\n}\n\n/**\n* Helper function to create a new item\n* @returns a PutItem request\n*/\nfunction dynamodbPutRequest({ key, values, condition: inCondObj }) {\n  const condition = JSON.parse(util.transform.toDynamoDBConditionExpression(inCondObj));\n  if (condition.expressionValues && !Object.keys(condition.expressionValues).length) {\n    delete condition.expressionValues;\n  }\n  return {\n    operation: 'PutItem',\n    key: util.dynamodb.toMapValues(key),\n    attributeValues: util.dynamodb.toMapValues(values),\n    condition,\n  };\n}\n",
+    "__resource__": {
+     "DependsOn": [
+      "TodoAPISchema",
+      "TodoTableDataSource"
+     ]
+    }
+   },
+   "refs": [
+    "TodoAPI"
+   ]
+  },
+  {
+   "id": "UpdateTodoResolver",
+   "cfg": "UpdateTodoResolver",
+   "type": "AWS::AppSync::Resolver",
+   "values": {
+    "ApiId": {
+     "ref": "TodoAPI",
+     "attr": "ApiId"
+    },
+    "FieldName": "updateTodo",
+    "TypeName": "Mutation",
+    "DataSourceName": "table",
+    "Runtime": {
+     "Name": "APPSYNC_JS",
+     "RuntimeVersion": "1.0.0"
+    },
+    "Code": "import { util } from '@aws-appsync/utils';\n\nexport function request(ctx) {\n  const {\n    input: { id, ...values },\n  } = ctx.args;\n  const condition = { id: { attributeExists: true } };\n  return dynamodbUpdateRequest({ key: { id }, values, condition });\n}\n\nexport function response(ctx) {\n  const { error, result } = ctx;\n  if (error) {\n    return util.error(error.message, error.type, result);\n  }\n  return result;\n}\n\nfunction dynamodbUpdateRequest({ key, values, condition: inCondObj }) {\n  const sets = [];\n  const removes = [];\n  const expressionNames = {};\n  const expValues = {};\n\n  for (const [k, v] of Object.entries(values)) {\n    expressionNames[`#${k}`] = k;\n    if (v) {\n      sets.push(`#${k} = :${k}`);\n      expValues[`:${k}`] = v;\n    } else {\n      removes.push(`#${k}`);\n    }\n  }\n\n  console.log(`SET: ${sets.length}, REMOVE: ${removes.length}`);\n\n  let expression = sets.length ? `SET ${sets.join(', ')}` : '';\n  expression += removes.length ? ` REMOVE ${removes.join(', ')}` : '';\n\n  console.log('update expression', expression);\n\n  const condition = JSON.parse(util.transform.toDynamoDBConditionExpression(inCondObj));\n\n  if (condition.expressionValues && !Object.keys(condition.expressionValues).length) {\n    delete condition.expressionValues;\n  }\n\n  return {\n    operation: 'UpdateItem',\n    key: util.dynamodb.toMapValues(key),\n    condition,\n    update: {\n      expression,\n      expressionNames,\n      expressionValues: util.dynamodb.toMapValues(expValues),\n    },\n  };\n}\n",
+    "__resource__": {
+     "DependsOn": [
+      "TodoAPISchema",
+      "TodoTableDataSource"
+     ]
+    }
+   },
+   "refs": [
+    "TodoAPI"
+   ]
+  },
+  {
+   "id": "DeleteTodoResolver",
+   "cfg": "DeleteTodoResolver",
+   "type": "AWS::AppSync::Resolver",
+   "values": {
+    "ApiId": {
+     "ref": "TodoAPI",
+     "attr": "ApiId"
+    },
+    "FieldName": "deleteTodo",
+    "TypeName": "Mutation",
+    "DataSourceName": "table",
+    "Runtime": {
+     "Name": "APPSYNC_JS",
+     "RuntimeVersion": "1.0.0"
+    },
+    "Code": "import { util } from '@aws-appsync/utils';\n\nexport function request(ctx) {\n  return {\n    operation: 'DeleteItem',\n    key: util.dynamodb.toMapValues({id: ctx.args.input.id}),\n  };\n}\n\nexport function response(ctx) {\n  const { error, result } = ctx;\n  if (error) {\n    return util.error(error.message, error.type, result);\n  }\n  return ctx.result;\n}\n",
+    "__resource__": {
+     "DependsOn": [
+      "TodoAPISchema",
+      "TodoTableDataSource"
+     ]
+    }
+   },
+   "refs": [
+    "TodoAPI"
+   ]
+  },
+  {
+   "id": "GetTodoResolver",
+   "cfg": "GetTodoResolver",
+   "type": "AWS::AppSync::Resolver",
+   "values": {
+    "ApiId": {
+     "ref": "TodoAPI",
+     "attr": "ApiId"
+    },
+    "FieldName": "getTodo",
+    "TypeName": "Query",
+    "DataSourceName": "table",
+    "Runtime": {
+     "Name": "APPSYNC_JS",
+     "RuntimeVersion": "1.0.0"
+    },
+    "Code": "import { util } from '@aws-appsync/utils';\n\nexport function request(ctx) {\n  return {\n    operation: 'GetItem',\n    key: util.dynamodb.toMapValues({ id: ctx.args.id}),\n  };\n}\n\nexport function response(ctx) {\n  const { error, result } = ctx;\n  if (error) {\n    return util.error(error.message, error.type, result);\n  }\n  return ctx.result;\n}\n",
+    "__resource__": {
+     "DependsOn": [
+      "TodoAPISchema",
+      "TodoTableDataSource"
+     ]
+    }
+   },
+   "refs": [
+    "TodoAPI"
+   ]
+  },
+  {
+   "id": "ListTodosResolver",
+   "cfg": "ListTodosResolver",
+   "type": "AWS::AppSync::Resolver",
+   "values": {
+    "ApiId": {
+     "ref": "TodoAPI",
+     "attr": "ApiId"
+    },
+    "FieldName": "listTodos",
+    "TypeName": "Query",
+    "DataSourceName": "table",
+    "Runtime": {
+     "Name": "APPSYNC_JS",
+     "RuntimeVersion": "1.0.0"
+    },
+    "Code": "import { util } from '@aws-appsync/utils';\n\nexport function request(ctx) {\n  const { filter: f, limit = 20, nextToken } = ctx.args;\n  const filter = f ? JSON.parse(util.transform.toDynamoDBFilterExpression(f)) : null;\n  return { operation: 'Scan', filter, limit, nextToken };\n}\n\nexport function response(ctx) {\n  const { error, result } = ctx;\n  if (error) {\n    return util.error(error.message, error.type, result);\n  }\n  const { items = [], nextToken } = result;\n  return { items, nextToken };\n}\n",
+    "__resource__": {
+     "DependsOn": [
+      "TodoAPISchema",
+      "TodoTableDataSource"
+     ]
+    }
+   },
+   "refs": [
+    "TodoAPI"
+   ]
+  },
+  {
+   "id": "QueryTodosResolver",
+   "cfg": "QueryTodosResolver",
+   "type": "AWS::AppSync::Resolver",
+   "values": {
+    "ApiId": {
+     "ref": "TodoAPI",
+     "attr": "ApiId"
+    },
+    "FieldName": "queryTodosByOwnerIndex",
+    "TypeName": "Query",
+    "DataSourceName": "table",
+    "Runtime": {
+     "Name": "APPSYNC_JS",
+     "RuntimeVersion": "1.0.0"
+    },
+    "Code": "import { util } from '@aws-appsync/utils';\n\nexport function request(ctx) {\n  const { owner, first = 20, after } = ctx.args;\n  return dynamodbQueryRequest('owner', owner, 'owner-index', first, after);\n}\n\nexport function response(ctx) {\n  const { error, result } = ctx;\n  if (error) {\n    return util.error(error.message, error.type, result);\n  }\n  return result;\n}\n\nfunction dynamodbQueryRequest(key, value, index, limit, nextToken) {\n  const expression = `#key = :key`;\n  const expressionNames = { '#key': key };\n  const expressionValues = util.dynamodb.toMapValues({ ':key': value });\n  return {\n    operation: 'Query',\n    query: { expression, expressionNames, expressionValues },\n    index,\n    limit,\n    nextToken,\n    scanIndexForward: true,\n    select: 'ALL_ATTRIBUTES',\n  };\n}\n",
+    "__resource__": {
+     "DependsOn": [
+      "TodoAPISchema",
+      "TodoTableDataSource"
+     ]
+    }
+   },
+   "refs": [
+    "TodoAPI"
+   ]
+  },
+  {
+   "id": "TodoTable",
+   "cfg": "TodoTable",
+   "type": "AWS::DynamoDB::Table",
+   "values": {
+    "KeySchema": [
+     {
+      "AttributeName": "id",
+      "KeyType": "HASH"
+     }
+    ],
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "id",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "owner",
+      "AttributeType": "S"
+     }
+    ],
+    "GlobalSecondaryIndexes": [
+     {
+      "IndexName": "owner-index",
+      "KeySchema": [
+       {
+        "AttributeName": "owner",
+        "KeyType": "HASH"
+       }
+      ],
+      "Projection": {
+       "ProjectionType": "ALL"
+      },
+      "ProvisionedThroughput": {
+       "ReadCapacityUnits": 5,
+       "WriteCapacityUnits": 5
+      }
+     }
+    ],
+    "ProvisionedThroughput": {
+     "ReadCapacityUnits": 5,
+     "WriteCapacityUnits": 5
+    },
+    "__resource__": {
+     "DeletionPolicy": "Retain",
+     "UpdateReplacePolicy": "Retain"
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "__declared__.AWS::AppSync::GraphQLApi.TodoAPI",
+   "cfg": "TodoAPI",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::AppSync::GraphQLApi",
+    "name": "TodoAPI",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AuthenticationType": "API_KEY",
+     "Name": "SimpleTodoAPI"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::AppSync::GraphQLSchema.TodoAPISchema",
+   "cfg": "TodoAPISchema",
+   "type": "__declared__",
+   "refs": [
+    "TodoAPI"
+   ],
+   "values": {
+    "type": "AWS::AppSync::GraphQLSchema",
+    "name": "TodoAPISchema",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "TodoAPI",
+      "attr": "ApiId"
+     },
+     "Definition": "input CreateTodoInput {\n  title: String\n  description: String\n  owner: String\n}\n\ninput DeleteTodoInput {\n  id: ID!\n}\n\ntype Mutation {\n  createTodo(input: CreateTodoInput!): Todo\n  updateTodo(input: UpdateTodoInput!): Todo\n  deleteTodo(input: DeleteTodoInput!): Todo\n}\n\ntype Query {\n  getTodo(id: ID!): Todo\n  listTodos(filter: TableTodoFilterInput, limit: Int, nextToken: String): TodoConnection\n  queryTodosByOwnerIndex(owner: String!, first: Int, after: String): TodoConnection\n}\n\ntype Subscription {\n  onCreateTodo(id: ID, title: String, description: String, owner: String): Todo @aws_subscribe(mutations: [\"createTodo\"])\n  onUpdateTodo(id: ID, title: String, description: String, owner: String): Todo @aws_subscribe(mutations: [\"updateTodo\"])\n  onDeleteTodo(id: ID, title: String, description: String, owner: String): Todo @aws_subscribe(mutations: [\"deleteTodo\"])\n}\n\ninput TableBooleanFilterInput {\n  ne: Boolean\n  eq: Boolean\n}\n\ninput TableFloatFilterInput {\n  ne: Float\n  eq: Float\n  le: Float\n  lt: Float\n  ge: Float\n  gt: Float\n  contains: Float\n  notContains: Float\n  between: [Float]\n}\n\ninput TableIDFilterInput {\n  ne: ID\n  eq: ID\n  le: ID\n  lt: ID\n  ge: ID\n  gt: ID\n  contains: ID\n  notContains: ID\n  between: [ID]\n  beginsWith: ID\n}\n\ninput TableIntFilterInput {\n  ne: Int\n  eq: Int\n  le: Int\n  lt: Int\n  ge: Int\n  gt: Int\n  contains: Int\n  notContains: Int\n  between: [Int]\n}\n\ninput TableStringFilterInput {\n  ne: String\n  eq: String\n  le: String\n  lt: String\n  ge: String\n  gt: String\n  contains: String\n  notContains: String\n  between: [String]\n  beginsWith: String\n}\n\ninput TableTodoFilterInput {\n  id: TableIDFilterInput\n  title: TableStringFilterInput\n  description: TableStringFilterInput\n  owner: TableStringFilterInput\n}\n\ntype Todo {\n  id: ID!\n  title: String\n  description: String\n  owner: String\n}\n\ntype TodoConnection {\n  items: [Todo]\n  nextToken: String\n}\n\ninput UpdateTodoInput {\n  id: ID!\n  title: String\n  description: String\n  owner: String\n}\n"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::AppSync::ApiKey.DefaultAPIKey",
+   "cfg": "DefaultAPIKey",
+   "type": "__declared__",
+   "refs": [
+    "TodoAPI"
+   ],
+   "values": {
+    "type": "AWS::AppSync::ApiKey",
+    "name": "DefaultAPIKey",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "TodoAPI",
+      "attr": "ApiId"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.DataSourceServiceRole",
+   "cfg": "DataSourceServiceRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "DataSourceServiceRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "appsync.amazonaws.com"
+         ]
+        }
+       }
+      ],
+      "Version": "2012-10-17"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Policy.ServiceRoleDefaultPolicy",
+   "cfg": "ServiceRoleDefaultPolicy",
+   "type": "__declared__",
+   "refs": [
+    "DataSourceServiceRole",
+    "TodoTable"
+   ],
+   "values": {
+    "type": "AWS::IAM::Policy",
+    "name": "ServiceRoleDefaultPolicy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "PolicyDocument": {
+      "Statement": [
+       {
+        "Action": [
+         "dynamodb:BatchGetItem",
+         "dynamodb:BatchWriteItem",
+         "dynamodb:ConditionCheckItem",
+         "dynamodb:DeleteItem",
+         "dynamodb:DescribeTable",
+         "dynamodb:GetItem",
+         "dynamodb:GetRecords",
+         "dynamodb:GetShardIterator",
+         "dynamodb:PutItem",
+         "dynamodb:Query",
+         "dynamodb:Scan",
+         "dynamodb:UpdateItem"
+        ],
+        "Effect": "Allow",
+        "Resource": [
+         {
+          "ref": "TodoTable",
+          "attr": "Arn"
+         },
+         {
+          "Fn::Join": [
+           "",
+           [
+            {
+             "ref": "TodoTable",
+             "attr": "Arn"
+            },
+            "/index/*"
+           ]
+          ]
+         }
+        ]
+       }
+      ],
+      "Version": "2012-10-17"
+     },
+     "PolicyName": "ServiceRoleDefaultPolicy",
+     "Roles": [
+      {
+       "ref": "DataSourceServiceRole"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::AppSync::DataSource.TodoTableDataSource",
+   "cfg": "TodoTableDataSource",
+   "type": "__declared__",
+   "refs": [
+    "DataSourceServiceRole",
+    "TodoAPI",
+    "TodoTable"
+   ],
+   "values": {
+    "type": "AWS::AppSync::DataSource",
+    "name": "TodoTableDataSource",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "TodoAPI",
+      "attr": "ApiId"
+     },
+     "Name": "table",
+     "Type": "AMAZON_DYNAMODB",
+     "DynamoDBConfig": {
+      "AwsRegion": "us-east-1",
+      "TableName": {
+       "ref": "TodoTable"
+      }
+     },
+     "ServiceRoleArn": {
+      "ref": "DataSourceServiceRole",
+      "attr": "Arn"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::AppSync::Resolver.CreateTodoResolver",
+   "cfg": "CreateTodoResolver",
+   "type": "__declared__",
+   "refs": [
+    "TodoAPI"
+   ],
+   "values": {
+    "type": "AWS::AppSync::Resolver",
+    "name": "CreateTodoResolver",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "TodoAPI",
+      "attr": "ApiId"
+     },
+     "FieldName": "createTodo",
+     "TypeName": "Mutation",
+     "DataSourceName": "table",
+     "Runtime": {
+      "Name": "APPSYNC_JS",
+      "RuntimeVersion": "1.0.0"
+     },
+     "Code": "import { util } from '@aws-appsync/utils';\n\nexport function request(ctx) {\n  const { input: values } = ctx.arguments;\n  const key = { id: util.autoId() };\n  const condition = { and: [{ id: { attributeExists: false } }] };\n  console.log('--> create todo with requested values: ', values);\n  return dynamodbPutRequest({ key, values, condition });\n}\n\nexport function response(ctx) {\n  const { error, result } = ctx;\n  if (error) {\n    return util.error(error.message, error.type, result);\n  }\n  return ctx.result;\n}\n\n/**\n* Helper function to create a new item\n* @returns a PutItem request\n*/\nfunction dynamodbPutRequest({ key, values, condition: inCondObj }) {\n  const condition = JSON.parse(util.transform.toDynamoDBConditionExpression(inCondObj));\n  if (condition.expressionValues && !Object.keys(condition.expressionValues).length) {\n    delete condition.expressionValues;\n  }\n  return {\n    operation: 'PutItem',\n    key: util.dynamodb.toMapValues(key),\n    attributeValues: util.dynamodb.toMapValues(values),\n    condition,\n  };\n}\n"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::AppSync::Resolver.UpdateTodoResolver",
+   "cfg": "UpdateTodoResolver",
+   "type": "__declared__",
+   "refs": [
+    "TodoAPI"
+   ],
+   "values": {
+    "type": "AWS::AppSync::Resolver",
+    "name": "UpdateTodoResolver",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "TodoAPI",
+      "attr": "ApiId"
+     },
+     "FieldName": "updateTodo",
+     "TypeName": "Mutation",
+     "DataSourceName": "table",
+     "Runtime": {
+      "Name": "APPSYNC_JS",
+      "RuntimeVersion": "1.0.0"
+     },
+     "Code": "import { util } from '@aws-appsync/utils';\n\nexport function request(ctx) {\n  const {\n    input: { id, ...values },\n  } = ctx.args;\n  const condition = { id: { attributeExists: true } };\n  return dynamodbUpdateRequest({ key: { id }, values, condition });\n}\n\nexport function response(ctx) {\n  const { error, result } = ctx;\n  if (error) {\n    return util.error(error.message, error.type, result);\n  }\n  return result;\n}\n\nfunction dynamodbUpdateRequest({ key, values, condition: inCondObj }) {\n  const sets = [];\n  const removes = [];\n  const expressionNames = {};\n  const expValues = {};\n\n  for (const [k, v] of Object.entries(values)) {\n    expressionNames[`#${k}`] = k;\n    if (v) {\n      sets.push(`#${k} = :${k}`);\n      expValues[`:${k}`] = v;\n    } else {\n      removes.push(`#${k}`);\n    }\n  }\n\n  console.log(`SET: ${sets.length}, REMOVE: ${removes.length}`);\n\n  let expression = sets.length ? `SET ${sets.join(', ')}` : '';\n  expression += removes.length ? ` REMOVE ${removes.join(', ')}` : '';\n\n  console.log('update expression', expression);\n\n  const condition = JSON.parse(util.transform.toDynamoDBConditionExpression(inCondObj));\n\n  if (condition.expressionValues && !Object.keys(condition.expressionValues).length) {\n    delete condition.expressionValues;\n  }\n\n  return {\n    operation: 'UpdateItem',\n    key: util.dynamodb.toMapValues(key),\n    condition,\n    update: {\n      expression,\n      expressionNames,\n      expressionValues: util.dynamodb.toMapValues(expValues),\n    },\n  };\n}\n"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::AppSync::Resolver.DeleteTodoResolver",
+   "cfg": "DeleteTodoResolver",
+   "type": "__declared__",
+   "refs": [
+    "TodoAPI"
+   ],
+   "values": {
+    "type": "AWS::AppSync::Resolver",
+    "name": "DeleteTodoResolver",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "TodoAPI",
+      "attr": "ApiId"
+     },
+     "FieldName": "deleteTodo",
+     "TypeName": "Mutation",
+     "DataSourceName": "table",
+     "Runtime": {
+      "Name": "APPSYNC_JS",
+      "RuntimeVersion": "1.0.0"
+     },
+     "Code": "import { util } from '@aws-appsync/utils';\n\nexport function request(ctx) {\n  return {\n    operation: 'DeleteItem',\n    key: util.dynamodb.toMapValues({id: ctx.args.input.id}),\n  };\n}\n\nexport function response(ctx) {\n  const { error, result } = ctx;\n  if (error) {\n    return util.error(error.message, error.type, result);\n  }\n  return ctx.result;\n}\n"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::AppSync::Resolver.GetTodoResolver",
+   "cfg": "GetTodoResolver",
+   "type": "__declared__",
+   "refs": [
+    "TodoAPI"
+   ],
+   "values": {
+    "type": "AWS::AppSync::Resolver",
+    "name": "GetTodoResolver",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "TodoAPI",
+      "attr": "ApiId"
+     },
+     "FieldName": "getTodo",
+     "TypeName": "Query",
+     "DataSourceName": "table",
+     "Runtime": {
+      "Name": "APPSYNC_JS",
+      "RuntimeVersion": "1.0.0"
+     },
+     "Code": "import { util } from '@aws-appsync/utils';\n\nexport function request(ctx) {\n  return {\n    operation: 'GetItem',\n    key: util.dynamodb.toMapValues({ id: ctx.args.id}),\n  };\n}\n\nexport function response(ctx) {\n  const { error, result } = ctx;\n  if (error) {\n    return util.error(error.message, error.type, result);\n  }\n  return ctx.result;\n}\n"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::AppSync::Resolver.ListTodosResolver",
+   "cfg": "ListTodosResolver",
+   "type": "__declared__",
+   "refs": [
+    "TodoAPI"
+   ],
+   "values": {
+    "type": "AWS::AppSync::Resolver",
+    "name": "ListTodosResolver",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "TodoAPI",
+      "attr": "ApiId"
+     },
+     "FieldName": "listTodos",
+     "TypeName": "Query",
+     "DataSourceName": "table",
+     "Runtime": {
+      "Name": "APPSYNC_JS",
+      "RuntimeVersion": "1.0.0"
+     },
+     "Code": "import { util } from '@aws-appsync/utils';\n\nexport function request(ctx) {\n  const { filter: f, limit = 20, nextToken } = ctx.args;\n  const filter = f ? JSON.parse(util.transform.toDynamoDBFilterExpression(f)) : null;\n  return { operation: 'Scan', filter, limit, nextToken };\n}\n\nexport function response(ctx) {\n  const { error, result } = ctx;\n  if (error) {\n    return util.error(error.message, error.type, result);\n  }\n  const { items = [], nextToken } = result;\n  return { items, nextToken };\n}\n"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::AppSync::Resolver.QueryTodosResolver",
+   "cfg": "QueryTodosResolver",
+   "type": "__declared__",
+   "refs": [
+    "TodoAPI"
+   ],
+   "values": {
+    "type": "AWS::AppSync::Resolver",
+    "name": "QueryTodosResolver",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "TodoAPI",
+      "attr": "ApiId"
+     },
+     "FieldName": "queryTodosByOwnerIndex",
+     "TypeName": "Query",
+     "DataSourceName": "table",
+     "Runtime": {
+      "Name": "APPSYNC_JS",
+      "RuntimeVersion": "1.0.0"
+     },
+     "Code": "import { util } from '@aws-appsync/utils';\n\nexport function request(ctx) {\n  const { owner, first = 20, after } = ctx.args;\n  return dynamodbQueryRequest('owner', owner, 'owner-index', first, after);\n}\n\nexport function response(ctx) {\n  const { error, result } = ctx;\n  if (error) {\n    return util.error(error.message, error.type, result);\n  }\n  return result;\n}\n\nfunction dynamodbQueryRequest(key, value, index, limit, nextToken) {\n  const expression = `#key = :key`;\n  const expressionNames = { '#key': key };\n  const expressionValues = util.dynamodb.toMapValues({ ':key': value });\n  return {\n    operation: 'Query',\n    query: { expression, expressionNames, expressionValues },\n    index,\n    limit,\n    nextToken,\n    scanIndexForward: true,\n    select: 'ALL_ATTRIBUTES',\n  };\n}\n"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::DynamoDB::Table.TodoTable",
+   "cfg": "TodoTable",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::DynamoDB::Table",
+    "name": "TodoTable",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "KeySchema": [
+      {
+       "AttributeName": "id",
+       "KeyType": "HASH"
+      }
+     ],
+     "AttributeDefinitions": [
+      {
+       "AttributeName": "id",
+       "AttributeType": "S"
+      },
+      {
+       "AttributeName": "owner",
+       "AttributeType": "S"
+      }
+     ],
+     "GlobalSecondaryIndexes": [
+      {
+       "IndexName": "owner-index",
+       "KeySchema": [
+        {
+         "AttributeName": "owner",
+         "KeyType": "HASH"
+        }
+       ],
+       "Projection": {
+        "ProjectionType": "ALL"
+       },
+       "ProvisionedThroughput": {
+        "ReadCapacityUnits": 5,
+        "WriteCapacityUnits": 5
+       }
+      }
+     ],
+     "ProvisionedThroughput": {
+      "ReadCapacityUnits": 5,
+      "WriteCapacityUnits": 5
+     }
+    }
+   }
+  }
+ ]
+}

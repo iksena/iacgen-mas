@@ -1,0 +1,836 @@
+{
+ "lang": "cfn",
+ "row_number": 176,
+ "source_hash": {
+  "gt": "305da5cfad60917c16be148e290c0a25f588a664eb53f01e3e39b96a04d858ea",
+  "prompt": "6744b6725e27411fa9b42e5a8913280fe539eb233c2081c1bf158eb5733d2065"
+ },
+ "selectors": {
+  "vpc": {
+   "types": [
+    "AWS::EC2::VPC"
+   ]
+  },
+  "subnet": {
+   "types": [
+    "AWS::EC2::Subnet"
+   ]
+  },
+  "subnet_v6": {
+   "types": [
+    "AWS::EC2::Subnet"
+   ],
+   "where": [
+    {
+     "path": "Ipv6CidrBlock",
+     "op": "present"
+    }
+   ]
+  },
+  "igw": {
+   "types": [
+    "AWS::EC2::InternetGateway"
+   ]
+  },
+  "rt": {
+   "types": [
+    "AWS::EC2::RouteTable"
+   ]
+  },
+  "nacl": {
+   "types": [
+    "AWS::EC2::NetworkAcl"
+   ]
+  },
+  "dhcp": {
+   "types": [
+    "AWS::EC2::DHCPOptions"
+   ]
+  },
+  "env_param": {
+   "types": [
+    "__parameter__"
+   ],
+   "where": [
+    {
+     "path": "allowed_values.*",
+     "op": "eq",
+     "value": "staging"
+    }
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "env_parameter_staging_prod",
+   "kind": "attr",
+   "select": "env_param",
+   "tier": "core",
+   "quote": "for either a staging or a production environment, selectable through a parameter",
+   "cond": {
+    "path": "allowed_values.*",
+    "op": "regex",
+    "value": "(?i)^prod"
+   },
+   "justify": "production environment value (prod/production)"
+  },
+  {
+   "id": "vpc_exists",
+   "kind": "attr",
+   "select": "vpc",
+   "tier": "core",
+   "quote": "provisions a single environment VPC",
+   "cond": {
+    "path": "CidrBlock",
+    "op": "present"
+   }
+  },
+  {
+   "id": "vpc_ipv6_block",
+   "kind": "ref",
+   "tier": "core",
+   "quote": "the VPC's auto-assigned IPv6 block",
+   "from": {
+    "types": [
+     "AWS::EC2::VPCCidrBlock"
+    ],
+    "where": [
+     {
+      "path": "AmazonProvidedIpv6CidrBlock",
+      "op": "truthy"
+     }
+    ]
+   },
+   "to": "vpc"
+  },
+  {
+   "id": "five_subnets",
+   "kind": "exists",
+   "select": "subnet",
+   "min": 5,
+   "tier": "core",
+   "quote": "three public subnets",
+   "justify": "three public subnets plus two private subnets = at least five subnets"
+  },
+  {
+   "id": "subnets_span_two_azs",
+   "kind": "exists",
+   "select": "subnet",
+   "distinct_path": "AvailabilityZone",
+   "min": 2,
+   "tier": "detail",
+   "quote": "one in an additional availability zone for compute or EC2 use"
+  },
+  {
+   "id": "public_subnets_ipv6",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "all with matching IPv6 CIDR allocations derived from the VPC's auto-assigned IPv6 block",
+   "justify": "at least the three public subnets get IPv6 CIDRs, inline or via AWS::EC2::SubnetCidrBlock",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": "subnet_v6",
+     "min": 3
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "AWS::EC2::SubnetCidrBlock"
+      ]
+     },
+     "min": 3
+    }
+   ]
+  },
+  {
+   "id": "igw_attached",
+   "kind": "ref",
+   "tier": "core",
+   "quote": "an internet gateway",
+   "from": {
+    "types": [
+     "AWS::EC2::VPCGatewayAttachment"
+    ]
+   },
+   "to": "igw"
+  },
+  {
+   "id": "egress_only_igw",
+   "kind": "ref",
+   "tier": "core",
+   "quote": "an egress-only internet gateway for IPv6",
+   "from": {
+    "types": [
+     "AWS::EC2::EgressOnlyInternetGateway"
+    ]
+   },
+   "to": "vpc"
+  },
+  {
+   "id": "public_ipv4_default_route",
+   "kind": "ref",
+   "tier": "core",
+   "quote": "a public route table routing both IPv4 and IPv6 default traffic through the internet gateway",
+   "from": {
+    "types": [
+     "AWS::EC2::Route"
+    ],
+    "where": [
+     {
+      "path": "DestinationCidrBlock",
+      "op": "eq",
+      "value": "0.0.0.0/0"
+     }
+    ]
+   },
+   "to": "igw",
+   "justify": "IPv4 default traffic = 0.0.0.0/0"
+  },
+  {
+   "id": "public_ipv6_default_route",
+   "kind": "ref",
+   "tier": "core",
+   "quote": "a public route table routing both IPv4 and IPv6 default traffic through the internet gateway",
+   "from": {
+    "types": [
+     "AWS::EC2::Route"
+    ],
+    "where": [
+     {
+      "path": "DestinationIpv6CidrBlock",
+      "op": "eq",
+      "value": "::/0"
+     }
+    ]
+   },
+   "to": "igw",
+   "justify": "IPv6 default traffic = ::/0"
+  },
+  {
+   "id": "nat_gateway_optional",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "a parameter controlling whether to also deploy a NAT gateway",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": "type",
+      "op": "eq",
+      "value": "AWS::EC2::NatGateway"
+     },
+     {
+      "path": "gated",
+      "op": "truthy"
+     }
+    ]
+   }
+  },
+  {
+   "id": "nat_gateway_eip",
+   "kind": "ref",
+   "tier": "detail",
+   "quote": "a NAT gateway, with its own Elastic IP",
+   "from": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": "type",
+      "op": "eq",
+      "value": "AWS::EC2::NatGateway"
+     }
+    ]
+   },
+   "to": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": "type",
+      "op": "eq",
+      "value": "AWS::EC2::EIP"
+     }
+    ]
+   }
+  },
+  {
+   "id": "two_network_acls",
+   "kind": "exists",
+   "select": "nacl",
+   "min": 2,
+   "tier": "core",
+   "quote": "use two network ACLs"
+  },
+  {
+   "id": "nacl_inbound_http",
+   "kind": "all_of",
+   "tier": "core",
+   "quote": "allowing inbound HTTP, HTTPS, SSH",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "AWS::EC2::NetworkAclEntry"
+      ],
+      "where": [
+       {
+        "path": "RuleAction",
+        "op": "eq",
+        "value": "allow"
+       },
+       {
+        "path": "Egress",
+        "op": "none_eq",
+        "value": "true"
+       },
+       {
+        "path": "CidrBlock",
+        "op": "present"
+       },
+       {
+        "path": "Protocol",
+        "op": "eq",
+        "value": "6"
+       },
+       {
+        "path": "PortRange.From",
+        "op": "lte",
+        "value": 80
+       },
+       {
+        "path": "PortRange.To",
+        "op": "gte",
+        "value": 80
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "AWS::EC2::NetworkAclEntry"
+      ],
+      "where": [
+       {
+        "path": "RuleAction",
+        "op": "eq",
+        "value": "allow"
+       },
+       {
+        "path": "Egress",
+        "op": "none_eq",
+        "value": "true"
+       },
+       {
+        "path": "Ipv6CidrBlock",
+        "op": "present"
+       },
+       {
+        "path": "Protocol",
+        "op": "eq",
+        "value": "6"
+       },
+       {
+        "path": "PortRange.From",
+        "op": "lte",
+        "value": 80
+       },
+       {
+        "path": "PortRange.To",
+        "op": "gte",
+        "value": 80
+       }
+      ]
+     }
+    }
+   ],
+   "justify": "HTTP = TCP 80, for both IPv4 and IPv6"
+  },
+  {
+   "id": "nacl_inbound_https",
+   "kind": "all_of",
+   "tier": "core",
+   "quote": "allowing inbound HTTP, HTTPS, SSH",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "AWS::EC2::NetworkAclEntry"
+      ],
+      "where": [
+       {
+        "path": "RuleAction",
+        "op": "eq",
+        "value": "allow"
+       },
+       {
+        "path": "Egress",
+        "op": "none_eq",
+        "value": "true"
+       },
+       {
+        "path": "CidrBlock",
+        "op": "present"
+       },
+       {
+        "path": "Protocol",
+        "op": "eq",
+        "value": "6"
+       },
+       {
+        "path": "PortRange.From",
+        "op": "lte",
+        "value": 443
+       },
+       {
+        "path": "PortRange.To",
+        "op": "gte",
+        "value": 443
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "AWS::EC2::NetworkAclEntry"
+      ],
+      "where": [
+       {
+        "path": "RuleAction",
+        "op": "eq",
+        "value": "allow"
+       },
+       {
+        "path": "Egress",
+        "op": "none_eq",
+        "value": "true"
+       },
+       {
+        "path": "Ipv6CidrBlock",
+        "op": "present"
+       },
+       {
+        "path": "Protocol",
+        "op": "eq",
+        "value": "6"
+       },
+       {
+        "path": "PortRange.From",
+        "op": "lte",
+        "value": 443
+       },
+       {
+        "path": "PortRange.To",
+        "op": "gte",
+        "value": 443
+       }
+      ]
+     }
+    }
+   ],
+   "justify": "HTTPS = TCP 443, for both IPv4 and IPv6"
+  },
+  {
+   "id": "nacl_inbound_ssh",
+   "kind": "all_of",
+   "tier": "core",
+   "quote": "allowing inbound HTTP, HTTPS, SSH",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "AWS::EC2::NetworkAclEntry"
+      ],
+      "where": [
+       {
+        "path": "RuleAction",
+        "op": "eq",
+        "value": "allow"
+       },
+       {
+        "path": "Egress",
+        "op": "none_eq",
+        "value": "true"
+       },
+       {
+        "path": "CidrBlock",
+        "op": "present"
+       },
+       {
+        "path": "Protocol",
+        "op": "eq",
+        "value": "6"
+       },
+       {
+        "path": "PortRange.From",
+        "op": "lte",
+        "value": 22
+       },
+       {
+        "path": "PortRange.To",
+        "op": "gte",
+        "value": 22
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "AWS::EC2::NetworkAclEntry"
+      ],
+      "where": [
+       {
+        "path": "RuleAction",
+        "op": "eq",
+        "value": "allow"
+       },
+       {
+        "path": "Egress",
+        "op": "none_eq",
+        "value": "true"
+       },
+       {
+        "path": "Ipv6CidrBlock",
+        "op": "present"
+       },
+       {
+        "path": "Protocol",
+        "op": "eq",
+        "value": "6"
+       },
+       {
+        "path": "PortRange.From",
+        "op": "lte",
+        "value": 22
+       },
+       {
+        "path": "PortRange.To",
+        "op": "gte",
+        "value": 22
+       }
+      ]
+     }
+    }
+   ],
+   "justify": "SSH = TCP 22, for both IPv4 and IPv6"
+  },
+  {
+   "id": "nacl_inbound_ephemeral",
+   "kind": "all_of",
+   "tier": "detail",
+   "quote": "ephemeral return traffic (each for both IPv4 and IPv6)",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "AWS::EC2::NetworkAclEntry"
+      ],
+      "where": [
+       {
+        "path": "RuleAction",
+        "op": "eq",
+        "value": "allow"
+       },
+       {
+        "path": "Egress",
+        "op": "none_eq",
+        "value": "true"
+       },
+       {
+        "path": "CidrBlock",
+        "op": "present"
+       },
+       {
+        "path": "Protocol",
+        "op": "in",
+        "value": [
+         "6",
+         "-1"
+        ]
+       },
+       {
+        "path": "PortRange.From",
+        "op": "gte",
+        "value": 1024
+       },
+       {
+        "path": "PortRange.From",
+        "op": "lte",
+        "value": 49152
+       },
+       {
+        "path": "PortRange.To",
+        "op": "eq",
+        "value": 65535
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "AWS::EC2::NetworkAclEntry"
+      ],
+      "where": [
+       {
+        "path": "RuleAction",
+        "op": "eq",
+        "value": "allow"
+       },
+       {
+        "path": "Egress",
+        "op": "none_eq",
+        "value": "true"
+       },
+       {
+        "path": "Ipv6CidrBlock",
+        "op": "present"
+       },
+       {
+        "path": "Protocol",
+        "op": "in",
+        "value": [
+         "6",
+         "-1"
+        ]
+       },
+       {
+        "path": "PortRange.From",
+        "op": "gte",
+        "value": 1024
+       },
+       {
+        "path": "PortRange.From",
+        "op": "lte",
+        "value": 49152
+       },
+       {
+        "path": "PortRange.To",
+        "op": "eq",
+        "value": 65535
+       }
+      ]
+     }
+    }
+   ],
+   "justify": "ephemeral ports run up to 65535, starting between 1024 and 49152"
+  },
+  {
+   "id": "nacl_open_egress",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "with open egress",
+   "justify": "open egress = allow all protocols, or all TCP ports, to 0.0.0.0/0",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "AWS::EC2::NetworkAclEntry"
+      ],
+      "where": [
+       {
+        "path": "RuleAction",
+        "op": "eq",
+        "value": "allow"
+       },
+       {
+        "path": "Egress",
+        "op": "eq",
+        "value": "true"
+       },
+       {
+        "path": "CidrBlock",
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       },
+       {
+        "path": "Protocol",
+        "op": "eq",
+        "value": "-1"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "AWS::EC2::NetworkAclEntry"
+      ],
+      "where": [
+       {
+        "path": "RuleAction",
+        "op": "eq",
+        "value": "allow"
+       },
+       {
+        "path": "Egress",
+        "op": "eq",
+        "value": "true"
+       },
+       {
+        "path": "CidrBlock",
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       },
+       {
+        "path": "Protocol",
+        "op": "eq",
+        "value": "6"
+       },
+       {
+        "path": "PortRange.From",
+        "op": "lte",
+        "value": 1
+       },
+       {
+        "path": "PortRange.To",
+        "op": "eq",
+        "value": 65535
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "nacl_subnet_associations",
+   "kind": "ref",
+   "tier": "detail",
+   "quote": "one for the public subnets",
+   "from": {
+    "types": [
+     "AWS::EC2::SubnetNetworkAclAssociation"
+    ]
+   },
+   "to": "nacl"
+  },
+  {
+   "id": "placement_group_cluster",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "an EC2 placement group for tightly coupled workloads",
+   "select": {
+    "types": [
+     "AWS::EC2::PlacementGroup"
+    ]
+   },
+   "cond": {
+    "path": "Strategy",
+    "op": "eq",
+    "value": "cluster"
+   },
+   "justify": "tightly coupled workloads = cluster placement strategy"
+  },
+  {
+   "id": "dhcp_amazon_dns",
+   "kind": "attr",
+   "select": "dhcp",
+   "tier": "core",
+   "quote": "the default Amazon-provided DNS servers",
+   "cond": {
+    "path": "DomainNameServers.*",
+    "op": "eq",
+    "value": "AmazonProvidedDNS"
+   },
+   "justify": "Amazon-provided DNS servers = AmazonProvidedDNS"
+  },
+  {
+   "id": "dhcp_domain_name",
+   "kind": "attr",
+   "select": "dhcp",
+   "tier": "detail",
+   "quote": "assigning the environment's own domain name",
+   "cond": {
+    "path": "DomainName",
+    "op": "present"
+   }
+  },
+  {
+   "id": "dhcp_associated_to_vpc",
+   "kind": "ref",
+   "tier": "detail",
+   "quote": "a DHCP options set assigning",
+   "from": {
+    "types": [
+     "AWS::EC2::VPCDHCPOptionsAssociation"
+    ]
+   },
+   "to": "dhcp"
+  },
+  {
+   "id": "output_vpc_id",
+   "kind": "ref",
+   "tier": "detail",
+   "quote": "Export the VPC ID",
+   "from": {
+    "types": [
+     "__output__"
+    ]
+   },
+   "to": "vpc"
+  },
+  {
+   "id": "output_subnet_ids",
+   "kind": "ref",
+   "tier": "detail",
+   "quote": "public and private subnet IDs",
+   "from": {
+    "types": [
+     "__output__"
+    ]
+   },
+   "to": "subnet"
+  },
+  {
+   "id": "output_route_table_id",
+   "kind": "ref",
+   "tier": "detail",
+   "quote": "the private route table ID",
+   "from": {
+    "types": [
+     "__output__"
+    ]
+   },
+   "to": "rt"
+  },
+  {
+   "id": "outputs_exported",
+   "kind": "exists",
+   "tier": "detail",
+   "quote": "as stack outputs so other stacks can reference this network",
+   "select": {
+    "types": [
+     "__output__"
+    ],
+    "where": [
+     {
+      "path": "export",
+      "op": "present"
+     }
+    ]
+   },
+   "min": 3,
+   "justify": "cross-stack reference requires Export; VPC ID, subnet IDs and route table ID = at least three exports"
+  }
+ ],
+ "notes": "PROMPT_GT_MISMATCH: prompt says 'all [subnets] with matching IPv6 CIDR allocations' but the GT's two private subnets have no Ipv6CidrBlock (only the 3 public ones do) - checked as >=3 IPv6 subnets. PROMPT_GT_MISMATCH: prompt places the two load-balancer public subnets in the first AZ and the EC2 one in an additional AZ, but the GT puts the ALB subnets in AZ a and b and the EC2 subnet in AZ a - only '>=2 distinct AZs' is checked. Bastion VPN port number is not stated in the prompt, so not checked."
+}

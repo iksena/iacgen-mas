@@ -1,0 +1,584 @@
+# GENERATED from specs/tf/row_091.json by intent_checks/build.py -- do not edit.
+package intent.tf.row_091
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {
+  "vpc": {
+   "types": [
+    "aws_vpc"
+   ],
+   "where": [
+    {
+     "path": [
+      "cidr_block"
+     ],
+     "op": "eq",
+     "value": "10.0.0.0/16"
+    }
+   ]
+  },
+  "subnet_a": {
+   "types": [
+    "aws_subnet"
+   ],
+   "where": [
+    {
+     "path": [
+      "cidr_block"
+     ],
+     "op": "eq",
+     "value": "10.0.1.0/24"
+    }
+   ]
+  },
+  "subnet_b": {
+   "types": [
+    "aws_subnet"
+   ],
+   "where": [
+    {
+     "path": [
+      "cidr_block"
+     ],
+     "op": "eq",
+     "value": "10.0.2.0/24"
+    }
+   ]
+  },
+  "subnet_c": {
+   "types": [
+    "aws_subnet"
+   ],
+   "where": [
+    {
+     "path": [
+      "cidr_block"
+     ],
+     "op": "eq",
+     "value": "10.0.3.0/24"
+    }
+   ]
+  },
+  "subnets": {
+   "types": [
+    "aws_subnet"
+   ],
+   "where": []
+  },
+  "igw": {
+   "types": [
+    "aws_internet_gateway"
+   ],
+   "where": []
+  },
+  "public_rt": {
+   "types": [
+    "aws_route_table"
+   ],
+   "where": [
+    {
+     "path": [
+      "route",
+      "*",
+      "cidr_block"
+     ],
+     "op": "eq",
+     "value": "0.0.0.0/0"
+    }
+   ]
+  },
+  "any_rt": {
+   "types": [
+    "aws_route_table"
+   ],
+   "where": []
+  },
+  "nat": {
+   "types": [
+    "aws_nat_gateway"
+   ],
+   "where": []
+  },
+  "eip": {
+   "types": [
+    "aws_eip"
+   ],
+   "where": [
+    {
+     "path": [
+      "domain"
+     ],
+     "op": "eq",
+     "value": "vpc"
+    }
+   ]
+  },
+  "sg": {
+   "types": [
+    "aws_security_group"
+   ],
+   "where": [
+    {
+     "path": [
+      "tags",
+      "Name"
+     ],
+     "op": "eq",
+     "value": "DefaultSecurityGroup"
+    }
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "vpc_cidr",
+   "kind": "exists",
+   "select": "vpc",
+   "tier": "core",
+   "quote": "a VPC CIDR block defaulting to \"10.0.0.0/16\""
+  },
+  {
+   "id": "vpc_dns",
+   "kind": "all_of",
+   "tier": "core",
+   "quote": "The VPC must enable DNS support and hostnames",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "vpc",
+     "cond": {
+      "path": [
+       "enable_dns_support"
+      ],
+      "op": "truthy"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "vpc",
+     "cond": {
+      "path": [
+       "enable_dns_hostnames"
+      ],
+      "op": "truthy"
+     }
+    }
+   ]
+  },
+  {
+   "id": "vpc_name_tag",
+   "kind": "attr",
+   "select": "vpc",
+   "tier": "detail",
+   "quote": "VPC name defaulting to \"DevOps-Project-VPC\"",
+   "cond": {
+    "path": [
+     "tags",
+     "Name"
+    ],
+    "op": "eq",
+    "value": "DevOps-Project-VPC"
+   }
+  },
+  {
+   "id": "subnets_in_vpc",
+   "kind": "all_of",
+   "tier": "core",
+   "quote": "It must define three subnets with configurable CIDR blocks",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "subnet_a",
+     "to": "vpc"
+    },
+    {
+     "kind": "ref",
+     "from": "subnet_b",
+     "to": "vpc"
+    },
+    {
+     "kind": "ref",
+     "from": "subnet_c",
+     "to": "vpc"
+    }
+   ]
+  },
+  {
+   "id": "subnet_name_tags",
+   "kind": "all_of",
+   "tier": "detail",
+   "quote": "name \"Subnet-A-Public\"; Subnet B with CIDR \"10.0.2.0/24\", the second availability zone in the region, and name \"Subnet-B-Private\"; and Subnet C with CIDR \"10.0.3.0/24\", a third, distinct availability zone in the region, and name \"Subnet-C-Private\"",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "subnet_a",
+     "cond": {
+      "path": [
+       "tags",
+       "Name"
+      ],
+      "op": "eq",
+      "value": "Subnet-A-Public"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "subnet_b",
+     "cond": {
+      "path": [
+       "tags",
+       "Name"
+      ],
+      "op": "eq",
+      "value": "Subnet-B-Private"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "subnet_c",
+     "cond": {
+      "path": [
+       "tags",
+       "Name"
+      ],
+      "op": "eq",
+      "value": "Subnet-C-Private"
+     }
+    }
+   ]
+  },
+  {
+   "id": "subnet_azs_set",
+   "kind": "attr",
+   "select": "subnets",
+   "quantifier": "all",
+   "tier": "detail",
+   "quote": "availability zones",
+   "cond": {
+    "path": [
+     "availability_zone"
+    ],
+    "op": "present"
+   }
+  },
+  {
+   "id": "no_public_ip_on_launch",
+   "kind": "attr",
+   "select": "subnets",
+   "quantifier": "all",
+   "tier": "core",
+   "quote": "automatic public IP assignment on launch disabled by default for all three subnets",
+   "cond": {
+    "path": [
+     "map_public_ip_on_launch"
+    ],
+    "op": "falsy"
+   }
+  },
+  {
+   "id": "igw_attached",
+   "kind": "ref",
+   "from": "igw",
+   "to": "vpc",
+   "tier": "core",
+   "quote": "attach the tagged Internet Gateway"
+  },
+  {
+   "id": "igw_name_tag",
+   "kind": "attr",
+   "select": "igw",
+   "tier": "detail",
+   "quote": "Internet Gateway name defaulting to \"devops-project-igw\"",
+   "cond": {
+    "path": [
+     "tags",
+     "Name"
+    ],
+    "op": "eq",
+    "value": "devops-project-igw"
+   }
+  },
+  {
+   "id": "default_route_to_igw",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "contains a default route to the internet via the Internet Gateway",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "public_rt",
+     "to": "igw"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route"
+      ],
+      "where": [
+       {
+        "path": [
+         "destination_cidr_block"
+        ],
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     },
+     "to": "igw"
+    }
+   ],
+   "justify": "'default route to the internet' -> 0.0.0.0/0"
+  },
+  {
+   "id": "route_table_name_tag",
+   "kind": "attr",
+   "select": "any_rt",
+   "tier": "detail",
+   "quote": "route table name defaulting to \"DevOps-project-RT\"",
+   "cond": {
+    "path": [
+     "tags",
+     "Name"
+    ],
+    "op": "eq",
+    "value": "DevOps-project-RT"
+   }
+  },
+  {
+   "id": "rt_associated_subnet_a",
+   "kind": "all_of",
+   "tier": "core",
+   "quote": "associated explicitly only with Subnet A",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route_table_association"
+      ],
+      "where": []
+     },
+     "to": "subnet_a"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route_table_association"
+      ],
+      "where": []
+     },
+     "to": "any_rt"
+    }
+   ]
+  },
+  {
+   "id": "eip_vpc",
+   "kind": "exists",
+   "select": "eip",
+   "tier": "core",
+   "quote": "provision a VPC-scoped Elastic IP"
+  },
+  {
+   "id": "eip_pool",
+   "kind": "attr",
+   "select": "eip",
+   "tier": "detail",
+   "quote": "drawn from the configured public IPv4 pool",
+   "cond": {
+    "path": [
+     "public_ipv4_pool"
+    ],
+    "op": "eq",
+    "value": "amazon"
+   }
+  },
+  {
+   "id": "nat_in_subnet_b_with_eip",
+   "kind": "all_of",
+   "tier": "core",
+   "quote": "to deploy a NAT gateway tagged with the NAT gateway name inside Subnet B",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "nat",
+     "to": "subnet_b"
+    },
+    {
+     "kind": "ref",
+     "from": "nat",
+     "to": "eip"
+    }
+   ]
+  },
+  {
+   "id": "nat_name_tag",
+   "kind": "attr",
+   "select": "nat",
+   "tier": "detail",
+   "quote": "NAT gateway name defaulting to \"DevOps-NAT-GW\"",
+   "cond": {
+    "path": [
+     "tags",
+     "Name"
+    ],
+    "op": "eq",
+    "value": "DevOps-NAT-GW"
+   }
+  },
+  {
+   "id": "sg_in_vpc",
+   "kind": "ref",
+   "from": "sg",
+   "to": "vpc",
+   "tier": "core",
+   "quote": "a custom security group tagged \"DefaultSecurityGroup\" within the VPC"
+  },
+  {
+   "id": "sg_egress_within_vpc",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "permits outbound egress traffic only within the VPC CIDR",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "sg",
+     "cond": {
+      "path": [
+       "egress",
+       "*",
+       "cidr_blocks",
+       "*"
+      ],
+      "op": "eq",
+      "value": "10.0.0.0/16"
+     }
+    },
+    {
+     "kind": "ref",
+     "to": "sg",
+     "from": {
+      "types": [
+       "aws_security_group_rule"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "egress"
+       },
+       {
+        "path": [
+         "cidr_blocks",
+         "*"
+        ],
+        "op": "eq",
+        "value": "10.0.0.0/16"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "to": "sg",
+     "from": {
+      "types": [
+       "aws_vpc_security_group_egress_rule"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_ipv4"
+        ],
+        "op": "eq",
+        "value": "10.0.0.0/16"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "sg_no_open_egress",
+   "kind": "attr",
+   "select": "sg",
+   "tier": "detail",
+   "quote": "only within the VPC CIDR",
+   "cond": {
+    "path": [
+     "egress",
+     "*",
+     "cidr_blocks",
+     "*"
+    ],
+    "op": "none_eq",
+    "value": "0.0.0.0/0"
+   },
+   "justify": "'only within the VPC CIDR' -> no 0.0.0.0/0 egress"
+  },
+  {
+   "id": "public_subnet_name_var",
+   "kind": "exists",
+   "tier": "detail",
+   "quote": "public subnet identifier name defaulting to \"subnet_a\"",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": [
+       "default"
+      ],
+      "op": "eq",
+      "value": "subnet_a"
+     }
+    ]
+   }
+  },
+  {
+   "id": "output_nat_public_ip",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "output the NAT gateway's public IP",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__output__"
+      ],
+      "where": []
+     },
+     "to": "nat"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__output__"
+      ],
+      "where": []
+     },
+     "to": {
+      "types": [
+       "aws_eip"
+      ],
+      "where": []
+     }
+    }
+   ]
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

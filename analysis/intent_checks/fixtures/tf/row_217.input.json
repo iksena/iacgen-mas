@@ -1,0 +1,818 @@
+{
+ "meta": {
+  "lang": "tf",
+  "mode": "plan",
+  "warnings": [],
+  "gt_hash": "94b5a5a4c94f1cb9248469d2f4eeee4f4567eee307286c5d5b6059fade7ed308",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "data.aws_iam_policy_document.assume-role-admin",
+   "cfg": "data.aws_iam_policy_document.assume-role-admin",
+   "type": "data.aws_iam_policy_document",
+   "values": {
+    "override_json": null,
+    "override_policy_documents": null,
+    "policy_id": null,
+    "source_json": null,
+    "source_policy_documents": null,
+    "statement": [
+     {
+      "actions": [
+       "sts:AssumeRole"
+      ],
+      "condition": [
+       {
+        "test": "Bool",
+        "values": [
+         "true"
+        ],
+        "variable": "aws:MultiFactorAuthPresent"
+       }
+      ],
+      "effect": null,
+      "not_actions": null,
+      "not_principals": [],
+      "not_resources": null,
+      "principals": [],
+      "resources": [
+       null
+      ],
+      "sid": null
+     }
+    ],
+    "version": null
+   },
+   "refs": [
+    "aws_iam_role.admin"
+   ]
+  },
+  {
+   "id": "aws_iam_group.admin",
+   "cfg": "aws_iam_group.admin",
+   "type": "aws_iam_group",
+   "values": {
+    "name": "admin",
+    "path": "/"
+   },
+   "refs": []
+  },
+  {
+   "id": "aws_iam_group.other",
+   "cfg": "aws_iam_group.other",
+   "type": "aws_iam_group",
+   "values": {
+    "name": "other",
+    "path": "/"
+   },
+   "refs": []
+  },
+  {
+   "id": "aws_iam_group_policy_attachment.assume-role-admin",
+   "cfg": "aws_iam_group_policy_attachment.assume-role-admin",
+   "type": "aws_iam_group_policy_attachment",
+   "values": {
+    "group": "admin"
+   },
+   "refs": [
+    "aws_iam_group.admin",
+    "aws_iam_policy.assume-role-admin"
+   ]
+  },
+  {
+   "id": "aws_iam_group_policy_attachment.manage-self-admin",
+   "cfg": "aws_iam_group_policy_attachment.manage-self-admin",
+   "type": "aws_iam_group_policy_attachment",
+   "values": {
+    "group": "admin"
+   },
+   "refs": [
+    "aws_iam_group.admin",
+    "aws_iam_policy.manage-self-admin"
+   ]
+  },
+  {
+   "id": "aws_iam_group_policy_attachment.manage-self-other",
+   "cfg": "aws_iam_group_policy_attachment.manage-self-other",
+   "type": "aws_iam_group_policy_attachment",
+   "values": {
+    "group": "other"
+   },
+   "refs": [
+    "aws_iam_group.other",
+    "aws_iam_policy.manage-self-other"
+   ]
+  },
+  {
+   "id": "aws_iam_policy.assume-role-admin",
+   "cfg": "aws_iam_policy.assume-role-admin",
+   "type": "aws_iam_policy",
+   "values": {
+    "delay_after_policy_creation_in_ms": null,
+    "description": "Allow assuming admin role",
+    "name": "admin-permit-assume-role",
+    "path": "/",
+    "tags": null
+   },
+   "refs": [
+    "data.aws_iam_policy_document.assume-role-admin"
+   ]
+  },
+  {
+   "id": "aws_iam_policy.manage-self-admin",
+   "cfg": "aws_iam_policy.manage-self-admin",
+   "type": "aws_iam_policy",
+   "values": {
+    "delay_after_policy_creation_in_ms": null,
+    "description": "Allow admin users to manage their own User",
+    "name": "admin-permit-manage-self",
+    "path": "/",
+    "policy": "{\"Statement\":[{\"Action\":[\"iam:UpdateAccessKey\",\"iam:ResyncMFADevice\",\"iam:List*\",\"iam:Get*\",\"iam:EnableMFADevice\",\"iam:DeleteVirtualMFADevice\",\"iam:DeleteLoginProfile\",\"iam:DeleteAccessKey\",\"iam:CreateVirtualMFADevice\",\"iam:CreateAccessKey\",\"iam:ChangePassword\"],\"Effect\":\"Allow\",\"Resource\":[\"arn:aws:iam::000000000000:user/${aws:username}\",\"arn:aws:iam::000000000000:mfa/${aws:username}\"],\"Sid\":\"AllowUsersToManageTheirUser\"},{\"Action\":\"iam:DeactivateMFADevice\",\"Condition\":{\"Bool\":{\"aws:MultiFactorAuthPresent\":\"true\"}},\"Effect\":\"Allow\",\"Resource\":[\"arn:aws:iam::000000000000:user/${aws:username}\",\"arn:aws:iam::000000000000:mfa/${aws:username}\"],\"Sid\":\"AllowUsersToDeactivateTheirOwnVirtualMFADevice\"},{\"Action\":[\"iam:ListVirtualMFADevices\",\"iam:ListUsers\",\"iam:ListMFADevices\"],\"Effect\":\"Allow\",\"Resource\":\"*\",\"Sid\":\"AllowUsersToListMFADevicesandUsersForConsole\"},{\"Action\":\"iam:GetAccountPasswordPolicy\",\"Effect\":\"Allow\",\"Resource\":\"*\"}],\"Version\":\"2012-10-17\"}",
+    "tags": null
+   },
+   "refs": [
+    "data.aws_iam_policy_document.manage-self"
+   ]
+  },
+  {
+   "id": "aws_iam_policy.manage-self-other",
+   "cfg": "aws_iam_policy.manage-self-other",
+   "type": "aws_iam_policy",
+   "values": {
+    "delay_after_policy_creation_in_ms": null,
+    "description": "Allow other users to manage their own User",
+    "name": "other-permit-manage-self",
+    "path": "/",
+    "policy": "{\"Statement\":[{\"Action\":[\"iam:UpdateAccessKey\",\"iam:ResyncMFADevice\",\"iam:List*\",\"iam:Get*\",\"iam:EnableMFADevice\",\"iam:DeleteVirtualMFADevice\",\"iam:DeleteLoginProfile\",\"iam:DeleteAccessKey\",\"iam:CreateVirtualMFADevice\",\"iam:CreateAccessKey\",\"iam:ChangePassword\"],\"Effect\":\"Allow\",\"Resource\":[\"arn:aws:iam::000000000000:user/${aws:username}\",\"arn:aws:iam::000000000000:mfa/${aws:username}\"],\"Sid\":\"AllowUsersToManageTheirUser\"},{\"Action\":\"iam:DeactivateMFADevice\",\"Condition\":{\"Bool\":{\"aws:MultiFactorAuthPresent\":\"true\"}},\"Effect\":\"Allow\",\"Resource\":[\"arn:aws:iam::000000000000:user/${aws:username}\",\"arn:aws:iam::000000000000:mfa/${aws:username}\"],\"Sid\":\"AllowUsersToDeactivateTheirOwnVirtualMFADevice\"},{\"Action\":[\"iam:ListVirtualMFADevices\",\"iam:ListUsers\",\"iam:ListMFADevices\"],\"Effect\":\"Allow\",\"Resource\":\"*\",\"Sid\":\"AllowUsersToListMFADevicesandUsersForConsole\"},{\"Action\":\"iam:GetAccountPasswordPolicy\",\"Effect\":\"Allow\",\"Resource\":\"*\"}],\"Version\":\"2012-10-17\"}",
+    "tags": null
+   },
+   "refs": [
+    "data.aws_iam_policy_document.manage-self"
+   ]
+  },
+  {
+   "id": "aws_iam_role.admin",
+   "cfg": "aws_iam_role.admin",
+   "type": "aws_iam_role",
+   "values": {
+    "assume_role_policy": "{\"Statement\":[{\"Action\":\"sts:AssumeRole\",\"Condition\":{\"Bool\":{\"aws:MultiFactorAuthPresent\":\"true\"}},\"Effect\":\"Allow\",\"Principal\":{\"AWS\":\"arn:aws:iam::000000000000:root\"}}],\"Version\":\"2012-10-17\"}",
+    "description": null,
+    "force_detach_policies": false,
+    "max_session_duration": 3600,
+    "name": "admin",
+    "path": "/",
+    "permissions_boundary": null,
+    "tags": null
+   },
+   "refs": [
+    "data.aws_iam_policy_document.role-trust"
+   ]
+  },
+  {
+   "id": "aws_iam_role_policy_attachment.admin",
+   "cfg": "aws_iam_role_policy_attachment.admin",
+   "type": "aws_iam_role_policy_attachment",
+   "values": {
+    "policy_arn": "arn:aws:iam::aws:policy/AdministratorAccess",
+    "role": "admin"
+   },
+   "refs": [
+    "aws_iam_role.admin"
+   ]
+  },
+  {
+   "id": "__parameter__.admin_name",
+   "cfg": "__parameter__.admin_name",
+   "type": "__parameter__",
+   "values": {
+    "name": "admin_name",
+    "default": "admin"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.admin_user_names",
+   "cfg": "__parameter__.admin_user_names",
+   "type": "__parameter__",
+   "values": {
+    "name": "admin_user_names",
+    "default": []
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.attributes",
+   "cfg": "__parameter__.attributes",
+   "type": "__parameter__",
+   "values": {
+    "name": "attributes",
+    "default": []
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.environment",
+   "cfg": "__parameter__.environment",
+   "type": "__parameter__",
+   "values": {
+    "name": "environment",
+    "default": ""
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.namespace",
+   "cfg": "__parameter__.namespace",
+   "type": "__parameter__",
+   "values": {
+    "name": "namespace",
+    "default": ""
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.other_group_name",
+   "cfg": "__parameter__.other_group_name",
+   "type": "__parameter__",
+   "values": {
+    "name": "other_group_name",
+    "default": "other"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.other_user_names",
+   "cfg": "__parameter__.other_user_names",
+   "type": "__parameter__",
+   "values": {
+    "name": "other_user_names",
+    "default": []
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.tags",
+   "cfg": "__parameter__.tags",
+   "type": "__parameter__",
+   "values": {
+    "name": "tags",
+    "default": {}
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.group_admin_arn",
+   "cfg": "__output__.group_admin_arn",
+   "type": "__output__",
+   "values": {
+    "name": "group_admin_arn",
+    "value": null,
+    "description": "The ARN assigned by AWS for the admin group"
+   },
+   "refs": [
+    "aws_iam_group.admin"
+   ]
+  },
+  {
+   "id": "__output__.group_admin_id",
+   "cfg": "__output__.group_admin_id",
+   "type": "__output__",
+   "values": {
+    "name": "group_admin_id",
+    "value": null,
+    "description": "The admin groups ID"
+   },
+   "refs": [
+    "aws_iam_group.admin"
+   ]
+  },
+  {
+   "id": "__output__.group_admin_name",
+   "cfg": "__output__.group_admin_name",
+   "type": "__output__",
+   "values": {
+    "name": "group_admin_name",
+    "value": "admin",
+    "description": "The admin groups name"
+   },
+   "refs": [
+    "aws_iam_group.admin"
+   ]
+  },
+  {
+   "id": "__output__.group_admin_path",
+   "cfg": "__output__.group_admin_path",
+   "type": "__output__",
+   "values": {
+    "name": "group_admin_path",
+    "value": "/",
+    "description": "The path of the admin group in IAM"
+   },
+   "refs": [
+    "aws_iam_group.admin"
+   ]
+  },
+  {
+   "id": "__output__.group_admin_users",
+   "cfg": "__output__.group_admin_users",
+   "type": "__output__",
+   "values": {
+    "name": "group_admin_users",
+    "value": [],
+    "description": "List of IAM User names in the admin group"
+   },
+   "refs": [
+    "aws_iam_group_membership.admin"
+   ]
+  },
+  {
+   "id": "__output__.group_other_arn",
+   "cfg": "__output__.group_other_arn",
+   "type": "__output__",
+   "values": {
+    "name": "group_other_arn",
+    "value": null,
+    "description": "The ARN assigned by AWS for the other group"
+   },
+   "refs": [
+    "aws_iam_group.other"
+   ]
+  },
+  {
+   "id": "__output__.group_other_id",
+   "cfg": "__output__.group_other_id",
+   "type": "__output__",
+   "values": {
+    "name": "group_other_id",
+    "value": null,
+    "description": "The other groups ID"
+   },
+   "refs": [
+    "aws_iam_group.other"
+   ]
+  },
+  {
+   "id": "__output__.group_other_name",
+   "cfg": "__output__.group_other_name",
+   "type": "__output__",
+   "values": {
+    "name": "group_other_name",
+    "value": "other",
+    "description": "The other groups name"
+   },
+   "refs": [
+    "aws_iam_group.other"
+   ]
+  },
+  {
+   "id": "__output__.group_other_path",
+   "cfg": "__output__.group_other_path",
+   "type": "__output__",
+   "values": {
+    "name": "group_other_path",
+    "value": "/",
+    "description": "The path of the other group in IAM"
+   },
+   "refs": [
+    "aws_iam_group.other"
+   ]
+  },
+  {
+   "id": "__output__.group_other_users",
+   "cfg": "__output__.group_other_users",
+   "type": "__output__",
+   "values": {
+    "name": "group_other_users",
+    "value": [],
+    "description": "List of IAM User names in the other group"
+   },
+   "refs": [
+    "aws_iam_group_membership.other"
+   ]
+  },
+  {
+   "id": "__output__.role_admin_arn",
+   "cfg": "__output__.role_admin_arn",
+   "type": "__output__",
+   "values": {
+    "name": "role_admin_arn",
+    "value": null,
+    "description": "The ARN of the admin role"
+   },
+   "refs": [
+    "aws_iam_role.admin"
+   ]
+  },
+  {
+   "id": "__output__.role_admin_id",
+   "cfg": "__output__.role_admin_id",
+   "type": "__output__",
+   "values": {
+    "name": "role_admin_id",
+    "value": null,
+    "description": "The ID of the admin role"
+   },
+   "refs": [
+    "aws_iam_role.admin"
+   ]
+  },
+  {
+   "id": "__output__.role_admin_name",
+   "cfg": "__output__.role_admin_name",
+   "type": "__output__",
+   "values": {
+    "name": "role_admin_name",
+    "value": "admin",
+    "description": "The name of the admin role"
+   },
+   "refs": [
+    "aws_iam_role.admin"
+   ]
+  },
+  {
+   "id": "__declared__.aws_iam_policy.manage-self-admin",
+   "cfg": "aws_iam_policy.manage-self-admin",
+   "type": "__declared__",
+   "refs": [
+    "data.aws_iam_policy_document.manage-self"
+   ],
+   "values": {
+    "type": "aws_iam_policy",
+    "name": "manage-self-admin",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "${module.admin-label.id}-permit-manage-self",
+     "description": "Allow admin users to manage their own User",
+     "policy": "${data.aws_iam_policy_document.manage-self.json}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_policy.assume-role-admin",
+   "cfg": "aws_iam_policy.assume-role-admin",
+   "type": "__declared__",
+   "refs": [
+    "data.aws_iam_policy_document.assume-role-admin"
+   ],
+   "values": {
+    "type": "aws_iam_policy",
+    "name": "assume-role-admin",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "${module.admin-label.id}-permit-assume-role",
+     "description": "Allow assuming admin role",
+     "policy": "${data.aws_iam_policy_document.assume-role-admin.json}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_group.admin",
+   "cfg": "aws_iam_group.admin",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_iam_group",
+    "name": "admin",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "${module.admin-label.id}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role.admin",
+   "cfg": "aws_iam_role.admin",
+   "type": "__declared__",
+   "refs": [
+    "data.aws_iam_policy_document.role-trust"
+   ],
+   "values": {
+    "type": "aws_iam_role",
+    "name": "admin",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "${module.admin-label.id}",
+     "assume_role_policy": "${data.aws_iam_policy_document.role-trust.json}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_group_policy_attachment.assume-role-admin",
+   "cfg": "aws_iam_group_policy_attachment.assume-role-admin",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_group.admin",
+    "aws_iam_policy.assume-role-admin"
+   ],
+   "values": {
+    "type": "aws_iam_group_policy_attachment",
+    "name": "assume-role-admin",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "group": "${aws_iam_group.admin.name}",
+     "policy_arn": "${aws_iam_policy.assume-role-admin.arn}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_group_policy_attachment.manage-self-admin",
+   "cfg": "aws_iam_group_policy_attachment.manage-self-admin",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_group.admin",
+    "aws_iam_policy.manage-self-admin"
+   ],
+   "values": {
+    "type": "aws_iam_group_policy_attachment",
+    "name": "manage-self-admin",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "group": "${aws_iam_group.admin.name}",
+     "policy_arn": "${aws_iam_policy.manage-self-admin.arn}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role_policy_attachment.admin",
+   "cfg": "aws_iam_role_policy_attachment.admin",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_role.admin"
+   ],
+   "values": {
+    "type": "aws_iam_role_policy_attachment",
+    "name": "admin",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "role": "${aws_iam_role.admin.name}",
+     "policy_arn": "arn:aws:iam::aws:policy/AdministratorAccess"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_group_membership.admin",
+   "cfg": "aws_iam_group_membership.admin",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_group.admin"
+   ],
+   "values": {
+    "type": "aws_iam_group_membership",
+    "name": "admin",
+    "gated": true,
+    "gate": "length(var.admin_user_names) > 0 ? 1 : 0",
+    "properties": {
+     "count": "${length(var.admin_user_names) > 0 ? 1 : 0}",
+     "name": "${module.admin-label.id}",
+     "group": "${aws_iam_group.admin.id}",
+     "users": []
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_policy.manage-self-other",
+   "cfg": "aws_iam_policy.manage-self-other",
+   "type": "__declared__",
+   "refs": [
+    "data.aws_iam_policy_document.manage-self"
+   ],
+   "values": {
+    "type": "aws_iam_policy",
+    "name": "manage-self-other",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "${module.other-label.id}-permit-manage-self",
+     "description": "Allow other users to manage their own User",
+     "policy": "${data.aws_iam_policy_document.manage-self.json}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_group.other",
+   "cfg": "aws_iam_group.other",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_iam_group",
+    "name": "other",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "${module.other-label.id}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_group_policy_attachment.manage-self-other",
+   "cfg": "aws_iam_group_policy_attachment.manage-self-other",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_group.other",
+    "aws_iam_policy.manage-self-other"
+   ],
+   "values": {
+    "type": "aws_iam_group_policy_attachment",
+    "name": "manage-self-other",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "group": "${aws_iam_group.other.name}",
+     "policy_arn": "${aws_iam_policy.manage-self-other.arn}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_group_membership.other",
+   "cfg": "aws_iam_group_membership.other",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_group.other"
+   ],
+   "values": {
+    "type": "aws_iam_group_membership",
+    "name": "other",
+    "gated": true,
+    "gate": "length(var.other_user_names) > 0 ? 1 : 0",
+    "properties": {
+     "count": "${length(var.other_user_names) > 0 ? 1 : 0}",
+     "name": "${module.other-label.id}",
+     "group": "${aws_iam_group.other.id}",
+     "users": []
+    }
+   }
+  },
+  {
+   "id": "__declared__.data.aws_caller_identity.current",
+   "cfg": "data.aws_caller_identity.current",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "data.aws_caller_identity",
+    "name": "current",
+    "gated": false,
+    "gate": null,
+    "properties": {}
+   }
+  },
+  {
+   "id": "__declared__.data.aws_iam_policy_document.role-trust",
+   "cfg": "data.aws_iam_policy_document.role-trust",
+   "type": "__declared__",
+   "refs": [
+    "data.aws_caller_identity.current"
+   ],
+   "values": {
+    "type": "data.aws_iam_policy_document",
+    "name": "role-trust",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "statement": [
+      {
+       "actions": [
+        "sts:AssumeRole"
+       ],
+       "principals": [
+        {
+         "type": "AWS",
+         "identifiers": [
+          "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+         ]
+        }
+       ],
+       "condition": [
+        {
+         "test": "Bool",
+         "variable": "aws:MultiFactorAuthPresent",
+         "values": [
+          "true"
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.data.aws_iam_policy_document.manage-self",
+   "cfg": "data.aws_iam_policy_document.manage-self",
+   "type": "__declared__",
+   "refs": [
+    "data.aws_caller_identity.current"
+   ],
+   "values": {
+    "type": "data.aws_iam_policy_document",
+    "name": "manage-self",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "statement": [
+      {
+       "sid": "AllowUsersToManageTheirUser",
+       "actions": [
+        "iam:CreateVirtualMFADevice",
+        "iam:EnableMFADevice",
+        "iam:ResyncMFADevice",
+        "iam:DeleteVirtualMFADevice",
+        "iam:DeleteAccessKey",
+        "iam:UpdateAccessKey",
+        "iam:CreateAccessKey",
+        "iam:ChangePassword",
+        "iam:DeleteLoginProfile",
+        "iam:List*",
+        "iam:Get*"
+       ],
+       "resources": [
+        "arn:aws:iam::${data.aws_caller_identity.current.account_id}:mfa/&{aws:username}",
+        "arn:aws:iam::${data.aws_caller_identity.current.account_id}:user/&{aws:username}"
+       ]
+      },
+      {
+       "sid": "AllowUsersToDeactivateTheirOwnVirtualMFADevice",
+       "actions": [
+        "iam:DeactivateMFADevice"
+       ],
+       "resources": [
+        "arn:aws:iam::${data.aws_caller_identity.current.account_id}:mfa/&{aws:username}",
+        "arn:aws:iam::${data.aws_caller_identity.current.account_id}:user/&{aws:username}"
+       ],
+       "condition": [
+        {
+         "test": "Bool",
+         "variable": "aws:MultiFactorAuthPresent",
+         "values": [
+          "true"
+         ]
+        }
+       ]
+      },
+      {
+       "sid": "AllowUsersToListMFADevicesandUsersForConsole",
+       "actions": [
+        "iam:ListMFADevices",
+        "iam:ListVirtualMFADevices",
+        "iam:ListUsers"
+       ],
+       "resources": [
+        "*"
+       ]
+      },
+      {
+       "actions": [
+        "iam:GetAccountPasswordPolicy"
+       ],
+       "resources": [
+        "*"
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.data.aws_iam_policy_document.assume-role-admin",
+   "cfg": "data.aws_iam_policy_document.assume-role-admin",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_role.admin"
+   ],
+   "values": {
+    "type": "data.aws_iam_policy_document",
+    "name": "assume-role-admin",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "statement": [
+      {
+       "actions": [
+        "sts:AssumeRole"
+       ],
+       "resources": [
+        "${aws_iam_role.admin.arn}"
+       ],
+       "condition": [
+        {
+         "test": "Bool",
+         "variable": "aws:MultiFactorAuthPresent",
+         "values": [
+          "true"
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  }
+ ]
+}

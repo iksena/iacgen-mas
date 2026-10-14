@@ -1,0 +1,405 @@
+{
+ "lang": "cfn",
+ "row_number": 93,
+ "source_hash": {
+  "gt": "8e7834912243ea58731237590b6cb9dd8b466b64b5f40f3352d18056d7092ef2",
+  "prompt": "c8e4536e255fa6e1c6bc987c267d2d729275ddfa87227f556235db07afb05857"
+ },
+ "selectors": {
+  "store": {
+   "types": [
+    "AWS::VerifiedPermissions::PolicyStore"
+   ]
+  },
+  "policy": {
+   "types": [
+    "AWS::VerifiedPermissions::Policy"
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "policy_store",
+   "kind": "exists",
+   "select": "store",
+   "tier": "core",
+   "quote": "an Amazon Verified Permissions policy store implementing Cedar-based access control"
+  },
+  {
+   "id": "strict_validation",
+   "kind": "attr",
+   "select": "store",
+   "cond": {
+    "path": "ValidationSettings.Mode",
+    "op": "eq",
+    "value": "STRICT"
+   },
+   "tier": "core",
+   "quote": "with strict schema validation"
+  },
+  {
+   "id": "schema_bookstore_namespace",
+   "kind": "attr",
+   "select": "store",
+   "tier": "detail",
+   "quote": "defined for a Bookstore namespace",
+   "cond": {
+    "path": "Schema.*",
+    "op": "regex",
+    "value": "(\"Bookstore\"\\s*:|namespace\\s+Bookstore\\b)"
+   }
+  },
+  {
+   "id": "schema_entities",
+   "kind": "all_of",
+   "tier": "core",
+   "quote": "models Role, User, and Book entities",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "store",
+     "cond": {
+      "path": "Schema.*",
+      "op": "regex",
+      "value": "(\"Role\"\\s*:|entity\\s+Role\\b)"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "store",
+     "cond": {
+      "path": "Schema.*",
+      "op": "regex",
+      "value": "(\"User\"\\s*:|entity\\s+User\\b)"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "store",
+     "cond": {
+      "path": "Schema.*",
+      "op": "regex",
+      "value": "(\"Book\"\\s*:|entity\\s+Book\\b)"
+     }
+    }
+   ]
+  },
+  {
+   "id": "schema_user_member_of_role",
+   "kind": "attr",
+   "select": "store",
+   "tier": "detail",
+   "quote": "a User may belong to a Role",
+   "cond": {
+    "path": "Schema.*",
+    "op": "regex",
+    "value": "(\"memberOfTypes\"\\s*:\\s*\\[\\s*\"(Bookstore::)?Role\"|entity\\s+User\\s+in\\s+\\[?\\s*Role\\b)"
+   }
+  },
+  {
+   "id": "schema_years_as_member_numeric",
+   "kind": "attr",
+   "select": "store",
+   "tier": "detail",
+   "quote": "may carry a numeric years-as-member attribute",
+   "cond": {
+    "path": "Schema.*",
+    "op": "regex",
+    "value": "(?s)((?i:\"years_?as_?member\")\\s*:\\s*\\{[^}]*\"(Long|Decimal)\"|(?i:years_?as_?member)\\??\\s*:\\s*(Long|decimal))"
+   }
+  },
+  {
+   "id": "schema_book_owner_user",
+   "kind": "attr",
+   "select": "store",
+   "tier": "detail",
+   "quote": "a Book has an owning User",
+   "cond": {
+    "path": "Schema.*",
+    "op": "regex",
+    "value": "(?s)(\"type\"\\s*:\\s*\"Entity\"[^}]*\"name\"\\s*:\\s*\"(Bookstore::)?User\"|\"name\"\\s*:\\s*\"(Bookstore::)?User\"[^}]*\"type\"\\s*:\\s*\"Entity\"|\\w+\\??\\s*:\\s*(Bookstore::)?User\\b)"
+   }
+  },
+  {
+   "id": "schema_actions",
+   "kind": "all_of",
+   "tier": "core",
+   "quote": "define a View action and a ViewWithPremiumOffers action",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "store",
+     "cond": {
+      "path": "Schema.*",
+      "op": "regex",
+      "value": "(\"View\"\\s*:|action\\s+\"?View\"?[\\s,{])"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "store",
+     "cond": {
+      "path": "Schema.*",
+      "op": "regex",
+      "value": "(\"ViewWithPremiumOffers\"\\s*:|action\\s+[^;]*\"?ViewWithPremiumOffers\"?)"
+     }
+    }
+   ]
+  },
+  {
+   "id": "schema_context_region",
+   "kind": "attr",
+   "select": "store",
+   "tier": "detail",
+   "quote": "requiring a request context that includes the caller's region",
+   "cond": {
+    "path": "Schema.*",
+    "op": "regex",
+    "value": "(\"region\"\\s*:|\\bregion\\s*:\\s*String)"
+   }
+  },
+  {
+   "id": "ssm_parameter_store_id",
+   "kind": "ref",
+   "from": {
+    "types": [
+     "AWS::SSM::Parameter"
+    ]
+   },
+   "to": "store",
+   "tier": "core",
+   "quote": "publish the resulting policy store ID as an SSM Parameter"
+  },
+  {
+   "id": "policies_in_store",
+   "kind": "ref",
+   "from": "policy",
+   "to": "store",
+   "tier": "detail",
+   "quote": "define a set of static Cedar policies"
+  },
+  {
+   "id": "admin_permit_view",
+   "kind": "attr",
+   "select": "policy",
+   "tier": "core",
+   "quote": "permit users in an Admin role to view any book",
+   "cond": {
+    "path": "Definition.Static",
+    "op": "match",
+    "value": [
+     {
+      "path": "Statement",
+      "op": "regex",
+      "value": "^\\s*(@[^\\n]*\\n\\s*)*permit\\b"
+     },
+     {
+      "path": "Statement",
+      "op": "regex",
+      "value": "principal\\s+in\\s+(Bookstore::)?Role::\"Admin\""
+     },
+     {
+      "path": "Statement",
+      "op": "regex",
+      "value": "Action::\"View\""
+     }
+    ]
+   }
+  },
+  {
+   "id": "forbid_named_admin",
+   "kind": "attr",
+   "select": "policy",
+   "tier": "core",
+   "quote": "explicitly forbid one specific named administrator from viewing books",
+   "cond": {
+    "path": "Definition.Static",
+    "op": "match",
+    "value": [
+     {
+      "path": "Statement",
+      "op": "regex",
+      "value": "^\\s*(@[^\\n]*\\n\\s*)*forbid\\b"
+     },
+     {
+      "path": "Statement",
+      "op": "regex",
+      "value": "principal\\s*==\\s*(Bookstore::)?User::\"[^\"]+\""
+     },
+     {
+      "path": "Statement",
+      "op": "regex",
+      "value": "Action::\"View\""
+     }
+    ]
+   }
+  },
+  {
+   "id": "publisher_views_own_books",
+   "kind": "attr",
+   "select": "policy",
+   "tier": "core",
+   "quote": "permit users in a Publisher role to view only the books they themselves own",
+   "cond": {
+    "path": "Definition.Static",
+    "op": "match",
+    "value": [
+     {
+      "path": "Statement",
+      "op": "regex",
+      "value": "^\\s*(@[^\\n]*\\n\\s*)*permit\\b"
+     },
+     {
+      "path": "Statement",
+      "op": "regex",
+      "value": "principal\\s+in\\s+(Bookstore::)?Role::\"Publisher\""
+     },
+     {
+      "path": "Statement",
+      "op": "regex",
+      "value": "Action::\"View\""
+     },
+     {
+      "path": "Statement",
+      "op": "regex",
+      "value": "(principal\\s*==\\s*resource\\.\\w+|resource\\.\\w+\\s*==\\s*principal)"
+     }
+    ]
+   },
+   "justify": "\"books they themselves own\" = a condition equating the principal with the book's owner attribute (any attribute name)"
+  },
+  {
+   "id": "named_user_named_book",
+   "kind": "attr",
+   "select": "policy",
+   "tier": "detail",
+   "quote": "permit one specific named user to view one specific named book",
+   "cond": {
+    "path": "Definition.Static",
+    "op": "match",
+    "value": [
+     {
+      "path": "Statement",
+      "op": "regex",
+      "value": "^\\s*(@[^\\n]*\\n\\s*)*permit\\b"
+     },
+     {
+      "path": "Statement",
+      "op": "regex",
+      "value": "principal\\s*==\\s*(Bookstore::)?User::\"[^\"]+\""
+     },
+     {
+      "path": "Statement",
+      "op": "regex",
+      "value": "resource\\s*==\\s*(Bookstore::)?Book::\"[^\"]+\""
+     },
+     {
+      "path": "Statement",
+      "op": "regex",
+      "value": "Action::\"View\""
+     }
+    ]
+   }
+  },
+  {
+   "id": "customer_premium_two_years",
+   "kind": "attr",
+   "select": "policy",
+   "tier": "core",
+   "quote": "permit users in a Customer role to view premium offers only once they have been a member for two years or more",
+   "cond": {
+    "path": "Definition.Static",
+    "op": "match",
+    "value": [
+     {
+      "path": "Statement",
+      "op": "regex",
+      "value": "^\\s*(@[^\\n]*\\n\\s*)*permit\\b"
+     },
+     {
+      "path": "Statement",
+      "op": "regex",
+      "value": "principal\\s+in\\s+(Bookstore::)?Role::\"Customer\""
+     },
+     {
+      "path": "Statement",
+      "op": "regex",
+      "value": "Action::\"ViewWithPremiumOffers\""
+     },
+     {
+      "path": "Statement",
+      "op": "regex",
+      "value": "(?i:years_?as_?member)\\s*(>=\\s*2|>\\s*1)\\b"
+     }
+    ]
+   }
+  },
+  {
+   "id": "forbid_customer_under_two_years",
+   "kind": "attr",
+   "select": "policy",
+   "tier": "core",
+   "quote": "explicitly forbid customers with less than two years of membership from viewing premium offers",
+   "cond": {
+    "path": "Definition.Static",
+    "op": "match",
+    "value": [
+     {
+      "path": "Statement",
+      "op": "regex",
+      "value": "^\\s*(@[^\\n]*\\n\\s*)*forbid\\b"
+     },
+     {
+      "path": "Statement",
+      "op": "regex",
+      "value": "principal\\s+in\\s+(Bookstore::)?Role::\"Customer\""
+     },
+     {
+      "path": "Statement",
+      "op": "regex",
+      "value": "Action::\"ViewWithPremiumOffers\""
+     },
+     {
+      "path": "Statement",
+      "op": "regex",
+      "value": "(?i:years_?as_?member)\\s*(<\\s*2|<=\\s*1)\\b"
+     }
+    ]
+   }
+  },
+  {
+   "id": "forbid_outside_us",
+   "kind": "attr",
+   "select": "policy",
+   "tier": "core",
+   "quote": "forbid both the View and ViewWithPremiumOffers actions entirely whenever the request context's region is not the United States",
+   "cond": {
+    "path": "Definition.Static",
+    "op": "match",
+    "value": [
+     {
+      "path": "Statement",
+      "op": "regex",
+      "value": "^\\s*(@[^\\n]*\\n\\s*)*forbid\\b"
+     },
+     {
+      "path": "Statement",
+      "op": "regex",
+      "value": "Action::\"View\""
+     },
+     {
+      "path": "Statement",
+      "op": "regex",
+      "value": "Action::\"ViewWithPremiumOffers\""
+     },
+     {
+      "path": "Statement",
+      "op": "regex",
+      "value": "(context\\.region\\s*!=|!\\s*\\(\\s*context\\.region\\s*==|unless\\s*\\{\\s*context\\.region\\s*==)"
+     }
+    ]
+   }
+  }
+ ],
+ "notes": "Schema regexes accept both CedarJson and Cedar human-readable schema text (path Schema.*). Policy checks use match on Definition.Static so every sub-regex holds on the same policy statement. The named admin/user/book identities are not stated in the prompt, so any quoted entity id is accepted; the 'United States' region literal is not checked, only a negated context.region comparison."
+}

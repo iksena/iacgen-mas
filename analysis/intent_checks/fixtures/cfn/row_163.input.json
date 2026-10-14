@@ -1,0 +1,2198 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "0ed365ccd667a7a871ed537dc0ac95fc86218c2860fe2942c826685f2c6164fd",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "CisAlarmsTopicKey",
+   "cfg": "CisAlarmsTopicKey",
+   "type": "AWS::KMS::Key",
+   "values": {
+    "Description": "CMK for CisAlarmsTopic encryption",
+    "KeyPolicy": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Sid": "AllowAccountFullAccess",
+       "Effect": "Allow",
+       "Principal": {
+        "AWS": [
+         "arn:aws:iam::123456789012:root"
+        ]
+       },
+       "Action": [
+        "kms:*"
+       ],
+       "Resource": [
+        "*"
+       ]
+      },
+      {
+       "Sid": "AllowCloudWatchToPublish",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "cloudwatch.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "kms:Decrypt",
+        "kms:GenerateDataKey"
+       ],
+       "Resource": [
+        "*"
+       ]
+      }
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "CisAlarmsTopic",
+   "cfg": "CisAlarmsTopic",
+   "type": "AWS::SNS::Topic",
+   "values": {
+    "TopicName": "your-CIS-Alarms",
+    "KmsMasterKeyId": {
+     "ref": "CisAlarmsTopicKey"
+    }
+   },
+   "refs": [
+    "CisAlarmsTopicKey"
+   ]
+  },
+  {
+   "id": "CloudTrailLogGroup",
+   "cfg": "CloudTrailLogGroup",
+   "type": "AWS::Logs::LogGroup",
+   "values": {
+    "LogGroupName": "Example-Cloudwatch-For-Trail-LogGroup",
+    "RetentionInDays": 30
+   },
+   "refs": []
+  },
+  {
+   "id": "UnauthorizedApiCallsAlarm",
+   "cfg": "UnauthorizedApiCallsAlarm",
+   "type": "AWS::CloudWatch::Alarm",
+   "values": {
+    "AlarmName": "CIS-Unauthorized Activity Attempt",
+    "AlarmDescription": "Alarm if Multiple unauthorized actions or logins attempted",
+    "MetricName": "UnauthorizedAttemptCount",
+    "Namespace": "CloudTrailMetrics",
+    "Statistic": "Sum",
+    "Period": 300,
+    "EvaluationPeriods": 1,
+    "Threshold": 1,
+    "TreatMissingData": "notBreaching",
+    "AlarmActions": [
+     {
+      "ref": "CisAlarmsTopic"
+     }
+    ],
+    "ComparisonOperator": "GreaterThanOrEqualToThreshold"
+   },
+   "refs": [
+    "CisAlarmsTopic"
+   ]
+  },
+  {
+   "id": "UnauthorizedApiCallsFilter",
+   "cfg": "UnauthorizedApiCallsFilter",
+   "type": "AWS::Logs::MetricFilter",
+   "values": {
+    "LogGroupName": {
+     "ref": "CloudTrailLogGroup"
+    },
+    "FilterPattern": "{\n  ($.errorCode = \"*UnauthorizedOperation\") ||\n  ($.errorCode = \"AccessDenied*\")\n}",
+    "MetricTransformations": [
+     {
+      "MetricValue": "1",
+      "MetricNamespace": "CloudTrailMetrics",
+      "MetricName": "UnauthorizedAttemptCount"
+     }
+    ]
+   },
+   "refs": [
+    "CloudTrailLogGroup"
+   ]
+  },
+  {
+   "id": "UnauthorizedApiCallsQuery",
+   "cfg": "UnauthorizedApiCallsQuery",
+   "type": "AWS::Logs::QueryDefinition",
+   "values": {
+    "Name": "CIS-Alarms/CIS-Unauthorized Activity Attempt",
+    "LogGroupNames": [
+     {
+      "ref": "CloudTrailLogGroup"
+     }
+    ],
+    "QueryString": "fields @timestamp, @message |\n  sort @timestamp desc |\n  filter errorCode == '*UnauthorizedOperation' or errorCode == 'AccessDenied*'"
+   },
+   "refs": [
+    "CloudTrailLogGroup"
+   ]
+  },
+  {
+   "id": "NoMfaConsoleLoginsAlarm",
+   "cfg": "NoMfaConsoleLoginsAlarm",
+   "type": "AWS::CloudWatch::Alarm",
+   "values": {
+    "AlarmName": "CIS-Console Signin Without MFA",
+    "AlarmDescription": "Alarm if there is a Management Console sign-in without MFA",
+    "MetricName": "ConsoleSigninWithoutMFA",
+    "Namespace": "CloudTrailMetrics",
+    "Statistic": "Sum",
+    "Period": 300,
+    "EvaluationPeriods": 1,
+    "Threshold": 1,
+    "TreatMissingData": "notBreaching",
+    "AlarmActions": [
+     {
+      "ref": "CisAlarmsTopic"
+     }
+    ],
+    "ComparisonOperator": "GreaterThanOrEqualToThreshold"
+   },
+   "refs": [
+    "CisAlarmsTopic"
+   ]
+  },
+  {
+   "id": "NoMfaConsoleLoginsFilter",
+   "cfg": "NoMfaConsoleLoginsFilter",
+   "type": "AWS::Logs::MetricFilter",
+   "values": {
+    "LogGroupName": {
+     "ref": "CloudTrailLogGroup"
+    },
+    "FilterPattern": "{\n  ($.eventName = \"ConsoleLogin\") &&\n  ($.additionalEventData.MFAUsed != \"Yes\")\n}",
+    "MetricTransformations": [
+     {
+      "MetricValue": "1",
+      "MetricNamespace": "CloudTrailMetrics",
+      "MetricName": "ConsoleSigninWithoutMFA"
+     }
+    ]
+   },
+   "refs": [
+    "CloudTrailLogGroup"
+   ]
+  },
+  {
+   "id": "NoMfaConsoleLoginsQuery",
+   "cfg": "NoMfaConsoleLoginsQuery",
+   "type": "AWS::Logs::QueryDefinition",
+   "values": {
+    "Name": "CIS-Alarms/CIS-Console Signin Without MFA",
+    "LogGroupNames": [
+     {
+      "ref": "CloudTrailLogGroup"
+     }
+    ],
+    "QueryString": "fields @timestamp, @message |\n  sort @timestamp desc |\n  filter eventName == 'ConsoleLogin' and responseElements.ConsoleLogin == 'Success' and additionalEventData.MFAUsed != 'Yes'"
+   },
+   "refs": [
+    "CloudTrailLogGroup"
+   ]
+  },
+  {
+   "id": "RootAccountLoginsAlarm",
+   "cfg": "RootAccountLoginsAlarm",
+   "type": "AWS::CloudWatch::Alarm",
+   "values": {
+    "AlarmName": "CIS-Root Activity",
+    "AlarmDescription": "Alarm if a 'root' user uses the account",
+    "MetricName": "RootUserEventCount",
+    "Namespace": "CloudTrailMetrics",
+    "Statistic": "Sum",
+    "Period": 300,
+    "EvaluationPeriods": 1,
+    "Threshold": 1,
+    "TreatMissingData": "notBreaching",
+    "AlarmActions": [
+     {
+      "ref": "CisAlarmsTopic"
+     }
+    ],
+    "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+    "__resource__": {
+     "DependsOn": [
+      "NoMfaConsoleLoginsAlarm"
+     ]
+    }
+   },
+   "refs": [
+    "CisAlarmsTopic"
+   ]
+  },
+  {
+   "id": "RootAccountLoginsFilter",
+   "cfg": "RootAccountLoginsFilter",
+   "type": "AWS::Logs::MetricFilter",
+   "values": {
+    "LogGroupName": {
+     "ref": "CloudTrailLogGroup"
+    },
+    "FilterPattern": "{\n  $.userIdentity.type = \"Root\" &&\n  $.userIdentity.invokedBy NOT EXISTS &&\n  $.eventType != \"AwsServiceEvent\"\n}",
+    "MetricTransformations": [
+     {
+      "MetricValue": "1",
+      "MetricNamespace": "CloudTrailMetrics",
+      "MetricName": "RootUserEventCount"
+     }
+    ]
+   },
+   "refs": [
+    "CloudTrailLogGroup"
+   ]
+  },
+  {
+   "id": "RootAccountLoginsQuery",
+   "cfg": "RootAccountLoginsQuery",
+   "type": "AWS::Logs::QueryDefinition",
+   "values": {
+    "Name": "CIS-Alarms/CIS-Root Activity",
+    "LogGroupNames": [
+     {
+      "ref": "CloudTrailLogGroup"
+     }
+    ],
+    "QueryString": "fields @timestamp, @message |\n  sort @timestamp desc |\n  filter userIdentity.type == 'Root' and eventType != 'AwsServiceEvent'"
+   },
+   "refs": [
+    "CloudTrailLogGroup"
+   ]
+  },
+  {
+   "id": "IAMPolicyChangesAlarm",
+   "cfg": "IAMPolicyChangesAlarm",
+   "type": "AWS::CloudWatch::Alarm",
+   "values": {
+    "AlarmName": "CIS-IAM Policy Changes",
+    "AlarmDescription": "Alarm if an IAM policy changes",
+    "MetricName": "IAMPolicyChangeEventCount",
+    "Namespace": "CloudTrailMetrics",
+    "Statistic": "Sum",
+    "Period": 300,
+    "EvaluationPeriods": 1,
+    "Threshold": 1,
+    "TreatMissingData": "notBreaching",
+    "AlarmActions": [
+     {
+      "ref": "CisAlarmsTopic"
+     }
+    ],
+    "ComparisonOperator": "GreaterThanOrEqualToThreshold"
+   },
+   "refs": [
+    "CisAlarmsTopic"
+   ]
+  },
+  {
+   "id": "IAMPolicyChangesFilter",
+   "cfg": "IAMPolicyChangesFilter",
+   "type": "AWS::Logs::MetricFilter",
+   "values": {
+    "LogGroupName": {
+     "ref": "CloudTrailLogGroup"
+    },
+    "FilterPattern": "{\n  ($.eventName=DeleteGroupPolicy) ||\n  ($.eventName=DeleteRolePolicy) ||\n  ($.eventName=DeleteUserPolicy) ||\n  ($.eventName=PutGroupPolicy) ||\n  ($.eventName=PutRolePolicy) ||\n  ($.eventName=PutUserPolicy) ||\n  ($.eventName=CreatePolicy) ||\n  ($.eventName=DeletePolicy) ||\n  ($.eventName=CreatePolicyVersion) ||\n  ($.eventName=DeletePolicyVersion) ||\n  ($.eventName=AttachRolePolicy) ||\n  ($.eventName=DetachRolePolicy) ||\n  ($.eventName=AttachUserPolicy) ||\n  ($.eventName=DetachUserPolicy) ||\n  ($.eventName=AttachGroupPolicy) ||\n  ($.eventName=DetachGroupPolicy)\n}",
+    "MetricTransformations": [
+     {
+      "MetricValue": "1",
+      "MetricNamespace": "CloudTrailMetrics",
+      "MetricName": "IAMPolicyChangeEventCount"
+     }
+    ]
+   },
+   "refs": [
+    "CloudTrailLogGroup"
+   ]
+  },
+  {
+   "id": "IAMPolicyChangesQuery",
+   "cfg": "IAMPolicyChangesQuery",
+   "type": "AWS::Logs::QueryDefinition",
+   "values": {
+    "Name": "CIS-Alarms/CIS-IAM Policy Changes",
+    "LogGroupNames": [
+     {
+      "ref": "CloudTrailLogGroup"
+     }
+    ],
+    "QueryString": "fields @timestamp, @message |\n  sort @timestamp desc |\n  filter eventName in ['AttachGroupPolicy', 'AttachRolePolicy', 'AttachUserPolicy', 'CreatePolicy', 'CreatePolicyVersion', 'DeleteGroupPolicy', 'DeletePolicy', 'DeletePolicyVersion', 'DeleteRolePolicy', 'DeleteUserPolicy', 'DetachGroupPolicy', 'DetachRolePolicy', 'DetachUserPolicy', 'PutGroupPolicy', 'PutRolePolicy', 'PutUserPolicy']"
+   },
+   "refs": [
+    "CloudTrailLogGroup"
+   ]
+  },
+  {
+   "id": "CloudtrailConfigChangesAlarm",
+   "cfg": "CloudtrailConfigChangesAlarm",
+   "type": "AWS::CloudWatch::Alarm",
+   "values": {
+    "AlarmName": "CIS-Cloudtrail Config Changes",
+    "AlarmDescription": "Alarm if the configuration for Cloudtrail changes",
+    "MetricName": "CloudtrailConfigChangeEventCount",
+    "Namespace": "CloudTrailMetrics",
+    "Statistic": "Sum",
+    "Period": 300,
+    "EvaluationPeriods": 1,
+    "Threshold": 1,
+    "TreatMissingData": "notBreaching",
+    "AlarmActions": [
+     {
+      "ref": "CisAlarmsTopic"
+     }
+    ],
+    "ComparisonOperator": "GreaterThanOrEqualToThreshold"
+   },
+   "refs": [
+    "CisAlarmsTopic"
+   ]
+  },
+  {
+   "id": "CloudtrailConfigChangesFilter",
+   "cfg": "CloudtrailConfigChangesFilter",
+   "type": "AWS::Logs::MetricFilter",
+   "values": {
+    "LogGroupName": {
+     "ref": "CloudTrailLogGroup"
+    },
+    "FilterPattern": "{\n  ($.eventName = CreateTrail) ||\n  ($.eventName = UpdateTrail) ||\n  ($.eventName = DeleteTrail) ||\n  ($.eventName = StartLogging) ||\n  ($.eventName = StopLogging)\n}",
+    "MetricTransformations": [
+     {
+      "MetricValue": "1",
+      "MetricNamespace": "CloudTrailMetrics",
+      "MetricName": "CloudtrailConfigChangeEventCount"
+     }
+    ]
+   },
+   "refs": [
+    "CloudTrailLogGroup"
+   ]
+  },
+  {
+   "id": "CloudtrailConfigChangesQuery",
+   "cfg": "CloudtrailConfigChangesQuery",
+   "type": "AWS::Logs::QueryDefinition",
+   "values": {
+    "Name": "CIS-Alarms/CIS-Cloudtrail Config Changes",
+    "LogGroupNames": [
+     {
+      "ref": "CloudTrailLogGroup"
+     }
+    ],
+    "QueryString": "fields @timestamp, @message |\n  sort @timestamp desc |\n  filter eventName in ['CreateTrail', 'DeleteTrail', 'StartLogging', 'StopLogging', 'UpdateTrail']"
+   },
+   "refs": [
+    "CloudTrailLogGroup"
+   ]
+  },
+  {
+   "id": "FailedConsoleLoginsAlarm",
+   "cfg": "FailedConsoleLoginsAlarm",
+   "type": "AWS::CloudWatch::Alarm",
+   "values": {
+    "AlarmName": "CIS-Console Login Failures",
+    "AlarmDescription": "Alarm if there are AWS Management Console authentication failures",
+    "MetricName": "ConsoleLoginFailures",
+    "Namespace": "CloudTrailMetrics",
+    "Statistic": "Sum",
+    "Period": 300,
+    "EvaluationPeriods": 1,
+    "Threshold": 1,
+    "TreatMissingData": "notBreaching",
+    "AlarmActions": [
+     {
+      "ref": "CisAlarmsTopic"
+     }
+    ],
+    "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+    "__resource__": {
+     "DependsOn": [
+      "RootAccountLoginsAlarm"
+     ]
+    }
+   },
+   "refs": [
+    "CisAlarmsTopic"
+   ]
+  },
+  {
+   "id": "FailedConsoleLoginsFilter",
+   "cfg": "FailedConsoleLoginsFilter",
+   "type": "AWS::Logs::MetricFilter",
+   "values": {
+    "LogGroupName": {
+     "ref": "CloudTrailLogGroup"
+    },
+    "FilterPattern": "{\n  ($.eventName = ConsoleLogin) &&\n  ($.errorMessage = \"Failed authentication\")\n}",
+    "MetricTransformations": [
+     {
+      "MetricValue": "1",
+      "MetricNamespace": "CloudTrailMetrics",
+      "MetricName": "ConsoleLoginFailures"
+     }
+    ]
+   },
+   "refs": [
+    "CloudTrailLogGroup"
+   ]
+  },
+  {
+   "id": "FailedConsoleLoginsQuery",
+   "cfg": "FailedConsoleLoginsQuery",
+   "type": "AWS::Logs::QueryDefinition",
+   "values": {
+    "Name": "CIS-Alarms/CIS-Console Login Failures",
+    "LogGroupNames": [
+     {
+      "ref": "CloudTrailLogGroup"
+     }
+    ],
+    "QueryString": "fields @timestamp, @message |\n  sort @timestamp desc |\n  filter eventName == 'ConsoleLogin' and errorMessage == 'Failed authentication'"
+   },
+   "refs": [
+    "CloudTrailLogGroup"
+   ]
+  },
+  {
+   "id": "DisabledOrDeletedCmksAlarm",
+   "cfg": "DisabledOrDeletedCmksAlarm",
+   "type": "AWS::CloudWatch::Alarm",
+   "values": {
+    "AlarmName": "CIS-KMS Key Disabled or Scheduled for Deletion",
+    "AlarmDescription": "Alarm if customer created CMKs get disabled or scheduled for deletion",
+    "MetricName": "KMSCustomerKeyDeletion",
+    "Namespace": "CloudTrailMetrics",
+    "Statistic": "Sum",
+    "Period": 60,
+    "EvaluationPeriods": 1,
+    "Threshold": 1,
+    "TreatMissingData": "notBreaching",
+    "AlarmActions": [
+     {
+      "ref": "CisAlarmsTopic"
+     }
+    ],
+    "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+    "__resource__": {
+     "DependsOn": [
+      "FailedConsoleLoginsAlarm"
+     ]
+    }
+   },
+   "refs": [
+    "CisAlarmsTopic"
+   ]
+  },
+  {
+   "id": "DisabledOrDeletedCmksFilter",
+   "cfg": "DisabledOrDeletedCmksFilter",
+   "type": "AWS::Logs::MetricFilter",
+   "values": {
+    "LogGroupName": {
+     "ref": "CloudTrailLogGroup"
+    },
+    "FilterPattern": "{\n  ($.eventSource = kms.amazonaws.com) &&\n  (($.eventName=DisableKey) || ($.eventName=ScheduleKeyDeletion))\n}",
+    "MetricTransformations": [
+     {
+      "MetricValue": "1",
+      "MetricNamespace": "CloudTrailMetrics",
+      "MetricName": "KMSCustomerKeyDeletion"
+     }
+    ]
+   },
+   "refs": [
+    "CloudTrailLogGroup"
+   ]
+  },
+  {
+   "id": "DisabledOrDeletedCmksQuery",
+   "cfg": "DisabledOrDeletedCmksQuery",
+   "type": "AWS::Logs::QueryDefinition",
+   "values": {
+    "Name": "CIS-Alarms/CIS-KMS Key Disabled or Scheduled for Deletion",
+    "LogGroupNames": [
+     {
+      "ref": "CloudTrailLogGroup"
+     }
+    ],
+    "QueryString": "fields @timestamp, @message |\n  sort @timestamp desc |\n  filter eventSource == 'kms.amazonaws.com' and eventName in ['DisableKey', 'ScheduleKeyDeletion']"
+   },
+   "refs": [
+    "CloudTrailLogGroup"
+   ]
+  },
+  {
+   "id": "S3BucketPolicyChangeAlarm",
+   "cfg": "S3BucketPolicyChangeAlarm",
+   "type": "AWS::CloudWatch::Alarm",
+   "values": {
+    "AlarmName": "CIS-S3 Bucket Policy Changed",
+    "AlarmDescription": "Alarm if any S3 bucket policies are changed",
+    "MetricName": "S3BucketPolicyChanges",
+    "Namespace": "CloudTrailMetrics",
+    "Statistic": "Sum",
+    "Period": 300,
+    "EvaluationPeriods": 1,
+    "Threshold": 1,
+    "TreatMissingData": "notBreaching",
+    "AlarmActions": [
+     {
+      "ref": "CisAlarmsTopic"
+     }
+    ],
+    "ComparisonOperator": "GreaterThanOrEqualToThreshold"
+   },
+   "refs": [
+    "CisAlarmsTopic"
+   ]
+  },
+  {
+   "id": "S3BucketPolicyChangeFilter",
+   "cfg": "S3BucketPolicyChangeFilter",
+   "type": "AWS::Logs::MetricFilter",
+   "values": {
+    "LogGroupName": {
+     "ref": "CloudTrailLogGroup"
+    },
+    "FilterPattern": "{\n  ($.eventSource = s3.amazonaws.com) &&\n  (($.eventName = PutBucketAcl) ||\n    ($.eventName = PutBucketPolicy) ||\n    ($.eventName = PutBucketCors) ||\n    ($.eventName = PutBucketLifecycle) ||\n    ($.eventName = PutBucketReplication) ||\n    ($.eventName = DeleteBucketPolicy) ||\n    ($.eventName = DeleteBucketCors) ||\n    ($.eventName = DeleteBucketLifecycle) ||\n    ($.eventName = DeleteBucketReplication))\n}",
+    "MetricTransformations": [
+     {
+      "MetricValue": "1",
+      "MetricNamespace": "CloudTrailMetrics",
+      "MetricName": "S3BucketPolicyChanges"
+     }
+    ]
+   },
+   "refs": [
+    "CloudTrailLogGroup"
+   ]
+  },
+  {
+   "id": "S3BucketPolicyChangeQuery",
+   "cfg": "S3BucketPolicyChangeQuery",
+   "type": "AWS::Logs::QueryDefinition",
+   "values": {
+    "Name": "CIS-Alarms/CIS-S3 Bucket Policy Changed",
+    "LogGroupNames": [
+     {
+      "ref": "CloudTrailLogGroup"
+     }
+    ],
+    "QueryString": "fields @timestamp, @message |\n  sort @timestamp desc |\n  filter eventSource = 's3.amazonaws.com' and eventName in ['DeleteBucketCors', 'DeleteBucketLifecycle', 'DeleteBucketPolicy', 'DeleteBucketReplication', 'PutBucketAcl', 'PutBucketCors', 'PutBucketLifecycle', 'PutBucketPolicy', 'PutBucketReplication']"
+   },
+   "refs": [
+    "CloudTrailLogGroup"
+   ]
+  },
+  {
+   "id": "AWSConfigConfigurationChangeAlarm",
+   "cfg": "AWSConfigConfigurationChangeAlarm",
+   "type": "AWS::CloudWatch::Alarm",
+   "values": {
+    "AlarmName": "CIS-AWS Config Configuration has changed",
+    "AlarmDescription": "Alarm if the configuration for AWS Config changes",
+    "MetricName": "AWSConfigConfigurationChanges",
+    "Namespace": "CloudTrailMetrics",
+    "Statistic": "Sum",
+    "Period": 300,
+    "EvaluationPeriods": 1,
+    "Threshold": 1,
+    "TreatMissingData": "notBreaching",
+    "AlarmActions": [
+     {
+      "ref": "CisAlarmsTopic"
+     }
+    ],
+    "ComparisonOperator": "GreaterThanOrEqualToThreshold"
+   },
+   "refs": [
+    "CisAlarmsTopic"
+   ]
+  },
+  {
+   "id": "AWSConfigConfigurationChangeFilter",
+   "cfg": "AWSConfigConfigurationChangeFilter",
+   "type": "AWS::Logs::MetricFilter",
+   "values": {
+    "LogGroupName": {
+     "ref": "CloudTrailLogGroup"
+    },
+    "FilterPattern": "{\n  ($.eventSource = config.amazonaws.com) &&\n  (($.eventName=StopConfigurationRecorder)||\n   ($.eventName=DeleteDeliveryChannel)||\n   ($.eventName=PutDeliveryChannel)||\n   ($.eventName=PutConfigurationRecorder))\n}",
+    "MetricTransformations": [
+     {
+      "MetricValue": "1",
+      "MetricNamespace": "CloudTrailMetrics",
+      "MetricName": "AWSConfigConfigurationChanges"
+     }
+    ]
+   },
+   "refs": [
+    "CloudTrailLogGroup"
+   ]
+  },
+  {
+   "id": "AWSConfigConfigurationChangeQuery",
+   "cfg": "AWSConfigConfigurationChangeQuery",
+   "type": "AWS::Logs::QueryDefinition",
+   "values": {
+    "Name": "CIS-Alarms/CIS-AWS Config Configuration has changed",
+    "LogGroupNames": [
+     {
+      "ref": "CloudTrailLogGroup"
+     }
+    ],
+    "QueryString": "fields @timestamp, @message |\n  sort @timestamp desc |\n  filter eventSource = 'config.amazonaws.com' and eventName in ['DeleteDeliveryChannel', 'StopConfigurationRecorder', 'PutConfigurationRecorder', 'PutDeliveryChannel']"
+   },
+   "refs": [
+    "CloudTrailLogGroup"
+   ]
+  },
+  {
+   "id": "SecurityGroupChangeAlarm",
+   "cfg": "SecurityGroupChangeAlarm",
+   "type": "AWS::CloudWatch::Alarm",
+   "values": {
+    "AlarmName": "CIS-Security Groups Have Changed",
+    "AlarmDescription": "Alarm if there are any changes to security groups",
+    "MetricName": "SecurityGroupChanges",
+    "Namespace": "CloudTrailMetrics",
+    "Statistic": "Sum",
+    "Period": 300,
+    "EvaluationPeriods": 1,
+    "Threshold": 1,
+    "TreatMissingData": "notBreaching",
+    "AlarmActions": [
+     {
+      "ref": "CisAlarmsTopic"
+     }
+    ],
+    "ComparisonOperator": "GreaterThanOrEqualToThreshold"
+   },
+   "refs": [
+    "CisAlarmsTopic"
+   ]
+  },
+  {
+   "id": "SecurityGroupChangeFilter",
+   "cfg": "SecurityGroupChangeFilter",
+   "type": "AWS::Logs::MetricFilter",
+   "values": {
+    "LogGroupName": {
+     "ref": "CloudTrailLogGroup"
+    },
+    "FilterPattern": "{\n  ($.eventName = AuthorizeSecurityGroupIngress) ||\n  ($.eventName = AuthorizeSecurityGroupEgress) ||\n  ($.eventName = RevokeSecurityGroupIngress) ||\n  ($.eventName = RevokeSecurityGroupEgress) ||\n  ($.eventName = CreateSecurityGroup) ||\n  ($.eventName = DeleteSecurityGroup)\n}",
+    "MetricTransformations": [
+     {
+      "MetricValue": "1",
+      "MetricNamespace": "CloudTrailMetrics",
+      "MetricName": "SecurityGroupChanges"
+     }
+    ]
+   },
+   "refs": [
+    "CloudTrailLogGroup"
+   ]
+  },
+  {
+   "id": "SecurityGroupChangeQuery",
+   "cfg": "SecurityGroupChangeQuery",
+   "type": "AWS::Logs::QueryDefinition",
+   "values": {
+    "Name": "CIS-Alarms/CIS-Security Groups Have Changed",
+    "LogGroupNames": [
+     {
+      "ref": "CloudTrailLogGroup"
+     }
+    ],
+    "QueryString": "fields @timestamp, @message |\n  sort @timestamp desc |\n  filter eventName in ['AuthorizeSecurityGroupIngress', 'AuthorizeSecurityGroupEgress', 'CreateSecurityGroup', 'DeleteSecurityGroup', 'RevokeSecurityGroupIngress', 'RevokeSecurityGroupEgress']"
+   },
+   "refs": [
+    "CloudTrailLogGroup"
+   ]
+  },
+  {
+   "id": "NACLChangeAlarm",
+   "cfg": "NACLChangeAlarm",
+   "type": "AWS::CloudWatch::Alarm",
+   "values": {
+    "AlarmName": "CIS-NACLs Have Changed",
+    "AlarmDescription": "Alarm if there are any changes to Network ACLs (NACLs)",
+    "MetricName": "NACLChanges",
+    "Namespace": "CloudTrailMetrics",
+    "Statistic": "Sum",
+    "Period": 300,
+    "EvaluationPeriods": 1,
+    "Threshold": 1,
+    "TreatMissingData": "notBreaching",
+    "AlarmActions": [
+     {
+      "ref": "CisAlarmsTopic"
+     }
+    ],
+    "ComparisonOperator": "GreaterThanOrEqualToThreshold"
+   },
+   "refs": [
+    "CisAlarmsTopic"
+   ]
+  },
+  {
+   "id": "NACLChangeFilter",
+   "cfg": "NACLChangeFilter",
+   "type": "AWS::Logs::MetricFilter",
+   "values": {
+    "LogGroupName": {
+     "ref": "CloudTrailLogGroup"
+    },
+    "FilterPattern": "{\n  ($.eventName = CreateNetworkAcl) ||\n  ($.eventName = CreateNetworkAclEntry) ||\n  ($.eventName = DeleteNetworkAcl) ||\n  ($.eventName = DeleteNetworkAclEntry) ||\n  ($.eventName = ReplaceNetworkAclEntry) ||\n  ($.eventName = ReplaceNetworkAclAssociation)\n}",
+    "MetricTransformations": [
+     {
+      "MetricValue": "1",
+      "MetricNamespace": "CloudTrailMetrics",
+      "MetricName": "NACLChanges"
+     }
+    ]
+   },
+   "refs": [
+    "CloudTrailLogGroup"
+   ]
+  },
+  {
+   "id": "NACLChangeQuery",
+   "cfg": "NACLChangeQuery",
+   "type": "AWS::Logs::QueryDefinition",
+   "values": {
+    "Name": "CIS-Alarms/CIS-NACLs Have Changed",
+    "LogGroupNames": [
+     {
+      "ref": "CloudTrailLogGroup"
+     }
+    ],
+    "QueryString": "fields @timestamp, @message |\n  sort @timestamp desc |\n  filter eventName in ['CreateNetworkAcl', 'CreateNetworkAclEntry', 'DeleteNetworkAcl', 'DeleteNetworkAclEntry', 'ReplaceNetworkAclEntry', 'ReplaceNetworkAclAssociation']"
+   },
+   "refs": [
+    "CloudTrailLogGroup"
+   ]
+  },
+  {
+   "id": "NetworkGatewayChangeAlarm",
+   "cfg": "NetworkGatewayChangeAlarm",
+   "type": "AWS::CloudWatch::Alarm",
+   "values": {
+    "AlarmName": "CIS-Network Gateways Have Changed",
+    "AlarmDescription": "Alarm if there are any changes to network gateways",
+    "MetricName": "NetworkGatewayChanges",
+    "Namespace": "CloudTrailMetrics",
+    "Statistic": "Sum",
+    "Period": 300,
+    "EvaluationPeriods": 1,
+    "Threshold": 1,
+    "TreatMissingData": "notBreaching",
+    "AlarmActions": [
+     {
+      "ref": "CisAlarmsTopic"
+     }
+    ],
+    "ComparisonOperator": "GreaterThanOrEqualToThreshold"
+   },
+   "refs": [
+    "CisAlarmsTopic"
+   ]
+  },
+  {
+   "id": "NetworkGatewayChangeFilter",
+   "cfg": "NetworkGatewayChangeFilter",
+   "type": "AWS::Logs::MetricFilter",
+   "values": {
+    "LogGroupName": {
+     "ref": "CloudTrailLogGroup"
+    },
+    "FilterPattern": "{\n  ($.eventName = CreateCustomerGateway) ||\n  ($.eventName = DeleteCustomerGateway) ||\n  ($.eventName = AttachInternetGateway) ||\n  ($.eventName = CreateInternetGateway) ||\n  ($.eventName = DeleteInternetGateway) ||\n  ($.eventName = DetachInternetGateway)\n}",
+    "MetricTransformations": [
+     {
+      "MetricValue": "1",
+      "MetricNamespace": "CloudTrailMetrics",
+      "MetricName": "NetworkGatewayChanges"
+     }
+    ]
+   },
+   "refs": [
+    "CloudTrailLogGroup"
+   ]
+  },
+  {
+   "id": "NetworkGatewayChangeQuery",
+   "cfg": "NetworkGatewayChangeQuery",
+   "type": "AWS::Logs::QueryDefinition",
+   "values": {
+    "Name": "CIS-Alarms/CIS-Network Gateways Have Changed",
+    "LogGroupNames": [
+     {
+      "ref": "CloudTrailLogGroup"
+     }
+    ],
+    "QueryString": "fields @timestamp, @message |\n  sort @timestamp desc |\n  filter eventName in ['AttachInternetGateway', 'CreateCustomerGateway', 'CreateInternetGateway', 'DeleteCustomerGateway', 'DeleteInternetGateway', 'DetachInternetGateway']"
+   },
+   "refs": [
+    "CloudTrailLogGroup"
+   ]
+  },
+  {
+   "id": "RouteTableChangeAlarm",
+   "cfg": "RouteTableChangeAlarm",
+   "type": "AWS::CloudWatch::Alarm",
+   "values": {
+    "AlarmName": "CIS-Route Tables Have Changed",
+    "AlarmDescription": "Alarm if there are any changes to route tables",
+    "MetricName": "RouteTableChanges",
+    "Namespace": "CloudTrailMetrics",
+    "Statistic": "Sum",
+    "Period": 300,
+    "EvaluationPeriods": 1,
+    "Threshold": 1,
+    "TreatMissingData": "notBreaching",
+    "AlarmActions": [
+     {
+      "ref": "CisAlarmsTopic"
+     }
+    ],
+    "ComparisonOperator": "GreaterThanOrEqualToThreshold"
+   },
+   "refs": [
+    "CisAlarmsTopic"
+   ]
+  },
+  {
+   "id": "RouteTableChangeFilter",
+   "cfg": "RouteTableChangeFilter",
+   "type": "AWS::Logs::MetricFilter",
+   "values": {
+    "LogGroupName": {
+     "ref": "CloudTrailLogGroup"
+    },
+    "FilterPattern": "{\n  ($.eventName = CreateRoute) ||\n  ($.eventName = CreateRouteTable) ||\n  ($.eventName = ReplaceRoute) ||\n  ($.eventName = ReplaceRouteTableAssociation) ||\n  ($.eventName = DeleteRouteTable) ||\n  ($.eventName = DeleteRoute) ||\n  ($.eventName = DisassociateRouteTable)\n}",
+    "MetricTransformations": [
+     {
+      "MetricValue": "1",
+      "MetricNamespace": "CloudTrailMetrics",
+      "MetricName": "RouteTableChanges"
+     }
+    ]
+   },
+   "refs": [
+    "CloudTrailLogGroup"
+   ]
+  },
+  {
+   "id": "RouteTableChangeQuery",
+   "cfg": "RouteTableChangeQuery",
+   "type": "AWS::Logs::QueryDefinition",
+   "values": {
+    "Name": "CIS-Alarms/CIS-Route Tables Have Changed",
+    "LogGroupNames": [
+     {
+      "ref": "CloudTrailLogGroup"
+     }
+    ],
+    "QueryString": "fields @timestamp, @message |\n  sort @timestamp desc |\n  filter eventName in ['CreateRoute', 'CreateRouteTable', 'DeleteRoute', 'DeleteRouteTable', 'DisassociateRouteTable', 'ReplaceRoute', 'ReplaceRouteTableAssociation']"
+   },
+   "refs": [
+    "CloudTrailLogGroup"
+   ]
+  },
+  {
+   "id": "VPCChangeAlarm",
+   "cfg": "VPCChangeAlarm",
+   "type": "AWS::CloudWatch::Alarm",
+   "values": {
+    "AlarmName": "CIS-VPC Has Changed",
+    "AlarmDescription": "Alarm if there are any changes to any VPCs",
+    "MetricName": "VPCChanges",
+    "Namespace": "CloudTrailMetrics",
+    "Statistic": "Sum",
+    "Period": 300,
+    "EvaluationPeriods": 1,
+    "Threshold": 1,
+    "TreatMissingData": "notBreaching",
+    "AlarmActions": [
+     {
+      "ref": "CisAlarmsTopic"
+     }
+    ],
+    "ComparisonOperator": "GreaterThanOrEqualToThreshold"
+   },
+   "refs": [
+    "CisAlarmsTopic"
+   ]
+  },
+  {
+   "id": "VPCChangeFilter",
+   "cfg": "VPCChangeFilter",
+   "type": "AWS::Logs::MetricFilter",
+   "values": {
+    "LogGroupName": {
+     "ref": "CloudTrailLogGroup"
+    },
+    "FilterPattern": "{\n  ($.eventName = CreateVpc) ||\n  ($.eventName = DeleteVpc) ||\n  ($.eventName = ModifyVpcAttribute) ||\n  ($.eventName = AcceptVpcPeeringConnection) ||\n  ($.eventName = CreateVpcPeeringConnection) ||\n  ($.eventName = DeleteVpcPeeringConnection) ||\n  ($.eventName = RejectVpcPeeringConnection) ||\n  ($.eventName = AttachClassicLinkVpc) ||\n  ($.eventName = DetachClassicLinkVpc) ||\n  ($.eventName = DisableVpcClassicLink) ||\n  ($.eventName = EnableVpcClassicLink)\n}",
+    "MetricTransformations": [
+     {
+      "MetricValue": "1",
+      "MetricNamespace": "CloudTrailMetrics",
+      "MetricName": "VPCChanges"
+     }
+    ]
+   },
+   "refs": [
+    "CloudTrailLogGroup"
+   ]
+  },
+  {
+   "id": "VPCChangeQuery",
+   "cfg": "VPCChangeQuery",
+   "type": "AWS::Logs::QueryDefinition",
+   "values": {
+    "Name": "CIS-Alarms/CIS-VPC Has Changed",
+    "LogGroupNames": [
+     {
+      "ref": "CloudTrailLogGroup"
+     }
+    ],
+    "QueryString": "fields @timestamp, @message |\n  sort @timestamp desc |\n  filter eventName in ['AcceptVpcPeeringConnection', 'AttachClassicLinkVpc', 'CreateVpc', 'CreateVpcPeeringConnection', 'DeleteVpc', 'DeleteVpcPeeringConnection', 'DetachClassicLinkVpc', 'DisableVpcClassicLink', 'EnableVpcClassicLink', 'ModifyVpcAttribute', 'RejectVpcPeeringConnection']"
+   },
+   "refs": [
+    "CloudTrailLogGroup"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::KMS::Key.CisAlarmsTopicKey",
+   "cfg": "CisAlarmsTopicKey",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::KMS::Key",
+    "name": "CisAlarmsTopicKey",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Description": "CMK for CisAlarmsTopic encryption",
+     "KeyPolicy": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Sid": "AllowAccountFullAccess",
+        "Effect": "Allow",
+        "Principal": {
+         "AWS": [
+          "arn:aws:iam::123456789012:root"
+         ]
+        },
+        "Action": [
+         "kms:*"
+        ],
+        "Resource": [
+         "*"
+        ]
+       },
+       {
+        "Sid": "AllowCloudWatchToPublish",
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "cloudwatch.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "kms:Decrypt",
+         "kms:GenerateDataKey"
+        ],
+        "Resource": [
+         "*"
+        ]
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SNS::Topic.CisAlarmsTopic",
+   "cfg": "CisAlarmsTopic",
+   "type": "__declared__",
+   "refs": [
+    "CisAlarmsTopicKey"
+   ],
+   "values": {
+    "type": "AWS::SNS::Topic",
+    "name": "CisAlarmsTopic",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "TopicName": "your-CIS-Alarms",
+     "KmsMasterKeyId": {
+      "ref": "CisAlarmsTopicKey"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::LogGroup.CloudTrailLogGroup",
+   "cfg": "CloudTrailLogGroup",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Logs::LogGroup",
+    "name": "CloudTrailLogGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "LogGroupName": "Example-Cloudwatch-For-Trail-LogGroup",
+     "RetentionInDays": 30
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::CloudWatch::Alarm.UnauthorizedApiCallsAlarm",
+   "cfg": "UnauthorizedApiCallsAlarm",
+   "type": "__declared__",
+   "refs": [
+    "CisAlarmsTopic"
+   ],
+   "values": {
+    "type": "AWS::CloudWatch::Alarm",
+    "name": "UnauthorizedApiCallsAlarm",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AlarmName": "CIS-Unauthorized Activity Attempt",
+     "AlarmDescription": "Alarm if Multiple unauthorized actions or logins attempted",
+     "MetricName": "UnauthorizedAttemptCount",
+     "Namespace": "CloudTrailMetrics",
+     "Statistic": "Sum",
+     "Period": 300,
+     "EvaluationPeriods": 1,
+     "Threshold": 1,
+     "TreatMissingData": "notBreaching",
+     "AlarmActions": [
+      {
+       "ref": "CisAlarmsTopic"
+      }
+     ],
+     "ComparisonOperator": "GreaterThanOrEqualToThreshold"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::MetricFilter.UnauthorizedApiCallsFilter",
+   "cfg": "UnauthorizedApiCallsFilter",
+   "type": "__declared__",
+   "refs": [
+    "CloudTrailLogGroup"
+   ],
+   "values": {
+    "type": "AWS::Logs::MetricFilter",
+    "name": "UnauthorizedApiCallsFilter",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "LogGroupName": {
+      "ref": "CloudTrailLogGroup"
+     },
+     "FilterPattern": "{\n  ($.errorCode = \"*UnauthorizedOperation\") ||\n  ($.errorCode = \"AccessDenied*\")\n}",
+     "MetricTransformations": [
+      {
+       "MetricValue": "1",
+       "MetricNamespace": "CloudTrailMetrics",
+       "MetricName": "UnauthorizedAttemptCount"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::QueryDefinition.UnauthorizedApiCallsQuery",
+   "cfg": "UnauthorizedApiCallsQuery",
+   "type": "__declared__",
+   "refs": [
+    "CloudTrailLogGroup"
+   ],
+   "values": {
+    "type": "AWS::Logs::QueryDefinition",
+    "name": "UnauthorizedApiCallsQuery",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "CIS-Alarms/CIS-Unauthorized Activity Attempt",
+     "LogGroupNames": [
+      {
+       "ref": "CloudTrailLogGroup"
+      }
+     ],
+     "QueryString": "fields @timestamp, @message |\n  sort @timestamp desc |\n  filter errorCode == '*UnauthorizedOperation' or errorCode == 'AccessDenied*'"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::CloudWatch::Alarm.NoMfaConsoleLoginsAlarm",
+   "cfg": "NoMfaConsoleLoginsAlarm",
+   "type": "__declared__",
+   "refs": [
+    "CisAlarmsTopic"
+   ],
+   "values": {
+    "type": "AWS::CloudWatch::Alarm",
+    "name": "NoMfaConsoleLoginsAlarm",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AlarmName": "CIS-Console Signin Without MFA",
+     "AlarmDescription": "Alarm if there is a Management Console sign-in without MFA",
+     "MetricName": "ConsoleSigninWithoutMFA",
+     "Namespace": "CloudTrailMetrics",
+     "Statistic": "Sum",
+     "Period": 300,
+     "EvaluationPeriods": 1,
+     "Threshold": 1,
+     "TreatMissingData": "notBreaching",
+     "AlarmActions": [
+      {
+       "ref": "CisAlarmsTopic"
+      }
+     ],
+     "ComparisonOperator": "GreaterThanOrEqualToThreshold"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::MetricFilter.NoMfaConsoleLoginsFilter",
+   "cfg": "NoMfaConsoleLoginsFilter",
+   "type": "__declared__",
+   "refs": [
+    "CloudTrailLogGroup"
+   ],
+   "values": {
+    "type": "AWS::Logs::MetricFilter",
+    "name": "NoMfaConsoleLoginsFilter",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "LogGroupName": {
+      "ref": "CloudTrailLogGroup"
+     },
+     "FilterPattern": "{\n  ($.eventName = \"ConsoleLogin\") &&\n  ($.additionalEventData.MFAUsed != \"Yes\")\n}",
+     "MetricTransformations": [
+      {
+       "MetricValue": "1",
+       "MetricNamespace": "CloudTrailMetrics",
+       "MetricName": "ConsoleSigninWithoutMFA"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::QueryDefinition.NoMfaConsoleLoginsQuery",
+   "cfg": "NoMfaConsoleLoginsQuery",
+   "type": "__declared__",
+   "refs": [
+    "CloudTrailLogGroup"
+   ],
+   "values": {
+    "type": "AWS::Logs::QueryDefinition",
+    "name": "NoMfaConsoleLoginsQuery",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "CIS-Alarms/CIS-Console Signin Without MFA",
+     "LogGroupNames": [
+      {
+       "ref": "CloudTrailLogGroup"
+      }
+     ],
+     "QueryString": "fields @timestamp, @message |\n  sort @timestamp desc |\n  filter eventName == 'ConsoleLogin' and responseElements.ConsoleLogin == 'Success' and additionalEventData.MFAUsed != 'Yes'"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::CloudWatch::Alarm.RootAccountLoginsAlarm",
+   "cfg": "RootAccountLoginsAlarm",
+   "type": "__declared__",
+   "refs": [
+    "CisAlarmsTopic"
+   ],
+   "values": {
+    "type": "AWS::CloudWatch::Alarm",
+    "name": "RootAccountLoginsAlarm",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AlarmName": "CIS-Root Activity",
+     "AlarmDescription": "Alarm if a 'root' user uses the account",
+     "MetricName": "RootUserEventCount",
+     "Namespace": "CloudTrailMetrics",
+     "Statistic": "Sum",
+     "Period": 300,
+     "EvaluationPeriods": 1,
+     "Threshold": 1,
+     "TreatMissingData": "notBreaching",
+     "AlarmActions": [
+      {
+       "ref": "CisAlarmsTopic"
+      }
+     ],
+     "ComparisonOperator": "GreaterThanOrEqualToThreshold"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::MetricFilter.RootAccountLoginsFilter",
+   "cfg": "RootAccountLoginsFilter",
+   "type": "__declared__",
+   "refs": [
+    "CloudTrailLogGroup"
+   ],
+   "values": {
+    "type": "AWS::Logs::MetricFilter",
+    "name": "RootAccountLoginsFilter",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "LogGroupName": {
+      "ref": "CloudTrailLogGroup"
+     },
+     "FilterPattern": "{\n  $.userIdentity.type = \"Root\" &&\n  $.userIdentity.invokedBy NOT EXISTS &&\n  $.eventType != \"AwsServiceEvent\"\n}",
+     "MetricTransformations": [
+      {
+       "MetricValue": "1",
+       "MetricNamespace": "CloudTrailMetrics",
+       "MetricName": "RootUserEventCount"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::QueryDefinition.RootAccountLoginsQuery",
+   "cfg": "RootAccountLoginsQuery",
+   "type": "__declared__",
+   "refs": [
+    "CloudTrailLogGroup"
+   ],
+   "values": {
+    "type": "AWS::Logs::QueryDefinition",
+    "name": "RootAccountLoginsQuery",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "CIS-Alarms/CIS-Root Activity",
+     "LogGroupNames": [
+      {
+       "ref": "CloudTrailLogGroup"
+      }
+     ],
+     "QueryString": "fields @timestamp, @message |\n  sort @timestamp desc |\n  filter userIdentity.type == 'Root' and eventType != 'AwsServiceEvent'"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::CloudWatch::Alarm.IAMPolicyChangesAlarm",
+   "cfg": "IAMPolicyChangesAlarm",
+   "type": "__declared__",
+   "refs": [
+    "CisAlarmsTopic"
+   ],
+   "values": {
+    "type": "AWS::CloudWatch::Alarm",
+    "name": "IAMPolicyChangesAlarm",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AlarmName": "CIS-IAM Policy Changes",
+     "AlarmDescription": "Alarm if an IAM policy changes",
+     "MetricName": "IAMPolicyChangeEventCount",
+     "Namespace": "CloudTrailMetrics",
+     "Statistic": "Sum",
+     "Period": 300,
+     "EvaluationPeriods": 1,
+     "Threshold": 1,
+     "TreatMissingData": "notBreaching",
+     "AlarmActions": [
+      {
+       "ref": "CisAlarmsTopic"
+      }
+     ],
+     "ComparisonOperator": "GreaterThanOrEqualToThreshold"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::MetricFilter.IAMPolicyChangesFilter",
+   "cfg": "IAMPolicyChangesFilter",
+   "type": "__declared__",
+   "refs": [
+    "CloudTrailLogGroup"
+   ],
+   "values": {
+    "type": "AWS::Logs::MetricFilter",
+    "name": "IAMPolicyChangesFilter",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "LogGroupName": {
+      "ref": "CloudTrailLogGroup"
+     },
+     "FilterPattern": "{\n  ($.eventName=DeleteGroupPolicy) ||\n  ($.eventName=DeleteRolePolicy) ||\n  ($.eventName=DeleteUserPolicy) ||\n  ($.eventName=PutGroupPolicy) ||\n  ($.eventName=PutRolePolicy) ||\n  ($.eventName=PutUserPolicy) ||\n  ($.eventName=CreatePolicy) ||\n  ($.eventName=DeletePolicy) ||\n  ($.eventName=CreatePolicyVersion) ||\n  ($.eventName=DeletePolicyVersion) ||\n  ($.eventName=AttachRolePolicy) ||\n  ($.eventName=DetachRolePolicy) ||\n  ($.eventName=AttachUserPolicy) ||\n  ($.eventName=DetachUserPolicy) ||\n  ($.eventName=AttachGroupPolicy) ||\n  ($.eventName=DetachGroupPolicy)\n}",
+     "MetricTransformations": [
+      {
+       "MetricValue": "1",
+       "MetricNamespace": "CloudTrailMetrics",
+       "MetricName": "IAMPolicyChangeEventCount"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::QueryDefinition.IAMPolicyChangesQuery",
+   "cfg": "IAMPolicyChangesQuery",
+   "type": "__declared__",
+   "refs": [
+    "CloudTrailLogGroup"
+   ],
+   "values": {
+    "type": "AWS::Logs::QueryDefinition",
+    "name": "IAMPolicyChangesQuery",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "CIS-Alarms/CIS-IAM Policy Changes",
+     "LogGroupNames": [
+      {
+       "ref": "CloudTrailLogGroup"
+      }
+     ],
+     "QueryString": "fields @timestamp, @message |\n  sort @timestamp desc |\n  filter eventName in ['AttachGroupPolicy', 'AttachRolePolicy', 'AttachUserPolicy', 'CreatePolicy', 'CreatePolicyVersion', 'DeleteGroupPolicy', 'DeletePolicy', 'DeletePolicyVersion', 'DeleteRolePolicy', 'DeleteUserPolicy', 'DetachGroupPolicy', 'DetachRolePolicy', 'DetachUserPolicy', 'PutGroupPolicy', 'PutRolePolicy', 'PutUserPolicy']"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::CloudWatch::Alarm.CloudtrailConfigChangesAlarm",
+   "cfg": "CloudtrailConfigChangesAlarm",
+   "type": "__declared__",
+   "refs": [
+    "CisAlarmsTopic"
+   ],
+   "values": {
+    "type": "AWS::CloudWatch::Alarm",
+    "name": "CloudtrailConfigChangesAlarm",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AlarmName": "CIS-Cloudtrail Config Changes",
+     "AlarmDescription": "Alarm if the configuration for Cloudtrail changes",
+     "MetricName": "CloudtrailConfigChangeEventCount",
+     "Namespace": "CloudTrailMetrics",
+     "Statistic": "Sum",
+     "Period": 300,
+     "EvaluationPeriods": 1,
+     "Threshold": 1,
+     "TreatMissingData": "notBreaching",
+     "AlarmActions": [
+      {
+       "ref": "CisAlarmsTopic"
+      }
+     ],
+     "ComparisonOperator": "GreaterThanOrEqualToThreshold"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::MetricFilter.CloudtrailConfigChangesFilter",
+   "cfg": "CloudtrailConfigChangesFilter",
+   "type": "__declared__",
+   "refs": [
+    "CloudTrailLogGroup"
+   ],
+   "values": {
+    "type": "AWS::Logs::MetricFilter",
+    "name": "CloudtrailConfigChangesFilter",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "LogGroupName": {
+      "ref": "CloudTrailLogGroup"
+     },
+     "FilterPattern": "{\n  ($.eventName = CreateTrail) ||\n  ($.eventName = UpdateTrail) ||\n  ($.eventName = DeleteTrail) ||\n  ($.eventName = StartLogging) ||\n  ($.eventName = StopLogging)\n}",
+     "MetricTransformations": [
+      {
+       "MetricValue": "1",
+       "MetricNamespace": "CloudTrailMetrics",
+       "MetricName": "CloudtrailConfigChangeEventCount"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::QueryDefinition.CloudtrailConfigChangesQuery",
+   "cfg": "CloudtrailConfigChangesQuery",
+   "type": "__declared__",
+   "refs": [
+    "CloudTrailLogGroup"
+   ],
+   "values": {
+    "type": "AWS::Logs::QueryDefinition",
+    "name": "CloudtrailConfigChangesQuery",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "CIS-Alarms/CIS-Cloudtrail Config Changes",
+     "LogGroupNames": [
+      {
+       "ref": "CloudTrailLogGroup"
+      }
+     ],
+     "QueryString": "fields @timestamp, @message |\n  sort @timestamp desc |\n  filter eventName in ['CreateTrail', 'DeleteTrail', 'StartLogging', 'StopLogging', 'UpdateTrail']"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::CloudWatch::Alarm.FailedConsoleLoginsAlarm",
+   "cfg": "FailedConsoleLoginsAlarm",
+   "type": "__declared__",
+   "refs": [
+    "CisAlarmsTopic"
+   ],
+   "values": {
+    "type": "AWS::CloudWatch::Alarm",
+    "name": "FailedConsoleLoginsAlarm",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AlarmName": "CIS-Console Login Failures",
+     "AlarmDescription": "Alarm if there are AWS Management Console authentication failures",
+     "MetricName": "ConsoleLoginFailures",
+     "Namespace": "CloudTrailMetrics",
+     "Statistic": "Sum",
+     "Period": 300,
+     "EvaluationPeriods": 1,
+     "Threshold": 1,
+     "TreatMissingData": "notBreaching",
+     "AlarmActions": [
+      {
+       "ref": "CisAlarmsTopic"
+      }
+     ],
+     "ComparisonOperator": "GreaterThanOrEqualToThreshold"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::MetricFilter.FailedConsoleLoginsFilter",
+   "cfg": "FailedConsoleLoginsFilter",
+   "type": "__declared__",
+   "refs": [
+    "CloudTrailLogGroup"
+   ],
+   "values": {
+    "type": "AWS::Logs::MetricFilter",
+    "name": "FailedConsoleLoginsFilter",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "LogGroupName": {
+      "ref": "CloudTrailLogGroup"
+     },
+     "FilterPattern": "{\n  ($.eventName = ConsoleLogin) &&\n  ($.errorMessage = \"Failed authentication\")\n}",
+     "MetricTransformations": [
+      {
+       "MetricValue": "1",
+       "MetricNamespace": "CloudTrailMetrics",
+       "MetricName": "ConsoleLoginFailures"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::QueryDefinition.FailedConsoleLoginsQuery",
+   "cfg": "FailedConsoleLoginsQuery",
+   "type": "__declared__",
+   "refs": [
+    "CloudTrailLogGroup"
+   ],
+   "values": {
+    "type": "AWS::Logs::QueryDefinition",
+    "name": "FailedConsoleLoginsQuery",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "CIS-Alarms/CIS-Console Login Failures",
+     "LogGroupNames": [
+      {
+       "ref": "CloudTrailLogGroup"
+      }
+     ],
+     "QueryString": "fields @timestamp, @message |\n  sort @timestamp desc |\n  filter eventName == 'ConsoleLogin' and errorMessage == 'Failed authentication'"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::CloudWatch::Alarm.DisabledOrDeletedCmksAlarm",
+   "cfg": "DisabledOrDeletedCmksAlarm",
+   "type": "__declared__",
+   "refs": [
+    "CisAlarmsTopic"
+   ],
+   "values": {
+    "type": "AWS::CloudWatch::Alarm",
+    "name": "DisabledOrDeletedCmksAlarm",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AlarmName": "CIS-KMS Key Disabled or Scheduled for Deletion",
+     "AlarmDescription": "Alarm if customer created CMKs get disabled or scheduled for deletion",
+     "MetricName": "KMSCustomerKeyDeletion",
+     "Namespace": "CloudTrailMetrics",
+     "Statistic": "Sum",
+     "Period": 60,
+     "EvaluationPeriods": 1,
+     "Threshold": 1,
+     "TreatMissingData": "notBreaching",
+     "AlarmActions": [
+      {
+       "ref": "CisAlarmsTopic"
+      }
+     ],
+     "ComparisonOperator": "GreaterThanOrEqualToThreshold"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::MetricFilter.DisabledOrDeletedCmksFilter",
+   "cfg": "DisabledOrDeletedCmksFilter",
+   "type": "__declared__",
+   "refs": [
+    "CloudTrailLogGroup"
+   ],
+   "values": {
+    "type": "AWS::Logs::MetricFilter",
+    "name": "DisabledOrDeletedCmksFilter",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "LogGroupName": {
+      "ref": "CloudTrailLogGroup"
+     },
+     "FilterPattern": "{\n  ($.eventSource = kms.amazonaws.com) &&\n  (($.eventName=DisableKey) || ($.eventName=ScheduleKeyDeletion))\n}",
+     "MetricTransformations": [
+      {
+       "MetricValue": "1",
+       "MetricNamespace": "CloudTrailMetrics",
+       "MetricName": "KMSCustomerKeyDeletion"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::QueryDefinition.DisabledOrDeletedCmksQuery",
+   "cfg": "DisabledOrDeletedCmksQuery",
+   "type": "__declared__",
+   "refs": [
+    "CloudTrailLogGroup"
+   ],
+   "values": {
+    "type": "AWS::Logs::QueryDefinition",
+    "name": "DisabledOrDeletedCmksQuery",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "CIS-Alarms/CIS-KMS Key Disabled or Scheduled for Deletion",
+     "LogGroupNames": [
+      {
+       "ref": "CloudTrailLogGroup"
+      }
+     ],
+     "QueryString": "fields @timestamp, @message |\n  sort @timestamp desc |\n  filter eventSource == 'kms.amazonaws.com' and eventName in ['DisableKey', 'ScheduleKeyDeletion']"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::CloudWatch::Alarm.S3BucketPolicyChangeAlarm",
+   "cfg": "S3BucketPolicyChangeAlarm",
+   "type": "__declared__",
+   "refs": [
+    "CisAlarmsTopic"
+   ],
+   "values": {
+    "type": "AWS::CloudWatch::Alarm",
+    "name": "S3BucketPolicyChangeAlarm",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AlarmName": "CIS-S3 Bucket Policy Changed",
+     "AlarmDescription": "Alarm if any S3 bucket policies are changed",
+     "MetricName": "S3BucketPolicyChanges",
+     "Namespace": "CloudTrailMetrics",
+     "Statistic": "Sum",
+     "Period": 300,
+     "EvaluationPeriods": 1,
+     "Threshold": 1,
+     "TreatMissingData": "notBreaching",
+     "AlarmActions": [
+      {
+       "ref": "CisAlarmsTopic"
+      }
+     ],
+     "ComparisonOperator": "GreaterThanOrEqualToThreshold"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::MetricFilter.S3BucketPolicyChangeFilter",
+   "cfg": "S3BucketPolicyChangeFilter",
+   "type": "__declared__",
+   "refs": [
+    "CloudTrailLogGroup"
+   ],
+   "values": {
+    "type": "AWS::Logs::MetricFilter",
+    "name": "S3BucketPolicyChangeFilter",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "LogGroupName": {
+      "ref": "CloudTrailLogGroup"
+     },
+     "FilterPattern": "{\n  ($.eventSource = s3.amazonaws.com) &&\n  (($.eventName = PutBucketAcl) ||\n    ($.eventName = PutBucketPolicy) ||\n    ($.eventName = PutBucketCors) ||\n    ($.eventName = PutBucketLifecycle) ||\n    ($.eventName = PutBucketReplication) ||\n    ($.eventName = DeleteBucketPolicy) ||\n    ($.eventName = DeleteBucketCors) ||\n    ($.eventName = DeleteBucketLifecycle) ||\n    ($.eventName = DeleteBucketReplication))\n}",
+     "MetricTransformations": [
+      {
+       "MetricValue": "1",
+       "MetricNamespace": "CloudTrailMetrics",
+       "MetricName": "S3BucketPolicyChanges"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::QueryDefinition.S3BucketPolicyChangeQuery",
+   "cfg": "S3BucketPolicyChangeQuery",
+   "type": "__declared__",
+   "refs": [
+    "CloudTrailLogGroup"
+   ],
+   "values": {
+    "type": "AWS::Logs::QueryDefinition",
+    "name": "S3BucketPolicyChangeQuery",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "CIS-Alarms/CIS-S3 Bucket Policy Changed",
+     "LogGroupNames": [
+      {
+       "ref": "CloudTrailLogGroup"
+      }
+     ],
+     "QueryString": "fields @timestamp, @message |\n  sort @timestamp desc |\n  filter eventSource = 's3.amazonaws.com' and eventName in ['DeleteBucketCors', 'DeleteBucketLifecycle', 'DeleteBucketPolicy', 'DeleteBucketReplication', 'PutBucketAcl', 'PutBucketCors', 'PutBucketLifecycle', 'PutBucketPolicy', 'PutBucketReplication']"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::CloudWatch::Alarm.AWSConfigConfigurationChangeAlarm",
+   "cfg": "AWSConfigConfigurationChangeAlarm",
+   "type": "__declared__",
+   "refs": [
+    "CisAlarmsTopic"
+   ],
+   "values": {
+    "type": "AWS::CloudWatch::Alarm",
+    "name": "AWSConfigConfigurationChangeAlarm",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AlarmName": "CIS-AWS Config Configuration has changed",
+     "AlarmDescription": "Alarm if the configuration for AWS Config changes",
+     "MetricName": "AWSConfigConfigurationChanges",
+     "Namespace": "CloudTrailMetrics",
+     "Statistic": "Sum",
+     "Period": 300,
+     "EvaluationPeriods": 1,
+     "Threshold": 1,
+     "TreatMissingData": "notBreaching",
+     "AlarmActions": [
+      {
+       "ref": "CisAlarmsTopic"
+      }
+     ],
+     "ComparisonOperator": "GreaterThanOrEqualToThreshold"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::MetricFilter.AWSConfigConfigurationChangeFilter",
+   "cfg": "AWSConfigConfigurationChangeFilter",
+   "type": "__declared__",
+   "refs": [
+    "CloudTrailLogGroup"
+   ],
+   "values": {
+    "type": "AWS::Logs::MetricFilter",
+    "name": "AWSConfigConfigurationChangeFilter",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "LogGroupName": {
+      "ref": "CloudTrailLogGroup"
+     },
+     "FilterPattern": "{\n  ($.eventSource = config.amazonaws.com) &&\n  (($.eventName=StopConfigurationRecorder)||\n   ($.eventName=DeleteDeliveryChannel)||\n   ($.eventName=PutDeliveryChannel)||\n   ($.eventName=PutConfigurationRecorder))\n}",
+     "MetricTransformations": [
+      {
+       "MetricValue": "1",
+       "MetricNamespace": "CloudTrailMetrics",
+       "MetricName": "AWSConfigConfigurationChanges"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::QueryDefinition.AWSConfigConfigurationChangeQuery",
+   "cfg": "AWSConfigConfigurationChangeQuery",
+   "type": "__declared__",
+   "refs": [
+    "CloudTrailLogGroup"
+   ],
+   "values": {
+    "type": "AWS::Logs::QueryDefinition",
+    "name": "AWSConfigConfigurationChangeQuery",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "CIS-Alarms/CIS-AWS Config Configuration has changed",
+     "LogGroupNames": [
+      {
+       "ref": "CloudTrailLogGroup"
+      }
+     ],
+     "QueryString": "fields @timestamp, @message |\n  sort @timestamp desc |\n  filter eventSource = 'config.amazonaws.com' and eventName in ['DeleteDeliveryChannel', 'StopConfigurationRecorder', 'PutConfigurationRecorder', 'PutDeliveryChannel']"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::CloudWatch::Alarm.SecurityGroupChangeAlarm",
+   "cfg": "SecurityGroupChangeAlarm",
+   "type": "__declared__",
+   "refs": [
+    "CisAlarmsTopic"
+   ],
+   "values": {
+    "type": "AWS::CloudWatch::Alarm",
+    "name": "SecurityGroupChangeAlarm",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AlarmName": "CIS-Security Groups Have Changed",
+     "AlarmDescription": "Alarm if there are any changes to security groups",
+     "MetricName": "SecurityGroupChanges",
+     "Namespace": "CloudTrailMetrics",
+     "Statistic": "Sum",
+     "Period": 300,
+     "EvaluationPeriods": 1,
+     "Threshold": 1,
+     "TreatMissingData": "notBreaching",
+     "AlarmActions": [
+      {
+       "ref": "CisAlarmsTopic"
+      }
+     ],
+     "ComparisonOperator": "GreaterThanOrEqualToThreshold"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::MetricFilter.SecurityGroupChangeFilter",
+   "cfg": "SecurityGroupChangeFilter",
+   "type": "__declared__",
+   "refs": [
+    "CloudTrailLogGroup"
+   ],
+   "values": {
+    "type": "AWS::Logs::MetricFilter",
+    "name": "SecurityGroupChangeFilter",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "LogGroupName": {
+      "ref": "CloudTrailLogGroup"
+     },
+     "FilterPattern": "{\n  ($.eventName = AuthorizeSecurityGroupIngress) ||\n  ($.eventName = AuthorizeSecurityGroupEgress) ||\n  ($.eventName = RevokeSecurityGroupIngress) ||\n  ($.eventName = RevokeSecurityGroupEgress) ||\n  ($.eventName = CreateSecurityGroup) ||\n  ($.eventName = DeleteSecurityGroup)\n}",
+     "MetricTransformations": [
+      {
+       "MetricValue": "1",
+       "MetricNamespace": "CloudTrailMetrics",
+       "MetricName": "SecurityGroupChanges"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::QueryDefinition.SecurityGroupChangeQuery",
+   "cfg": "SecurityGroupChangeQuery",
+   "type": "__declared__",
+   "refs": [
+    "CloudTrailLogGroup"
+   ],
+   "values": {
+    "type": "AWS::Logs::QueryDefinition",
+    "name": "SecurityGroupChangeQuery",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "CIS-Alarms/CIS-Security Groups Have Changed",
+     "LogGroupNames": [
+      {
+       "ref": "CloudTrailLogGroup"
+      }
+     ],
+     "QueryString": "fields @timestamp, @message |\n  sort @timestamp desc |\n  filter eventName in ['AuthorizeSecurityGroupIngress', 'AuthorizeSecurityGroupEgress', 'CreateSecurityGroup', 'DeleteSecurityGroup', 'RevokeSecurityGroupIngress', 'RevokeSecurityGroupEgress']"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::CloudWatch::Alarm.NACLChangeAlarm",
+   "cfg": "NACLChangeAlarm",
+   "type": "__declared__",
+   "refs": [
+    "CisAlarmsTopic"
+   ],
+   "values": {
+    "type": "AWS::CloudWatch::Alarm",
+    "name": "NACLChangeAlarm",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AlarmName": "CIS-NACLs Have Changed",
+     "AlarmDescription": "Alarm if there are any changes to Network ACLs (NACLs)",
+     "MetricName": "NACLChanges",
+     "Namespace": "CloudTrailMetrics",
+     "Statistic": "Sum",
+     "Period": 300,
+     "EvaluationPeriods": 1,
+     "Threshold": 1,
+     "TreatMissingData": "notBreaching",
+     "AlarmActions": [
+      {
+       "ref": "CisAlarmsTopic"
+      }
+     ],
+     "ComparisonOperator": "GreaterThanOrEqualToThreshold"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::MetricFilter.NACLChangeFilter",
+   "cfg": "NACLChangeFilter",
+   "type": "__declared__",
+   "refs": [
+    "CloudTrailLogGroup"
+   ],
+   "values": {
+    "type": "AWS::Logs::MetricFilter",
+    "name": "NACLChangeFilter",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "LogGroupName": {
+      "ref": "CloudTrailLogGroup"
+     },
+     "FilterPattern": "{\n  ($.eventName = CreateNetworkAcl) ||\n  ($.eventName = CreateNetworkAclEntry) ||\n  ($.eventName = DeleteNetworkAcl) ||\n  ($.eventName = DeleteNetworkAclEntry) ||\n  ($.eventName = ReplaceNetworkAclEntry) ||\n  ($.eventName = ReplaceNetworkAclAssociation)\n}",
+     "MetricTransformations": [
+      {
+       "MetricValue": "1",
+       "MetricNamespace": "CloudTrailMetrics",
+       "MetricName": "NACLChanges"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::QueryDefinition.NACLChangeQuery",
+   "cfg": "NACLChangeQuery",
+   "type": "__declared__",
+   "refs": [
+    "CloudTrailLogGroup"
+   ],
+   "values": {
+    "type": "AWS::Logs::QueryDefinition",
+    "name": "NACLChangeQuery",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "CIS-Alarms/CIS-NACLs Have Changed",
+     "LogGroupNames": [
+      {
+       "ref": "CloudTrailLogGroup"
+      }
+     ],
+     "QueryString": "fields @timestamp, @message |\n  sort @timestamp desc |\n  filter eventName in ['CreateNetworkAcl', 'CreateNetworkAclEntry', 'DeleteNetworkAcl', 'DeleteNetworkAclEntry', 'ReplaceNetworkAclEntry', 'ReplaceNetworkAclAssociation']"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::CloudWatch::Alarm.NetworkGatewayChangeAlarm",
+   "cfg": "NetworkGatewayChangeAlarm",
+   "type": "__declared__",
+   "refs": [
+    "CisAlarmsTopic"
+   ],
+   "values": {
+    "type": "AWS::CloudWatch::Alarm",
+    "name": "NetworkGatewayChangeAlarm",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AlarmName": "CIS-Network Gateways Have Changed",
+     "AlarmDescription": "Alarm if there are any changes to network gateways",
+     "MetricName": "NetworkGatewayChanges",
+     "Namespace": "CloudTrailMetrics",
+     "Statistic": "Sum",
+     "Period": 300,
+     "EvaluationPeriods": 1,
+     "Threshold": 1,
+     "TreatMissingData": "notBreaching",
+     "AlarmActions": [
+      {
+       "ref": "CisAlarmsTopic"
+      }
+     ],
+     "ComparisonOperator": "GreaterThanOrEqualToThreshold"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::MetricFilter.NetworkGatewayChangeFilter",
+   "cfg": "NetworkGatewayChangeFilter",
+   "type": "__declared__",
+   "refs": [
+    "CloudTrailLogGroup"
+   ],
+   "values": {
+    "type": "AWS::Logs::MetricFilter",
+    "name": "NetworkGatewayChangeFilter",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "LogGroupName": {
+      "ref": "CloudTrailLogGroup"
+     },
+     "FilterPattern": "{\n  ($.eventName = CreateCustomerGateway) ||\n  ($.eventName = DeleteCustomerGateway) ||\n  ($.eventName = AttachInternetGateway) ||\n  ($.eventName = CreateInternetGateway) ||\n  ($.eventName = DeleteInternetGateway) ||\n  ($.eventName = DetachInternetGateway)\n}",
+     "MetricTransformations": [
+      {
+       "MetricValue": "1",
+       "MetricNamespace": "CloudTrailMetrics",
+       "MetricName": "NetworkGatewayChanges"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::QueryDefinition.NetworkGatewayChangeQuery",
+   "cfg": "NetworkGatewayChangeQuery",
+   "type": "__declared__",
+   "refs": [
+    "CloudTrailLogGroup"
+   ],
+   "values": {
+    "type": "AWS::Logs::QueryDefinition",
+    "name": "NetworkGatewayChangeQuery",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "CIS-Alarms/CIS-Network Gateways Have Changed",
+     "LogGroupNames": [
+      {
+       "ref": "CloudTrailLogGroup"
+      }
+     ],
+     "QueryString": "fields @timestamp, @message |\n  sort @timestamp desc |\n  filter eventName in ['AttachInternetGateway', 'CreateCustomerGateway', 'CreateInternetGateway', 'DeleteCustomerGateway', 'DeleteInternetGateway', 'DetachInternetGateway']"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::CloudWatch::Alarm.RouteTableChangeAlarm",
+   "cfg": "RouteTableChangeAlarm",
+   "type": "__declared__",
+   "refs": [
+    "CisAlarmsTopic"
+   ],
+   "values": {
+    "type": "AWS::CloudWatch::Alarm",
+    "name": "RouteTableChangeAlarm",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AlarmName": "CIS-Route Tables Have Changed",
+     "AlarmDescription": "Alarm if there are any changes to route tables",
+     "MetricName": "RouteTableChanges",
+     "Namespace": "CloudTrailMetrics",
+     "Statistic": "Sum",
+     "Period": 300,
+     "EvaluationPeriods": 1,
+     "Threshold": 1,
+     "TreatMissingData": "notBreaching",
+     "AlarmActions": [
+      {
+       "ref": "CisAlarmsTopic"
+      }
+     ],
+     "ComparisonOperator": "GreaterThanOrEqualToThreshold"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::MetricFilter.RouteTableChangeFilter",
+   "cfg": "RouteTableChangeFilter",
+   "type": "__declared__",
+   "refs": [
+    "CloudTrailLogGroup"
+   ],
+   "values": {
+    "type": "AWS::Logs::MetricFilter",
+    "name": "RouteTableChangeFilter",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "LogGroupName": {
+      "ref": "CloudTrailLogGroup"
+     },
+     "FilterPattern": "{\n  ($.eventName = CreateRoute) ||\n  ($.eventName = CreateRouteTable) ||\n  ($.eventName = ReplaceRoute) ||\n  ($.eventName = ReplaceRouteTableAssociation) ||\n  ($.eventName = DeleteRouteTable) ||\n  ($.eventName = DeleteRoute) ||\n  ($.eventName = DisassociateRouteTable)\n}",
+     "MetricTransformations": [
+      {
+       "MetricValue": "1",
+       "MetricNamespace": "CloudTrailMetrics",
+       "MetricName": "RouteTableChanges"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::QueryDefinition.RouteTableChangeQuery",
+   "cfg": "RouteTableChangeQuery",
+   "type": "__declared__",
+   "refs": [
+    "CloudTrailLogGroup"
+   ],
+   "values": {
+    "type": "AWS::Logs::QueryDefinition",
+    "name": "RouteTableChangeQuery",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "CIS-Alarms/CIS-Route Tables Have Changed",
+     "LogGroupNames": [
+      {
+       "ref": "CloudTrailLogGroup"
+      }
+     ],
+     "QueryString": "fields @timestamp, @message |\n  sort @timestamp desc |\n  filter eventName in ['CreateRoute', 'CreateRouteTable', 'DeleteRoute', 'DeleteRouteTable', 'DisassociateRouteTable', 'ReplaceRoute', 'ReplaceRouteTableAssociation']"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::CloudWatch::Alarm.VPCChangeAlarm",
+   "cfg": "VPCChangeAlarm",
+   "type": "__declared__",
+   "refs": [
+    "CisAlarmsTopic"
+   ],
+   "values": {
+    "type": "AWS::CloudWatch::Alarm",
+    "name": "VPCChangeAlarm",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AlarmName": "CIS-VPC Has Changed",
+     "AlarmDescription": "Alarm if there are any changes to any VPCs",
+     "MetricName": "VPCChanges",
+     "Namespace": "CloudTrailMetrics",
+     "Statistic": "Sum",
+     "Period": 300,
+     "EvaluationPeriods": 1,
+     "Threshold": 1,
+     "TreatMissingData": "notBreaching",
+     "AlarmActions": [
+      {
+       "ref": "CisAlarmsTopic"
+      }
+     ],
+     "ComparisonOperator": "GreaterThanOrEqualToThreshold"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::MetricFilter.VPCChangeFilter",
+   "cfg": "VPCChangeFilter",
+   "type": "__declared__",
+   "refs": [
+    "CloudTrailLogGroup"
+   ],
+   "values": {
+    "type": "AWS::Logs::MetricFilter",
+    "name": "VPCChangeFilter",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "LogGroupName": {
+      "ref": "CloudTrailLogGroup"
+     },
+     "FilterPattern": "{\n  ($.eventName = CreateVpc) ||\n  ($.eventName = DeleteVpc) ||\n  ($.eventName = ModifyVpcAttribute) ||\n  ($.eventName = AcceptVpcPeeringConnection) ||\n  ($.eventName = CreateVpcPeeringConnection) ||\n  ($.eventName = DeleteVpcPeeringConnection) ||\n  ($.eventName = RejectVpcPeeringConnection) ||\n  ($.eventName = AttachClassicLinkVpc) ||\n  ($.eventName = DetachClassicLinkVpc) ||\n  ($.eventName = DisableVpcClassicLink) ||\n  ($.eventName = EnableVpcClassicLink)\n}",
+     "MetricTransformations": [
+      {
+       "MetricValue": "1",
+       "MetricNamespace": "CloudTrailMetrics",
+       "MetricName": "VPCChanges"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::QueryDefinition.VPCChangeQuery",
+   "cfg": "VPCChangeQuery",
+   "type": "__declared__",
+   "refs": [
+    "CloudTrailLogGroup"
+   ],
+   "values": {
+    "type": "AWS::Logs::QueryDefinition",
+    "name": "VPCChangeQuery",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "CIS-Alarms/CIS-VPC Has Changed",
+     "LogGroupNames": [
+      {
+       "ref": "CloudTrailLogGroup"
+      }
+     ],
+     "QueryString": "fields @timestamp, @message |\n  sort @timestamp desc |\n  filter eventName in ['AcceptVpcPeeringConnection', 'AttachClassicLinkVpc', 'CreateVpc', 'CreateVpcPeeringConnection', 'DeleteVpc', 'DeleteVpcPeeringConnection', 'DetachClassicLinkVpc', 'DisableVpcClassicLink', 'EnableVpcClassicLink', 'ModifyVpcAttribute', 'RejectVpcPeeringConnection']"
+    }
+   }
+  }
+ ]
+}

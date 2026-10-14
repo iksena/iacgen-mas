@@ -1,0 +1,1589 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "731e135a851bd7684152366b3bd464f93f882ecd6d952b34f110f5a5a0ef9b16",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "Vpc",
+   "cfg": "Vpc",
+   "type": "AWS::EC2::VPC",
+   "values": {
+    "CidrBlock": "10.0.0.0/16",
+    "EnableDnsSupport": true,
+    "EnableDnsHostnames": true
+   },
+   "refs": []
+  },
+  {
+   "id": "InternetGateway",
+   "cfg": "InternetGateway",
+   "type": "AWS::EC2::InternetGateway",
+   "values": {},
+   "refs": []
+  },
+  {
+   "id": "VpcGatewayAttachment",
+   "cfg": "VpcGatewayAttachment",
+   "type": "AWS::EC2::VPCGatewayAttachment",
+   "values": {
+    "VpcId": {
+     "ref": "Vpc"
+    },
+    "InternetGatewayId": {
+     "ref": "InternetGateway"
+    }
+   },
+   "refs": [
+    "InternetGateway",
+    "Vpc"
+   ]
+  },
+  {
+   "id": "PublicSubnet",
+   "cfg": "PublicSubnet",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "VpcId": {
+     "ref": "Vpc"
+    },
+    "CidrBlock": "10.0.0.0/24",
+    "AvailabilityZone": "us-east-1a"
+   },
+   "refs": [
+    "Vpc"
+   ]
+  },
+  {
+   "id": "PrivateSubnetOneRes",
+   "cfg": "PrivateSubnetOneRes",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "VpcId": {
+     "ref": "Vpc"
+    },
+    "CidrBlock": "10.0.2.0/24",
+    "AvailabilityZone": "us-east-1a"
+   },
+   "refs": [
+    "Vpc"
+   ]
+  },
+  {
+   "id": "PrivateSubnetTwoRes",
+   "cfg": "PrivateSubnetTwoRes",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "VpcId": {
+     "ref": "Vpc"
+    },
+    "CidrBlock": "10.0.3.0/24",
+    "AvailabilityZone": "us-east-1b"
+   },
+   "refs": [
+    "Vpc"
+   ]
+  },
+  {
+   "id": "PublicRouteTable",
+   "cfg": "PublicRouteTable",
+   "type": "AWS::EC2::RouteTable",
+   "values": {
+    "VpcId": {
+     "ref": "Vpc"
+    }
+   },
+   "refs": [
+    "Vpc"
+   ]
+  },
+  {
+   "id": "PublicRoute",
+   "cfg": "PublicRoute",
+   "type": "AWS::EC2::Route",
+   "values": {
+    "RouteTableId": {
+     "ref": "PublicRouteTable"
+    },
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "GatewayId": {
+     "ref": "InternetGateway"
+    },
+    "__resource__": {
+     "DependsOn": [
+      "VpcGatewayAttachment"
+     ]
+    }
+   },
+   "refs": [
+    "InternetGateway",
+    "PublicRouteTable"
+   ]
+  },
+  {
+   "id": "PublicSubnetRouteTableAssociation",
+   "cfg": "PublicSubnetRouteTableAssociation",
+   "type": "AWS::EC2::SubnetRouteTableAssociation",
+   "values": {
+    "SubnetId": {
+     "ref": "PublicSubnet"
+    },
+    "RouteTableId": {
+     "ref": "PublicRouteTable"
+    }
+   },
+   "refs": [
+    "PublicRouteTable",
+    "PublicSubnet"
+   ]
+  },
+  {
+   "id": "NatEip",
+   "cfg": "NatEip",
+   "type": "AWS::EC2::EIP",
+   "values": {
+    "Domain": "vpc",
+    "__resource__": {
+     "DependsOn": [
+      "VpcGatewayAttachment"
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "NatGateway",
+   "cfg": "NatGateway",
+   "type": "AWS::EC2::NatGateway",
+   "values": {
+    "AllocationId": {
+     "ref": "NatEip",
+     "attr": "AllocationId"
+    },
+    "SubnetId": {
+     "ref": "PublicSubnet"
+    }
+   },
+   "refs": [
+    "NatEip",
+    "PublicSubnet"
+   ]
+  },
+  {
+   "id": "PrivateRouteTable",
+   "cfg": "PrivateRouteTable",
+   "type": "AWS::EC2::RouteTable",
+   "values": {
+    "VpcId": {
+     "ref": "Vpc"
+    }
+   },
+   "refs": [
+    "Vpc"
+   ]
+  },
+  {
+   "id": "PrivateRoute",
+   "cfg": "PrivateRoute",
+   "type": "AWS::EC2::Route",
+   "values": {
+    "RouteTableId": {
+     "ref": "PrivateRouteTable"
+    },
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "NatGatewayId": {
+     "ref": "NatGateway"
+    }
+   },
+   "refs": [
+    "NatGateway",
+    "PrivateRouteTable"
+   ]
+  },
+  {
+   "id": "PrivateSubnetOneRouteTableAssociation",
+   "cfg": "PrivateSubnetOneRouteTableAssociation",
+   "type": "AWS::EC2::SubnetRouteTableAssociation",
+   "values": {
+    "SubnetId": {
+     "ref": "PrivateSubnetOneRes"
+    },
+    "RouteTableId": {
+     "ref": "PrivateRouteTable"
+    }
+   },
+   "refs": [
+    "PrivateRouteTable",
+    "PrivateSubnetOneRes"
+   ]
+  },
+  {
+   "id": "PrivateSubnetTwoRouteTableAssociation",
+   "cfg": "PrivateSubnetTwoRouteTableAssociation",
+   "type": "AWS::EC2::SubnetRouteTableAssociation",
+   "values": {
+    "SubnetId": {
+     "ref": "PrivateSubnetTwoRes"
+    },
+    "RouteTableId": {
+     "ref": "PrivateRouteTable"
+    }
+   },
+   "refs": [
+    "PrivateRouteTable",
+    "PrivateSubnetTwoRes"
+   ]
+  },
+  {
+   "id": "Cluster",
+   "cfg": "Cluster",
+   "type": "AWS::ECS::Cluster",
+   "values": {
+    "ClusterName": "production"
+   },
+   "refs": []
+  },
+  {
+   "id": "ServiceDiscoveryNamespace",
+   "cfg": "ServiceDiscoveryNamespace",
+   "type": "AWS::ServiceDiscovery::PrivateDnsNamespace",
+   "values": {
+    "Name": "production.local",
+    "Vpc": {
+     "ref": "Vpc"
+    }
+   },
+   "refs": [
+    "Vpc"
+   ]
+  },
+  {
+   "id": "ContainerSecurityGroupRes",
+   "cfg": "ContainerSecurityGroupRes",
+   "type": "AWS::EC2::SecurityGroup",
+   "values": {
+    "GroupDescription": "production-containers",
+    "VpcId": {
+     "ref": "Vpc"
+    },
+    "SecurityGroupIngress": [
+     {
+      "IpProtocol": "-1",
+      "CidrIp": "10.0.0.0/16"
+     }
+    ]
+   },
+   "refs": [
+    "Vpc"
+   ]
+  },
+  {
+   "id": "ECSTaskExecutionRoleRes",
+   "cfg": "ECSTaskExecutionRoleRes",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "ecs-tasks.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "AutoscalingRoleRes",
+   "cfg": "AutoscalingRoleRes",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "application-autoscaling.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceAutoscaleRole"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "LogGroup",
+   "cfg": "LogGroup",
+   "type": "AWS::Logs::LogGroup",
+   "values": {
+    "LogGroupName": "production-service-nginx"
+   },
+   "refs": []
+  },
+  {
+   "id": "TaskDefinition",
+   "cfg": "TaskDefinition",
+   "type": "AWS::ECS::TaskDefinition",
+   "values": {
+    "Family": "nginx",
+    "Cpu": 256,
+    "Memory": 512,
+    "NetworkMode": "awsvpc",
+    "RequiresCompatibilities": [
+     "FARGATE"
+    ],
+    "ExecutionRoleArn": {
+     "ref": "ECSTaskExecutionRoleRes",
+     "attr": "Arn"
+    },
+    "ContainerDefinitions": [
+     {
+      "Name": "nginx",
+      "Cpu": 256,
+      "Memory": 512,
+      "Image": "nginx",
+      "PortMappings": [
+       {
+        "ContainerPort": 80
+       }
+      ],
+      "LogConfiguration": {
+       "LogDriver": "awslogs",
+       "Options": {
+        "awslogs-group": "production-service-nginx",
+        "awslogs-region": "us-east-1",
+        "awslogs-stream-prefix": "nginx"
+       }
+      }
+     }
+    ]
+   },
+   "refs": [
+    "ECSTaskExecutionRoleRes"
+   ]
+  },
+  {
+   "id": "Service",
+   "cfg": "Service",
+   "type": "AWS::ECS::Service",
+   "values": {
+    "ServiceName": "nginx",
+    "Cluster": {
+     "ref": "Cluster"
+    },
+    "LaunchType": "FARGATE",
+    "DeploymentConfiguration": {
+     "MaximumPercent": 200,
+     "MinimumHealthyPercent": 75
+    },
+    "DesiredCount": 2,
+    "NetworkConfiguration": {
+     "AwsvpcConfiguration": {
+      "AssignPublicIp": "DISABLED",
+      "SecurityGroups": [
+       {
+        "ref": "ContainerSecurityGroupRes"
+       }
+      ],
+      "Subnets": [
+       {
+        "ref": "PrivateSubnetOneRes"
+       },
+       {
+        "ref": "PrivateSubnetTwoRes"
+       }
+      ]
+     }
+    },
+    "TaskDefinition": {
+     "ref": "TaskDefinition"
+    },
+    "ServiceRegistries": [
+     {
+      "RegistryArn": {
+       "ref": "ServiceDiscoveryService",
+       "attr": "Arn"
+      },
+      "ContainerPort": 80,
+      "ContainerName": "nginx"
+     }
+    ],
+    "__resource__": {
+     "DependsOn": [
+      "ServiceDiscoveryService"
+     ]
+    }
+   },
+   "refs": [
+    "Cluster",
+    "ContainerSecurityGroupRes",
+    "PrivateSubnetOneRes",
+    "PrivateSubnetTwoRes",
+    "ServiceDiscoveryService",
+    "TaskDefinition"
+   ]
+  },
+  {
+   "id": "ServiceDiscoveryService",
+   "cfg": "ServiceDiscoveryService",
+   "type": "AWS::ServiceDiscovery::Service",
+   "values": {
+    "Name": "nginx",
+    "DnsConfig": {
+     "DnsRecords": [
+      {
+       "Type": "SRV",
+       "TTL": "10"
+      }
+     ],
+     "NamespaceId": {
+      "ref": "ServiceDiscoveryNamespace",
+      "attr": "Id"
+     }
+    },
+    "HealthCheckCustomConfig": {
+     "FailureThreshold": 1
+    }
+   },
+   "refs": [
+    "ServiceDiscoveryNamespace"
+   ]
+  },
+  {
+   "id": "ScalableTarget",
+   "cfg": "ScalableTarget",
+   "type": "AWS::ApplicationAutoScaling::ScalableTarget",
+   "values": {
+    "ServiceNamespace": "ecs",
+    "ScalableDimension": "ecs:service:DesiredCount",
+    "ResourceId": {
+     "Fn::Join": [
+      "/",
+      [
+       "service",
+       {
+        "ref": "Cluster"
+       },
+       "nginx"
+      ]
+     ]
+    },
+    "MinCapacity": 2,
+    "MaxCapacity": 10,
+    "RoleARN": {
+     "ref": "AutoscalingRoleRes",
+     "attr": "Arn"
+    },
+    "__resource__": {
+     "DependsOn": [
+      "Service"
+     ]
+    }
+   },
+   "refs": [
+    "AutoscalingRoleRes",
+    "Cluster"
+   ]
+  },
+  {
+   "id": "ScaleDownPolicy",
+   "cfg": "ScaleDownPolicy",
+   "type": "AWS::ApplicationAutoScaling::ScalingPolicy",
+   "values": {
+    "PolicyName": "scale/production/nginx/down",
+    "PolicyType": "StepScaling",
+    "ResourceId": {
+     "Fn::Join": [
+      "/",
+      [
+       "service",
+       {
+        "ref": "Cluster"
+       },
+       "nginx"
+      ]
+     ]
+    },
+    "ScalableDimension": "ecs:service:DesiredCount",
+    "ServiceNamespace": "ecs",
+    "StepScalingPolicyConfiguration": {
+     "AdjustmentType": "ChangeInCapacity",
+     "StepAdjustments": [
+      {
+       "MetricIntervalUpperBound": 0,
+       "ScalingAdjustment": -1
+      }
+     ],
+     "MetricAggregationType": "Average",
+     "Cooldown": 60
+    },
+    "__resource__": {
+     "DependsOn": [
+      "ScalableTarget"
+     ]
+    }
+   },
+   "refs": [
+    "Cluster"
+   ]
+  },
+  {
+   "id": "ScaleUpPolicy",
+   "cfg": "ScaleUpPolicy",
+   "type": "AWS::ApplicationAutoScaling::ScalingPolicy",
+   "values": {
+    "PolicyName": "scale/production/nginx/up",
+    "PolicyType": "StepScaling",
+    "ResourceId": {
+     "Fn::Join": [
+      "/",
+      [
+       "service",
+       {
+        "ref": "Cluster"
+       },
+       "nginx"
+      ]
+     ]
+    },
+    "ScalableDimension": "ecs:service:DesiredCount",
+    "ServiceNamespace": "ecs",
+    "StepScalingPolicyConfiguration": {
+     "AdjustmentType": "ChangeInCapacity",
+     "StepAdjustments": [
+      {
+       "MetricIntervalLowerBound": 0,
+       "MetricIntervalUpperBound": 15,
+       "ScalingAdjustment": 1
+      },
+      {
+       "MetricIntervalLowerBound": 15,
+       "MetricIntervalUpperBound": 25,
+       "ScalingAdjustment": 2
+      },
+      {
+       "MetricIntervalLowerBound": 25,
+       "ScalingAdjustment": 3
+      }
+     ],
+     "MetricAggregationType": "Average",
+     "Cooldown": 60
+    },
+    "__resource__": {
+     "DependsOn": [
+      "ScalableTarget"
+     ]
+    }
+   },
+   "refs": [
+    "Cluster"
+   ]
+  },
+  {
+   "id": "LowCpuUsageAlarm",
+   "cfg": "LowCpuUsageAlarm",
+   "type": "AWS::CloudWatch::Alarm",
+   "values": {
+    "AlarmName": "low-cpu-production-nginx",
+    "AlarmDescription": "Low CPU utilization for service nginx in environment production",
+    "MetricName": "CPUUtilization",
+    "Namespace": "AWS/ECS",
+    "Dimensions": [
+     {
+      "Name": "ServiceName",
+      "Value": "nginx"
+     },
+     {
+      "Name": "ClusterName",
+      "Value": {
+       "ref": "Cluster"
+      }
+     }
+    ],
+    "Statistic": "Average",
+    "Period": 60,
+    "EvaluationPeriods": 1,
+    "Threshold": 20,
+    "ComparisonOperator": "LessThanOrEqualToThreshold",
+    "AlarmActions": [
+     {
+      "ref": "ScaleDownPolicy"
+     }
+    ]
+   },
+   "refs": [
+    "Cluster",
+    "ScaleDownPolicy"
+   ]
+  },
+  {
+   "id": "HighCpuUsageAlarm",
+   "cfg": "HighCpuUsageAlarm",
+   "type": "AWS::CloudWatch::Alarm",
+   "values": {
+    "AlarmName": "high-cpu-production-nginx",
+    "AlarmDescription": "High CPU utilization for service nginx in environment production",
+    "MetricName": "CPUUtilization",
+    "Namespace": "AWS/ECS",
+    "Dimensions": [
+     {
+      "Name": "ServiceName",
+      "Value": "nginx"
+     },
+     {
+      "Name": "ClusterName",
+      "Value": {
+       "ref": "Cluster"
+      }
+     }
+    ],
+    "Statistic": "Average",
+    "Period": 60,
+    "EvaluationPeriods": 1,
+    "Threshold": 70,
+    "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+    "AlarmActions": [
+     {
+      "ref": "ScaleUpPolicy"
+     }
+    ]
+   },
+   "refs": [
+    "Cluster",
+    "ScaleUpPolicy"
+   ]
+  },
+  {
+   "id": "__parameter__.EnvironmentName",
+   "cfg": "__parameter__.EnvironmentName",
+   "type": "__parameter__",
+   "values": {
+    "name": "EnvironmentName",
+    "type": "String",
+    "default": "production",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.ServiceName",
+   "cfg": "__parameter__.ServiceName",
+   "type": "__parameter__",
+   "values": {
+    "name": "ServiceName",
+    "type": "String",
+    "default": "nginx",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.ImageUrl",
+   "cfg": "__parameter__.ImageUrl",
+   "type": "__parameter__",
+   "values": {
+    "name": "ImageUrl",
+    "type": "String",
+    "default": "nginx",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.ContainerPort",
+   "cfg": "__parameter__.ContainerPort",
+   "type": "__parameter__",
+   "values": {
+    "name": "ContainerPort",
+    "type": "Number",
+    "default": 80,
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.ContainerCpu",
+   "cfg": "__parameter__.ContainerCpu",
+   "type": "__parameter__",
+   "values": {
+    "name": "ContainerCpu",
+    "type": "Number",
+    "default": 256,
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.ContainerMemory",
+   "cfg": "__parameter__.ContainerMemory",
+   "type": "__parameter__",
+   "values": {
+    "name": "ContainerMemory",
+    "type": "Number",
+    "default": 512,
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.DesiredCount",
+   "cfg": "__parameter__.DesiredCount",
+   "type": "__parameter__",
+   "values": {
+    "name": "DesiredCount",
+    "type": "Number",
+    "default": 2,
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.Role",
+   "cfg": "__parameter__.Role",
+   "type": "__parameter__",
+   "values": {
+    "name": "Role",
+    "type": "String",
+    "default": "",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPC.Vpc",
+   "cfg": "Vpc",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::VPC",
+    "name": "Vpc",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "CidrBlock": "10.0.0.0/16",
+     "EnableDnsSupport": true,
+     "EnableDnsHostnames": true
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::InternetGateway.InternetGateway",
+   "cfg": "InternetGateway",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::InternetGateway",
+    "name": "InternetGateway",
+    "gated": false,
+    "gate": null,
+    "properties": {}
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCGatewayAttachment.VpcGatewayAttachment",
+   "cfg": "VpcGatewayAttachment",
+   "type": "__declared__",
+   "refs": [
+    "InternetGateway",
+    "Vpc"
+   ],
+   "values": {
+    "type": "AWS::EC2::VPCGatewayAttachment",
+    "name": "VpcGatewayAttachment",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "Vpc"
+     },
+     "InternetGatewayId": {
+      "ref": "InternetGateway"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.PublicSubnet",
+   "cfg": "PublicSubnet",
+   "type": "__declared__",
+   "refs": [
+    "Vpc"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "PublicSubnet",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "Vpc"
+     },
+     "CidrBlock": "10.0.0.0/24",
+     "AvailabilityZone": "us-east-1a"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.PrivateSubnetOneRes",
+   "cfg": "PrivateSubnetOneRes",
+   "type": "__declared__",
+   "refs": [
+    "Vpc"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "PrivateSubnetOneRes",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "Vpc"
+     },
+     "CidrBlock": "10.0.2.0/24",
+     "AvailabilityZone": "us-east-1a"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.PrivateSubnetTwoRes",
+   "cfg": "PrivateSubnetTwoRes",
+   "type": "__declared__",
+   "refs": [
+    "Vpc"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "PrivateSubnetTwoRes",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "Vpc"
+     },
+     "CidrBlock": "10.0.3.0/24",
+     "AvailabilityZone": "us-east-1b"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::RouteTable.PublicRouteTable",
+   "cfg": "PublicRouteTable",
+   "type": "__declared__",
+   "refs": [
+    "Vpc"
+   ],
+   "values": {
+    "type": "AWS::EC2::RouteTable",
+    "name": "PublicRouteTable",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "Vpc"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Route.PublicRoute",
+   "cfg": "PublicRoute",
+   "type": "__declared__",
+   "refs": [
+    "InternetGateway",
+    "PublicRouteTable"
+   ],
+   "values": {
+    "type": "AWS::EC2::Route",
+    "name": "PublicRoute",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RouteTableId": {
+      "ref": "PublicRouteTable"
+     },
+     "DestinationCidrBlock": "0.0.0.0/0",
+     "GatewayId": {
+      "ref": "InternetGateway"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetRouteTableAssociation.PublicSubnetRouteTableAssociation",
+   "cfg": "PublicSubnetRouteTableAssociation",
+   "type": "__declared__",
+   "refs": [
+    "PublicRouteTable",
+    "PublicSubnet"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetRouteTableAssociation",
+    "name": "PublicSubnetRouteTableAssociation",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "SubnetId": {
+      "ref": "PublicSubnet"
+     },
+     "RouteTableId": {
+      "ref": "PublicRouteTable"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::EIP.NatEip",
+   "cfg": "NatEip",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::EIP",
+    "name": "NatEip",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Domain": "vpc"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::NatGateway.NatGateway",
+   "cfg": "NatGateway",
+   "type": "__declared__",
+   "refs": [
+    "NatEip",
+    "PublicSubnet"
+   ],
+   "values": {
+    "type": "AWS::EC2::NatGateway",
+    "name": "NatGateway",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AllocationId": {
+      "ref": "NatEip",
+      "attr": "AllocationId"
+     },
+     "SubnetId": {
+      "ref": "PublicSubnet"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::RouteTable.PrivateRouteTable",
+   "cfg": "PrivateRouteTable",
+   "type": "__declared__",
+   "refs": [
+    "Vpc"
+   ],
+   "values": {
+    "type": "AWS::EC2::RouteTable",
+    "name": "PrivateRouteTable",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "Vpc"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Route.PrivateRoute",
+   "cfg": "PrivateRoute",
+   "type": "__declared__",
+   "refs": [
+    "NatGateway",
+    "PrivateRouteTable"
+   ],
+   "values": {
+    "type": "AWS::EC2::Route",
+    "name": "PrivateRoute",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RouteTableId": {
+      "ref": "PrivateRouteTable"
+     },
+     "DestinationCidrBlock": "0.0.0.0/0",
+     "NatGatewayId": {
+      "ref": "NatGateway"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetRouteTableAssociation.PrivateSubnetOneRouteTableAssociation",
+   "cfg": "PrivateSubnetOneRouteTableAssociation",
+   "type": "__declared__",
+   "refs": [
+    "PrivateRouteTable",
+    "PrivateSubnetOneRes"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetRouteTableAssociation",
+    "name": "PrivateSubnetOneRouteTableAssociation",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "SubnetId": {
+      "ref": "PrivateSubnetOneRes"
+     },
+     "RouteTableId": {
+      "ref": "PrivateRouteTable"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetRouteTableAssociation.PrivateSubnetTwoRouteTableAssociation",
+   "cfg": "PrivateSubnetTwoRouteTableAssociation",
+   "type": "__declared__",
+   "refs": [
+    "PrivateRouteTable",
+    "PrivateSubnetTwoRes"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetRouteTableAssociation",
+    "name": "PrivateSubnetTwoRouteTableAssociation",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "SubnetId": {
+      "ref": "PrivateSubnetTwoRes"
+     },
+     "RouteTableId": {
+      "ref": "PrivateRouteTable"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ECS::Cluster.Cluster",
+   "cfg": "Cluster",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::ECS::Cluster",
+    "name": "Cluster",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ClusterName": "production"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ServiceDiscovery::PrivateDnsNamespace.ServiceDiscoveryNamespace",
+   "cfg": "ServiceDiscoveryNamespace",
+   "type": "__declared__",
+   "refs": [
+    "Vpc"
+   ],
+   "values": {
+    "type": "AWS::ServiceDiscovery::PrivateDnsNamespace",
+    "name": "ServiceDiscoveryNamespace",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "production.local",
+     "Vpc": {
+      "ref": "Vpc"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SecurityGroup.ContainerSecurityGroupRes",
+   "cfg": "ContainerSecurityGroupRes",
+   "type": "__declared__",
+   "refs": [
+    "Vpc"
+   ],
+   "values": {
+    "type": "AWS::EC2::SecurityGroup",
+    "name": "ContainerSecurityGroupRes",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "GroupDescription": "production-containers",
+     "VpcId": {
+      "ref": "Vpc"
+     },
+     "SecurityGroupIngress": [
+      {
+       "IpProtocol": "-1",
+       "CidrIp": "10.0.0.0/16"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.ECSTaskExecutionRoleRes",
+   "cfg": "ECSTaskExecutionRoleRes",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "ECSTaskExecutionRoleRes",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "ecs-tasks.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.AutoscalingRoleRes",
+   "cfg": "AutoscalingRoleRes",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "AutoscalingRoleRes",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "application-autoscaling.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceAutoscaleRole"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::LogGroup.LogGroup",
+   "cfg": "LogGroup",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Logs::LogGroup",
+    "name": "LogGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "LogGroupName": "production-service-nginx"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ECS::TaskDefinition.TaskDefinition",
+   "cfg": "TaskDefinition",
+   "type": "__declared__",
+   "refs": [
+    "ECSTaskExecutionRoleRes"
+   ],
+   "values": {
+    "type": "AWS::ECS::TaskDefinition",
+    "name": "TaskDefinition",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Family": "nginx",
+     "Cpu": 256,
+     "Memory": 512,
+     "NetworkMode": "awsvpc",
+     "RequiresCompatibilities": [
+      "FARGATE"
+     ],
+     "ExecutionRoleArn": {
+      "ref": "ECSTaskExecutionRoleRes",
+      "attr": "Arn"
+     },
+     "ContainerDefinitions": [
+      {
+       "Name": "nginx",
+       "Cpu": 256,
+       "Memory": 512,
+       "Image": "nginx",
+       "PortMappings": [
+        {
+         "ContainerPort": 80
+        }
+       ],
+       "LogConfiguration": {
+        "LogDriver": "awslogs",
+        "Options": {
+         "awslogs-group": "production-service-nginx",
+         "awslogs-region": "us-east-1",
+         "awslogs-stream-prefix": "nginx"
+        }
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ECS::Service.Service",
+   "cfg": "Service",
+   "type": "__declared__",
+   "refs": [
+    "Cluster",
+    "ContainerSecurityGroupRes",
+    "PrivateSubnetOneRes",
+    "PrivateSubnetTwoRes",
+    "ServiceDiscoveryService",
+    "TaskDefinition"
+   ],
+   "values": {
+    "type": "AWS::ECS::Service",
+    "name": "Service",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ServiceName": "nginx",
+     "Cluster": {
+      "ref": "Cluster"
+     },
+     "LaunchType": "FARGATE",
+     "DeploymentConfiguration": {
+      "MaximumPercent": 200,
+      "MinimumHealthyPercent": 75
+     },
+     "DesiredCount": 2,
+     "NetworkConfiguration": {
+      "AwsvpcConfiguration": {
+       "AssignPublicIp": "DISABLED",
+       "SecurityGroups": [
+        {
+         "ref": "ContainerSecurityGroupRes"
+        }
+       ],
+       "Subnets": [
+        {
+         "ref": "PrivateSubnetOneRes"
+        },
+        {
+         "ref": "PrivateSubnetTwoRes"
+        }
+       ]
+      }
+     },
+     "TaskDefinition": {
+      "ref": "TaskDefinition"
+     },
+     "ServiceRegistries": [
+      {
+       "RegistryArn": {
+        "ref": "ServiceDiscoveryService",
+        "attr": "Arn"
+       },
+       "ContainerPort": 80,
+       "ContainerName": "nginx"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ServiceDiscovery::Service.ServiceDiscoveryService",
+   "cfg": "ServiceDiscoveryService",
+   "type": "__declared__",
+   "refs": [
+    "ServiceDiscoveryNamespace"
+   ],
+   "values": {
+    "type": "AWS::ServiceDiscovery::Service",
+    "name": "ServiceDiscoveryService",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "nginx",
+     "DnsConfig": {
+      "DnsRecords": [
+       {
+        "Type": "SRV",
+        "TTL": "10"
+       }
+      ],
+      "NamespaceId": {
+       "ref": "ServiceDiscoveryNamespace",
+       "attr": "Id"
+      }
+     },
+     "HealthCheckCustomConfig": {
+      "FailureThreshold": 1
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApplicationAutoScaling::ScalableTarget.ScalableTarget",
+   "cfg": "ScalableTarget",
+   "type": "__declared__",
+   "refs": [
+    "AutoscalingRoleRes",
+    "Cluster"
+   ],
+   "values": {
+    "type": "AWS::ApplicationAutoScaling::ScalableTarget",
+    "name": "ScalableTarget",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ServiceNamespace": "ecs",
+     "ScalableDimension": "ecs:service:DesiredCount",
+     "ResourceId": {
+      "Fn::Join": [
+       "/",
+       [
+        "service",
+        {
+         "ref": "Cluster"
+        },
+        "nginx"
+       ]
+      ]
+     },
+     "MinCapacity": 2,
+     "MaxCapacity": 10,
+     "RoleARN": {
+      "ref": "AutoscalingRoleRes",
+      "attr": "Arn"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApplicationAutoScaling::ScalingPolicy.ScaleDownPolicy",
+   "cfg": "ScaleDownPolicy",
+   "type": "__declared__",
+   "refs": [
+    "Cluster"
+   ],
+   "values": {
+    "type": "AWS::ApplicationAutoScaling::ScalingPolicy",
+    "name": "ScaleDownPolicy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "PolicyName": "scale/production/nginx/down",
+     "PolicyType": "StepScaling",
+     "ResourceId": {
+      "Fn::Join": [
+       "/",
+       [
+        "service",
+        {
+         "ref": "Cluster"
+        },
+        "nginx"
+       ]
+      ]
+     },
+     "ScalableDimension": "ecs:service:DesiredCount",
+     "ServiceNamespace": "ecs",
+     "StepScalingPolicyConfiguration": {
+      "AdjustmentType": "ChangeInCapacity",
+      "StepAdjustments": [
+       {
+        "MetricIntervalUpperBound": 0,
+        "ScalingAdjustment": -1
+       }
+      ],
+      "MetricAggregationType": "Average",
+      "Cooldown": 60
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApplicationAutoScaling::ScalingPolicy.ScaleUpPolicy",
+   "cfg": "ScaleUpPolicy",
+   "type": "__declared__",
+   "refs": [
+    "Cluster"
+   ],
+   "values": {
+    "type": "AWS::ApplicationAutoScaling::ScalingPolicy",
+    "name": "ScaleUpPolicy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "PolicyName": "scale/production/nginx/up",
+     "PolicyType": "StepScaling",
+     "ResourceId": {
+      "Fn::Join": [
+       "/",
+       [
+        "service",
+        {
+         "ref": "Cluster"
+        },
+        "nginx"
+       ]
+      ]
+     },
+     "ScalableDimension": "ecs:service:DesiredCount",
+     "ServiceNamespace": "ecs",
+     "StepScalingPolicyConfiguration": {
+      "AdjustmentType": "ChangeInCapacity",
+      "StepAdjustments": [
+       {
+        "MetricIntervalLowerBound": 0,
+        "MetricIntervalUpperBound": 15,
+        "ScalingAdjustment": 1
+       },
+       {
+        "MetricIntervalLowerBound": 15,
+        "MetricIntervalUpperBound": 25,
+        "ScalingAdjustment": 2
+       },
+       {
+        "MetricIntervalLowerBound": 25,
+        "ScalingAdjustment": 3
+       }
+      ],
+      "MetricAggregationType": "Average",
+      "Cooldown": 60
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::CloudWatch::Alarm.LowCpuUsageAlarm",
+   "cfg": "LowCpuUsageAlarm",
+   "type": "__declared__",
+   "refs": [
+    "Cluster",
+    "ScaleDownPolicy"
+   ],
+   "values": {
+    "type": "AWS::CloudWatch::Alarm",
+    "name": "LowCpuUsageAlarm",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AlarmName": "low-cpu-production-nginx",
+     "AlarmDescription": "Low CPU utilization for service nginx in environment production",
+     "MetricName": "CPUUtilization",
+     "Namespace": "AWS/ECS",
+     "Dimensions": [
+      {
+       "Name": "ServiceName",
+       "Value": "nginx"
+      },
+      {
+       "Name": "ClusterName",
+       "Value": {
+        "ref": "Cluster"
+       }
+      }
+     ],
+     "Statistic": "Average",
+     "Period": 60,
+     "EvaluationPeriods": 1,
+     "Threshold": 20,
+     "ComparisonOperator": "LessThanOrEqualToThreshold",
+     "AlarmActions": [
+      {
+       "ref": "ScaleDownPolicy"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::CloudWatch::Alarm.HighCpuUsageAlarm",
+   "cfg": "HighCpuUsageAlarm",
+   "type": "__declared__",
+   "refs": [
+    "Cluster",
+    "ScaleUpPolicy"
+   ],
+   "values": {
+    "type": "AWS::CloudWatch::Alarm",
+    "name": "HighCpuUsageAlarm",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AlarmName": "high-cpu-production-nginx",
+     "AlarmDescription": "High CPU utilization for service nginx in environment production",
+     "MetricName": "CPUUtilization",
+     "Namespace": "AWS/ECS",
+     "Dimensions": [
+      {
+       "Name": "ServiceName",
+       "Value": "nginx"
+      },
+      {
+       "Name": "ClusterName",
+       "Value": {
+        "ref": "Cluster"
+       }
+      }
+     ],
+     "Statistic": "Average",
+     "Period": 60,
+     "EvaluationPeriods": 1,
+     "Threshold": 70,
+     "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+     "AlarmActions": [
+      {
+       "ref": "ScaleUpPolicy"
+      }
+     ]
+    }
+   }
+  }
+ ]
+}

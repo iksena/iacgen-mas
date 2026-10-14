@@ -1,0 +1,1072 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "683926fb9c2166582221f5b8635ac4937fbf5b4ffb4192537c453a74ca66b2aa",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "InstanceRole",
+   "cfg": "InstanceRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore",
+     "arn:aws:iam::aws:policy/EC2InstanceProfileForImageBuilder"
+    ],
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "ec2.amazonaws.com"
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "Path": "/executionServiceEC2Role/",
+    "__resource__": {
+     "Metadata": {
+      "Comment": "Role to be used by instance during image build."
+     }
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "InstanceProfile",
+   "cfg": "InstanceProfile",
+   "type": "AWS::IAM::InstanceProfile",
+   "values": {
+    "Path": "/executionServiceEC2Role/",
+    "Roles": [
+     {
+      "ref": "InstanceRole"
+     }
+    ]
+   },
+   "refs": [
+    "InstanceRole"
+   ]
+  },
+  {
+   "id": "ImageBuilderVpc",
+   "cfg": "ImageBuilderVpc",
+   "type": "AWS::EC2::VPC",
+   "values": {
+    "CidrBlock": "10.99.0.0/23"
+   },
+   "refs": []
+  },
+  {
+   "id": "ImageBuilderSubnet",
+   "cfg": "ImageBuilderSubnet",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "VpcId": {
+     "ref": "ImageBuilderVpc"
+    },
+    "CidrBlock": "10.99.0.0/24",
+    "AvailabilityZone": "us-east-1a"
+   },
+   "refs": [
+    "ImageBuilderVpc"
+   ]
+  },
+  {
+   "id": "ImageBuilderPublicSubnet",
+   "cfg": "ImageBuilderPublicSubnet",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "VpcId": {
+     "ref": "ImageBuilderVpc"
+    },
+    "CidrBlock": "10.99.1.0/24",
+    "AvailabilityZone": "us-east-1a"
+   },
+   "refs": [
+    "ImageBuilderVpc"
+   ]
+  },
+  {
+   "id": "ImageBuilderSecurityGroup",
+   "cfg": "ImageBuilderSecurityGroup",
+   "type": "AWS::EC2::SecurityGroup",
+   "values": {
+    "GroupDescription": "ImageBuilder build/test instance",
+    "VpcId": {
+     "ref": "ImageBuilderVpc"
+    }
+   },
+   "refs": [
+    "ImageBuilderVpc"
+   ]
+  },
+  {
+   "id": "ImageBuilderInternetGateway",
+   "cfg": "ImageBuilderInternetGateway",
+   "type": "AWS::EC2::InternetGateway",
+   "values": {},
+   "refs": []
+  },
+  {
+   "id": "ImageBuilderVpcGatewayAttachment",
+   "cfg": "ImageBuilderVpcGatewayAttachment",
+   "type": "AWS::EC2::VPCGatewayAttachment",
+   "values": {
+    "VpcId": {
+     "ref": "ImageBuilderVpc"
+    },
+    "InternetGatewayId": {
+     "ref": "ImageBuilderInternetGateway"
+    }
+   },
+   "refs": [
+    "ImageBuilderInternetGateway",
+    "ImageBuilderVpc"
+   ]
+  },
+  {
+   "id": "ImageBuilderPublicRouteTable",
+   "cfg": "ImageBuilderPublicRouteTable",
+   "type": "AWS::EC2::RouteTable",
+   "values": {
+    "VpcId": {
+     "ref": "ImageBuilderVpc"
+    }
+   },
+   "refs": [
+    "ImageBuilderVpc"
+   ]
+  },
+  {
+   "id": "ImageBuilderPublicRoute",
+   "cfg": "ImageBuilderPublicRoute",
+   "type": "AWS::EC2::Route",
+   "values": {
+    "RouteTableId": {
+     "ref": "ImageBuilderPublicRouteTable"
+    },
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "GatewayId": {
+     "ref": "ImageBuilderInternetGateway"
+    },
+    "__resource__": {
+     "DependsOn": [
+      "ImageBuilderVpcGatewayAttachment"
+     ]
+    }
+   },
+   "refs": [
+    "ImageBuilderInternetGateway",
+    "ImageBuilderPublicRouteTable"
+   ]
+  },
+  {
+   "id": "ImageBuilderPublicSubnetRouteTableAssociation",
+   "cfg": "ImageBuilderPublicSubnetRouteTableAssociation",
+   "type": "AWS::EC2::SubnetRouteTableAssociation",
+   "values": {
+    "SubnetId": {
+     "ref": "ImageBuilderPublicSubnet"
+    },
+    "RouteTableId": {
+     "ref": "ImageBuilderPublicRouteTable"
+    }
+   },
+   "refs": [
+    "ImageBuilderPublicRouteTable",
+    "ImageBuilderPublicSubnet"
+   ]
+  },
+  {
+   "id": "ImageBuilderNatEip",
+   "cfg": "ImageBuilderNatEip",
+   "type": "AWS::EC2::EIP",
+   "values": {
+    "Domain": "vpc",
+    "__resource__": {
+     "DependsOn": [
+      "ImageBuilderVpcGatewayAttachment"
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "ImageBuilderNatGateway",
+   "cfg": "ImageBuilderNatGateway",
+   "type": "AWS::EC2::NatGateway",
+   "values": {
+    "AllocationId": {
+     "ref": "ImageBuilderNatEip",
+     "attr": "AllocationId"
+    },
+    "SubnetId": {
+     "ref": "ImageBuilderPublicSubnet"
+    }
+   },
+   "refs": [
+    "ImageBuilderNatEip",
+    "ImageBuilderPublicSubnet"
+   ]
+  },
+  {
+   "id": "ImageBuilderPrivateRouteTable",
+   "cfg": "ImageBuilderPrivateRouteTable",
+   "type": "AWS::EC2::RouteTable",
+   "values": {
+    "VpcId": {
+     "ref": "ImageBuilderVpc"
+    }
+   },
+   "refs": [
+    "ImageBuilderVpc"
+   ]
+  },
+  {
+   "id": "ImageBuilderPrivateRoute",
+   "cfg": "ImageBuilderPrivateRoute",
+   "type": "AWS::EC2::Route",
+   "values": {
+    "RouteTableId": {
+     "ref": "ImageBuilderPrivateRouteTable"
+    },
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "NatGatewayId": {
+     "ref": "ImageBuilderNatGateway"
+    }
+   },
+   "refs": [
+    "ImageBuilderNatGateway",
+    "ImageBuilderPrivateRouteTable"
+   ]
+  },
+  {
+   "id": "ImageBuilderSubnetRouteTableAssociation",
+   "cfg": "ImageBuilderSubnetRouteTableAssociation",
+   "type": "AWS::EC2::SubnetRouteTableAssociation",
+   "values": {
+    "SubnetId": {
+     "ref": "ImageBuilderSubnet"
+    },
+    "RouteTableId": {
+     "ref": "ImageBuilderPrivateRouteTable"
+    }
+   },
+   "refs": [
+    "ImageBuilderPrivateRouteTable",
+    "ImageBuilderSubnet"
+   ]
+  },
+  {
+   "id": "ImageInfrastructureConfiguration",
+   "cfg": "ImageInfrastructureConfiguration",
+   "type": "AWS::ImageBuilder::InfrastructureConfiguration",
+   "values": {
+    "Name": "stack-Configuration",
+    "InstanceProfileName": {
+     "ref": "InstanceProfile"
+    },
+    "SubnetId": {
+     "ref": "ImageBuilderSubnet"
+    },
+    "SecurityGroupIds": [
+     {
+      "ref": "ImageBuilderSecurityGroup"
+     }
+    ]
+   },
+   "refs": [
+    "ImageBuilderSecurityGroup",
+    "ImageBuilderSubnet",
+    "InstanceProfile"
+   ]
+  },
+  {
+   "id": "InstallComponent",
+   "cfg": "InstallComponent",
+   "type": "AWS::ImageBuilder::Component",
+   "values": {
+    "Name": "stack-component",
+    "Platform": "Linux",
+    "Version": "0.0.0",
+    "Description": "Install Docker and Docker Compose on Amazon Linux 2023",
+    "SupportedOsVersions": [
+     "Amazon Linux 2023"
+    ],
+    "Data": "name: install-docker\ndescription: Install Docker and Docker Compose on Amazon Linux 2023\nschemaVersion: 1.0\nphases:\n  - name: build\n    steps:\n      - name: InstallPackages\n        action: ExecuteBash\n        inputs:\n          commands:\n            - set -e\n            - dnf install -y spal-release  # needed for docker compose\n            - dnf install -y git psutils python3-pip python3-wheel\n            - dnf install -y docker-compose  # pulls in default docker engine as a dependency\n            - dnf install -y gcc python3-devel  # needed to build psutil wheel for pysftp\n            - pip3 install --upgrade synapseclient[pandas,pysftp]\n            - systemctl enable  docker\n      - name: DockerGroupMembership\n        action: ExecuteBash\n        inputs:\n          commands:\n            - set -e\n            - usermod -a -G docker ec2-user\n            - adduser -m -s /bin/bash -G docker ssm-user\n      - name: SsmSudoAccess\n        action: ExecuteBash\n        inputs:\n          commands:\n            - set -e\n            - echo \"ssm-user ALL=(ALL) NOPASSWD:ALL\" > /etc/sudoers.d/ssm-agent-users\n            - chmod 440 /etc/sudoers.d/ssm-agent-users\n            - chown root:root /etc/sudoers.d/ssm-agent-users\n  - name: test\n    steps:\n      - name: TestPackages\n        action: ExecuteBash\n        inputs:\n          commands:\n            - set -e\n            - docker compose ls  # validate docker service starts and docker-compose is installed\n            - python3 -c \"import synapseclient, pandas, pysftp; print('Python packages verified')\"\n            - visudo -c  # validate sudoers configuration\n"
+   },
+   "refs": []
+  },
+  {
+   "id": "ImageRecipeX86",
+   "cfg": "ImageRecipeX86",
+   "type": "AWS::ImageBuilder::ImageRecipe",
+   "values": {
+    "Name": "stack-x86",
+    "Version": "0.0.0",
+    "ParentImage": "arn:aws:imagebuilder:us-east-1:aws:image/amazon-linux-2023-x86/x.x.x",
+    "Components": [
+     {
+      "ComponentArn": "arn:aws:imagebuilder:us-east-1:aws:component/update-linux/x.x.x"
+     },
+     {
+      "ComponentArn": "arn:aws:imagebuilder:us-east-1:aws:component/amazon-cloudwatch-agent-linux/x.x.x"
+     },
+     {
+      "ComponentArn": {
+       "ref": "InstallComponent"
+      }
+     }
+    ],
+    "BlockDeviceMappings": [
+     {
+      "DeviceName": "/dev/xvda",
+      "Ebs": {
+       "VolumeSize": 32,
+       "Encrypted": false
+      }
+     }
+    ],
+    "AdditionalInstanceConfiguration": {
+     "UserDataOverride": "#!/bin/bash -eu\n\n# This script runs when the EC2 instance boots\n# Make sure the latest package versions are installed on the host\n\n# update system packages\nsudo dnf upgrade -y\n\n# update python packages\nsudo pip3 install --upgrade synapseclient[pandas,pysftp]\nsudo pip3 freeze\n"
+    }
+   },
+   "refs": [
+    "InstallComponent"
+   ]
+  },
+  {
+   "id": "ImageRecipeArm64",
+   "cfg": "ImageRecipeArm64",
+   "type": "AWS::ImageBuilder::ImageRecipe",
+   "values": {
+    "Name": "stack-arm64",
+    "Version": "0.0.0",
+    "ParentImage": "arn:aws:imagebuilder:us-east-1:aws:image/amazon-linux-2023-arm64/x.x.x",
+    "Components": [
+     {
+      "ComponentArn": "arn:aws:imagebuilder:us-east-1:aws:component/update-linux/x.x.x"
+     },
+     {
+      "ComponentArn": "arn:aws:imagebuilder:us-east-1:aws:component/amazon-cloudwatch-agent-linux/x.x.x"
+     },
+     {
+      "ComponentArn": {
+       "ref": "InstallComponent"
+      }
+     }
+    ],
+    "BlockDeviceMappings": [
+     {
+      "DeviceName": "/dev/xvda",
+      "Ebs": {
+       "VolumeSize": 32,
+       "Encrypted": false
+      }
+     }
+    ],
+    "AdditionalInstanceConfiguration": {
+     "UserDataOverride": "#!/bin/bash -eu\n\n# This script runs when the EC2 instance boots\n# Make sure the latest package versions are installed on the host\n\n# update system packages\nsudo dnf upgrade -y\n\n# update python packages\nsudo pip3 install --upgrade synapseclient[pandas,pysftp]\nsudo pip3 freeze\n"
+    }
+   },
+   "refs": [
+    "InstallComponent"
+   ]
+  },
+  {
+   "id": "ImageX86",
+   "cfg": "ImageX86",
+   "type": "AWS::ImageBuilder::Image",
+   "values": {
+    "ImageRecipeArn": {
+     "ref": "ImageRecipeX86"
+    },
+    "InfrastructureConfigurationArn": {
+     "ref": "ImageInfrastructureConfiguration"
+    },
+    "DistributionConfigurationArn": {
+     "ref": "ImageDistributionConfiguration"
+    },
+    "Tags": {
+     "Name": "stack-x86"
+    }
+   },
+   "refs": [
+    "ImageDistributionConfiguration",
+    "ImageInfrastructureConfiguration",
+    "ImageRecipeX86"
+   ]
+  },
+  {
+   "id": "ImageArm64",
+   "cfg": "ImageArm64",
+   "type": "AWS::ImageBuilder::Image",
+   "values": {
+    "ImageRecipeArn": {
+     "ref": "ImageRecipeArm64"
+    },
+    "InfrastructureConfigurationArn": {
+     "ref": "ImageInfrastructureConfiguration"
+    },
+    "DistributionConfigurationArn": {
+     "ref": "ImageDistributionConfiguration"
+    },
+    "Tags": {
+     "Name": "stack-arm64"
+    }
+   },
+   "refs": [
+    "ImageDistributionConfiguration",
+    "ImageInfrastructureConfiguration",
+    "ImageRecipeArm64"
+   ]
+  },
+  {
+   "id": "ImageDistributionConfiguration",
+   "cfg": "ImageDistributionConfiguration",
+   "type": "AWS::ImageBuilder::DistributionConfiguration",
+   "values": {
+    "Name": "stack-Distributions",
+    "Distributions": [
+     {
+      "Region": "us-east-1",
+      "AmiDistributionConfiguration": {
+       "AmiTags": {
+        "Name": "stack"
+       },
+       "LaunchPermissionConfiguration": {
+        "OrganizationArns": [
+         "arn:aws:organizations::123456789012:organization/o-69lcdj4kro"
+        ],
+        "UserGroups": [
+         "all"
+        ]
+       }
+      }
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.AwsOrganizationId",
+   "cfg": "__parameter__.AwsOrganizationId",
+   "type": "__parameter__",
+   "values": {
+    "name": "AwsOrganizationId",
+    "type": "String",
+    "default": "o-69lcdj4kro",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.ImageVersion",
+   "cfg": "__parameter__.ImageVersion",
+   "type": "__parameter__",
+   "values": {
+    "name": "ImageVersion",
+    "type": "String",
+    "default": "0.0.0",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.VolumeSize",
+   "cfg": "__parameter__.VolumeSize",
+   "type": "__parameter__",
+   "values": {
+    "name": "VolumeSize",
+    "type": "Number",
+    "default": 32,
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.InstanceRole",
+   "cfg": "InstanceRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "InstanceRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore",
+      "arn:aws:iam::aws:policy/EC2InstanceProfileForImageBuilder"
+     ],
+     "AssumeRolePolicyDocument": {
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "ec2.amazonaws.com"
+         ]
+        }
+       }
+      ],
+      "Version": "2012-10-17"
+     },
+     "Path": "/executionServiceEC2Role/"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::InstanceProfile.InstanceProfile",
+   "cfg": "InstanceProfile",
+   "type": "__declared__",
+   "refs": [
+    "InstanceRole"
+   ],
+   "values": {
+    "type": "AWS::IAM::InstanceProfile",
+    "name": "InstanceProfile",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Path": "/executionServiceEC2Role/",
+     "Roles": [
+      {
+       "ref": "InstanceRole"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPC.ImageBuilderVpc",
+   "cfg": "ImageBuilderVpc",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::VPC",
+    "name": "ImageBuilderVpc",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "CidrBlock": "10.99.0.0/23"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.ImageBuilderSubnet",
+   "cfg": "ImageBuilderSubnet",
+   "type": "__declared__",
+   "refs": [
+    "ImageBuilderVpc"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "ImageBuilderSubnet",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "ImageBuilderVpc"
+     },
+     "CidrBlock": "10.99.0.0/24",
+     "AvailabilityZone": "us-east-1a"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.ImageBuilderPublicSubnet",
+   "cfg": "ImageBuilderPublicSubnet",
+   "type": "__declared__",
+   "refs": [
+    "ImageBuilderVpc"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "ImageBuilderPublicSubnet",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "ImageBuilderVpc"
+     },
+     "CidrBlock": "10.99.1.0/24",
+     "AvailabilityZone": "us-east-1a"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SecurityGroup.ImageBuilderSecurityGroup",
+   "cfg": "ImageBuilderSecurityGroup",
+   "type": "__declared__",
+   "refs": [
+    "ImageBuilderVpc"
+   ],
+   "values": {
+    "type": "AWS::EC2::SecurityGroup",
+    "name": "ImageBuilderSecurityGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "GroupDescription": "ImageBuilder build/test instance",
+     "VpcId": {
+      "ref": "ImageBuilderVpc"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::InternetGateway.ImageBuilderInternetGateway",
+   "cfg": "ImageBuilderInternetGateway",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::InternetGateway",
+    "name": "ImageBuilderInternetGateway",
+    "gated": false,
+    "gate": null,
+    "properties": {}
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCGatewayAttachment.ImageBuilderVpcGatewayAttachment",
+   "cfg": "ImageBuilderVpcGatewayAttachment",
+   "type": "__declared__",
+   "refs": [
+    "ImageBuilderInternetGateway",
+    "ImageBuilderVpc"
+   ],
+   "values": {
+    "type": "AWS::EC2::VPCGatewayAttachment",
+    "name": "ImageBuilderVpcGatewayAttachment",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "ImageBuilderVpc"
+     },
+     "InternetGatewayId": {
+      "ref": "ImageBuilderInternetGateway"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::RouteTable.ImageBuilderPublicRouteTable",
+   "cfg": "ImageBuilderPublicRouteTable",
+   "type": "__declared__",
+   "refs": [
+    "ImageBuilderVpc"
+   ],
+   "values": {
+    "type": "AWS::EC2::RouteTable",
+    "name": "ImageBuilderPublicRouteTable",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "ImageBuilderVpc"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Route.ImageBuilderPublicRoute",
+   "cfg": "ImageBuilderPublicRoute",
+   "type": "__declared__",
+   "refs": [
+    "ImageBuilderInternetGateway",
+    "ImageBuilderPublicRouteTable"
+   ],
+   "values": {
+    "type": "AWS::EC2::Route",
+    "name": "ImageBuilderPublicRoute",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RouteTableId": {
+      "ref": "ImageBuilderPublicRouteTable"
+     },
+     "DestinationCidrBlock": "0.0.0.0/0",
+     "GatewayId": {
+      "ref": "ImageBuilderInternetGateway"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetRouteTableAssociation.ImageBuilderPublicSubnetRouteTableAssociation",
+   "cfg": "ImageBuilderPublicSubnetRouteTableAssociation",
+   "type": "__declared__",
+   "refs": [
+    "ImageBuilderPublicRouteTable",
+    "ImageBuilderPublicSubnet"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetRouteTableAssociation",
+    "name": "ImageBuilderPublicSubnetRouteTableAssociation",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "SubnetId": {
+      "ref": "ImageBuilderPublicSubnet"
+     },
+     "RouteTableId": {
+      "ref": "ImageBuilderPublicRouteTable"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::EIP.ImageBuilderNatEip",
+   "cfg": "ImageBuilderNatEip",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::EIP",
+    "name": "ImageBuilderNatEip",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Domain": "vpc"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::NatGateway.ImageBuilderNatGateway",
+   "cfg": "ImageBuilderNatGateway",
+   "type": "__declared__",
+   "refs": [
+    "ImageBuilderNatEip",
+    "ImageBuilderPublicSubnet"
+   ],
+   "values": {
+    "type": "AWS::EC2::NatGateway",
+    "name": "ImageBuilderNatGateway",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AllocationId": {
+      "ref": "ImageBuilderNatEip",
+      "attr": "AllocationId"
+     },
+     "SubnetId": {
+      "ref": "ImageBuilderPublicSubnet"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::RouteTable.ImageBuilderPrivateRouteTable",
+   "cfg": "ImageBuilderPrivateRouteTable",
+   "type": "__declared__",
+   "refs": [
+    "ImageBuilderVpc"
+   ],
+   "values": {
+    "type": "AWS::EC2::RouteTable",
+    "name": "ImageBuilderPrivateRouteTable",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "ImageBuilderVpc"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Route.ImageBuilderPrivateRoute",
+   "cfg": "ImageBuilderPrivateRoute",
+   "type": "__declared__",
+   "refs": [
+    "ImageBuilderNatGateway",
+    "ImageBuilderPrivateRouteTable"
+   ],
+   "values": {
+    "type": "AWS::EC2::Route",
+    "name": "ImageBuilderPrivateRoute",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RouteTableId": {
+      "ref": "ImageBuilderPrivateRouteTable"
+     },
+     "DestinationCidrBlock": "0.0.0.0/0",
+     "NatGatewayId": {
+      "ref": "ImageBuilderNatGateway"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetRouteTableAssociation.ImageBuilderSubnetRouteTableAssociation",
+   "cfg": "ImageBuilderSubnetRouteTableAssociation",
+   "type": "__declared__",
+   "refs": [
+    "ImageBuilderPrivateRouteTable",
+    "ImageBuilderSubnet"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetRouteTableAssociation",
+    "name": "ImageBuilderSubnetRouteTableAssociation",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "SubnetId": {
+      "ref": "ImageBuilderSubnet"
+     },
+     "RouteTableId": {
+      "ref": "ImageBuilderPrivateRouteTable"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ImageBuilder::InfrastructureConfiguration.ImageInfrastructureConfiguration",
+   "cfg": "ImageInfrastructureConfiguration",
+   "type": "__declared__",
+   "refs": [
+    "ImageBuilderSecurityGroup",
+    "ImageBuilderSubnet",
+    "InstanceProfile"
+   ],
+   "values": {
+    "type": "AWS::ImageBuilder::InfrastructureConfiguration",
+    "name": "ImageInfrastructureConfiguration",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "stack-Configuration",
+     "InstanceProfileName": {
+      "ref": "InstanceProfile"
+     },
+     "SubnetId": {
+      "ref": "ImageBuilderSubnet"
+     },
+     "SecurityGroupIds": [
+      {
+       "ref": "ImageBuilderSecurityGroup"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ImageBuilder::Component.InstallComponent",
+   "cfg": "InstallComponent",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::ImageBuilder::Component",
+    "name": "InstallComponent",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "stack-component",
+     "Platform": "Linux",
+     "Version": "0.0.0",
+     "Description": "Install Docker and Docker Compose on Amazon Linux 2023",
+     "SupportedOsVersions": [
+      "Amazon Linux 2023"
+     ],
+     "Data": "name: install-docker\ndescription: Install Docker and Docker Compose on Amazon Linux 2023\nschemaVersion: 1.0\nphases:\n  - name: build\n    steps:\n      - name: InstallPackages\n        action: ExecuteBash\n        inputs:\n          commands:\n            - set -e\n            - dnf install -y spal-release  # needed for docker compose\n            - dnf install -y git psutils python3-pip python3-wheel\n            - dnf install -y docker-compose  # pulls in default docker engine as a dependency\n            - dnf install -y gcc python3-devel  # needed to build psutil wheel for pysftp\n            - pip3 install --upgrade synapseclient[pandas,pysftp]\n            - systemctl enable  docker\n      - name: DockerGroupMembership\n        action: ExecuteBash\n        inputs:\n          commands:\n            - set -e\n            - usermod -a -G docker ec2-user\n            - adduser -m -s /bin/bash -G docker ssm-user\n      - name: SsmSudoAccess\n        action: ExecuteBash\n        inputs:\n          commands:\n            - set -e\n            - echo \"ssm-user ALL=(ALL) NOPASSWD:ALL\" > /etc/sudoers.d/ssm-agent-users\n            - chmod 440 /etc/sudoers.d/ssm-agent-users\n            - chown root:root /etc/sudoers.d/ssm-agent-users\n  - name: test\n    steps:\n      - name: TestPackages\n        action: ExecuteBash\n        inputs:\n          commands:\n            - set -e\n            - docker compose ls  # validate docker service starts and docker-compose is installed\n            - python3 -c \"import synapseclient, pandas, pysftp; print('Python packages verified')\"\n            - visudo -c  # validate sudoers configuration\n"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ImageBuilder::ImageRecipe.ImageRecipeX86",
+   "cfg": "ImageRecipeX86",
+   "type": "__declared__",
+   "refs": [
+    "InstallComponent"
+   ],
+   "values": {
+    "type": "AWS::ImageBuilder::ImageRecipe",
+    "name": "ImageRecipeX86",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "stack-x86",
+     "Version": "0.0.0",
+     "ParentImage": "arn:aws:imagebuilder:us-east-1:aws:image/amazon-linux-2023-x86/x.x.x",
+     "Components": [
+      {
+       "ComponentArn": "arn:aws:imagebuilder:us-east-1:aws:component/update-linux/x.x.x"
+      },
+      {
+       "ComponentArn": "arn:aws:imagebuilder:us-east-1:aws:component/amazon-cloudwatch-agent-linux/x.x.x"
+      },
+      {
+       "ComponentArn": {
+        "ref": "InstallComponent"
+       }
+      }
+     ],
+     "BlockDeviceMappings": [
+      {
+       "DeviceName": "/dev/xvda",
+       "Ebs": {
+        "VolumeSize": 32,
+        "Encrypted": false
+       }
+      }
+     ],
+     "AdditionalInstanceConfiguration": {
+      "UserDataOverride": "#!/bin/bash -eu\n\n# This script runs when the EC2 instance boots\n# Make sure the latest package versions are installed on the host\n\n# update system packages\nsudo dnf upgrade -y\n\n# update python packages\nsudo pip3 install --upgrade synapseclient[pandas,pysftp]\nsudo pip3 freeze\n"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ImageBuilder::ImageRecipe.ImageRecipeArm64",
+   "cfg": "ImageRecipeArm64",
+   "type": "__declared__",
+   "refs": [
+    "InstallComponent"
+   ],
+   "values": {
+    "type": "AWS::ImageBuilder::ImageRecipe",
+    "name": "ImageRecipeArm64",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "stack-arm64",
+     "Version": "0.0.0",
+     "ParentImage": "arn:aws:imagebuilder:us-east-1:aws:image/amazon-linux-2023-arm64/x.x.x",
+     "Components": [
+      {
+       "ComponentArn": "arn:aws:imagebuilder:us-east-1:aws:component/update-linux/x.x.x"
+      },
+      {
+       "ComponentArn": "arn:aws:imagebuilder:us-east-1:aws:component/amazon-cloudwatch-agent-linux/x.x.x"
+      },
+      {
+       "ComponentArn": {
+        "ref": "InstallComponent"
+       }
+      }
+     ],
+     "BlockDeviceMappings": [
+      {
+       "DeviceName": "/dev/xvda",
+       "Ebs": {
+        "VolumeSize": 32,
+        "Encrypted": false
+       }
+      }
+     ],
+     "AdditionalInstanceConfiguration": {
+      "UserDataOverride": "#!/bin/bash -eu\n\n# This script runs when the EC2 instance boots\n# Make sure the latest package versions are installed on the host\n\n# update system packages\nsudo dnf upgrade -y\n\n# update python packages\nsudo pip3 install --upgrade synapseclient[pandas,pysftp]\nsudo pip3 freeze\n"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ImageBuilder::Image.ImageX86",
+   "cfg": "ImageX86",
+   "type": "__declared__",
+   "refs": [
+    "ImageDistributionConfiguration",
+    "ImageInfrastructureConfiguration",
+    "ImageRecipeX86"
+   ],
+   "values": {
+    "type": "AWS::ImageBuilder::Image",
+    "name": "ImageX86",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ImageRecipeArn": {
+      "ref": "ImageRecipeX86"
+     },
+     "InfrastructureConfigurationArn": {
+      "ref": "ImageInfrastructureConfiguration"
+     },
+     "DistributionConfigurationArn": {
+      "ref": "ImageDistributionConfiguration"
+     },
+     "Tags": {
+      "Name": "stack-x86"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ImageBuilder::Image.ImageArm64",
+   "cfg": "ImageArm64",
+   "type": "__declared__",
+   "refs": [
+    "ImageDistributionConfiguration",
+    "ImageInfrastructureConfiguration",
+    "ImageRecipeArm64"
+   ],
+   "values": {
+    "type": "AWS::ImageBuilder::Image",
+    "name": "ImageArm64",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ImageRecipeArn": {
+      "ref": "ImageRecipeArm64"
+     },
+     "InfrastructureConfigurationArn": {
+      "ref": "ImageInfrastructureConfiguration"
+     },
+     "DistributionConfigurationArn": {
+      "ref": "ImageDistributionConfiguration"
+     },
+     "Tags": {
+      "Name": "stack-arm64"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ImageBuilder::DistributionConfiguration.ImageDistributionConfiguration",
+   "cfg": "ImageDistributionConfiguration",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::ImageBuilder::DistributionConfiguration",
+    "name": "ImageDistributionConfiguration",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "stack-Distributions",
+     "Distributions": [
+      {
+       "Region": "us-east-1",
+       "AmiDistributionConfiguration": {
+        "AmiTags": {
+         "Name": "stack"
+        },
+        "LaunchPermissionConfiguration": {
+         "OrganizationArns": [
+          "arn:aws:organizations::123456789012:organization/o-69lcdj4kro"
+         ],
+         "UserGroups": [
+          "all"
+         ]
+        }
+       }
+      }
+     ]
+    }
+   }
+  }
+ ]
+}

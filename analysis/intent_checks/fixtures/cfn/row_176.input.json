@@ -1,0 +1,3038 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [
+   "NatGatewayA excluded: condition noNatGateway false under defaults",
+   "NatIPAddressA excluded: condition noNatGateway false under defaults",
+   "PrivateDefaultRouteA excluded: condition noNatGateway false under defaults"
+  ],
+  "gt_hash": "305da5cfad60917c16be148e290c0a25f588a664eb53f01e3e39b96a04d858ea",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "VPC",
+   "cfg": "VPC",
+   "type": "AWS::EC2::VPC",
+   "values": {
+    "CidrBlock": "10.11.0.0/20",
+    "EnableDnsHostnames": "true",
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "bashlinux-staging-vpc"
+     },
+     {
+      "Key": "bashlinux:organization-name",
+      "Value": "bashlinux"
+     },
+     {
+      "Key": "bashlinux:environment-name",
+      "Value": "staging"
+     },
+     {
+      "Key": "bashlinux:application-id",
+      "Value": "stack"
+     },
+     {
+      "Key": "bashlinux:network-visibility",
+      "Value": "public"
+     },
+     {
+      "Key": "bashlinux:can-delete",
+      "Value": "false"
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "InternetGateway",
+   "cfg": "InternetGateway",
+   "type": "AWS::EC2::InternetGateway",
+   "values": {
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "bashlinux-staging-internet-gateway"
+     },
+     {
+      "Key": "bashlinux:organization-name",
+      "Value": "bashlinux"
+     },
+     {
+      "Key": "bashlinux:environment-name",
+      "Value": "staging"
+     },
+     {
+      "Key": "bashlinux:application-id",
+      "Value": "stack"
+     },
+     {
+      "Key": "bashlinux:network-visibility",
+      "Value": "public"
+     },
+     {
+      "Key": "bashlinux:can-delete",
+      "Value": "false"
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "GatewayToInternet",
+   "cfg": "GatewayToInternet",
+   "type": "AWS::EC2::VPCGatewayAttachment",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "InternetGatewayId": {
+     "ref": "InternetGateway"
+    }
+   },
+   "refs": [
+    "InternetGateway",
+    "VPC"
+   ]
+  },
+  {
+   "id": "EgressOnlyInternetGateway",
+   "cfg": "EgressOnlyInternetGateway",
+   "type": "AWS::EC2::EgressOnlyInternetGateway",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    }
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "Ipv6VPCCidrBlock",
+   "cfg": "Ipv6VPCCidrBlock",
+   "type": "AWS::EC2::VPCCidrBlock",
+   "values": {
+    "AmazonProvidedIpv6CidrBlock": true,
+    "VpcId": {
+     "ref": "VPC"
+    }
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "PublicSubnet1A",
+   "cfg": "PublicSubnet1A",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "AvailabilityZone": "us-east-1a",
+    "AssignIpv6AddressOnCreation": "true",
+    "Ipv6CidrBlock": {
+     "Fn::Join": [
+      "",
+      [
+       {
+        "Fn::Select": [
+         "0",
+         {
+          "Fn::Split": [
+           "00::/56",
+           {
+            "Fn::Select": [
+             "0",
+             {
+              "ref": "VPC",
+              "attr": "Ipv6CidrBlocks"
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       },
+       "60::/64"
+      ]
+     ]
+    },
+    "CidrBlock": "10.11.0.0/26",
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "bashlinux-staging-public-subnet-1a"
+     },
+     {
+      "Key": "bashlinux:organization-name",
+      "Value": "bashlinux"
+     },
+     {
+      "Key": "bashlinux:environment-name",
+      "Value": "staging"
+     },
+     {
+      "Key": "bashlinux:application-id",
+      "Value": "stack"
+     },
+     {
+      "Key": "bashlinux:application-tier",
+      "Value": "alb"
+     },
+     {
+      "Key": "bashlinux:network-visibility",
+      "Value": "public"
+     },
+     {
+      "Key": "bashlinux:can-delete",
+      "Value": "false"
+     }
+    ],
+    "__resource__": {
+     "DependsOn": [
+      "Ipv6VPCCidrBlock"
+     ]
+    }
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "PublicSubnet1B",
+   "cfg": "PublicSubnet1B",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "AvailabilityZone": "us-east-1b",
+    "AssignIpv6AddressOnCreation": "true",
+    "Ipv6CidrBlock": {
+     "Fn::Join": [
+      "",
+      [
+       {
+        "Fn::Select": [
+         "0",
+         {
+          "Fn::Split": [
+           "00::/56",
+           {
+            "Fn::Select": [
+             "0",
+             {
+              "ref": "VPC",
+              "attr": "Ipv6CidrBlocks"
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       },
+       "61::/64"
+      ]
+     ]
+    },
+    "CidrBlock": "10.11.0.64/26",
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "bashlinux-staging-public-subnet-1b"
+     },
+     {
+      "Key": "bashlinux:organization-name",
+      "Value": "bashlinux"
+     },
+     {
+      "Key": "bashlinux:environment-name",
+      "Value": "staging"
+     },
+     {
+      "Key": "bashlinux:application-id",
+      "Value": "stack"
+     },
+     {
+      "Key": "bashlinux:application-tier",
+      "Value": "alb"
+     },
+     {
+      "Key": "bashlinux:network-visibility",
+      "Value": "public"
+     },
+     {
+      "Key": "bashlinux:can-delete",
+      "Value": "false"
+     }
+    ],
+    "__resource__": {
+     "DependsOn": [
+      "Ipv6VPCCidrBlock"
+     ]
+    }
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "PublicSubnet2A",
+   "cfg": "PublicSubnet2A",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "AvailabilityZone": "us-east-1a",
+    "AssignIpv6AddressOnCreation": "true",
+    "Ipv6CidrBlock": {
+     "Fn::Join": [
+      "",
+      [
+       {
+        "Fn::Select": [
+         "0",
+         {
+          "Fn::Split": [
+           "00::/56",
+           {
+            "Fn::Select": [
+             "0",
+             {
+              "ref": "VPC",
+              "attr": "Ipv6CidrBlocks"
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       },
+       "70::/64"
+      ]
+     ]
+    },
+    "CidrBlock": "10.11.1.0/26",
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "bashlinux-staging-public-subnet-2a"
+     },
+     {
+      "Key": "bashlinux:organization-name",
+      "Value": "bashlinux"
+     },
+     {
+      "Key": "bashlinux:environment-name",
+      "Value": "staging"
+     },
+     {
+      "Key": "bashlinux:application-id",
+      "Value": "stack"
+     },
+     {
+      "Key": "bashlinux:application-tier",
+      "Value": "ec2"
+     },
+     {
+      "Key": "bashlinux:network-visibility",
+      "Value": "public"
+     },
+     {
+      "Key": "bashlinux:can-delete",
+      "Value": "false"
+     }
+    ],
+    "__resource__": {
+     "DependsOn": [
+      "Ipv6VPCCidrBlock"
+     ]
+    }
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "PublicRouteTable",
+   "cfg": "PublicRouteTable",
+   "type": "AWS::EC2::RouteTable",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "bashlinux-public-route-table"
+     },
+     {
+      "Key": "bashlinux:organization-name",
+      "Value": "bashlinux"
+     },
+     {
+      "Key": "bashlinux:environment-name",
+      "Value": "staging"
+     },
+     {
+      "Key": "bashlinux:application-id",
+      "Value": "stack"
+     },
+     {
+      "Key": "bashlinux:network-visibility",
+      "Value": "public"
+     },
+     {
+      "Key": "bashlinux:can-delete",
+      "Value": "false"
+     }
+    ]
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "PublicRoute",
+   "cfg": "PublicRoute",
+   "type": "AWS::EC2::Route",
+   "values": {
+    "RouteTableId": {
+     "ref": "PublicRouteTable"
+    },
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "GatewayId": {
+     "ref": "InternetGateway"
+    }
+   },
+   "refs": [
+    "InternetGateway",
+    "PublicRouteTable"
+   ]
+  },
+  {
+   "id": "PublicRouteIpv6",
+   "cfg": "PublicRouteIpv6",
+   "type": "AWS::EC2::Route",
+   "values": {
+    "RouteTableId": {
+     "ref": "PublicRouteTable"
+    },
+    "DestinationIpv6CidrBlock": "::/0",
+    "GatewayId": {
+     "ref": "InternetGateway"
+    }
+   },
+   "refs": [
+    "InternetGateway",
+    "PublicRouteTable"
+   ]
+  },
+  {
+   "id": "PublicSubnet1ARouteTableAssociation",
+   "cfg": "PublicSubnet1ARouteTableAssociation",
+   "type": "AWS::EC2::SubnetRouteTableAssociation",
+   "values": {
+    "SubnetId": {
+     "ref": "PublicSubnet1A"
+    },
+    "RouteTableId": {
+     "ref": "PublicRouteTable"
+    }
+   },
+   "refs": [
+    "PublicRouteTable",
+    "PublicSubnet1A"
+   ]
+  },
+  {
+   "id": "PublicSubnet1BRouteTableAssociation",
+   "cfg": "PublicSubnet1BRouteTableAssociation",
+   "type": "AWS::EC2::SubnetRouteTableAssociation",
+   "values": {
+    "SubnetId": {
+     "ref": "PublicSubnet1B"
+    },
+    "RouteTableId": {
+     "ref": "PublicRouteTable"
+    }
+   },
+   "refs": [
+    "PublicRouteTable",
+    "PublicSubnet1B"
+   ]
+  },
+  {
+   "id": "PublicSubnet2ARouteTableAssociation",
+   "cfg": "PublicSubnet2ARouteTableAssociation",
+   "type": "AWS::EC2::SubnetRouteTableAssociation",
+   "values": {
+    "SubnetId": {
+     "ref": "PublicSubnet2A"
+    },
+    "RouteTableId": {
+     "ref": "PublicRouteTable"
+    }
+   },
+   "refs": [
+    "PublicRouteTable",
+    "PublicSubnet2A"
+   ]
+  },
+  {
+   "id": "PublicNetworkAcl",
+   "cfg": "PublicNetworkAcl",
+   "type": "AWS::EC2::NetworkAcl",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "bashlinux-public-acl"
+     },
+     {
+      "Key": "bashlinux:organization-name",
+      "Value": "bashlinux"
+     },
+     {
+      "Key": "bashlinux:environment-name",
+      "Value": "staging"
+     },
+     {
+      "Key": "bashlinux:application-id",
+      "Value": "stack"
+     },
+     {
+      "Key": "bashlinux:network-visibility",
+      "Value": "public"
+     },
+     {
+      "Key": "bashlinux:can-delete",
+      "Value": "false"
+     }
+    ]
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "InboundHTTPPublicNetworkAclEntry",
+   "cfg": "InboundHTTPPublicNetworkAclEntry",
+   "type": "AWS::EC2::NetworkAclEntry",
+   "values": {
+    "NetworkAclId": {
+     "ref": "PublicNetworkAcl"
+    },
+    "RuleNumber": "100",
+    "Protocol": "6",
+    "RuleAction": "allow",
+    "Egress": "false",
+    "CidrBlock": "0.0.0.0/0",
+    "PortRange": {
+     "From": "80",
+     "To": "80"
+    }
+   },
+   "refs": [
+    "PublicNetworkAcl"
+   ]
+  },
+  {
+   "id": "InboundHTTPPublicNetworkAclIpv6Entry",
+   "cfg": "InboundHTTPPublicNetworkAclIpv6Entry",
+   "type": "AWS::EC2::NetworkAclEntry",
+   "values": {
+    "NetworkAclId": {
+     "ref": "PublicNetworkAcl"
+    },
+    "RuleNumber": "101",
+    "Protocol": "6",
+    "RuleAction": "allow",
+    "Egress": "false",
+    "Ipv6CidrBlock": "::/0",
+    "PortRange": {
+     "From": "80",
+     "To": "80"
+    }
+   },
+   "refs": [
+    "PublicNetworkAcl"
+   ]
+  },
+  {
+   "id": "InboundHTTPSPublicNetworkAclEntry",
+   "cfg": "InboundHTTPSPublicNetworkAclEntry",
+   "type": "AWS::EC2::NetworkAclEntry",
+   "values": {
+    "NetworkAclId": {
+     "ref": "PublicNetworkAcl"
+    },
+    "RuleNumber": "102",
+    "Protocol": "6",
+    "RuleAction": "allow",
+    "Egress": "false",
+    "CidrBlock": "0.0.0.0/0",
+    "PortRange": {
+     "From": "443",
+     "To": "443"
+    }
+   },
+   "refs": [
+    "PublicNetworkAcl"
+   ]
+  },
+  {
+   "id": "InboundHTTPSPublicNetworkAclIpv6Entry",
+   "cfg": "InboundHTTPSPublicNetworkAclIpv6Entry",
+   "type": "AWS::EC2::NetworkAclEntry",
+   "values": {
+    "NetworkAclId": {
+     "ref": "PublicNetworkAcl"
+    },
+    "RuleNumber": "103",
+    "Protocol": "6",
+    "RuleAction": "allow",
+    "Egress": "false",
+    "Ipv6CidrBlock": "::/0",
+    "PortRange": {
+     "From": "443",
+     "To": "443"
+    }
+   },
+   "refs": [
+    "PublicNetworkAcl"
+   ]
+  },
+  {
+   "id": "InboundSSHPublicNetworkAclEntry",
+   "cfg": "InboundSSHPublicNetworkAclEntry",
+   "type": "AWS::EC2::NetworkAclEntry",
+   "values": {
+    "NetworkAclId": {
+     "ref": "PublicNetworkAcl"
+    },
+    "RuleNumber": "104",
+    "Protocol": "6",
+    "RuleAction": "allow",
+    "Egress": "false",
+    "CidrBlock": "0.0.0.0/0",
+    "PortRange": {
+     "From": "22",
+     "To": "22"
+    }
+   },
+   "refs": [
+    "PublicNetworkAcl"
+   ]
+  },
+  {
+   "id": "InboundSSHPublicNetworkAclIpv6Entry",
+   "cfg": "InboundSSHPublicNetworkAclIpv6Entry",
+   "type": "AWS::EC2::NetworkAclEntry",
+   "values": {
+    "NetworkAclId": {
+     "ref": "PublicNetworkAcl"
+    },
+    "RuleNumber": "105",
+    "Protocol": "6",
+    "RuleAction": "allow",
+    "Egress": "false",
+    "Ipv6CidrBlock": "::/0",
+    "PortRange": {
+     "From": "22",
+     "To": "22"
+    }
+   },
+   "refs": [
+    "PublicNetworkAcl"
+   ]
+  },
+  {
+   "id": "InboundBastionPublicNetworkAclEntry",
+   "cfg": "InboundBastionPublicNetworkAclEntry",
+   "type": "AWS::EC2::NetworkAclEntry",
+   "values": {
+    "NetworkAclId": {
+     "ref": "PublicNetworkAcl"
+    },
+    "RuleNumber": "106",
+    "Protocol": "-1",
+    "RuleAction": "allow",
+    "Egress": "false",
+    "CidrBlock": "0.0.0.0/0",
+    "PortRange": {
+     "From": "1194",
+     "To": "1194"
+    }
+   },
+   "refs": [
+    "PublicNetworkAcl"
+   ]
+  },
+  {
+   "id": "InboundBastionPublicNetworkAclIpv6Entry",
+   "cfg": "InboundBastionPublicNetworkAclIpv6Entry",
+   "type": "AWS::EC2::NetworkAclEntry",
+   "values": {
+    "NetworkAclId": {
+     "ref": "PublicNetworkAcl"
+    },
+    "RuleNumber": "107",
+    "Protocol": "-1",
+    "RuleAction": "allow",
+    "Egress": "false",
+    "Ipv6CidrBlock": "::/0",
+    "PortRange": {
+     "From": "1194",
+     "To": "1194"
+    }
+   },
+   "refs": [
+    "PublicNetworkAcl"
+   ]
+  },
+  {
+   "id": "InboundEphemeralPublicNetworkAclEntry",
+   "cfg": "InboundEphemeralPublicNetworkAclEntry",
+   "type": "AWS::EC2::NetworkAclEntry",
+   "values": {
+    "NetworkAclId": {
+     "ref": "PublicNetworkAcl"
+    },
+    "RuleNumber": "108",
+    "Protocol": "6",
+    "RuleAction": "allow",
+    "Egress": "false",
+    "CidrBlock": "0.0.0.0/0",
+    "PortRange": {
+     "From": "1024",
+     "To": "65535"
+    }
+   },
+   "refs": [
+    "PublicNetworkAcl"
+   ]
+  },
+  {
+   "id": "InboundEphemeralPublicNetworkAclIpv6Entry",
+   "cfg": "InboundEphemeralPublicNetworkAclIpv6Entry",
+   "type": "AWS::EC2::NetworkAclEntry",
+   "values": {
+    "NetworkAclId": {
+     "ref": "PublicNetworkAcl"
+    },
+    "RuleNumber": "109",
+    "Protocol": "6",
+    "RuleAction": "allow",
+    "Egress": "false",
+    "Ipv6CidrBlock": "::/0",
+    "PortRange": {
+     "From": "1024",
+     "To": "65535"
+    }
+   },
+   "refs": [
+    "PublicNetworkAcl"
+   ]
+  },
+  {
+   "id": "OutboundPublicNetworkAclEntry",
+   "cfg": "OutboundPublicNetworkAclEntry",
+   "type": "AWS::EC2::NetworkAclEntry",
+   "values": {
+    "NetworkAclId": {
+     "ref": "PublicNetworkAcl"
+    },
+    "RuleNumber": "100",
+    "Protocol": "-1",
+    "RuleAction": "allow",
+    "Egress": "true",
+    "CidrBlock": "0.0.0.0/0",
+    "PortRange": {
+     "From": "0",
+     "To": "65535"
+    }
+   },
+   "refs": [
+    "PublicNetworkAcl"
+   ]
+  },
+  {
+   "id": "OutboundPublicNetworkAclIpv6Entry",
+   "cfg": "OutboundPublicNetworkAclIpv6Entry",
+   "type": "AWS::EC2::NetworkAclEntry",
+   "values": {
+    "NetworkAclId": {
+     "ref": "PublicNetworkAcl"
+    },
+    "RuleNumber": "101",
+    "Protocol": "-1",
+    "RuleAction": "allow",
+    "Egress": "true",
+    "Ipv6CidrBlock": "::/0",
+    "PortRange": {
+     "From": "0",
+     "To": "65535"
+    }
+   },
+   "refs": [
+    "PublicNetworkAcl"
+   ]
+  },
+  {
+   "id": "PublicSubnet1ANetworkAclAssociation",
+   "cfg": "PublicSubnet1ANetworkAclAssociation",
+   "type": "AWS::EC2::SubnetNetworkAclAssociation",
+   "values": {
+    "SubnetId": {
+     "ref": "PublicSubnet1A"
+    },
+    "NetworkAclId": {
+     "ref": "PublicNetworkAcl"
+    }
+   },
+   "refs": [
+    "PublicNetworkAcl",
+    "PublicSubnet1A"
+   ]
+  },
+  {
+   "id": "PublicSubnet1BNetworkAclAssociation",
+   "cfg": "PublicSubnet1BNetworkAclAssociation",
+   "type": "AWS::EC2::SubnetNetworkAclAssociation",
+   "values": {
+    "SubnetId": {
+     "ref": "PublicSubnet1B"
+    },
+    "NetworkAclId": {
+     "ref": "PublicNetworkAcl"
+    }
+   },
+   "refs": [
+    "PublicNetworkAcl",
+    "PublicSubnet1B"
+   ]
+  },
+  {
+   "id": "PublicSubnet2ANetworkAclAssociation",
+   "cfg": "PublicSubnet2ANetworkAclAssociation",
+   "type": "AWS::EC2::SubnetNetworkAclAssociation",
+   "values": {
+    "SubnetId": {
+     "ref": "PublicSubnet2A"
+    },
+    "NetworkAclId": {
+     "ref": "PublicNetworkAcl"
+    }
+   },
+   "refs": [
+    "PublicNetworkAcl",
+    "PublicSubnet2A"
+   ]
+  },
+  {
+   "id": "PrivateSubnet1A",
+   "cfg": "PrivateSubnet1A",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "AvailabilityZone": "us-east-1a",
+    "CidrBlock": "10.11.5.0/24",
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "bashlinux-staging-private-subnet-1a"
+     },
+     {
+      "Key": "bashlinux:organization-name",
+      "Value": "bashlinux"
+     },
+     {
+      "Key": "bashlinux:environment-name",
+      "Value": "staging"
+     },
+     {
+      "Key": "bashlinux:application-id",
+      "Value": "stack"
+     },
+     {
+      "Key": "bashlinux:application-tier",
+      "Value": "app"
+     },
+     {
+      "Key": "bashlinux:network-visibility",
+      "Value": "private"
+     },
+     {
+      "Key": "bashlinux:can-delete",
+      "Value": "false"
+     }
+    ],
+    "__resource__": {
+     "DependsOn": [
+      "Ipv6VPCCidrBlock"
+     ]
+    }
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "PrivateSubnet2A",
+   "cfg": "PrivateSubnet2A",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "AvailabilityZone": "us-east-1a",
+    "CidrBlock": "10.11.6.0/24",
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "bashlinux-staging-private-subnet-2a"
+     },
+     {
+      "Key": "bashlinux:organization-name",
+      "Value": "bashlinux"
+     },
+     {
+      "Key": "bashlinux:environment-name",
+      "Value": "staging"
+     },
+     {
+      "Key": "bashlinux:application-id",
+      "Value": "stack"
+     },
+     {
+      "Key": "bashlinux:application-tier",
+      "Value": "data"
+     },
+     {
+      "Key": "bashlinux:network-visibility",
+      "Value": "private"
+     },
+     {
+      "Key": "bashlinux:can-delete",
+      "Value": "false"
+     }
+    ],
+    "__resource__": {
+     "DependsOn": [
+      "Ipv6VPCCidrBlock"
+     ]
+    }
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "PrivateRouteTableA",
+   "cfg": "PrivateRouteTableA",
+   "type": "AWS::EC2::RouteTable",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "bashlinux-staging-private-route-table-a"
+     },
+     {
+      "Key": "bashlinux:organization-name",
+      "Value": "bashlinux"
+     },
+     {
+      "Key": "bashlinux:environment-name",
+      "Value": "staging"
+     },
+     {
+      "Key": "bashlinux:application-id",
+      "Value": "stack"
+     },
+     {
+      "Key": "bashlinux:network-visibility",
+      "Value": "private"
+     },
+     {
+      "Key": "bashlinux:can-delete",
+      "Value": "false"
+     }
+    ]
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "PrivateSubnet1ARouteTableAssociation",
+   "cfg": "PrivateSubnet1ARouteTableAssociation",
+   "type": "AWS::EC2::SubnetRouteTableAssociation",
+   "values": {
+    "SubnetId": {
+     "ref": "PrivateSubnet1A"
+    },
+    "RouteTableId": {
+     "ref": "PrivateRouteTableA"
+    }
+   },
+   "refs": [
+    "PrivateRouteTableA",
+    "PrivateSubnet1A"
+   ]
+  },
+  {
+   "id": "PrivateSubnet2ARouteTableAssociation",
+   "cfg": "PrivateSubnet2ARouteTableAssociation",
+   "type": "AWS::EC2::SubnetRouteTableAssociation",
+   "values": {
+    "SubnetId": {
+     "ref": "PrivateSubnet2A"
+    },
+    "RouteTableId": {
+     "ref": "PrivateRouteTableA"
+    }
+   },
+   "refs": [
+    "PrivateRouteTableA",
+    "PrivateSubnet2A"
+   ]
+  },
+  {
+   "id": "PrivateNetworkAcl",
+   "cfg": "PrivateNetworkAcl",
+   "type": "AWS::EC2::NetworkAcl",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "bashlinux-staging-private-acl"
+     },
+     {
+      "Key": "bashlinux:organization-name",
+      "Value": "bashlinux"
+     },
+     {
+      "Key": "bashlinux:environment-name",
+      "Value": "staging"
+     },
+     {
+      "Key": "bashlinux:application-id",
+      "Value": "stack"
+     },
+     {
+      "Key": "bashlinux:can-delete",
+      "Value": "false"
+     }
+    ]
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "InboundPrivateNetworkAclEntry",
+   "cfg": "InboundPrivateNetworkAclEntry",
+   "type": "AWS::EC2::NetworkAclEntry",
+   "values": {
+    "NetworkAclId": {
+     "ref": "PrivateNetworkAcl"
+    },
+    "RuleNumber": "100",
+    "Protocol": "-1",
+    "RuleAction": "allow",
+    "Egress": "false",
+    "CidrBlock": "0.0.0.0/0",
+    "PortRange": {
+     "From": "0",
+     "To": "65535"
+    }
+   },
+   "refs": [
+    "PrivateNetworkAcl"
+   ]
+  },
+  {
+   "id": "InboundPrivateNetworkAclIpv6Entry",
+   "cfg": "InboundPrivateNetworkAclIpv6Entry",
+   "type": "AWS::EC2::NetworkAclEntry",
+   "values": {
+    "NetworkAclId": {
+     "ref": "PrivateNetworkAcl"
+    },
+    "RuleNumber": "101",
+    "Protocol": "-1",
+    "RuleAction": "allow",
+    "Egress": "false",
+    "Ipv6CidrBlock": "::/0",
+    "PortRange": {
+     "From": "0",
+     "To": "65535"
+    }
+   },
+   "refs": [
+    "PrivateNetworkAcl"
+   ]
+  },
+  {
+   "id": "OutBoundPrivateNetworkAclEntry",
+   "cfg": "OutBoundPrivateNetworkAclEntry",
+   "type": "AWS::EC2::NetworkAclEntry",
+   "values": {
+    "NetworkAclId": {
+     "ref": "PrivateNetworkAcl"
+    },
+    "RuleNumber": "100",
+    "Protocol": "-1",
+    "RuleAction": "allow",
+    "Egress": "true",
+    "CidrBlock": "0.0.0.0/0",
+    "PortRange": {
+     "From": "0",
+     "To": "65535"
+    }
+   },
+   "refs": [
+    "PrivateNetworkAcl"
+   ]
+  },
+  {
+   "id": "OutBoundPrivateNetworkAclIpv6Entry",
+   "cfg": "OutBoundPrivateNetworkAclIpv6Entry",
+   "type": "AWS::EC2::NetworkAclEntry",
+   "values": {
+    "NetworkAclId": {
+     "ref": "PrivateNetworkAcl"
+    },
+    "RuleNumber": "101",
+    "Protocol": "-1",
+    "RuleAction": "allow",
+    "Egress": "true",
+    "Ipv6CidrBlock": "::/0",
+    "PortRange": {
+     "From": "0",
+     "To": "65535"
+    }
+   },
+   "refs": [
+    "PrivateNetworkAcl"
+   ]
+  },
+  {
+   "id": "PrivateSubnet1ANetworkAclAssociation",
+   "cfg": "PrivateSubnet1ANetworkAclAssociation",
+   "type": "AWS::EC2::SubnetNetworkAclAssociation",
+   "values": {
+    "SubnetId": {
+     "ref": "PrivateSubnet1A"
+    },
+    "NetworkAclId": {
+     "ref": "PrivateNetworkAcl"
+    }
+   },
+   "refs": [
+    "PrivateNetworkAcl",
+    "PrivateSubnet1A"
+   ]
+  },
+  {
+   "id": "PrivateSubnet2ANetworkAclAssociation",
+   "cfg": "PrivateSubnet2ANetworkAclAssociation",
+   "type": "AWS::EC2::SubnetNetworkAclAssociation",
+   "values": {
+    "SubnetId": {
+     "ref": "PrivateSubnet2A"
+    },
+    "NetworkAclId": {
+     "ref": "PrivateNetworkAcl"
+    }
+   },
+   "refs": [
+    "PrivateNetworkAcl",
+    "PrivateSubnet2A"
+   ]
+  },
+  {
+   "id": "HpcPlacementGroup",
+   "cfg": "HpcPlacementGroup",
+   "type": "AWS::EC2::PlacementGroup",
+   "values": {
+    "Strategy": "cluster",
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "bashlinux-staging-placement-group"
+     },
+     {
+      "Key": "bashlinux:organization-name",
+      "Value": "bashlinux"
+     },
+     {
+      "Key": "bashlinux:environment-name",
+      "Value": "staging"
+     },
+     {
+      "Key": "bashlinux:application-id",
+      "Value": "stack"
+     },
+     {
+      "Key": "bashlinux:can-delete",
+      "Value": "false"
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "EnvDHCPOptions",
+   "cfg": "EnvDHCPOptions",
+   "type": "AWS::EC2::DHCPOptions",
+   "values": {
+    "DomainName": "staging.bashlinux.com",
+    "DomainNameServers": [
+     "AmazonProvidedDNS"
+    ],
+    "Tags": [
+     {
+      "Key": "bashlinux:organization-name",
+      "Value": "bashlinux"
+     },
+     {
+      "Key": "bashlinux:environment-name",
+      "Value": "staging"
+     },
+     {
+      "Key": "bashlinux:application-id",
+      "Value": "stack"
+     },
+     {
+      "Key": "bashlinux:can-delete",
+      "Value": "false"
+     },
+     {
+      "Key": "bashlinux:network-visibility",
+      "Value": "private"
+     },
+     {
+      "Key": "Name",
+      "Value": "staging.bashlinux.com"
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "EnvVPCDHCPOptionsAssociation",
+   "cfg": "EnvVPCDHCPOptionsAssociation",
+   "type": "AWS::EC2::VPCDHCPOptionsAssociation",
+   "values": {
+    "DhcpOptionsId": {
+     "ref": "EnvDHCPOptions"
+    },
+    "VpcId": {
+     "ref": "VPC"
+    }
+   },
+   "refs": [
+    "EnvDHCPOptions",
+    "VPC"
+   ]
+  },
+  {
+   "id": "__parameter__.CreateNAT",
+   "cfg": "__parameter__.CreateNAT",
+   "type": "__parameter__",
+   "values": {
+    "name": "CreateNAT",
+    "type": "String",
+    "default": "no",
+    "allowed_values": [
+     "yes",
+     "no"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.Environment",
+   "cfg": "__parameter__.Environment",
+   "type": "__parameter__",
+   "values": {
+    "name": "Environment",
+    "type": "String",
+    "default": "staging",
+    "allowed_values": [
+     "prod",
+     "staging"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.Organization",
+   "cfg": "__parameter__.Organization",
+   "type": "__parameter__",
+   "values": {
+    "name": "Organization",
+    "type": "String",
+    "default": "bashlinux",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.VpcId",
+   "cfg": "__output__.VpcId",
+   "type": "__output__",
+   "values": {
+    "name": "VpcId",
+    "value": {
+     "ref": "VPC"
+    },
+    "description": "VPC: Created VPC ID",
+    "export": "bashlinux-staging-VpcId"
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "__output__.VpcCidr",
+   "cfg": "__output__.VpcCidr",
+   "type": "__output__",
+   "values": {
+    "name": "VpcCidr",
+    "value": "10.11.0.0/20",
+    "description": "VPC: Created VPC CIDR",
+    "export": "bashlinux-staging-VpcCidr"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.VpcAlbPublicSubnetIds",
+   "cfg": "__output__.VpcAlbPublicSubnetIds",
+   "type": "__output__",
+   "values": {
+    "name": "VpcAlbPublicSubnetIds",
+    "value": {
+     "Fn::Join": [
+      ",",
+      [
+       {
+        "ref": "PublicSubnet1A"
+       },
+       {
+        "ref": "PublicSubnet1B"
+       }
+      ]
+     ]
+    },
+    "description": "VPC: ALB Public Subnet IDs",
+    "export": "bashlinux-staging-VpcAlbPublicSubnetIds"
+   },
+   "refs": [
+    "PublicSubnet1A",
+    "PublicSubnet1B"
+   ]
+  },
+  {
+   "id": "__output__.VpcEndpointPrivateSubnetIds",
+   "cfg": "__output__.VpcEndpointPrivateSubnetIds",
+   "type": "__output__",
+   "values": {
+    "name": "VpcEndpointPrivateSubnetIds",
+    "value": {
+     "Fn::Join": [
+      ",",
+      [
+       {
+        "ref": "PrivateSubnet1A"
+       }
+      ]
+     ]
+    },
+    "description": "VPC: Service Endpoints Private Subnet IDs",
+    "export": "bashlinux-staging-VpcEndpointPrivateSubnetIds"
+   },
+   "refs": [
+    "PrivateSubnet1A"
+   ]
+  },
+  {
+   "id": "__output__.VpcEndpointRouteTableIds",
+   "cfg": "__output__.VpcEndpointRouteTableIds",
+   "type": "__output__",
+   "values": {
+    "name": "VpcEndpointRouteTableIds",
+    "value": {
+     "Fn::Join": [
+      ",",
+      [
+       {
+        "ref": "PrivateRouteTableA"
+       }
+      ]
+     ]
+    },
+    "description": "VPC: Service Endpoints Private Route Table IDs",
+    "export": "bashlinux-staging-VpcEndpointRouteTableIds"
+   },
+   "refs": [
+    "PrivateRouteTableA"
+   ]
+  },
+  {
+   "id": "__output__.VpcMainPublicSubnetId",
+   "cfg": "__output__.VpcMainPublicSubnetId",
+   "type": "__output__",
+   "values": {
+    "name": "VpcMainPublicSubnetId",
+    "value": {
+     "ref": "PublicSubnet1A"
+    },
+    "description": "VPC: Primary Public Subnet ID",
+    "export": "bashlinux-staging-VpcMainPublicSubnetId"
+   },
+   "refs": [
+    "PublicSubnet1A"
+   ]
+  },
+  {
+   "id": "__output__.VpcMainPrivateSubnetId",
+   "cfg": "__output__.VpcMainPrivateSubnetId",
+   "type": "__output__",
+   "values": {
+    "name": "VpcMainPrivateSubnetId",
+    "value": {
+     "ref": "PrivateSubnet1A"
+    },
+    "description": "VPC: Primary Private Subnet ID",
+    "export": "bashlinux-staging-VpcMainPrivateSubnetId"
+   },
+   "refs": [
+    "PrivateSubnet1A"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPC.VPC",
+   "cfg": "VPC",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::VPC",
+    "name": "VPC",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "CidrBlock": "10.11.0.0/20",
+     "EnableDnsHostnames": "true",
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "bashlinux-staging-vpc"
+      },
+      {
+       "Key": "bashlinux:organization-name",
+       "Value": "bashlinux"
+      },
+      {
+       "Key": "bashlinux:environment-name",
+       "Value": "staging"
+      },
+      {
+       "Key": "bashlinux:application-id",
+       "Value": "stack"
+      },
+      {
+       "Key": "bashlinux:network-visibility",
+       "Value": "public"
+      },
+      {
+       "Key": "bashlinux:can-delete",
+       "Value": "false"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::InternetGateway.InternetGateway",
+   "cfg": "InternetGateway",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::InternetGateway",
+    "name": "InternetGateway",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "bashlinux-staging-internet-gateway"
+      },
+      {
+       "Key": "bashlinux:organization-name",
+       "Value": "bashlinux"
+      },
+      {
+       "Key": "bashlinux:environment-name",
+       "Value": "staging"
+      },
+      {
+       "Key": "bashlinux:application-id",
+       "Value": "stack"
+      },
+      {
+       "Key": "bashlinux:network-visibility",
+       "Value": "public"
+      },
+      {
+       "Key": "bashlinux:can-delete",
+       "Value": "false"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCGatewayAttachment.GatewayToInternet",
+   "cfg": "GatewayToInternet",
+   "type": "__declared__",
+   "refs": [
+    "InternetGateway",
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::VPCGatewayAttachment",
+    "name": "GatewayToInternet",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "InternetGatewayId": {
+      "ref": "InternetGateway"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::EgressOnlyInternetGateway.EgressOnlyInternetGateway",
+   "cfg": "EgressOnlyInternetGateway",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::EgressOnlyInternetGateway",
+    "name": "EgressOnlyInternetGateway",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCCidrBlock.Ipv6VPCCidrBlock",
+   "cfg": "Ipv6VPCCidrBlock",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::VPCCidrBlock",
+    "name": "Ipv6VPCCidrBlock",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AmazonProvidedIpv6CidrBlock": true,
+     "VpcId": {
+      "ref": "VPC"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.PublicSubnet1A",
+   "cfg": "PublicSubnet1A",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "PublicSubnet1A",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "AvailabilityZone": "us-east-1a",
+     "AssignIpv6AddressOnCreation": "true",
+     "Ipv6CidrBlock": {
+      "Fn::Join": [
+       "",
+       [
+        {
+         "Fn::Select": [
+          "0",
+          {
+           "Fn::Split": [
+            "00::/56",
+            {
+             "Fn::Select": [
+              "0",
+              {
+               "ref": "VPC",
+               "attr": "Ipv6CidrBlocks"
+              }
+             ]
+            }
+           ]
+          }
+         ]
+        },
+        "60::/64"
+       ]
+      ]
+     },
+     "CidrBlock": "10.11.0.0/26",
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "bashlinux-staging-public-subnet-1a"
+      },
+      {
+       "Key": "bashlinux:organization-name",
+       "Value": "bashlinux"
+      },
+      {
+       "Key": "bashlinux:environment-name",
+       "Value": "staging"
+      },
+      {
+       "Key": "bashlinux:application-id",
+       "Value": "stack"
+      },
+      {
+       "Key": "bashlinux:application-tier",
+       "Value": "alb"
+      },
+      {
+       "Key": "bashlinux:network-visibility",
+       "Value": "public"
+      },
+      {
+       "Key": "bashlinux:can-delete",
+       "Value": "false"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.PublicSubnet1B",
+   "cfg": "PublicSubnet1B",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "PublicSubnet1B",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "AvailabilityZone": "us-east-1b",
+     "AssignIpv6AddressOnCreation": "true",
+     "Ipv6CidrBlock": {
+      "Fn::Join": [
+       "",
+       [
+        {
+         "Fn::Select": [
+          "0",
+          {
+           "Fn::Split": [
+            "00::/56",
+            {
+             "Fn::Select": [
+              "0",
+              {
+               "ref": "VPC",
+               "attr": "Ipv6CidrBlocks"
+              }
+             ]
+            }
+           ]
+          }
+         ]
+        },
+        "61::/64"
+       ]
+      ]
+     },
+     "CidrBlock": "10.11.0.64/26",
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "bashlinux-staging-public-subnet-1b"
+      },
+      {
+       "Key": "bashlinux:organization-name",
+       "Value": "bashlinux"
+      },
+      {
+       "Key": "bashlinux:environment-name",
+       "Value": "staging"
+      },
+      {
+       "Key": "bashlinux:application-id",
+       "Value": "stack"
+      },
+      {
+       "Key": "bashlinux:application-tier",
+       "Value": "alb"
+      },
+      {
+       "Key": "bashlinux:network-visibility",
+       "Value": "public"
+      },
+      {
+       "Key": "bashlinux:can-delete",
+       "Value": "false"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.PublicSubnet2A",
+   "cfg": "PublicSubnet2A",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "PublicSubnet2A",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "AvailabilityZone": "us-east-1a",
+     "AssignIpv6AddressOnCreation": "true",
+     "Ipv6CidrBlock": {
+      "Fn::Join": [
+       "",
+       [
+        {
+         "Fn::Select": [
+          "0",
+          {
+           "Fn::Split": [
+            "00::/56",
+            {
+             "Fn::Select": [
+              "0",
+              {
+               "ref": "VPC",
+               "attr": "Ipv6CidrBlocks"
+              }
+             ]
+            }
+           ]
+          }
+         ]
+        },
+        "70::/64"
+       ]
+      ]
+     },
+     "CidrBlock": "10.11.1.0/26",
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "bashlinux-staging-public-subnet-2a"
+      },
+      {
+       "Key": "bashlinux:organization-name",
+       "Value": "bashlinux"
+      },
+      {
+       "Key": "bashlinux:environment-name",
+       "Value": "staging"
+      },
+      {
+       "Key": "bashlinux:application-id",
+       "Value": "stack"
+      },
+      {
+       "Key": "bashlinux:application-tier",
+       "Value": "ec2"
+      },
+      {
+       "Key": "bashlinux:network-visibility",
+       "Value": "public"
+      },
+      {
+       "Key": "bashlinux:can-delete",
+       "Value": "false"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::RouteTable.PublicRouteTable",
+   "cfg": "PublicRouteTable",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::RouteTable",
+    "name": "PublicRouteTable",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "bashlinux-public-route-table"
+      },
+      {
+       "Key": "bashlinux:organization-name",
+       "Value": "bashlinux"
+      },
+      {
+       "Key": "bashlinux:environment-name",
+       "Value": "staging"
+      },
+      {
+       "Key": "bashlinux:application-id",
+       "Value": "stack"
+      },
+      {
+       "Key": "bashlinux:network-visibility",
+       "Value": "public"
+      },
+      {
+       "Key": "bashlinux:can-delete",
+       "Value": "false"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Route.PublicRoute",
+   "cfg": "PublicRoute",
+   "type": "__declared__",
+   "refs": [
+    "InternetGateway",
+    "PublicRouteTable"
+   ],
+   "values": {
+    "type": "AWS::EC2::Route",
+    "name": "PublicRoute",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RouteTableId": {
+      "ref": "PublicRouteTable"
+     },
+     "DestinationCidrBlock": "0.0.0.0/0",
+     "GatewayId": {
+      "ref": "InternetGateway"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Route.PublicRouteIpv6",
+   "cfg": "PublicRouteIpv6",
+   "type": "__declared__",
+   "refs": [
+    "InternetGateway",
+    "PublicRouteTable"
+   ],
+   "values": {
+    "type": "AWS::EC2::Route",
+    "name": "PublicRouteIpv6",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RouteTableId": {
+      "ref": "PublicRouteTable"
+     },
+     "DestinationIpv6CidrBlock": "::/0",
+     "GatewayId": {
+      "ref": "InternetGateway"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetRouteTableAssociation.PublicSubnet1ARouteTableAssociation",
+   "cfg": "PublicSubnet1ARouteTableAssociation",
+   "type": "__declared__",
+   "refs": [
+    "PublicRouteTable",
+    "PublicSubnet1A"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetRouteTableAssociation",
+    "name": "PublicSubnet1ARouteTableAssociation",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "SubnetId": {
+      "ref": "PublicSubnet1A"
+     },
+     "RouteTableId": {
+      "ref": "PublicRouteTable"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetRouteTableAssociation.PublicSubnet1BRouteTableAssociation",
+   "cfg": "PublicSubnet1BRouteTableAssociation",
+   "type": "__declared__",
+   "refs": [
+    "PublicRouteTable",
+    "PublicSubnet1B"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetRouteTableAssociation",
+    "name": "PublicSubnet1BRouteTableAssociation",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "SubnetId": {
+      "ref": "PublicSubnet1B"
+     },
+     "RouteTableId": {
+      "ref": "PublicRouteTable"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetRouteTableAssociation.PublicSubnet2ARouteTableAssociation",
+   "cfg": "PublicSubnet2ARouteTableAssociation",
+   "type": "__declared__",
+   "refs": [
+    "PublicRouteTable",
+    "PublicSubnet2A"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetRouteTableAssociation",
+    "name": "PublicSubnet2ARouteTableAssociation",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "SubnetId": {
+      "ref": "PublicSubnet2A"
+     },
+     "RouteTableId": {
+      "ref": "PublicRouteTable"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::NetworkAcl.PublicNetworkAcl",
+   "cfg": "PublicNetworkAcl",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::NetworkAcl",
+    "name": "PublicNetworkAcl",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "bashlinux-public-acl"
+      },
+      {
+       "Key": "bashlinux:organization-name",
+       "Value": "bashlinux"
+      },
+      {
+       "Key": "bashlinux:environment-name",
+       "Value": "staging"
+      },
+      {
+       "Key": "bashlinux:application-id",
+       "Value": "stack"
+      },
+      {
+       "Key": "bashlinux:network-visibility",
+       "Value": "public"
+      },
+      {
+       "Key": "bashlinux:can-delete",
+       "Value": "false"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::NetworkAclEntry.InboundHTTPPublicNetworkAclEntry",
+   "cfg": "InboundHTTPPublicNetworkAclEntry",
+   "type": "__declared__",
+   "refs": [
+    "PublicNetworkAcl"
+   ],
+   "values": {
+    "type": "AWS::EC2::NetworkAclEntry",
+    "name": "InboundHTTPPublicNetworkAclEntry",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "NetworkAclId": {
+      "ref": "PublicNetworkAcl"
+     },
+     "RuleNumber": "100",
+     "Protocol": "6",
+     "RuleAction": "allow",
+     "Egress": "false",
+     "CidrBlock": "0.0.0.0/0",
+     "PortRange": {
+      "From": "80",
+      "To": "80"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::NetworkAclEntry.InboundHTTPPublicNetworkAclIpv6Entry",
+   "cfg": "InboundHTTPPublicNetworkAclIpv6Entry",
+   "type": "__declared__",
+   "refs": [
+    "PublicNetworkAcl"
+   ],
+   "values": {
+    "type": "AWS::EC2::NetworkAclEntry",
+    "name": "InboundHTTPPublicNetworkAclIpv6Entry",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "NetworkAclId": {
+      "ref": "PublicNetworkAcl"
+     },
+     "RuleNumber": "101",
+     "Protocol": "6",
+     "RuleAction": "allow",
+     "Egress": "false",
+     "Ipv6CidrBlock": "::/0",
+     "PortRange": {
+      "From": "80",
+      "To": "80"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::NetworkAclEntry.InboundHTTPSPublicNetworkAclEntry",
+   "cfg": "InboundHTTPSPublicNetworkAclEntry",
+   "type": "__declared__",
+   "refs": [
+    "PublicNetworkAcl"
+   ],
+   "values": {
+    "type": "AWS::EC2::NetworkAclEntry",
+    "name": "InboundHTTPSPublicNetworkAclEntry",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "NetworkAclId": {
+      "ref": "PublicNetworkAcl"
+     },
+     "RuleNumber": "102",
+     "Protocol": "6",
+     "RuleAction": "allow",
+     "Egress": "false",
+     "CidrBlock": "0.0.0.0/0",
+     "PortRange": {
+      "From": "443",
+      "To": "443"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::NetworkAclEntry.InboundHTTPSPublicNetworkAclIpv6Entry",
+   "cfg": "InboundHTTPSPublicNetworkAclIpv6Entry",
+   "type": "__declared__",
+   "refs": [
+    "PublicNetworkAcl"
+   ],
+   "values": {
+    "type": "AWS::EC2::NetworkAclEntry",
+    "name": "InboundHTTPSPublicNetworkAclIpv6Entry",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "NetworkAclId": {
+      "ref": "PublicNetworkAcl"
+     },
+     "RuleNumber": "103",
+     "Protocol": "6",
+     "RuleAction": "allow",
+     "Egress": "false",
+     "Ipv6CidrBlock": "::/0",
+     "PortRange": {
+      "From": "443",
+      "To": "443"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::NetworkAclEntry.InboundSSHPublicNetworkAclEntry",
+   "cfg": "InboundSSHPublicNetworkAclEntry",
+   "type": "__declared__",
+   "refs": [
+    "PublicNetworkAcl"
+   ],
+   "values": {
+    "type": "AWS::EC2::NetworkAclEntry",
+    "name": "InboundSSHPublicNetworkAclEntry",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "NetworkAclId": {
+      "ref": "PublicNetworkAcl"
+     },
+     "RuleNumber": "104",
+     "Protocol": "6",
+     "RuleAction": "allow",
+     "Egress": "false",
+     "CidrBlock": "0.0.0.0/0",
+     "PortRange": {
+      "From": "22",
+      "To": "22"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::NetworkAclEntry.InboundSSHPublicNetworkAclIpv6Entry",
+   "cfg": "InboundSSHPublicNetworkAclIpv6Entry",
+   "type": "__declared__",
+   "refs": [
+    "PublicNetworkAcl"
+   ],
+   "values": {
+    "type": "AWS::EC2::NetworkAclEntry",
+    "name": "InboundSSHPublicNetworkAclIpv6Entry",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "NetworkAclId": {
+      "ref": "PublicNetworkAcl"
+     },
+     "RuleNumber": "105",
+     "Protocol": "6",
+     "RuleAction": "allow",
+     "Egress": "false",
+     "Ipv6CidrBlock": "::/0",
+     "PortRange": {
+      "From": "22",
+      "To": "22"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::NetworkAclEntry.InboundBastionPublicNetworkAclEntry",
+   "cfg": "InboundBastionPublicNetworkAclEntry",
+   "type": "__declared__",
+   "refs": [
+    "PublicNetworkAcl"
+   ],
+   "values": {
+    "type": "AWS::EC2::NetworkAclEntry",
+    "name": "InboundBastionPublicNetworkAclEntry",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "NetworkAclId": {
+      "ref": "PublicNetworkAcl"
+     },
+     "RuleNumber": "106",
+     "Protocol": "-1",
+     "RuleAction": "allow",
+     "Egress": "false",
+     "CidrBlock": "0.0.0.0/0",
+     "PortRange": {
+      "From": "1194",
+      "To": "1194"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::NetworkAclEntry.InboundBastionPublicNetworkAclIpv6Entry",
+   "cfg": "InboundBastionPublicNetworkAclIpv6Entry",
+   "type": "__declared__",
+   "refs": [
+    "PublicNetworkAcl"
+   ],
+   "values": {
+    "type": "AWS::EC2::NetworkAclEntry",
+    "name": "InboundBastionPublicNetworkAclIpv6Entry",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "NetworkAclId": {
+      "ref": "PublicNetworkAcl"
+     },
+     "RuleNumber": "107",
+     "Protocol": "-1",
+     "RuleAction": "allow",
+     "Egress": "false",
+     "Ipv6CidrBlock": "::/0",
+     "PortRange": {
+      "From": "1194",
+      "To": "1194"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::NetworkAclEntry.InboundEphemeralPublicNetworkAclEntry",
+   "cfg": "InboundEphemeralPublicNetworkAclEntry",
+   "type": "__declared__",
+   "refs": [
+    "PublicNetworkAcl"
+   ],
+   "values": {
+    "type": "AWS::EC2::NetworkAclEntry",
+    "name": "InboundEphemeralPublicNetworkAclEntry",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "NetworkAclId": {
+      "ref": "PublicNetworkAcl"
+     },
+     "RuleNumber": "108",
+     "Protocol": "6",
+     "RuleAction": "allow",
+     "Egress": "false",
+     "CidrBlock": "0.0.0.0/0",
+     "PortRange": {
+      "From": "1024",
+      "To": "65535"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::NetworkAclEntry.InboundEphemeralPublicNetworkAclIpv6Entry",
+   "cfg": "InboundEphemeralPublicNetworkAclIpv6Entry",
+   "type": "__declared__",
+   "refs": [
+    "PublicNetworkAcl"
+   ],
+   "values": {
+    "type": "AWS::EC2::NetworkAclEntry",
+    "name": "InboundEphemeralPublicNetworkAclIpv6Entry",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "NetworkAclId": {
+      "ref": "PublicNetworkAcl"
+     },
+     "RuleNumber": "109",
+     "Protocol": "6",
+     "RuleAction": "allow",
+     "Egress": "false",
+     "Ipv6CidrBlock": "::/0",
+     "PortRange": {
+      "From": "1024",
+      "To": "65535"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::NetworkAclEntry.OutboundPublicNetworkAclEntry",
+   "cfg": "OutboundPublicNetworkAclEntry",
+   "type": "__declared__",
+   "refs": [
+    "PublicNetworkAcl"
+   ],
+   "values": {
+    "type": "AWS::EC2::NetworkAclEntry",
+    "name": "OutboundPublicNetworkAclEntry",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "NetworkAclId": {
+      "ref": "PublicNetworkAcl"
+     },
+     "RuleNumber": "100",
+     "Protocol": "-1",
+     "RuleAction": "allow",
+     "Egress": "true",
+     "CidrBlock": "0.0.0.0/0",
+     "PortRange": {
+      "From": "0",
+      "To": "65535"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::NetworkAclEntry.OutboundPublicNetworkAclIpv6Entry",
+   "cfg": "OutboundPublicNetworkAclIpv6Entry",
+   "type": "__declared__",
+   "refs": [
+    "PublicNetworkAcl"
+   ],
+   "values": {
+    "type": "AWS::EC2::NetworkAclEntry",
+    "name": "OutboundPublicNetworkAclIpv6Entry",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "NetworkAclId": {
+      "ref": "PublicNetworkAcl"
+     },
+     "RuleNumber": "101",
+     "Protocol": "-1",
+     "RuleAction": "allow",
+     "Egress": "true",
+     "Ipv6CidrBlock": "::/0",
+     "PortRange": {
+      "From": "0",
+      "To": "65535"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetNetworkAclAssociation.PublicSubnet1ANetworkAclAssociation",
+   "cfg": "PublicSubnet1ANetworkAclAssociation",
+   "type": "__declared__",
+   "refs": [
+    "PublicNetworkAcl",
+    "PublicSubnet1A"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetNetworkAclAssociation",
+    "name": "PublicSubnet1ANetworkAclAssociation",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "SubnetId": {
+      "ref": "PublicSubnet1A"
+     },
+     "NetworkAclId": {
+      "ref": "PublicNetworkAcl"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetNetworkAclAssociation.PublicSubnet1BNetworkAclAssociation",
+   "cfg": "PublicSubnet1BNetworkAclAssociation",
+   "type": "__declared__",
+   "refs": [
+    "PublicNetworkAcl",
+    "PublicSubnet1B"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetNetworkAclAssociation",
+    "name": "PublicSubnet1BNetworkAclAssociation",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "SubnetId": {
+      "ref": "PublicSubnet1B"
+     },
+     "NetworkAclId": {
+      "ref": "PublicNetworkAcl"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetNetworkAclAssociation.PublicSubnet2ANetworkAclAssociation",
+   "cfg": "PublicSubnet2ANetworkAclAssociation",
+   "type": "__declared__",
+   "refs": [
+    "PublicNetworkAcl",
+    "PublicSubnet2A"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetNetworkAclAssociation",
+    "name": "PublicSubnet2ANetworkAclAssociation",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "SubnetId": {
+      "ref": "PublicSubnet2A"
+     },
+     "NetworkAclId": {
+      "ref": "PublicNetworkAcl"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.PrivateSubnet1A",
+   "cfg": "PrivateSubnet1A",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "PrivateSubnet1A",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "AvailabilityZone": "us-east-1a",
+     "CidrBlock": "10.11.5.0/24",
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "bashlinux-staging-private-subnet-1a"
+      },
+      {
+       "Key": "bashlinux:organization-name",
+       "Value": "bashlinux"
+      },
+      {
+       "Key": "bashlinux:environment-name",
+       "Value": "staging"
+      },
+      {
+       "Key": "bashlinux:application-id",
+       "Value": "stack"
+      },
+      {
+       "Key": "bashlinux:application-tier",
+       "Value": "app"
+      },
+      {
+       "Key": "bashlinux:network-visibility",
+       "Value": "private"
+      },
+      {
+       "Key": "bashlinux:can-delete",
+       "Value": "false"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.PrivateSubnet2A",
+   "cfg": "PrivateSubnet2A",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "PrivateSubnet2A",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "AvailabilityZone": "us-east-1a",
+     "CidrBlock": "10.11.6.0/24",
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "bashlinux-staging-private-subnet-2a"
+      },
+      {
+       "Key": "bashlinux:organization-name",
+       "Value": "bashlinux"
+      },
+      {
+       "Key": "bashlinux:environment-name",
+       "Value": "staging"
+      },
+      {
+       "Key": "bashlinux:application-id",
+       "Value": "stack"
+      },
+      {
+       "Key": "bashlinux:application-tier",
+       "Value": "data"
+      },
+      {
+       "Key": "bashlinux:network-visibility",
+       "Value": "private"
+      },
+      {
+       "Key": "bashlinux:can-delete",
+       "Value": "false"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::NatGateway.NatGatewayA",
+   "cfg": "NatGatewayA",
+   "type": "__declared__",
+   "refs": [
+    "NatIPAddressA",
+    "PublicSubnet1A"
+   ],
+   "values": {
+    "type": "AWS::EC2::NatGateway",
+    "name": "NatGatewayA",
+    "gated": true,
+    "gate": "noNatGateway",
+    "properties": {
+     "AllocationId": {
+      "ref": "NatIPAddressA",
+      "attr": "AllocationId"
+     },
+     "SubnetId": {
+      "ref": "PublicSubnet1A"
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "bashlinux-staging-nat-gateway-a"
+      },
+      {
+       "Key": "bashlinux:organization-name",
+       "Value": "bashlinux"
+      },
+      {
+       "Key": "bashlinux:environment-name",
+       "Value": "staging"
+      },
+      {
+       "Key": "bashlinux:application-id",
+       "Value": "stack"
+      },
+      {
+       "Key": "bashlinux:network-visibility",
+       "Value": "private"
+      },
+      {
+       "Key": "bashlinux:can-delete",
+       "Value": "false"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::EIP.NatIPAddressA",
+   "cfg": "NatIPAddressA",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::EIP",
+    "name": "NatIPAddressA",
+    "gated": true,
+    "gate": "noNatGateway",
+    "properties": {
+     "Domain": "vpc",
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "bashlinux-staging-nat-ipaddress-a"
+      },
+      {
+       "Key": "bashlinux:organization-name",
+       "Value": "bashlinux"
+      },
+      {
+       "Key": "bashlinux:environment-name",
+       "Value": "staging"
+      },
+      {
+       "Key": "bashlinux:application-id",
+       "Value": "stack"
+      },
+      {
+       "Key": "bashlinux:network-visibility",
+       "Value": "public"
+      },
+      {
+       "Key": "bashlinux:can-delete",
+       "Value": "false"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::RouteTable.PrivateRouteTableA",
+   "cfg": "PrivateRouteTableA",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::RouteTable",
+    "name": "PrivateRouteTableA",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "bashlinux-staging-private-route-table-a"
+      },
+      {
+       "Key": "bashlinux:organization-name",
+       "Value": "bashlinux"
+      },
+      {
+       "Key": "bashlinux:environment-name",
+       "Value": "staging"
+      },
+      {
+       "Key": "bashlinux:application-id",
+       "Value": "stack"
+      },
+      {
+       "Key": "bashlinux:network-visibility",
+       "Value": "private"
+      },
+      {
+       "Key": "bashlinux:can-delete",
+       "Value": "false"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Route.PrivateDefaultRouteA",
+   "cfg": "PrivateDefaultRouteA",
+   "type": "__declared__",
+   "refs": [
+    "NatGatewayA",
+    "PrivateRouteTableA"
+   ],
+   "values": {
+    "type": "AWS::EC2::Route",
+    "name": "PrivateDefaultRouteA",
+    "gated": true,
+    "gate": "noNatGateway",
+    "properties": {
+     "RouteTableId": {
+      "ref": "PrivateRouteTableA"
+     },
+     "DestinationCidrBlock": "0.0.0.0/0",
+     "NatGatewayId": {
+      "ref": "NatGatewayA"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetRouteTableAssociation.PrivateSubnet1ARouteTableAssociation",
+   "cfg": "PrivateSubnet1ARouteTableAssociation",
+   "type": "__declared__",
+   "refs": [
+    "PrivateRouteTableA",
+    "PrivateSubnet1A"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetRouteTableAssociation",
+    "name": "PrivateSubnet1ARouteTableAssociation",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "SubnetId": {
+      "ref": "PrivateSubnet1A"
+     },
+     "RouteTableId": {
+      "ref": "PrivateRouteTableA"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetRouteTableAssociation.PrivateSubnet2ARouteTableAssociation",
+   "cfg": "PrivateSubnet2ARouteTableAssociation",
+   "type": "__declared__",
+   "refs": [
+    "PrivateRouteTableA",
+    "PrivateSubnet2A"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetRouteTableAssociation",
+    "name": "PrivateSubnet2ARouteTableAssociation",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "SubnetId": {
+      "ref": "PrivateSubnet2A"
+     },
+     "RouteTableId": {
+      "ref": "PrivateRouteTableA"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::NetworkAcl.PrivateNetworkAcl",
+   "cfg": "PrivateNetworkAcl",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::NetworkAcl",
+    "name": "PrivateNetworkAcl",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "bashlinux-staging-private-acl"
+      },
+      {
+       "Key": "bashlinux:organization-name",
+       "Value": "bashlinux"
+      },
+      {
+       "Key": "bashlinux:environment-name",
+       "Value": "staging"
+      },
+      {
+       "Key": "bashlinux:application-id",
+       "Value": "stack"
+      },
+      {
+       "Key": "bashlinux:can-delete",
+       "Value": "false"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::NetworkAclEntry.InboundPrivateNetworkAclEntry",
+   "cfg": "InboundPrivateNetworkAclEntry",
+   "type": "__declared__",
+   "refs": [
+    "PrivateNetworkAcl"
+   ],
+   "values": {
+    "type": "AWS::EC2::NetworkAclEntry",
+    "name": "InboundPrivateNetworkAclEntry",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "NetworkAclId": {
+      "ref": "PrivateNetworkAcl"
+     },
+     "RuleNumber": "100",
+     "Protocol": "-1",
+     "RuleAction": "allow",
+     "Egress": "false",
+     "CidrBlock": "0.0.0.0/0",
+     "PortRange": {
+      "From": "0",
+      "To": "65535"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::NetworkAclEntry.InboundPrivateNetworkAclIpv6Entry",
+   "cfg": "InboundPrivateNetworkAclIpv6Entry",
+   "type": "__declared__",
+   "refs": [
+    "PrivateNetworkAcl"
+   ],
+   "values": {
+    "type": "AWS::EC2::NetworkAclEntry",
+    "name": "InboundPrivateNetworkAclIpv6Entry",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "NetworkAclId": {
+      "ref": "PrivateNetworkAcl"
+     },
+     "RuleNumber": "101",
+     "Protocol": "-1",
+     "RuleAction": "allow",
+     "Egress": "false",
+     "Ipv6CidrBlock": "::/0",
+     "PortRange": {
+      "From": "0",
+      "To": "65535"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::NetworkAclEntry.OutBoundPrivateNetworkAclEntry",
+   "cfg": "OutBoundPrivateNetworkAclEntry",
+   "type": "__declared__",
+   "refs": [
+    "PrivateNetworkAcl"
+   ],
+   "values": {
+    "type": "AWS::EC2::NetworkAclEntry",
+    "name": "OutBoundPrivateNetworkAclEntry",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "NetworkAclId": {
+      "ref": "PrivateNetworkAcl"
+     },
+     "RuleNumber": "100",
+     "Protocol": "-1",
+     "RuleAction": "allow",
+     "Egress": "true",
+     "CidrBlock": "0.0.0.0/0",
+     "PortRange": {
+      "From": "0",
+      "To": "65535"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::NetworkAclEntry.OutBoundPrivateNetworkAclIpv6Entry",
+   "cfg": "OutBoundPrivateNetworkAclIpv6Entry",
+   "type": "__declared__",
+   "refs": [
+    "PrivateNetworkAcl"
+   ],
+   "values": {
+    "type": "AWS::EC2::NetworkAclEntry",
+    "name": "OutBoundPrivateNetworkAclIpv6Entry",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "NetworkAclId": {
+      "ref": "PrivateNetworkAcl"
+     },
+     "RuleNumber": "101",
+     "Protocol": "-1",
+     "RuleAction": "allow",
+     "Egress": "true",
+     "Ipv6CidrBlock": "::/0",
+     "PortRange": {
+      "From": "0",
+      "To": "65535"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetNetworkAclAssociation.PrivateSubnet1ANetworkAclAssociation",
+   "cfg": "PrivateSubnet1ANetworkAclAssociation",
+   "type": "__declared__",
+   "refs": [
+    "PrivateNetworkAcl",
+    "PrivateSubnet1A"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetNetworkAclAssociation",
+    "name": "PrivateSubnet1ANetworkAclAssociation",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "SubnetId": {
+      "ref": "PrivateSubnet1A"
+     },
+     "NetworkAclId": {
+      "ref": "PrivateNetworkAcl"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetNetworkAclAssociation.PrivateSubnet2ANetworkAclAssociation",
+   "cfg": "PrivateSubnet2ANetworkAclAssociation",
+   "type": "__declared__",
+   "refs": [
+    "PrivateNetworkAcl",
+    "PrivateSubnet2A"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetNetworkAclAssociation",
+    "name": "PrivateSubnet2ANetworkAclAssociation",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "SubnetId": {
+      "ref": "PrivateSubnet2A"
+     },
+     "NetworkAclId": {
+      "ref": "PrivateNetworkAcl"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::PlacementGroup.HpcPlacementGroup",
+   "cfg": "HpcPlacementGroup",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::PlacementGroup",
+    "name": "HpcPlacementGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Strategy": "cluster",
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "bashlinux-staging-placement-group"
+      },
+      {
+       "Key": "bashlinux:organization-name",
+       "Value": "bashlinux"
+      },
+      {
+       "Key": "bashlinux:environment-name",
+       "Value": "staging"
+      },
+      {
+       "Key": "bashlinux:application-id",
+       "Value": "stack"
+      },
+      {
+       "Key": "bashlinux:can-delete",
+       "Value": "false"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::DHCPOptions.EnvDHCPOptions",
+   "cfg": "EnvDHCPOptions",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::DHCPOptions",
+    "name": "EnvDHCPOptions",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "DomainName": "staging.bashlinux.com",
+     "DomainNameServers": [
+      "AmazonProvidedDNS"
+     ],
+     "Tags": [
+      {
+       "Key": "bashlinux:organization-name",
+       "Value": "bashlinux"
+      },
+      {
+       "Key": "bashlinux:environment-name",
+       "Value": "staging"
+      },
+      {
+       "Key": "bashlinux:application-id",
+       "Value": "stack"
+      },
+      {
+       "Key": "bashlinux:can-delete",
+       "Value": "false"
+      },
+      {
+       "Key": "bashlinux:network-visibility",
+       "Value": "private"
+      },
+      {
+       "Key": "Name",
+       "Value": "staging.bashlinux.com"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCDHCPOptionsAssociation.EnvVPCDHCPOptionsAssociation",
+   "cfg": "EnvVPCDHCPOptionsAssociation",
+   "type": "__declared__",
+   "refs": [
+    "EnvDHCPOptions",
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::VPCDHCPOptionsAssociation",
+    "name": "EnvVPCDHCPOptionsAssociation",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "DhcpOptionsId": {
+      "ref": "EnvDHCPOptions"
+     },
+     "VpcId": {
+      "ref": "VPC"
+     }
+    }
+   }
+  }
+ ]
+}

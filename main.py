@@ -1,0 +1,280 @@
+from datetime import datetime
+import os
+import uuid
+import argparse
+import traceback
+from graph import build_graph
+from state import GraphState
+from tracking.recorder import ResearchRecorder
+from config import DEFAULT_CONFIG, DEFAULT_DEPLOY_CONFIG, LLMProvider, DeployTarget, DeployConfig, configure_llm
+
+
+def run_pipeline(
+    user_request: str,
+    max_iterations: int = 5,
+    provider: str = "openrouter",
+    model: str | None = None,
+    deploy_target: str = "localstack",
+    localstack_endpoint: str | None = None,
+    openrouter_provider_only: str | None = None,
+    openrouter_min_quantization: str | None = None,
+    openrouter_reasoning_effort: str | None = None,
+    openrouter_reasoning_max_tokens: int | None = None,
+    disable_reasoning: bool = False,
+    max_tokens: int | None = None,
+    no_max_tokens: bool = False,
+    skip_security: bool = False,
+    iac_type: str = "cloudformation",
+) -> GraphState:
+
+    configure_llm(
+        provider,
+        model,
+        openrouter_provider_only=openrouter_provider_only,
+        openrouter_min_quantization=openrouter_min_quantization,
+        openrouter_reasoning_effort=openrouter_reasoning_effort,
+        openrouter_reasoning_max_tokens=openrouter_reasoning_max_tokens,
+        disable_reasoning=disable_reasoning,
+        max_tokens=max_tokens,
+        no_max_tokens=no_max_tokens,
+    )
+
+    deploy_config = DeployConfig(
+        target=DeployTarget(deploy_target),
+        localstack_endpoint=localstack_endpoint or DEFAULT_DEPLOY_CONFIG.localstack_endpoint,
+    )
+
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    run_id = ts + "_" + str(uuid.uuid4())[:8]
+    recorder = ResearchRecorder(run_id=run_id)
+    graph = build_graph(recorder, deploy_config=deploy_config, skip_security=skip_security)
+
+    initial_state: GraphState = {
+        "iac_type": iac_type,
+        "user_request": user_request,
+        "objectives": [],
+        "iac_template": "",
+        "validation_results": [],
+        "validation_passed": False,
+        "remediation_history": [],
+        "current_iteration": 0,
+        "max_iterations": max_iterations,
+        "llm_call_log": [],
+        "planner_history":    [],
+        "engineer_history":   [],
+        "remediator_history": [],
+        "retriever_history":  [],
+        "retriever_context": "",
+        "retriever_queries": [],
+        "final_template": None,
+        "run_id": run_id,
+        "deploy_validation_result": None,
+        "stage_error_counts": {},
+    }
+
+    print(f"\n{'='*60}")
+    print(f"IaC Multi-Agent System | Run ID: {run_id}")
+    print(f"Provider: {DEFAULT_CONFIG.provider.value}")
+    print(f"Model: {DEFAULT_CONFIG.model}")
+    print(f"Max iterations: {max_iterations}")
+    print(f"IaC type: {iac_type.upper()}")
+    print(f"Deploy target: {deploy_target.upper()}")
+    print(f"{'='*60}")
+
+    try:
+        final_state = graph.invoke(
+            initial_state,
+            config={"configurable": {"thread_id": run_id}},
+        )
+        if final_state is None:
+            raise RuntimeError("Pipeline graph returned None final_state")
+    except Exception:
+        print("\n[Pipeline] Unhandled exception while running graph:")
+        print(traceback.format_exc())
+        raise
+
+    final_state["final_template"] = final_state["iac_template"]
+    recorder.save_final_report(final_state)
+
+    print(f"\n{'='*60}")
+    print(f"Total LLM calls recorded: {len(final_state['llm_call_log'])}")
+    print(f"Total iterations: {final_state['current_iteration']}")
+    print(f"Final validation: {'PASSED' if final_state['validation_passed'] else 'FAILED'}")
+    print(f"{'='*60}")
+
+    return final_state
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="IaC Multi-Agent System")
+    parser.add_argument("--request", type=str, required=True,
+                        help="Infrastructure request in natural language")
+    parser.add_argument("--max-iterations", type=int, default=30)
+    parser.add_argument(
+        "--provider",
+        choices=["openrouter", "claude", "openai", "deepseek"],
+        default="openrouter",
+        help=(
+            "LLM provider to use. 'openai' reads OPENAI_API_KEY / OPENAI_MODEL "
+            "from .env. 'deepseek' reads DEEPSEEK_API_KEY / DEEPSEEK_MODEL "
+            "(default deepseek-chat; also supports deepseek-reasoner) from .env."
+        ),
+    )
+    parser.add_argument(
+        "--model",
+        type=str,
+        default=None,
+        help=(
+            "Model name. Examples: "
+            "openrouter → 'x-ai/grok-4.1-fast', "
+            "claude → 'claude-3-5-sonnet-20241022', "
+            "openai → 'o3-mini', 'o3', 'o4-mini', 'gpt-4o', 'codex-mini-latest'"
+        ),
+    )
+    parser.add_argument(
+        "--openrouter-provider-only",
+        type=str,
+        default=None,
+        help="Comma-separated OpenRouter provider slugs to allow (maps to provider.only)",
+    )
+    parser.add_argument(
+        "--openrouter-min-quantization",
+        type=str,
+        choices=["int4", "int8", "fp4", "fp6", "fp8", "fp16", "bf16", "fp32", "unknown"],
+        default=None,
+        help="Minimum quantization level for OpenRouter provider filtering",
+    )
+    parser.add_argument(
+        "--openrouter-reasoning-effort",
+        type=str,
+        default=None,
+        help=(
+            "Reasoning effort hint sent as reasoning.effort (maps to OpenRouter's "
+            "provider.reasoning.effort). Typical values: low, medium, high "
+            "(some models also accept max/none). Lower effort leaves more of the "
+            "shared max_tokens budget for actual content instead of reasoning — "
+            "useful for always-reasoning models that can return empty content "
+            "when reasoning consumes the whole token budget."
+        ),
+    )
+    parser.add_argument(
+        "--openrouter-reasoning-max-tokens",
+        type=int,
+        default=None,
+        help=(
+            "Explicit token budget for reasoning, sent as reasoning.max_tokens "
+            "(support varies by model/provider — unsupported models are expected "
+            "to just ignore it). Reasoning tokens share the same completion "
+            "budget as content on OpenRouter, so this is ADDED on top of the "
+            "configured max_tokens rather than carved out of it, keeping "
+            "max_tokens a guaranteed content budget even when it's a fixed, "
+            "research-controlled parameter that can't itself be changed."
+        ),
+    )
+    parser.add_argument(
+        "--disable-reasoning",
+        action="store_true",
+        help=(
+            "Fully disable reasoning (omits the reasoning field entirely, which "
+            "tested identically to sending reasoning.enabled=false). Some models "
+            "don't reliably bound their reasoning length via --openrouter-"
+            "reasoning-effort / --openrouter-reasoning-max-tokens — confirmed for "
+            "deepseek/deepseek-v4-flash by direct testing, both hints were "
+            "ignored — and if reasoning runs longer than --max-tokens, it gets cut "
+            "off mid-thought with nothing left over for an actual answer "
+            "(empty content). Two ways to avoid that: disable reasoning entirely "
+            "(this flag — a guarantee, but loses reasoning's benefits), or raise "
+            "--max-tokens generously so reasoning has room to finish on its own "
+            "before hitting the ceiling (cost-neutral when not needed, since "
+            "billing is by actual tokens used — but not a hard guarantee, since "
+            "reasoning length varies by prompt). Not every model can disable "
+            "reasoning at all (confirmed for GLM 5.3 Flash, which cannot) — "
+            "test before relying on this."
+        ),
+    )
+    parser.add_argument(
+        "--max-tokens",
+        type=int,
+        default=None,
+        help=(
+            "Max output tokens for the base content budget (default 8192, "
+            "config.py's LLMConfig.max_tokens). On OpenRouter this is shared "
+            "with reasoning (see --disable-reasoning) — raising it gives "
+            "reasoning-heavy models room to finish thinking before hitting the "
+            "ceiling, instead of getting cut off with no content produced. Not "
+            "additive with --openrouter-reasoning-max-tokens; that flag still "
+            "adds its own value on top of whatever this is set to."
+        ),
+    )
+    parser.add_argument(
+        "--no-max-tokens",
+        action="store_true",
+        help=(
+            "Send no max_tokens/max_completion_tokens at all, letting the "
+            "provider apply its own (usually much larger) default ceiling "
+            "instead of any fixed number we pick. Takes precedence over "
+            "--max-tokens if both are given. Only supported for OpenRouter/"
+            "OpenAI direct — Anthropic's API requires an explicit max_tokens, "
+            "so this errors out if combined with --provider claude."
+        ),
+    )
+    parser.add_argument(
+        "--deploy-target",
+        choices=["none", "localstack", "aws"],
+        default="localstack",
+    )
+    parser.add_argument(
+        "--skip-deploy",
+        action="store_true",
+        help="Skip the deploy stage entirely (equivalent to --deploy-target none, and overrides it).",
+    )
+    parser.add_argument(
+        "--skip-security",
+        action="store_true",
+        help=(
+            "Skip the security misconfiguration scan (trivy) stage. Structural "
+            "validation (yaml/cfn-lint or tflint/terraform-validate) still runs; "
+            "deploy still gates on structural validation passing unless "
+            "--skip-deploy / --deploy-target none is also used."
+        ),
+    )
+    parser.add_argument(
+        "--localstack-endpoint",
+        type=str,
+        default=None,
+        help="Override LocalStack endpoint (default: http://localhost:4566)",
+    )
+    parser.add_argument(
+        "--iac-type",
+        choices=["cloudformation", "terraform"],
+        default="cloudformation",
+        help="IaC language to generate. 'cloudformation' (default) or 'terraform'.",
+    )
+    args = parser.parse_args()
+    if args.skip_deploy:
+        args.deploy_target = "none"
+    if args.no_max_tokens and args.provider == "claude":
+        parser.error("--no-max-tokens is not supported with --provider claude (Anthropic requires an explicit max_tokens)")
+
+    try:
+        result = run_pipeline(
+            user_request=args.request,
+            max_iterations=args.max_iterations,
+            provider=args.provider,
+            model=args.model,
+            deploy_target=args.deploy_target,
+            localstack_endpoint=args.localstack_endpoint,
+            openrouter_provider_only=args.openrouter_provider_only,
+            openrouter_min_quantization=args.openrouter_min_quantization,
+            openrouter_reasoning_effort=args.openrouter_reasoning_effort,
+            openrouter_reasoning_max_tokens=args.openrouter_reasoning_max_tokens,
+            disable_reasoning=args.disable_reasoning,
+            max_tokens=args.max_tokens,
+            no_max_tokens=args.no_max_tokens,
+            skip_security=args.skip_security,
+            iac_type=args.iac_type,
+        )
+    except Exception:
+        print("\n[Main] Pipeline execution failed:")
+        print(traceback.format_exc())
+        raise SystemExit(1)

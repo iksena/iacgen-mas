@@ -1,0 +1,1835 @@
+{
+ "meta": {
+  "lang": "tf",
+  "mode": "plan",
+  "warnings": [],
+  "gt_hash": "b0c0d40685777b4bf8232426beb1868aeb521285487878f6b0e6ebcb644de6e9",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "data.aws_eks_cluster.deme_eks",
+   "cfg": "data.aws_eks_cluster.deme_eks",
+   "type": "data.aws_eks_cluster",
+   "values": {
+    "name": "demo-eks"
+   },
+   "refs": [
+    "aws_eks_cluster.demo_eks"
+   ]
+  },
+  {
+   "id": "aws_cloudformation_stack.autoscaling_group",
+   "cfg": "aws_cloudformation_stack.autoscaling_group",
+   "type": "aws_cloudformation_stack",
+   "values": {
+    "capabilities": null,
+    "disable_rollback": null,
+    "iam_role_arn": null,
+    "name": "eks-cluster-stack",
+    "notification_arns": null,
+    "on_failure": null,
+    "policy_url": null,
+    "region": "us-east-1",
+    "tags": null,
+    "tags_all": {
+     "kubernetes.io/cluster/demo-eks": "owned"
+    },
+    "template_url": null,
+    "timeout_in_minutes": null,
+    "timeouts": null
+   },
+   "refs": [
+    "aws_launch_template.node_launch_template",
+    "aws_subnet.private",
+    "time_sleep.wait_30_seconds"
+   ]
+  },
+  {
+   "id": "aws_eip.nat",
+   "cfg": "aws_eip.nat",
+   "type": "aws_eip",
+   "values": {
+    "address": null,
+    "associate_with_private_ip": null,
+    "customer_owned_ipv4_pool": null,
+    "domain": "vpc",
+    "region": "us-east-1",
+    "tags": null,
+    "tags_all": {
+     "kubernetes.io/cluster/demo-eks": "owned"
+    },
+    "timeouts": null
+   },
+   "refs": []
+  },
+  {
+   "id": "aws_eks_cluster.demo_eks",
+   "cfg": "aws_eks_cluster.demo_eks",
+   "type": "aws_eks_cluster",
+   "values": {
+    "bootstrap_self_managed_addons": true,
+    "enabled_cluster_log_types": null,
+    "encryption_config": [
+     {
+      "provider": [
+       {}
+      ],
+      "resources": [
+       "secrets"
+      ]
+     }
+    ],
+    "force_update_version": null,
+    "name": "demo-eks",
+    "outpost_config": [],
+    "region": "us-east-1",
+    "remote_network_config": [],
+    "tags": null,
+    "tags_all": {
+     "kubernetes.io/cluster/demo-eks": "owned"
+    },
+    "timeouts": null,
+    "vpc_config": [
+     {
+      "endpoint_private_access": true,
+      "endpoint_public_access": false,
+      "security_group_ids": null
+     }
+    ],
+    "zonal_shift_config": []
+   },
+   "refs": [
+    "aws_iam_role.demo_eks",
+    "aws_iam_role_policy.demo_eks_kms",
+    "aws_iam_role_policy_attachment.demo_eks_AmazonEKSClusterPolicy",
+    "aws_iam_role_policy_attachment.demo_eks_AmazonEKSVPCResourceController",
+    "aws_kms_key.demo_eks_secrets",
+    "aws_subnet.private"
+   ]
+  },
+  {
+   "id": "aws_iam_instance_profile.node_instance_profile",
+   "cfg": "aws_iam_instance_profile.node_instance_profile",
+   "type": "aws_iam_instance_profile",
+   "values": {
+    "name": "NodeInstanceProfile",
+    "path": "/",
+    "tags": null,
+    "tags_all": {
+     "kubernetes.io/cluster/demo-eks": "owned"
+    }
+   },
+   "refs": [
+    "aws_iam_role.node_instance_role"
+   ]
+  },
+  {
+   "id": "aws_iam_role.demo_eks",
+   "cfg": "aws_iam_role.demo_eks",
+   "type": "aws_iam_role",
+   "values": {
+    "assume_role_policy": "{\"Statement\":[{\"Action\":\"sts:AssumeRole\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"eks.amazonaws.com\"}}],\"Version\":\"2012-10-17\"}",
+    "description": null,
+    "force_detach_policies": false,
+    "max_session_duration": 3600,
+    "name": "eksClusterRole",
+    "path": "/",
+    "permissions_boundary": null,
+    "tags": null,
+    "tags_all": {
+     "kubernetes.io/cluster/demo-eks": "owned"
+    }
+   },
+   "refs": [
+    "data.aws_iam_policy_document.assume_role_eks"
+   ]
+  },
+  {
+   "id": "aws_iam_role.node_instance_role",
+   "cfg": "aws_iam_role.node_instance_role",
+   "type": "aws_iam_role",
+   "values": {
+    "assume_role_policy": "{\"Statement\":[{\"Action\":\"sts:AssumeRole\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"ec2.amazonaws.com\"}}],\"Version\":\"2012-10-17\"}",
+    "description": null,
+    "force_detach_policies": false,
+    "managed_policy_arns": [
+     "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly",
+     "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy",
+     "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy",
+     "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+    ],
+    "max_session_duration": 3600,
+    "name": "eks-demo-node",
+    "path": "/",
+    "permissions_boundary": null,
+    "tags": null,
+    "tags_all": {
+     "kubernetes.io/cluster/demo-eks": "owned"
+    }
+   },
+   "refs": [
+    "data.aws_iam_policy_document.assume_role_ec2"
+   ]
+  },
+  {
+   "id": "aws_iam_role_policy.demo_eks_kms",
+   "cfg": "aws_iam_role_policy.demo_eks_kms",
+   "type": "aws_iam_role_policy",
+   "values": {
+    "name": "demo-eks-secrets-kms",
+    "role": "eksClusterRole"
+   },
+   "refs": [
+    "aws_iam_role.demo_eks",
+    "aws_kms_key.demo_eks_secrets"
+   ]
+  },
+  {
+   "id": "aws_iam_role_policy_attachment.demo_eks_AmazonEKSClusterPolicy",
+   "cfg": "aws_iam_role_policy_attachment.demo_eks_AmazonEKSClusterPolicy",
+   "type": "aws_iam_role_policy_attachment",
+   "values": {
+    "policy_arn": "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy",
+    "role": "eksClusterRole"
+   },
+   "refs": [
+    "aws_iam_role.demo_eks"
+   ]
+  },
+  {
+   "id": "aws_iam_role_policy_attachment.demo_eks_AmazonEKSVPCResourceController",
+   "cfg": "aws_iam_role_policy_attachment.demo_eks_AmazonEKSVPCResourceController",
+   "type": "aws_iam_role_policy_attachment",
+   "values": {
+    "policy_arn": "arn:aws:iam::aws:policy/AmazonEKSVPCResourceController",
+    "role": "eksClusterRole"
+   },
+   "refs": [
+    "aws_iam_role.demo_eks"
+   ]
+  },
+  {
+   "id": "aws_internet_gateway.eks",
+   "cfg": "aws_internet_gateway.eks",
+   "type": "aws_internet_gateway",
+   "values": {
+    "region": "us-east-1",
+    "tags": null,
+    "tags_all": {
+     "kubernetes.io/cluster/demo-eks": "owned"
+    },
+    "timeouts": null
+   },
+   "refs": [
+    "aws_vpc.eks"
+   ]
+  },
+  {
+   "id": "aws_key_pair.eks_kp",
+   "cfg": "aws_key_pair.eks_kp",
+   "type": "aws_key_pair",
+   "values": {
+    "key_name": "eks_kp",
+    "region": "us-east-1",
+    "tags": null,
+    "tags_all": {
+     "kubernetes.io/cluster/demo-eks": "owned"
+    }
+   },
+   "refs": [
+    "tls_private_key.key_pair"
+   ]
+  },
+  {
+   "id": "aws_kms_key.demo_eks_secrets",
+   "cfg": "aws_kms_key.demo_eks_secrets",
+   "type": "aws_kms_key",
+   "values": {
+    "bypass_policy_lockout_safety_check": false,
+    "custom_key_store_id": null,
+    "customer_master_key_spec": "SYMMETRIC_DEFAULT",
+    "deletion_window_in_days": 7,
+    "description": "CMK for EKS cluster secrets envelope encryption",
+    "enable_key_rotation": true,
+    "is_enabled": true,
+    "key_usage": "ENCRYPT_DECRYPT",
+    "region": "us-east-1",
+    "tags": null,
+    "tags_all": {
+     "kubernetes.io/cluster/demo-eks": "owned"
+    },
+    "timeouts": null,
+    "xks_key_id": null
+   },
+   "refs": []
+  },
+  {
+   "id": "aws_launch_template.node_launch_template",
+   "cfg": "aws_launch_template.node_launch_template",
+   "type": "aws_launch_template",
+   "values": {
+    "block_device_mappings": [
+     {
+      "device_name": "/dev/xvda",
+      "ebs": [
+       {
+        "delete_on_termination": "true",
+        "encrypted": null,
+        "kms_key_id": null,
+        "snapshot_id": null,
+        "volume_size": 30,
+        "volume_type": "gp2"
+       }
+      ],
+      "no_device": null,
+      "virtual_name": null
+     }
+    ],
+    "capacity_reservation_specification": [],
+    "cpu_options": [],
+    "credit_specification": [],
+    "description": null,
+    "disable_api_stop": null,
+    "disable_api_termination": null,
+    "ebs_optimized": null,
+    "enclave_options": [],
+    "hibernation_options": [],
+    "iam_instance_profile": [
+     {
+      "arn": null,
+      "name": "NodeInstanceProfile"
+     }
+    ],
+    "image_id": "ami-eks-k3d-1.24-amd64",
+    "instance_initiated_shutdown_behavior": null,
+    "instance_market_options": [],
+    "instance_requirements": [],
+    "instance_type": "t3.medium",
+    "kernel_id": null,
+    "key_name": "eks_kp",
+    "license_specification": [],
+    "maintenance_options": [],
+    "metadata_options": [
+     {
+      "http_endpoint": "enabled",
+      "http_put_response_hop_limit": 2,
+      "http_tokens": "required"
+     }
+    ],
+    "monitoring": [],
+    "name": "NodeLaunchTemplate",
+    "network_interfaces": [],
+    "network_performance_options": [],
+    "placement": [],
+    "private_dns_name_options": [],
+    "ram_disk_id": null,
+    "region": "us-east-1",
+    "secondary_interfaces": [],
+    "security_group_names": null,
+    "tag_specifications": [
+     {
+      "resource_type": "instance",
+      "tags": {
+       "Name": "worker-node"
+      }
+     }
+    ],
+    "tags": {
+     "Name": "NodeLaunchTemplate"
+    },
+    "tags_all": {
+     "Name": "NodeLaunchTemplate",
+     "kubernetes.io/cluster/demo-eks": "owned"
+    },
+    "update_default_version": null,
+    "user_data": "ICAgICMhL2Jpbi9iYXNoCiAgICBzZXQgLW8geHRyYWNlCiAgICAvZXRjL2Vrcy9ib290c3RyYXAuc2ggZGVtby1la3MKICAgIC9vcHQvYXdzL2Jpbi9jZm4tc2lnbmFsIC0tZXhpdC1jb2RlICQ/IFwKICAgICAgICAgICAgICAgIC0tc3RhY2sgIGRlbW8tZWtzLXN0YWNrIFwKICAgICAgICAgICAgICAgIC0tcmVzb3VyY2UgTm9kZUdyb3VwICBcCiAgICAgICAgICAgICAgICAtLXJlZ2lvbiB1cy1lYXN0LTEK"
+   },
+   "refs": [
+    "aws_iam_instance_profile.node_instance_profile",
+    "aws_key_pair.eks_kp",
+    "aws_security_group.node_security_group",
+    "data.aws_ssm_parameter.node_ami"
+   ]
+  },
+  {
+   "id": "aws_nat_gateway.eks",
+   "cfg": "aws_nat_gateway.eks",
+   "type": "aws_nat_gateway",
+   "values": {
+    "availability_zone_address": [],
+    "connectivity_type": "public",
+    "region": "us-east-1",
+    "tags": null,
+    "tags_all": {
+     "kubernetes.io/cluster/demo-eks": "owned"
+    },
+    "timeouts": null
+   },
+   "refs": [
+    "aws_eip.nat",
+    "aws_internet_gateway.eks",
+    "aws_subnet.nat"
+   ]
+  },
+  {
+   "id": "aws_route_table.nat",
+   "cfg": "aws_route_table.nat",
+   "type": "aws_route_table",
+   "values": {
+    "region": "us-east-1",
+    "route": [
+     {
+      "carrier_gateway_id": "",
+      "cidr_block": "0.0.0.0/0",
+      "core_network_arn": "",
+      "destination_prefix_list_id": "",
+      "egress_only_gateway_id": "",
+      "ipv6_cidr_block": "",
+      "local_gateway_id": "",
+      "nat_gateway_id": "",
+      "network_interface_id": "",
+      "odb_network_arn": "",
+      "transit_gateway_id": "",
+      "vpc_endpoint_id": "",
+      "vpc_peering_connection_id": ""
+     }
+    ],
+    "tags": null,
+    "tags_all": {
+     "kubernetes.io/cluster/demo-eks": "owned"
+    },
+    "timeouts": null
+   },
+   "refs": [
+    "aws_internet_gateway.eks",
+    "aws_vpc.eks"
+   ]
+  },
+  {
+   "id": "aws_route_table.private",
+   "cfg": "aws_route_table.private",
+   "type": "aws_route_table",
+   "values": {
+    "region": "us-east-1",
+    "route": [
+     {
+      "carrier_gateway_id": "",
+      "cidr_block": "0.0.0.0/0",
+      "core_network_arn": "",
+      "destination_prefix_list_id": "",
+      "egress_only_gateway_id": "",
+      "gateway_id": "",
+      "ipv6_cidr_block": "",
+      "local_gateway_id": "",
+      "network_interface_id": "",
+      "odb_network_arn": "",
+      "transit_gateway_id": "",
+      "vpc_endpoint_id": "",
+      "vpc_peering_connection_id": ""
+     }
+    ],
+    "tags": null,
+    "tags_all": {
+     "kubernetes.io/cluster/demo-eks": "owned"
+    },
+    "timeouts": null
+   },
+   "refs": [
+    "aws_nat_gateway.eks",
+    "aws_vpc.eks"
+   ]
+  },
+  {
+   "id": "aws_route_table_association.nat",
+   "cfg": "aws_route_table_association.nat",
+   "type": "aws_route_table_association",
+   "values": {
+    "gateway_id": null,
+    "region": "us-east-1",
+    "timeouts": null
+   },
+   "refs": [
+    "aws_route_table.nat",
+    "aws_subnet.nat"
+   ]
+  },
+  {
+   "id": "aws_route_table_association.private[0]",
+   "cfg": "aws_route_table_association.private",
+   "type": "aws_route_table_association",
+   "values": {
+    "gateway_id": null,
+    "region": "us-east-1",
+    "timeouts": null
+   },
+   "refs": [
+    "aws_route_table.private",
+    "aws_subnet.private"
+   ]
+  },
+  {
+   "id": "aws_route_table_association.private[1]",
+   "cfg": "aws_route_table_association.private",
+   "type": "aws_route_table_association",
+   "values": {
+    "gateway_id": null,
+    "region": "us-east-1",
+    "timeouts": null
+   },
+   "refs": [
+    "aws_route_table.private",
+    "aws_subnet.private"
+   ]
+  },
+  {
+   "id": "aws_route_table_association.private[2]",
+   "cfg": "aws_route_table_association.private",
+   "type": "aws_route_table_association",
+   "values": {
+    "gateway_id": null,
+    "region": "us-east-1",
+    "timeouts": null
+   },
+   "refs": [
+    "aws_route_table.private",
+    "aws_subnet.private"
+   ]
+  },
+  {
+   "id": "aws_security_group.node_security_group",
+   "cfg": "aws_security_group.node_security_group",
+   "type": "aws_security_group",
+   "values": {
+    "description": "Security group for all nodes in the cluster",
+    "name": "NodeSecurityGroupIngress",
+    "region": "us-east-1",
+    "revoke_rules_on_delete": false,
+    "tags": {
+     "Name": "NodeSecurityGroupIngress"
+    },
+    "tags_all": {
+     "Name": "NodeSecurityGroupIngress",
+     "kubernetes.io/cluster/demo-eks": "owned"
+    },
+    "timeouts": null
+   },
+   "refs": [
+    "aws_vpc.eks"
+   ]
+  },
+  {
+   "id": "aws_subnet.nat",
+   "cfg": "aws_subnet.nat",
+   "type": "aws_subnet",
+   "values": {
+    "assign_ipv6_address_on_creation": false,
+    "availability_zone": "us-east-1a",
+    "cidr_block": "10.0.0.0/24",
+    "customer_owned_ipv4_pool": null,
+    "enable_dns64": false,
+    "enable_lni_at_device_index": null,
+    "enable_resource_name_dns_a_record_on_launch": false,
+    "enable_resource_name_dns_aaaa_record_on_launch": false,
+    "ipv4_ipam_pool_id": null,
+    "ipv4_netmask_length": null,
+    "ipv6_ipam_pool_id": null,
+    "ipv6_native": false,
+    "ipv6_netmask_length": null,
+    "map_customer_owned_ip_on_launch": null,
+    "map_public_ip_on_launch": false,
+    "outpost_arn": null,
+    "region": "us-east-1",
+    "tags": {
+     "Name": "demo-eks-nat"
+    },
+    "tags_all": {
+     "Name": "demo-eks-nat",
+     "kubernetes.io/cluster/demo-eks": "owned"
+    },
+    "timeouts": null
+   },
+   "refs": [
+    "aws_vpc.eks"
+   ]
+  },
+  {
+   "id": "aws_subnet.private[0]",
+   "cfg": "aws_subnet.private",
+   "type": "aws_subnet",
+   "values": {
+    "assign_ipv6_address_on_creation": false,
+    "availability_zone": "us-east-1a",
+    "cidr_block": "10.0.10.0/24",
+    "customer_owned_ipv4_pool": null,
+    "enable_dns64": false,
+    "enable_lni_at_device_index": null,
+    "enable_resource_name_dns_a_record_on_launch": false,
+    "enable_resource_name_dns_aaaa_record_on_launch": false,
+    "ipv4_ipam_pool_id": null,
+    "ipv4_netmask_length": null,
+    "ipv6_ipam_pool_id": null,
+    "ipv6_native": false,
+    "ipv6_netmask_length": null,
+    "map_customer_owned_ip_on_launch": null,
+    "map_public_ip_on_launch": false,
+    "outpost_arn": null,
+    "region": "us-east-1",
+    "tags": {
+     "Name": "demo-eks-private-0"
+    },
+    "tags_all": {
+     "Name": "demo-eks-private-0",
+     "kubernetes.io/cluster/demo-eks": "owned"
+    },
+    "timeouts": null
+   },
+   "refs": [
+    "aws_vpc.eks"
+   ]
+  },
+  {
+   "id": "aws_subnet.private[1]",
+   "cfg": "aws_subnet.private",
+   "type": "aws_subnet",
+   "values": {
+    "assign_ipv6_address_on_creation": false,
+    "availability_zone": "us-east-1b",
+    "cidr_block": "10.0.11.0/24",
+    "customer_owned_ipv4_pool": null,
+    "enable_dns64": false,
+    "enable_lni_at_device_index": null,
+    "enable_resource_name_dns_a_record_on_launch": false,
+    "enable_resource_name_dns_aaaa_record_on_launch": false,
+    "ipv4_ipam_pool_id": null,
+    "ipv4_netmask_length": null,
+    "ipv6_ipam_pool_id": null,
+    "ipv6_native": false,
+    "ipv6_netmask_length": null,
+    "map_customer_owned_ip_on_launch": null,
+    "map_public_ip_on_launch": false,
+    "outpost_arn": null,
+    "region": "us-east-1",
+    "tags": {
+     "Name": "demo-eks-private-1"
+    },
+    "tags_all": {
+     "Name": "demo-eks-private-1",
+     "kubernetes.io/cluster/demo-eks": "owned"
+    },
+    "timeouts": null
+   },
+   "refs": [
+    "aws_vpc.eks"
+   ]
+  },
+  {
+   "id": "aws_subnet.private[2]",
+   "cfg": "aws_subnet.private",
+   "type": "aws_subnet",
+   "values": {
+    "assign_ipv6_address_on_creation": false,
+    "availability_zone": "us-east-1c",
+    "cidr_block": "10.0.12.0/24",
+    "customer_owned_ipv4_pool": null,
+    "enable_dns64": false,
+    "enable_lni_at_device_index": null,
+    "enable_resource_name_dns_a_record_on_launch": false,
+    "enable_resource_name_dns_aaaa_record_on_launch": false,
+    "ipv4_ipam_pool_id": null,
+    "ipv4_netmask_length": null,
+    "ipv6_ipam_pool_id": null,
+    "ipv6_native": false,
+    "ipv6_netmask_length": null,
+    "map_customer_owned_ip_on_launch": null,
+    "map_public_ip_on_launch": false,
+    "outpost_arn": null,
+    "region": "us-east-1",
+    "tags": {
+     "Name": "demo-eks-private-2"
+    },
+    "tags_all": {
+     "Name": "demo-eks-private-2",
+     "kubernetes.io/cluster/demo-eks": "owned"
+    },
+    "timeouts": null
+   },
+   "refs": [
+    "aws_vpc.eks"
+   ]
+  },
+  {
+   "id": "aws_vpc.eks",
+   "cfg": "aws_vpc.eks",
+   "type": "aws_vpc",
+   "values": {
+    "assign_generated_ipv6_cidr_block": null,
+    "cidr_block": "10.0.0.0/16",
+    "enable_dns_hostnames": true,
+    "enable_dns_support": true,
+    "instance_tenancy": "default",
+    "ipv4_ipam_pool_id": null,
+    "ipv4_netmask_length": null,
+    "ipv6_ipam_pool_id": null,
+    "ipv6_netmask_length": null,
+    "region": "us-east-1",
+    "tags": {
+     "Name": "demo-eks-vpc"
+    },
+    "tags_all": {
+     "Name": "demo-eks-vpc",
+     "kubernetes.io/cluster/demo-eks": "owned"
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "aws_vpc_security_group_egress_rule.control_plane_egress_to_node_security_group",
+   "cfg": "aws_vpc_security_group_egress_rule.control_plane_egress_to_node_security_group",
+   "type": "aws_vpc_security_group_egress_rule",
+   "values": {
+    "cidr_ipv4": null,
+    "cidr_ipv6": null,
+    "description": "Allow the cluster control plane to communicate with worker Kubelet and pods",
+    "from_port": 1025,
+    "ip_protocol": "TCP",
+    "prefix_list_id": null,
+    "region": "us-east-1",
+    "tags": null,
+    "tags_all": {
+     "kubernetes.io/cluster/demo-eks": "owned"
+    },
+    "to_port": 65535
+   },
+   "refs": [
+    "aws_security_group.node_security_group",
+    "data.aws_eks_cluster.deme_eks"
+   ]
+  },
+  {
+   "id": "aws_vpc_security_group_egress_rule.control_plane_egress_to_node_security_group_on_443",
+   "cfg": "aws_vpc_security_group_egress_rule.control_plane_egress_to_node_security_group_on_443",
+   "type": "aws_vpc_security_group_egress_rule",
+   "values": {
+    "cidr_ipv4": null,
+    "cidr_ipv6": null,
+    "description": "Allow the cluster control plane to communicate with pods running extension API servers on port 443",
+    "from_port": 443,
+    "ip_protocol": "TCP",
+    "prefix_list_id": null,
+    "region": "us-east-1",
+    "tags": null,
+    "tags_all": {
+     "kubernetes.io/cluster/demo-eks": "owned"
+    },
+    "to_port": 443
+   },
+   "refs": [
+    "aws_security_group.node_security_group",
+    "data.aws_eks_cluster.deme_eks"
+   ]
+  },
+  {
+   "id": "aws_vpc_security_group_egress_rule.node_egress_all",
+   "cfg": "aws_vpc_security_group_egress_rule.node_egress_all",
+   "type": "aws_vpc_security_group_egress_rule",
+   "values": {
+    "cidr_ipv4": "10.0.0.0/16",
+    "cidr_ipv6": null,
+    "description": "Allow node egress to anywhere",
+    "from_port": null,
+    "ip_protocol": "-1",
+    "prefix_list_id": null,
+    "referenced_security_group_id": null,
+    "region": "us-east-1",
+    "tags": null,
+    "tags_all": {
+     "kubernetes.io/cluster/demo-eks": "owned"
+    },
+    "to_port": null
+   },
+   "refs": [
+    "aws_security_group.node_security_group",
+    "aws_vpc.eks"
+   ]
+  },
+  {
+   "id": "aws_vpc_security_group_ingress_rule.cluster_control_plane_security_group_ingress",
+   "cfg": "aws_vpc_security_group_ingress_rule.cluster_control_plane_security_group_ingress",
+   "type": "aws_vpc_security_group_ingress_rule",
+   "values": {
+    "cidr_ipv4": null,
+    "cidr_ipv6": null,
+    "description": "Allow pods to communicate with the cluster API Server",
+    "from_port": 443,
+    "ip_protocol": "TCP",
+    "prefix_list_id": null,
+    "region": "us-east-1",
+    "tags": null,
+    "tags_all": {
+     "kubernetes.io/cluster/demo-eks": "owned"
+    },
+    "to_port": 443
+   },
+   "refs": [
+    "aws_security_group.node_security_group",
+    "data.aws_eks_cluster.deme_eks"
+   ]
+  },
+  {
+   "id": "aws_vpc_security_group_ingress_rule.control_plane_egress_to_node_security_group_on_443",
+   "cfg": "aws_vpc_security_group_ingress_rule.control_plane_egress_to_node_security_group_on_443",
+   "type": "aws_vpc_security_group_ingress_rule",
+   "values": {
+    "cidr_ipv4": null,
+    "cidr_ipv6": null,
+    "description": "Allow pods running extension API servers on port 443 to receive communication from cluster control plane",
+    "from_port": 443,
+    "ip_protocol": "TCP",
+    "prefix_list_id": null,
+    "region": "us-east-1",
+    "tags": null,
+    "tags_all": {
+     "kubernetes.io/cluster/demo-eks": "owned"
+    },
+    "to_port": 443
+   },
+   "refs": [
+    "aws_security_group.node_security_group",
+    "data.aws_eks_cluster.deme_eks"
+   ]
+  },
+  {
+   "id": "aws_vpc_security_group_ingress_rule.node_security_group_from_control_plane_ingress",
+   "cfg": "aws_vpc_security_group_ingress_rule.node_security_group_from_control_plane_ingress",
+   "type": "aws_vpc_security_group_ingress_rule",
+   "values": {
+    "cidr_ipv4": null,
+    "cidr_ipv6": null,
+    "description": "Allow worker Kubelets and pods to receive communication from the cluster control plane",
+    "from_port": 1025,
+    "ip_protocol": "TCP",
+    "prefix_list_id": null,
+    "region": "us-east-1",
+    "tags": null,
+    "tags_all": {
+     "kubernetes.io/cluster/demo-eks": "owned"
+    },
+    "to_port": 65535
+   },
+   "refs": [
+    "aws_security_group.node_security_group",
+    "data.aws_eks_cluster.deme_eks"
+   ]
+  },
+  {
+   "id": "aws_vpc_security_group_ingress_rule.node_security_group_ingress",
+   "cfg": "aws_vpc_security_group_ingress_rule.node_security_group_ingress",
+   "type": "aws_vpc_security_group_ingress_rule",
+   "values": {
+    "cidr_ipv4": null,
+    "cidr_ipv6": null,
+    "description": "Allow node to communicate with each other",
+    "from_port": null,
+    "ip_protocol": "-1",
+    "prefix_list_id": null,
+    "region": "us-east-1",
+    "tags": null,
+    "tags_all": {
+     "kubernetes.io/cluster/demo-eks": "owned"
+    },
+    "to_port": null
+   },
+   "refs": [
+    "aws_security_group.node_security_group"
+   ]
+  },
+  {
+   "id": "local_sensitive_file.pem_file",
+   "cfg": "local_sensitive_file.pem_file",
+   "type": "local_sensitive_file",
+   "values": {
+    "content_base64": null,
+    "directory_permission": "0700",
+    "file_permission": "600",
+    "filename": "/Users/iksena/.ssh/eks-aws.pem",
+    "source": null
+   },
+   "refs": [
+    "tls_private_key.key_pair"
+   ]
+  },
+  {
+   "id": "time_sleep.wait_30_seconds",
+   "cfg": "time_sleep.wait_30_seconds",
+   "type": "time_sleep",
+   "values": {
+    "create_duration": "30s",
+    "destroy_duration": null,
+    "triggers": null
+   },
+   "refs": [
+    "aws_launch_template.node_launch_template",
+    "aws_route_table_association.private"
+   ]
+  },
+  {
+   "id": "tls_private_key.key_pair",
+   "cfg": "tls_private_key.key_pair",
+   "type": "tls_private_key",
+   "values": {
+    "algorithm": "RSA",
+    "ecdsa_curve": "P224",
+    "rsa_bits": 4096
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.aws_region",
+   "cfg": "__parameter__.aws_region",
+   "type": "__parameter__",
+   "values": {
+    "name": "aws_region",
+    "default": "us-east-1"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.cluster_name",
+   "cfg": "__parameter__.cluster_name",
+   "type": "__parameter__",
+   "values": {
+    "name": "cluster_name",
+    "default": "demo-eks"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.cluster_role_name",
+   "cfg": "__parameter__.cluster_role_name",
+   "type": "__parameter__",
+   "values": {
+    "name": "cluster_role_name",
+    "default": "eksClusterRole"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.node_group_desired_capacity",
+   "cfg": "__parameter__.node_group_desired_capacity",
+   "type": "__parameter__",
+   "values": {
+    "name": "node_group_desired_capacity",
+    "default": 3
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.node_group_max_size",
+   "cfg": "__parameter__.node_group_max_size",
+   "type": "__parameter__",
+   "values": {
+    "name": "node_group_max_size",
+    "default": 4
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.node_group_min_size",
+   "cfg": "__parameter__.node_group_min_size",
+   "type": "__parameter__",
+   "values": {
+    "name": "node_group_min_size",
+    "default": 1
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.node_role_name",
+   "cfg": "__parameter__.node_role_name",
+   "type": "__parameter__",
+   "values": {
+    "name": "node_role_name",
+    "default": "eks-demo-node"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.NodeAutoScalingGroup",
+   "cfg": "__output__.NodeAutoScalingGroup",
+   "type": "__output__",
+   "values": {
+    "name": "NodeAutoScalingGroup",
+    "value": null,
+    "description": null
+   },
+   "refs": [
+    "aws_cloudformation_stack.autoscaling_group"
+   ]
+  },
+  {
+   "id": "__output__.NodeInstanceRole",
+   "cfg": "__output__.NodeInstanceRole",
+   "type": "__output__",
+   "values": {
+    "name": "NodeInstanceRole",
+    "value": null,
+    "description": null
+   },
+   "refs": [
+    "aws_iam_role.node_instance_role"
+   ]
+  },
+  {
+   "id": "__output__.NodeSecurityGroup",
+   "cfg": "__output__.NodeSecurityGroup",
+   "type": "__output__",
+   "values": {
+    "name": "NodeSecurityGroup",
+    "value": null,
+    "description": null
+   },
+   "refs": [
+    "aws_security_group.node_security_group"
+   ]
+  },
+  {
+   "id": "__declared__.data.http.cloudshell_ip",
+   "cfg": "data.http.cloudshell_ip",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "data.http",
+    "name": "cloudshell_ip",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "url": "https://checkip.amazonaws.com/"
+    }
+   }
+  },
+  {
+   "id": "__declared__.data.aws_ssm_parameter.node_ami",
+   "cfg": "data.aws_ssm_parameter.node_ami",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "data.aws_ssm_parameter",
+    "name": "node_ami",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "/aws/service/eks/optimized-ami/1.24/amazon-linux-2/recommended/image_id"
+    }
+   }
+  },
+  {
+   "id": "__declared__.data.aws_iam_policy_document.assume_role_eks",
+   "cfg": "data.aws_iam_policy_document.assume_role_eks",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "data.aws_iam_policy_document",
+    "name": "assume_role_eks",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "statement": [
+      {
+       "effect": "Allow",
+       "principals": [
+        {
+         "type": "Service",
+         "identifiers": [
+          "eks.amazonaws.com"
+         ]
+        }
+       ],
+       "actions": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role.demo_eks",
+   "cfg": "aws_iam_role.demo_eks",
+   "type": "__declared__",
+   "refs": [
+    "data.aws_iam_policy_document.assume_role_eks"
+   ],
+   "values": {
+    "type": "aws_iam_role",
+    "name": "demo_eks",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "eksClusterRole",
+     "assume_role_policy": "${data.aws_iam_policy_document.assume_role_eks.json}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role_policy_attachment.demo_eks_AmazonEKSClusterPolicy",
+   "cfg": "aws_iam_role_policy_attachment.demo_eks_AmazonEKSClusterPolicy",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_role.demo_eks"
+   ],
+   "values": {
+    "type": "aws_iam_role_policy_attachment",
+    "name": "demo_eks_AmazonEKSClusterPolicy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "policy_arn": "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy",
+     "role": "${aws_iam_role.demo_eks.name}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role_policy_attachment.demo_eks_AmazonEKSVPCResourceController",
+   "cfg": "aws_iam_role_policy_attachment.demo_eks_AmazonEKSVPCResourceController",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_role.demo_eks"
+   ],
+   "values": {
+    "type": "aws_iam_role_policy_attachment",
+    "name": "demo_eks_AmazonEKSVPCResourceController",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "policy_arn": "arn:aws:iam::aws:policy/AmazonEKSVPCResourceController",
+     "role": "${aws_iam_role.demo_eks.name}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_kms_key.demo_eks_secrets",
+   "cfg": "aws_kms_key.demo_eks_secrets",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_kms_key",
+    "name": "demo_eks_secrets",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "description": "CMK for EKS cluster secrets envelope encryption",
+     "deletion_window_in_days": 7,
+     "enable_key_rotation": true
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role_policy.demo_eks_kms",
+   "cfg": "aws_iam_role_policy.demo_eks_kms",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_role.demo_eks",
+    "aws_kms_key.demo_eks_secrets"
+   ],
+   "values": {
+    "type": "aws_iam_role_policy",
+    "name": "demo_eks_kms",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "demo-eks-secrets-kms",
+     "role": "${aws_iam_role.demo_eks.name}",
+     "policy": "${jsonencode({'Version': '2012-10-17', 'Statement': [{'Effect': 'Allow', 'Action': ['kms:Encrypt', 'kms:Decrypt', 'kms:ListGrants', 'kms:DescribeKey'], 'Resource': '${aws_kms_key.demo_eks_secrets.arn}'}]})}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_eks_cluster.demo_eks",
+   "cfg": "aws_eks_cluster.demo_eks",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_role.demo_eks",
+    "aws_iam_role_policy.demo_eks_kms",
+    "aws_iam_role_policy_attachment.demo_eks_AmazonEKSClusterPolicy",
+    "aws_iam_role_policy_attachment.demo_eks_AmazonEKSVPCResourceController",
+    "aws_kms_key.demo_eks_secrets",
+    "aws_subnet.private"
+   ],
+   "values": {
+    "type": "aws_eks_cluster",
+    "name": "demo_eks",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "demo-eks",
+     "role_arn": "${aws_iam_role.demo_eks.arn}",
+     "vpc_config": [
+      {
+       "subnet_ids": [
+        "${aws_subnet.private[0].id}",
+        "${aws_subnet.private[1].id}",
+        "${aws_subnet.private[2].id}"
+       ],
+       "endpoint_public_access": false,
+       "endpoint_private_access": true
+      }
+     ],
+     "encryption_config": [
+      {
+       "resources": [
+        "secrets"
+       ],
+       "provider": [
+        {
+         "key_arn": "${aws_kms_key.demo_eks_secrets.arn}"
+        }
+       ]
+      }
+     ],
+     "depends_on": [
+      "${aws_iam_role_policy_attachment.demo_eks_AmazonEKSClusterPolicy}",
+      "${aws_iam_role_policy_attachment.demo_eks_AmazonEKSVPCResourceController}",
+      "${aws_iam_role_policy.demo_eks_kms}"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.data.aws_eks_cluster.deme_eks",
+   "cfg": "data.aws_eks_cluster.deme_eks",
+   "type": "__declared__",
+   "refs": [
+    "aws_eks_cluster.demo_eks"
+   ],
+   "values": {
+    "type": "data.aws_eks_cluster",
+    "name": "deme_eks",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "${aws_eks_cluster.demo_eks.name}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.tls_private_key.key_pair",
+   "cfg": "tls_private_key.key_pair",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "tls_private_key",
+    "name": "key_pair",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "algorithm": "RSA",
+     "rsa_bits": 4096
+    }
+   }
+  },
+  {
+   "id": "__declared__.local_sensitive_file.pem_file",
+   "cfg": "local_sensitive_file.pem_file",
+   "type": "__declared__",
+   "refs": [
+    "tls_private_key.key_pair"
+   ],
+   "values": {
+    "type": "local_sensitive_file",
+    "name": "pem_file",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "filename": "${pathexpand(\"~/.ssh/eks-aws.pem\")}",
+     "file_permission": "600",
+     "content": "${tls_private_key.key_pair.private_key_pem}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_key_pair.eks_kp",
+   "cfg": "aws_key_pair.eks_kp",
+   "type": "__declared__",
+   "refs": [
+    "tls_private_key.key_pair"
+   ],
+   "values": {
+    "type": "aws_key_pair",
+    "name": "eks_kp",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "key_name": "eks_kp",
+     "public_key": "${trimspace(tls_private_key.key_pair.public_key_openssh)}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.data.aws_iam_policy_document.assume_role_ec2",
+   "cfg": "data.aws_iam_policy_document.assume_role_ec2",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "data.aws_iam_policy_document",
+    "name": "assume_role_ec2",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "statement": [
+      {
+       "effect": "Allow",
+       "principals": [
+        {
+         "type": "Service",
+         "identifiers": [
+          "ec2.amazonaws.com"
+         ]
+        }
+       ],
+       "actions": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role.node_instance_role",
+   "cfg": "aws_iam_role.node_instance_role",
+   "type": "__declared__",
+   "refs": [
+    "data.aws_iam_policy_document.assume_role_ec2"
+   ],
+   "values": {
+    "type": "aws_iam_role",
+    "name": "node_instance_role",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "eks-demo-node",
+     "assume_role_policy": "${data.aws_iam_policy_document.assume_role_ec2.json}",
+     "managed_policy_arns": [
+      "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy",
+      "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy",
+      "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly",
+      "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+     ],
+     "path": "/"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_instance_profile.node_instance_profile",
+   "cfg": "aws_iam_instance_profile.node_instance_profile",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_role.node_instance_role"
+   ],
+   "values": {
+    "type": "aws_iam_instance_profile",
+    "name": "node_instance_profile",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "NodeInstanceProfile",
+     "path": "/",
+     "role": "${aws_iam_role.node_instance_role.id}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_security_group.node_security_group",
+   "cfg": "aws_security_group.node_security_group",
+   "type": "__declared__",
+   "refs": [
+    "aws_vpc.eks"
+   ],
+   "values": {
+    "type": "aws_security_group",
+    "name": "node_security_group",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "NodeSecurityGroupIngress",
+     "description": "Security group for all nodes in the cluster",
+     "vpc_id": "${aws_vpc.eks.id}",
+     "tags": {
+      "Name": "NodeSecurityGroupIngress"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_vpc_security_group_ingress_rule.node_security_group_ingress",
+   "cfg": "aws_vpc_security_group_ingress_rule.node_security_group_ingress",
+   "type": "__declared__",
+   "refs": [
+    "aws_security_group.node_security_group"
+   ],
+   "values": {
+    "type": "aws_vpc_security_group_ingress_rule",
+    "name": "node_security_group_ingress",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "description": "Allow node to communicate with each other",
+     "ip_protocol": "-1",
+     "security_group_id": "${aws_security_group.node_security_group.id}",
+     "referenced_security_group_id": "${aws_security_group.node_security_group.id}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_vpc_security_group_egress_rule.node_egress_all",
+   "cfg": "aws_vpc_security_group_egress_rule.node_egress_all",
+   "type": "__declared__",
+   "refs": [
+    "aws_security_group.node_security_group",
+    "aws_vpc.eks"
+   ],
+   "values": {
+    "type": "aws_vpc_security_group_egress_rule",
+    "name": "node_egress_all",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "description": "Allow node egress to anywhere",
+     "ip_protocol": "-1",
+     "cidr_ipv4": "${aws_vpc.eks.cidr_block}",
+     "security_group_id": "${aws_security_group.node_security_group.id}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_vpc_security_group_ingress_rule.node_security_group_from_control_plane_ingress",
+   "cfg": "aws_vpc_security_group_ingress_rule.node_security_group_from_control_plane_ingress",
+   "type": "__declared__",
+   "refs": [
+    "aws_security_group.node_security_group",
+    "data.aws_eks_cluster.deme_eks"
+   ],
+   "values": {
+    "type": "aws_vpc_security_group_ingress_rule",
+    "name": "node_security_group_from_control_plane_ingress",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "description": "Allow worker Kubelets and pods to receive communication from the cluster control plane",
+     "security_group_id": "${aws_security_group.node_security_group.id}",
+     "referenced_security_group_id": "${data.aws_eks_cluster.deme_eks.vpc_config[0].cluster_security_group_id}",
+     "from_port": 1025,
+     "to_port": 65535,
+     "ip_protocol": "TCP"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_vpc_security_group_ingress_rule.control_plane_egress_to_node_security_group_on_443",
+   "cfg": "aws_vpc_security_group_ingress_rule.control_plane_egress_to_node_security_group_on_443",
+   "type": "__declared__",
+   "refs": [
+    "aws_security_group.node_security_group",
+    "data.aws_eks_cluster.deme_eks"
+   ],
+   "values": {
+    "type": "aws_vpc_security_group_ingress_rule",
+    "name": "control_plane_egress_to_node_security_group_on_443",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "description": "Allow pods running extension API servers on port 443 to receive communication from cluster control plane",
+     "security_group_id": "${aws_security_group.node_security_group.id}",
+     "referenced_security_group_id": "${data.aws_eks_cluster.deme_eks.vpc_config[0].cluster_security_group_id}",
+     "from_port": 443,
+     "to_port": 443,
+     "ip_protocol": "TCP"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_vpc_security_group_ingress_rule.cluster_control_plane_security_group_ingress",
+   "cfg": "aws_vpc_security_group_ingress_rule.cluster_control_plane_security_group_ingress",
+   "type": "__declared__",
+   "refs": [
+    "aws_security_group.node_security_group",
+    "data.aws_eks_cluster.deme_eks"
+   ],
+   "values": {
+    "type": "aws_vpc_security_group_ingress_rule",
+    "name": "cluster_control_plane_security_group_ingress",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "description": "Allow pods to communicate with the cluster API Server",
+     "from_port": 443,
+     "to_port": 443,
+     "ip_protocol": "TCP",
+     "referenced_security_group_id": "${aws_security_group.node_security_group.id}",
+     "security_group_id": "${data.aws_eks_cluster.deme_eks.vpc_config[0].cluster_security_group_id}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_vpc_security_group_egress_rule.control_plane_egress_to_node_security_group",
+   "cfg": "aws_vpc_security_group_egress_rule.control_plane_egress_to_node_security_group",
+   "type": "__declared__",
+   "refs": [
+    "aws_security_group.node_security_group",
+    "data.aws_eks_cluster.deme_eks"
+   ],
+   "values": {
+    "type": "aws_vpc_security_group_egress_rule",
+    "name": "control_plane_egress_to_node_security_group",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "description": "Allow the cluster control plane to communicate with worker Kubelet and pods",
+     "referenced_security_group_id": "${aws_security_group.node_security_group.id}",
+     "security_group_id": "${data.aws_eks_cluster.deme_eks.vpc_config[0].cluster_security_group_id}",
+     "from_port": 1025,
+     "to_port": 65535,
+     "ip_protocol": "TCP"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_vpc_security_group_egress_rule.control_plane_egress_to_node_security_group_on_443",
+   "cfg": "aws_vpc_security_group_egress_rule.control_plane_egress_to_node_security_group_on_443",
+   "type": "__declared__",
+   "refs": [
+    "aws_security_group.node_security_group",
+    "data.aws_eks_cluster.deme_eks"
+   ],
+   "values": {
+    "type": "aws_vpc_security_group_egress_rule",
+    "name": "control_plane_egress_to_node_security_group_on_443",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "description": "Allow the cluster control plane to communicate with pods running extension API servers on port 443",
+     "referenced_security_group_id": "${aws_security_group.node_security_group.id}",
+     "security_group_id": "${data.aws_eks_cluster.deme_eks.vpc_config[0].cluster_security_group_id}",
+     "from_port": 443,
+     "to_port": 443,
+     "ip_protocol": "TCP"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_launch_template.node_launch_template",
+   "cfg": "aws_launch_template.node_launch_template",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_instance_profile.node_instance_profile",
+    "aws_key_pair.eks_kp",
+    "aws_security_group.node_security_group",
+    "data.aws_ssm_parameter.node_ami"
+   ],
+   "values": {
+    "type": "aws_launch_template",
+    "name": "node_launch_template",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "NodeLaunchTemplate",
+     "block_device_mappings": [
+      {
+       "device_name": "/dev/xvda",
+       "ebs": [
+        {
+         "delete_on_termination": true,
+         "volume_size": 30,
+         "volume_type": "gp2"
+        }
+       ]
+      }
+     ],
+     "iam_instance_profile": [
+      {
+       "name": "${aws_iam_instance_profile.node_instance_profile.name}"
+      }
+     ],
+     "key_name": "${aws_key_pair.eks_kp.key_name}",
+     "instance_type": "t3.medium",
+     "vpc_security_group_ids": [
+      "${aws_security_group.node_security_group.id}"
+     ],
+     "tags": {
+      "Name": "NodeLaunchTemplate"
+     },
+     "image_id": "${data.aws_ssm_parameter.node_ami.value}",
+     "metadata_options": [
+      {
+       "http_put_response_hop_limit": 2,
+       "http_endpoint": "enabled",
+       "http_tokens": "required"
+      }
+     ],
+     "tag_specifications": [
+      {
+       "resource_type": "instance",
+       "tags": {
+        "Name": "worker-node"
+       }
+      }
+     ],
+     "user_data": "${base64encode(\"    #!/bin/bash\n    set -o xtrace\n    /etc/eks/bootstrap.sh ${var.cluster_name}\n    /opt/aws/bin/cfn-signal --exit-code $? \\\n                --stack  ${var.cluster_name}-stack \\\n                --resource NodeGroup  \\\n                --region us-east-1\")}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.time_sleep.wait_30_seconds",
+   "cfg": "time_sleep.wait_30_seconds",
+   "type": "__declared__",
+   "refs": [
+    "aws_launch_template.node_launch_template",
+    "aws_route_table_association.private"
+   ],
+   "values": {
+    "type": "time_sleep",
+    "name": "wait_30_seconds",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "depends_on": [
+      "${aws_launch_template.node_launch_template}",
+      "${aws_route_table_association.private}"
+     ],
+     "create_duration": "30s"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_cloudformation_stack.autoscaling_group",
+   "cfg": "aws_cloudformation_stack.autoscaling_group",
+   "type": "__declared__",
+   "refs": [
+    "aws_launch_template.node_launch_template",
+    "aws_subnet.private",
+    "time_sleep.wait_30_seconds"
+   ],
+   "values": {
+    "type": "aws_cloudformation_stack",
+    "name": "autoscaling_group",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "depends_on": [
+      "${time_sleep.wait_30_seconds}"
+     ],
+     "name": "eks-cluster-stack",
+     "template_body": "Description: \"Node autoscaler\"\nResources:\n  NodeGroup:\n    Type: AWS::AutoScaling::AutoScalingGroup\n    Properties:\n      VPCZoneIdentifier: [\"${aws_subnet.private[0].id}\",\"${aws_subnet.private[1].id}\", \"${aws_subnet.private[2].id}\"]\n      MinSize: \"${var.node_group_min_size}\"\n      MaxSize: \"${var.node_group_max_size}\"\n      DesiredCapacity: \"${var.node_group_desired_capacity}\"\n      HealthCheckType: EC2\n      LaunchTemplate:\n        LaunchTemplateId: \"${aws_launch_template.node_launch_template.id}\"\n        Version: \"${aws_launch_template.node_launch_template.latest_version}\"\n    UpdatePolicy:\n    # Ignore differences in group size properties caused by scheduled actions\n      AutoScalingScheduledAction:\n        IgnoreUnmodifiedGroupSizeProperties: true\n      AutoScalingRollingUpdate:\n        MaxBatchSize: 1\n        MinInstancesInService: \"${var.node_group_desired_capacity}\"\n        PauseTime: PT5M\nOutputs:\n  NodeAutoScalingGroup:\n    Description: The autoscaling group\n    Value: !Ref NodeGroup"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_vpc.eks",
+   "cfg": "aws_vpc.eks",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_vpc",
+    "name": "eks",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "cidr_block": "10.0.0.0/16",
+     "enable_dns_support": true,
+     "enable_dns_hostnames": true,
+     "tags": {
+      "Name": "demo-eks-vpc"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_internet_gateway.eks",
+   "cfg": "aws_internet_gateway.eks",
+   "type": "__declared__",
+   "refs": [
+    "aws_vpc.eks"
+   ],
+   "values": {
+    "type": "aws_internet_gateway",
+    "name": "eks",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "vpc_id": "${aws_vpc.eks.id}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_subnet.nat",
+   "cfg": "aws_subnet.nat",
+   "type": "__declared__",
+   "refs": [
+    "aws_vpc.eks"
+   ],
+   "values": {
+    "type": "aws_subnet",
+    "name": "nat",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "vpc_id": "${aws_vpc.eks.id}",
+     "cidr_block": "10.0.0.0/24",
+     "availability_zone": "${var.aws_region}a",
+     "tags": {
+      "Name": "demo-eks-nat"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_route_table.nat",
+   "cfg": "aws_route_table.nat",
+   "type": "__declared__",
+   "refs": [
+    "aws_internet_gateway.eks",
+    "aws_vpc.eks"
+   ],
+   "values": {
+    "type": "aws_route_table",
+    "name": "nat",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "vpc_id": "${aws_vpc.eks.id}",
+     "route": [
+      {
+       "cidr_block": "0.0.0.0/0",
+       "gateway_id": "${aws_internet_gateway.eks.id}"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_route_table_association.nat",
+   "cfg": "aws_route_table_association.nat",
+   "type": "__declared__",
+   "refs": [
+    "aws_route_table.nat",
+    "aws_subnet.nat"
+   ],
+   "values": {
+    "type": "aws_route_table_association",
+    "name": "nat",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "subnet_id": "${aws_subnet.nat.id}",
+     "route_table_id": "${aws_route_table.nat.id}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_eip.nat",
+   "cfg": "aws_eip.nat",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_eip",
+    "name": "nat",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "domain": "vpc"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_nat_gateway.eks",
+   "cfg": "aws_nat_gateway.eks",
+   "type": "__declared__",
+   "refs": [
+    "aws_eip.nat",
+    "aws_internet_gateway.eks",
+    "aws_subnet.nat"
+   ],
+   "values": {
+    "type": "aws_nat_gateway",
+    "name": "eks",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "allocation_id": "${aws_eip.nat.id}",
+     "subnet_id": "${aws_subnet.nat.id}",
+     "depends_on": [
+      "${aws_internet_gateway.eks}"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_subnet.private",
+   "cfg": "aws_subnet.private",
+   "type": "__declared__",
+   "refs": [
+    "aws_vpc.eks"
+   ],
+   "values": {
+    "type": "aws_subnet",
+    "name": "private",
+    "gated": true,
+    "gate": "3",
+    "properties": {
+     "count": 3,
+     "vpc_id": "${aws_vpc.eks.id}",
+     "cidr_block": "10.0.1${count.index}.0/24",
+     "availability_zone": "${var.aws_region}${[\"a\", \"b\", \"c\"][count.index]}",
+     "tags": {
+      "Name": "demo-eks-private-${count.index}"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_route_table.private",
+   "cfg": "aws_route_table.private",
+   "type": "__declared__",
+   "refs": [
+    "aws_nat_gateway.eks",
+    "aws_vpc.eks"
+   ],
+   "values": {
+    "type": "aws_route_table",
+    "name": "private",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "vpc_id": "${aws_vpc.eks.id}",
+     "route": [
+      {
+       "cidr_block": "0.0.0.0/0",
+       "nat_gateway_id": "${aws_nat_gateway.eks.id}"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_route_table_association.private",
+   "cfg": "aws_route_table_association.private",
+   "type": "__declared__",
+   "refs": [
+    "aws_route_table.private",
+    "aws_subnet.private"
+   ],
+   "values": {
+    "type": "aws_route_table_association",
+    "name": "private",
+    "gated": true,
+    "gate": "3",
+    "properties": {
+     "count": 3,
+     "subnet_id": "${aws_subnet.private[count.index].id}",
+     "route_table_id": "${aws_route_table.private.id}"
+    }
+   }
+  }
+ ]
+}

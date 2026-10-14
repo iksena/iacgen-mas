@@ -1,0 +1,1475 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "12db9d4e7df91e4442471d3c32a12483fa8b09dd3fbf432542228b1e80df2fed",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "FileAssetsBucketEncryptionKey",
+   "cfg": "FileAssetsBucketEncryptionKey",
+   "type": "AWS::KMS::Key",
+   "values": {
+    "KeyPolicy": {
+     "Statement": [
+      {
+       "Action": [
+        "kms:Create*",
+        "kms:Describe*",
+        "kms:Enable*",
+        "kms:List*",
+        "kms:Put*",
+        "kms:Update*",
+        "kms:Revoke*",
+        "kms:Disable*",
+        "kms:Get*",
+        "kms:Delete*",
+        "kms:ScheduleKeyDeletion",
+        "kms:CancelKeyDeletion",
+        "kms:GenerateDataKey"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "AWS": [
+         "123456789012"
+        ]
+       },
+       "Resource": [
+        "*"
+       ]
+      },
+      {
+       "Action": [
+        "kms:Decrypt",
+        "kms:DescribeKey",
+        "kms:Encrypt",
+        "kms:ReEncrypt*",
+        "kms:GenerateDataKey*"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "AWS": [
+         "*"
+        ]
+       },
+       "Resource": [
+        "*"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "kms:CallerAccount": "123456789012",
+         "kms:ViaService": [
+          "s3.us-east-1.amazonaws.com"
+         ]
+        }
+       }
+      },
+      {
+       "Action": [
+        "kms:Decrypt",
+        "kms:DescribeKey",
+        "kms:Encrypt",
+        "kms:ReEncrypt*",
+        "kms:GenerateDataKey*"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "AWS": [
+         "${FilePublishingRole.Arn}"
+        ]
+       },
+       "Resource": [
+        "*"
+       ]
+      }
+     ]
+    },
+    "__resource__": {
+     "Condition": "CreateNewKey"
+    }
+   },
+   "refs": [
+    "FilePublishingRole"
+   ]
+  },
+  {
+   "id": "FileAssetsBucketEncryptionKeyAlias",
+   "cfg": "FileAssetsBucketEncryptionKeyAlias",
+   "type": "AWS::KMS::Alias",
+   "values": {
+    "AliasName": "alias/cdk-hnb659fds-assets-key",
+    "TargetKeyId": {
+     "ref": "FileAssetsBucketEncryptionKey"
+    },
+    "__resource__": {
+     "Condition": "CreateNewKey"
+    }
+   },
+   "refs": [
+    "FileAssetsBucketEncryptionKey"
+   ]
+  },
+  {
+   "id": "StagingBucket",
+   "cfg": "StagingBucket",
+   "type": "AWS::S3::Bucket",
+   "values": {
+    "BucketName": "cdk-hnb659fds-assets-123456789012-us-east-1",
+    "AccessControl": "Private",
+    "BucketEncryption": {
+     "ServerSideEncryptionConfiguration": [
+      {
+       "ServerSideEncryptionByDefault": {
+        "SSEAlgorithm": "aws:kms",
+        "KMSMasterKeyID": "${FileAssetsBucketEncryptionKey.Arn}"
+       }
+      }
+     ]
+    },
+    "PublicAccessBlockConfiguration": {
+     "BlockPublicAcls": true,
+     "BlockPublicPolicy": true,
+     "IgnorePublicAcls": true,
+     "RestrictPublicBuckets": true
+    },
+    "VersioningConfiguration": {
+     "Status": "Enabled"
+    },
+    "__resource__": {
+     "DeletionPolicy": "Retain",
+     "UpdateReplacePolicy": "Retain"
+    }
+   },
+   "refs": [
+    "FileAssetsBucketEncryptionKey"
+   ]
+  },
+  {
+   "id": "StagingBucketPolicy",
+   "cfg": "StagingBucketPolicy",
+   "type": "AWS::S3::BucketPolicy",
+   "values": {
+    "Bucket": {
+     "ref": "StagingBucket"
+    },
+    "PolicyDocument": {
+     "Id": "AccessControl",
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Sid": "AllowSSLRequestsOnly",
+       "Action": [
+        "s3:*"
+       ],
+       "Effect": "Deny",
+       "Resource": [
+        "${StagingBucket.Arn}",
+        "${StagingBucket.Arn}/*"
+       ],
+       "Condition": {
+        "Bool": {
+         "aws:SecureTransport": "false"
+        }
+       },
+       "Principal": "*"
+      }
+     ]
+    }
+   },
+   "refs": [
+    "StagingBucket"
+   ]
+  },
+  {
+   "id": "ContainerAssetsRepository",
+   "cfg": "ContainerAssetsRepository",
+   "type": "AWS::ECR::Repository",
+   "values": {
+    "ImageTagMutability": "IMMUTABLE",
+    "ImageScanningConfiguration": {
+     "ScanOnPush": true
+    },
+    "RepositoryName": "cdk-hnb659fds-container-assets-123456789012-us-east-1",
+    "RepositoryPolicyText": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Sid": "LambdaECRImageRetrievalPolicy",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "ecr:BatchGetImage",
+        "ecr:GetDownloadUrlForLayer"
+       ],
+       "Condition": {
+        "StringLike": {
+         "aws:sourceArn": "arn:aws:lambda:us-east-1:123456789012:function:*"
+        }
+       }
+      }
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "FilePublishingRole",
+   "cfg": "FilePublishingRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "AWS": [
+         "123456789012"
+        ]
+       }
+      }
+     ]
+    },
+    "RoleName": "cdk-hnb659fds-file-publishing-role-123456789012-us-east-1",
+    "Tags": [
+     {
+      "Key": "aws-cdk:bootstrap-role",
+      "Value": "file-publishing"
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "ImagePublishingRole",
+   "cfg": "ImagePublishingRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "AWS": [
+         "123456789012"
+        ]
+       }
+      }
+     ]
+    },
+    "RoleName": "cdk-hnb659fds-image-publishing-role-123456789012-us-east-1",
+    "Tags": [
+     {
+      "Key": "aws-cdk:bootstrap-role",
+      "Value": "image-publishing"
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "LookupRole",
+   "cfg": "LookupRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "AWS": [
+         "123456789012"
+        ]
+       }
+      }
+     ]
+    },
+    "RoleName": "cdk-hnb659fds-lookup-role-123456789012-us-east-1",
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/ReadOnlyAccess"
+    ],
+    "Policies": [
+     {
+      "PolicyDocument": {
+       "Statement": [
+        {
+         "Sid": "DontReadSecrets",
+         "Effect": "Deny",
+         "Action": [
+          "kms:Decrypt"
+         ],
+         "Resource": [
+          "*"
+         ]
+        }
+       ],
+       "Version": "2012-10-17"
+      },
+      "PolicyName": "LookupRolePolicy"
+     }
+    ],
+    "Tags": [
+     {
+      "Key": "aws-cdk:bootstrap-role",
+      "Value": "lookup"
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "FilePublishingRoleDefaultPolicy",
+   "cfg": "FilePublishingRoleDefaultPolicy",
+   "type": "AWS::IAM::Policy",
+   "values": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "s3:GetObject*",
+        "s3:GetBucket*",
+        "s3:GetEncryptionConfiguration",
+        "s3:List*",
+        "s3:DeleteObject*",
+        "s3:PutObject*",
+        "s3:Abort*"
+       ],
+       "Resource": [
+        "${StagingBucket.Arn}",
+        "${StagingBucket.Arn}/*"
+       ],
+       "Effect": "Allow"
+      },
+      {
+       "Action": [
+        "kms:Decrypt",
+        "kms:DescribeKey",
+        "kms:Encrypt",
+        "kms:ReEncrypt*",
+        "kms:GenerateDataKey*"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        "${FileAssetsBucketEncryptionKey.Arn}"
+       ]
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "Roles": [
+     {
+      "ref": "FilePublishingRole"
+     }
+    ],
+    "PolicyName": "cdk-hnb659fds-file-publishing-role-default-policy-123456789012-us-east-1"
+   },
+   "refs": [
+    "FileAssetsBucketEncryptionKey",
+    "FilePublishingRole",
+    "StagingBucket"
+   ]
+  },
+  {
+   "id": "ImagePublishingRoleDefaultPolicy",
+   "cfg": "ImagePublishingRoleDefaultPolicy",
+   "type": "AWS::IAM::Policy",
+   "values": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "ecr:PutImage",
+        "ecr:InitiateLayerUpload",
+        "ecr:UploadLayerPart",
+        "ecr:CompleteLayerUpload",
+        "ecr:BatchCheckLayerAvailability",
+        "ecr:DescribeRepositories",
+        "ecr:DescribeImages",
+        "ecr:BatchGetImage",
+        "ecr:GetDownloadUrlForLayer"
+       ],
+       "Resource": [
+        "${ContainerAssetsRepository.Arn}"
+       ],
+       "Effect": "Allow"
+      },
+      {
+       "Action": [
+        "ecr:GetAuthorizationToken"
+       ],
+       "Resource": [
+        "*"
+       ],
+       "Effect": "Allow"
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "Roles": [
+     {
+      "ref": "ImagePublishingRole"
+     }
+    ],
+    "PolicyName": "cdk-hnb659fds-image-publishing-role-default-policy-123456789012-us-east-1"
+   },
+   "refs": [
+    "ContainerAssetsRepository",
+    "ImagePublishingRole"
+   ]
+  },
+  {
+   "id": "DeploymentActionRole",
+   "cfg": "DeploymentActionRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "AWS": [
+         "123456789012"
+        ]
+       }
+      }
+     ]
+    },
+    "Policies": [
+     {
+      "PolicyDocument": {
+       "Statement": [
+        {
+         "Sid": "CloudFormationPermissions",
+         "Effect": "Allow",
+         "Action": [
+          "cloudformation:CreateChangeSet",
+          "cloudformation:DeleteChangeSet",
+          "cloudformation:DescribeChangeSet",
+          "cloudformation:DescribeStacks",
+          "cloudformation:ExecuteChangeSet",
+          "cloudformation:CreateStack",
+          "cloudformation:UpdateStack"
+         ],
+         "Resource": [
+          "*"
+         ]
+        },
+        {
+         "Sid": "PipelineCrossAccountArtifactsBucket",
+         "Effect": "Allow",
+         "Action": [
+          "s3:GetObject*",
+          "s3:GetBucket*",
+          "s3:List*",
+          "s3:Abort*",
+          "s3:DeleteObject*",
+          "s3:PutObject*"
+         ],
+         "Resource": [
+          "*"
+         ],
+         "Condition": {
+          "StringNotEquals": {
+           "s3:ResourceAccount": "123456789012"
+          }
+         }
+        },
+        {
+         "Sid": "PipelineCrossAccountArtifactsKey",
+         "Effect": "Allow",
+         "Action": [
+          "kms:Decrypt",
+          "kms:DescribeKey",
+          "kms:Encrypt",
+          "kms:ReEncrypt*",
+          "kms:GenerateDataKey*"
+         ],
+         "Resource": [
+          "*"
+         ],
+         "Condition": {
+          "StringEquals": {
+           "kms:ViaService": "s3.us-east-1.amazonaws.com"
+          }
+         }
+        },
+        {
+         "Action": [
+          "iam:PassRole"
+         ],
+         "Resource": [
+          "${CloudFormationExecutionRole.Arn}"
+         ],
+         "Effect": "Allow"
+        },
+        {
+         "Sid": "CliPermissions",
+         "Action": [
+          "cloudformation:DescribeStackEvents",
+          "cloudformation:GetTemplate",
+          "cloudformation:DeleteStack",
+          "cloudformation:UpdateTerminationProtection",
+          "sts:GetCallerIdentity",
+          "cloudformation:GetTemplateSummary"
+         ],
+         "Resource": [
+          "*"
+         ],
+         "Effect": "Allow"
+        },
+        {
+         "Sid": "CliStagingBucket",
+         "Effect": "Allow",
+         "Action": [
+          "s3:GetObject*",
+          "s3:GetBucket*",
+          "s3:List*"
+         ],
+         "Resource": [
+          "${StagingBucket.Arn}",
+          "${StagingBucket.Arn}/*"
+         ]
+        },
+        {
+         "Sid": "ReadVersion",
+         "Effect": "Allow",
+         "Action": [
+          "ssm:GetParameter"
+         ],
+         "Resource": [
+          "arn:aws:ssm:us-east-1:123456789012:parameter${CdkBootstrapVersion}"
+         ]
+        }
+       ],
+       "Version": "2012-10-17"
+      },
+      "PolicyName": "default"
+     }
+    ],
+    "RoleName": "cdk-hnb659fds-deploy-role-123456789012-us-east-1",
+    "Tags": [
+     {
+      "Key": "aws-cdk:bootstrap-role",
+      "Value": "deploy"
+     }
+    ]
+   },
+   "refs": [
+    "CdkBootstrapVersion",
+    "CloudFormationExecutionRole",
+    "StagingBucket"
+   ]
+  },
+  {
+   "id": "CloudFormationExecutionRole",
+   "cfg": "CloudFormationExecutionRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "cloudformation.amazonaws.com"
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/AdministratorAccess"
+    ],
+    "RoleName": "cdk-hnb659fds-cfn-exec-role-123456789012-us-east-1"
+   },
+   "refs": []
+  },
+  {
+   "id": "CdkBootstrapVersion",
+   "cfg": "CdkBootstrapVersion",
+   "type": "AWS::SSM::Parameter",
+   "values": {
+    "Type": "String",
+    "Name": "/cdk-bootstrap/hnb659fds/version",
+    "Value": "13"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.TrustedAccounts",
+   "cfg": "__parameter__.TrustedAccounts",
+   "type": "__parameter__",
+   "values": {
+    "name": "TrustedAccounts",
+    "type": "CommaDelimitedList",
+    "default": [
+     ""
+    ],
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.TrustedAccountsForLookup",
+   "cfg": "__parameter__.TrustedAccountsForLookup",
+   "type": "__parameter__",
+   "values": {
+    "name": "TrustedAccountsForLookup",
+    "type": "CommaDelimitedList",
+    "default": [
+     ""
+    ],
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.CloudFormationExecutionPolicies",
+   "cfg": "__parameter__.CloudFormationExecutionPolicies",
+   "type": "__parameter__",
+   "values": {
+    "name": "CloudFormationExecutionPolicies",
+    "type": "CommaDelimitedList",
+    "default": [
+     ""
+    ],
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.FileAssetsBucketName",
+   "cfg": "__parameter__.FileAssetsBucketName",
+   "type": "__parameter__",
+   "values": {
+    "name": "FileAssetsBucketName",
+    "type": "String",
+    "default": "",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.FileAssetsBucketKmsKeyId",
+   "cfg": "__parameter__.FileAssetsBucketKmsKeyId",
+   "type": "__parameter__",
+   "values": {
+    "name": "FileAssetsBucketKmsKeyId",
+    "type": "String",
+    "default": "",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.ContainerAssetsRepositoryName",
+   "cfg": "__parameter__.ContainerAssetsRepositoryName",
+   "type": "__parameter__",
+   "values": {
+    "name": "ContainerAssetsRepositoryName",
+    "type": "String",
+    "default": "",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.Qualifier",
+   "cfg": "__parameter__.Qualifier",
+   "type": "__parameter__",
+   "values": {
+    "name": "Qualifier",
+    "type": "String",
+    "default": "hnb659fds",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.PublicAccessBlockConfiguration",
+   "cfg": "__parameter__.PublicAccessBlockConfiguration",
+   "type": "__parameter__",
+   "values": {
+    "name": "PublicAccessBlockConfiguration",
+    "type": "String",
+    "default": "true",
+    "allowed_values": [
+     "true",
+     "false"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.BucketName",
+   "cfg": "__output__.BucketName",
+   "type": "__output__",
+   "values": {
+    "name": "BucketName",
+    "value": "${StagingBucket}",
+    "description": "The name of the S3 bucket owned by the CDK toolkit stack",
+    "export": null
+   },
+   "refs": [
+    "StagingBucket"
+   ]
+  },
+  {
+   "id": "__output__.BucketDomainName",
+   "cfg": "__output__.BucketDomainName",
+   "type": "__output__",
+   "values": {
+    "name": "BucketDomainName",
+    "value": "${StagingBucket.RegionalDomainName}",
+    "description": "The domain name of the S3 bucket owned by the CDK toolkit stack",
+    "export": null
+   },
+   "refs": [
+    "StagingBucket"
+   ]
+  },
+  {
+   "id": "__output__.FileAssetKeyArn",
+   "cfg": "__output__.FileAssetKeyArn",
+   "type": "__output__",
+   "values": {
+    "name": "FileAssetKeyArn",
+    "value": "${FileAssetsBucketEncryptionKey.Arn}",
+    "description": "The ARN of the KMS key used to encrypt the asset bucket (deprecated)",
+    "export": "CdkBootstrap-hnb659fds-FileAssetKeyArn"
+   },
+   "refs": [
+    "FileAssetsBucketEncryptionKey"
+   ]
+  },
+  {
+   "id": "__output__.ImageRepositoryName",
+   "cfg": "__output__.ImageRepositoryName",
+   "type": "__output__",
+   "values": {
+    "name": "ImageRepositoryName",
+    "value": "${ContainerAssetsRepository}",
+    "description": "The name of the ECR repository which hosts docker image assets",
+    "export": null
+   },
+   "refs": [
+    "ContainerAssetsRepository"
+   ]
+  },
+  {
+   "id": "__output__.BootstrapVersion",
+   "cfg": "__output__.BootstrapVersion",
+   "type": "__output__",
+   "values": {
+    "name": "BootstrapVersion",
+    "value": {
+     "ref": "CdkBootstrapVersion",
+     "attr": "Value"
+    },
+    "description": "The version of the bootstrap resources that are currently mastered in this stack",
+    "export": null
+   },
+   "refs": [
+    "CdkBootstrapVersion"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::KMS::Key.FileAssetsBucketEncryptionKey",
+   "cfg": "FileAssetsBucketEncryptionKey",
+   "type": "__declared__",
+   "refs": [
+    "FilePublishingRole"
+   ],
+   "values": {
+    "type": "AWS::KMS::Key",
+    "name": "FileAssetsBucketEncryptionKey",
+    "gated": true,
+    "gate": "CreateNewKey",
+    "properties": {
+     "KeyPolicy": {
+      "Statement": [
+       {
+        "Action": [
+         "kms:Create*",
+         "kms:Describe*",
+         "kms:Enable*",
+         "kms:List*",
+         "kms:Put*",
+         "kms:Update*",
+         "kms:Revoke*",
+         "kms:Disable*",
+         "kms:Get*",
+         "kms:Delete*",
+         "kms:ScheduleKeyDeletion",
+         "kms:CancelKeyDeletion",
+         "kms:GenerateDataKey"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "AWS": [
+          "123456789012"
+         ]
+        },
+        "Resource": [
+         "*"
+        ]
+       },
+       {
+        "Action": [
+         "kms:Decrypt",
+         "kms:DescribeKey",
+         "kms:Encrypt",
+         "kms:ReEncrypt*",
+         "kms:GenerateDataKey*"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "AWS": [
+          "*"
+         ]
+        },
+        "Resource": [
+         "*"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "kms:CallerAccount": "123456789012",
+          "kms:ViaService": [
+           "s3.us-east-1.amazonaws.com"
+          ]
+         }
+        }
+       },
+       {
+        "Action": [
+         "kms:Decrypt",
+         "kms:DescribeKey",
+         "kms:Encrypt",
+         "kms:ReEncrypt*",
+         "kms:GenerateDataKey*"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "AWS": [
+          "${FilePublishingRole.Arn}"
+         ]
+        },
+        "Resource": [
+         "*"
+        ]
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::KMS::Alias.FileAssetsBucketEncryptionKeyAlias",
+   "cfg": "FileAssetsBucketEncryptionKeyAlias",
+   "type": "__declared__",
+   "refs": [
+    "FileAssetsBucketEncryptionKey"
+   ],
+   "values": {
+    "type": "AWS::KMS::Alias",
+    "name": "FileAssetsBucketEncryptionKeyAlias",
+    "gated": true,
+    "gate": "CreateNewKey",
+    "properties": {
+     "AliasName": "alias/cdk-hnb659fds-assets-key",
+     "TargetKeyId": {
+      "ref": "FileAssetsBucketEncryptionKey"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::S3::Bucket.StagingBucket",
+   "cfg": "StagingBucket",
+   "type": "__declared__",
+   "refs": [
+    "FileAssetsBucketEncryptionKey"
+   ],
+   "values": {
+    "type": "AWS::S3::Bucket",
+    "name": "StagingBucket",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "BucketName": "cdk-hnb659fds-assets-123456789012-us-east-1",
+     "AccessControl": "Private",
+     "BucketEncryption": {
+      "ServerSideEncryptionConfiguration": [
+       {
+        "ServerSideEncryptionByDefault": {
+         "SSEAlgorithm": "aws:kms",
+         "KMSMasterKeyID": "${FileAssetsBucketEncryptionKey.Arn}"
+        }
+       }
+      ]
+     },
+     "PublicAccessBlockConfiguration": {
+      "BlockPublicAcls": true,
+      "BlockPublicPolicy": true,
+      "IgnorePublicAcls": true,
+      "RestrictPublicBuckets": true
+     },
+     "VersioningConfiguration": {
+      "Status": "Enabled"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::S3::BucketPolicy.StagingBucketPolicy",
+   "cfg": "StagingBucketPolicy",
+   "type": "__declared__",
+   "refs": [
+    "StagingBucket"
+   ],
+   "values": {
+    "type": "AWS::S3::BucketPolicy",
+    "name": "StagingBucketPolicy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Bucket": {
+      "ref": "StagingBucket"
+     },
+     "PolicyDocument": {
+      "Id": "AccessControl",
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Sid": "AllowSSLRequestsOnly",
+        "Action": [
+         "s3:*"
+        ],
+        "Effect": "Deny",
+        "Resource": [
+         "${StagingBucket.Arn}",
+         "${StagingBucket.Arn}/*"
+        ],
+        "Condition": {
+         "Bool": {
+          "aws:SecureTransport": "false"
+         }
+        },
+        "Principal": "*"
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ECR::Repository.ContainerAssetsRepository",
+   "cfg": "ContainerAssetsRepository",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::ECR::Repository",
+    "name": "ContainerAssetsRepository",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ImageTagMutability": "IMMUTABLE",
+     "ImageScanningConfiguration": {
+      "ScanOnPush": true
+     },
+     "RepositoryName": "cdk-hnb659fds-container-assets-123456789012-us-east-1",
+     "RepositoryPolicyText": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Sid": "LambdaECRImageRetrievalPolicy",
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "ecr:BatchGetImage",
+         "ecr:GetDownloadUrlForLayer"
+        ],
+        "Condition": {
+         "StringLike": {
+          "aws:sourceArn": "arn:aws:lambda:us-east-1:123456789012:function:*"
+         }
+        }
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.FilePublishingRole",
+   "cfg": "FilePublishingRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "FilePublishingRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "AWS": [
+          "123456789012"
+         ]
+        }
+       }
+      ]
+     },
+     "RoleName": "cdk-hnb659fds-file-publishing-role-123456789012-us-east-1",
+     "Tags": [
+      {
+       "Key": "aws-cdk:bootstrap-role",
+       "Value": "file-publishing"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.ImagePublishingRole",
+   "cfg": "ImagePublishingRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "ImagePublishingRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "AWS": [
+          "123456789012"
+         ]
+        }
+       }
+      ]
+     },
+     "RoleName": "cdk-hnb659fds-image-publishing-role-123456789012-us-east-1",
+     "Tags": [
+      {
+       "Key": "aws-cdk:bootstrap-role",
+       "Value": "image-publishing"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.LookupRole",
+   "cfg": "LookupRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "LookupRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "AWS": [
+          "123456789012"
+         ]
+        }
+       }
+      ]
+     },
+     "RoleName": "cdk-hnb659fds-lookup-role-123456789012-us-east-1",
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/ReadOnlyAccess"
+     ],
+     "Policies": [
+      {
+       "PolicyDocument": {
+        "Statement": [
+         {
+          "Sid": "DontReadSecrets",
+          "Effect": "Deny",
+          "Action": [
+           "kms:Decrypt"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ],
+        "Version": "2012-10-17"
+       },
+       "PolicyName": "LookupRolePolicy"
+      }
+     ],
+     "Tags": [
+      {
+       "Key": "aws-cdk:bootstrap-role",
+       "Value": "lookup"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Policy.FilePublishingRoleDefaultPolicy",
+   "cfg": "FilePublishingRoleDefaultPolicy",
+   "type": "__declared__",
+   "refs": [
+    "FileAssetsBucketEncryptionKey",
+    "FilePublishingRole",
+    "StagingBucket"
+   ],
+   "values": {
+    "type": "AWS::IAM::Policy",
+    "name": "FilePublishingRoleDefaultPolicy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "PolicyDocument": {
+      "Statement": [
+       {
+        "Action": [
+         "s3:GetObject*",
+         "s3:GetBucket*",
+         "s3:GetEncryptionConfiguration",
+         "s3:List*",
+         "s3:DeleteObject*",
+         "s3:PutObject*",
+         "s3:Abort*"
+        ],
+        "Resource": [
+         "${StagingBucket.Arn}",
+         "${StagingBucket.Arn}/*"
+        ],
+        "Effect": "Allow"
+       },
+       {
+        "Action": [
+         "kms:Decrypt",
+         "kms:DescribeKey",
+         "kms:Encrypt",
+         "kms:ReEncrypt*",
+         "kms:GenerateDataKey*"
+        ],
+        "Effect": "Allow",
+        "Resource": [
+         "${FileAssetsBucketEncryptionKey.Arn}"
+        ]
+       }
+      ],
+      "Version": "2012-10-17"
+     },
+     "Roles": [
+      {
+       "ref": "FilePublishingRole"
+      }
+     ],
+     "PolicyName": "cdk-hnb659fds-file-publishing-role-default-policy-123456789012-us-east-1"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Policy.ImagePublishingRoleDefaultPolicy",
+   "cfg": "ImagePublishingRoleDefaultPolicy",
+   "type": "__declared__",
+   "refs": [
+    "ContainerAssetsRepository",
+    "ImagePublishingRole"
+   ],
+   "values": {
+    "type": "AWS::IAM::Policy",
+    "name": "ImagePublishingRoleDefaultPolicy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "PolicyDocument": {
+      "Statement": [
+       {
+        "Action": [
+         "ecr:PutImage",
+         "ecr:InitiateLayerUpload",
+         "ecr:UploadLayerPart",
+         "ecr:CompleteLayerUpload",
+         "ecr:BatchCheckLayerAvailability",
+         "ecr:DescribeRepositories",
+         "ecr:DescribeImages",
+         "ecr:BatchGetImage",
+         "ecr:GetDownloadUrlForLayer"
+        ],
+        "Resource": [
+         "${ContainerAssetsRepository.Arn}"
+        ],
+        "Effect": "Allow"
+       },
+       {
+        "Action": [
+         "ecr:GetAuthorizationToken"
+        ],
+        "Resource": [
+         "*"
+        ],
+        "Effect": "Allow"
+       }
+      ],
+      "Version": "2012-10-17"
+     },
+     "Roles": [
+      {
+       "ref": "ImagePublishingRole"
+      }
+     ],
+     "PolicyName": "cdk-hnb659fds-image-publishing-role-default-policy-123456789012-us-east-1"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.DeploymentActionRole",
+   "cfg": "DeploymentActionRole",
+   "type": "__declared__",
+   "refs": [
+    "CdkBootstrapVersion",
+    "CloudFormationExecutionRole",
+    "StagingBucket"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "DeploymentActionRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "AWS": [
+          "123456789012"
+         ]
+        }
+       }
+      ]
+     },
+     "Policies": [
+      {
+       "PolicyDocument": {
+        "Statement": [
+         {
+          "Sid": "CloudFormationPermissions",
+          "Effect": "Allow",
+          "Action": [
+           "cloudformation:CreateChangeSet",
+           "cloudformation:DeleteChangeSet",
+           "cloudformation:DescribeChangeSet",
+           "cloudformation:DescribeStacks",
+           "cloudformation:ExecuteChangeSet",
+           "cloudformation:CreateStack",
+           "cloudformation:UpdateStack"
+          ],
+          "Resource": [
+           "*"
+          ]
+         },
+         {
+          "Sid": "PipelineCrossAccountArtifactsBucket",
+          "Effect": "Allow",
+          "Action": [
+           "s3:GetObject*",
+           "s3:GetBucket*",
+           "s3:List*",
+           "s3:Abort*",
+           "s3:DeleteObject*",
+           "s3:PutObject*"
+          ],
+          "Resource": [
+           "*"
+          ],
+          "Condition": {
+           "StringNotEquals": {
+            "s3:ResourceAccount": "123456789012"
+           }
+          }
+         },
+         {
+          "Sid": "PipelineCrossAccountArtifactsKey",
+          "Effect": "Allow",
+          "Action": [
+           "kms:Decrypt",
+           "kms:DescribeKey",
+           "kms:Encrypt",
+           "kms:ReEncrypt*",
+           "kms:GenerateDataKey*"
+          ],
+          "Resource": [
+           "*"
+          ],
+          "Condition": {
+           "StringEquals": {
+            "kms:ViaService": "s3.us-east-1.amazonaws.com"
+           }
+          }
+         },
+         {
+          "Action": [
+           "iam:PassRole"
+          ],
+          "Resource": [
+           "${CloudFormationExecutionRole.Arn}"
+          ],
+          "Effect": "Allow"
+         },
+         {
+          "Sid": "CliPermissions",
+          "Action": [
+           "cloudformation:DescribeStackEvents",
+           "cloudformation:GetTemplate",
+           "cloudformation:DeleteStack",
+           "cloudformation:UpdateTerminationProtection",
+           "sts:GetCallerIdentity",
+           "cloudformation:GetTemplateSummary"
+          ],
+          "Resource": [
+           "*"
+          ],
+          "Effect": "Allow"
+         },
+         {
+          "Sid": "CliStagingBucket",
+          "Effect": "Allow",
+          "Action": [
+           "s3:GetObject*",
+           "s3:GetBucket*",
+           "s3:List*"
+          ],
+          "Resource": [
+           "${StagingBucket.Arn}",
+           "${StagingBucket.Arn}/*"
+          ]
+         },
+         {
+          "Sid": "ReadVersion",
+          "Effect": "Allow",
+          "Action": [
+           "ssm:GetParameter"
+          ],
+          "Resource": [
+           "arn:aws:ssm:us-east-1:123456789012:parameter${CdkBootstrapVersion}"
+          ]
+         }
+        ],
+        "Version": "2012-10-17"
+       },
+       "PolicyName": "default"
+      }
+     ],
+     "RoleName": "cdk-hnb659fds-deploy-role-123456789012-us-east-1",
+     "Tags": [
+      {
+       "Key": "aws-cdk:bootstrap-role",
+       "Value": "deploy"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.CloudFormationExecutionRole",
+   "cfg": "CloudFormationExecutionRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "CloudFormationExecutionRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "cloudformation.amazonaws.com"
+         ]
+        }
+       }
+      ],
+      "Version": "2012-10-17"
+     },
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/AdministratorAccess"
+     ],
+     "RoleName": "cdk-hnb659fds-cfn-exec-role-123456789012-us-east-1"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SSM::Parameter.CdkBootstrapVersion",
+   "cfg": "CdkBootstrapVersion",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::SSM::Parameter",
+    "name": "CdkBootstrapVersion",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Type": "String",
+     "Name": "/cdk-bootstrap/hnb659fds/version",
+     "Value": "13"
+    }
+   }
+  }
+ ]
+}

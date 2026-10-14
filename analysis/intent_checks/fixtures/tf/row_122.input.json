@@ -1,0 +1,678 @@
+{
+ "meta": {
+  "lang": "tf",
+  "mode": "plan",
+  "warnings": [],
+  "gt_hash": "9c6decab64415a7ac5b15e00d1991fd3fe11b7c0b4e18ccafb937f35e971de29",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "aws_acm_certificate.listener",
+   "cfg": "aws_acm_certificate.listener",
+   "type": "aws_acm_certificate",
+   "values": {
+    "certificate_authority_arn": null,
+    "certificate_chain": null,
+    "early_renewal_duration": null,
+    "private_key_wo": null,
+    "private_key_wo_version": null,
+    "region": "us-east-1",
+    "tags": null,
+    "validation_option": []
+   },
+   "refs": [
+    "tls_private_key.listener",
+    "tls_self_signed_cert.listener"
+   ]
+  },
+  {
+   "id": "aws_lb.test",
+   "cfg": "aws_lb.test",
+   "type": "aws_lb",
+   "values": {
+    "access_logs": [],
+    "client_keep_alive": 3600,
+    "connection_logs": [],
+    "customer_owned_ipv4_pool": null,
+    "desync_mitigation_mode": "defensive",
+    "dns_record_client_routing_policy": null,
+    "drop_invalid_header_fields": true,
+    "enable_cross_zone_load_balancing": null,
+    "enable_deletion_protection": false,
+    "enable_http2": true,
+    "enable_tls_version_and_cipher_suite_headers": false,
+    "enable_waf_fail_open": false,
+    "enable_xff_client_port": false,
+    "enable_zonal_shift": false,
+    "health_check_logs": [],
+    "idle_timeout": 30,
+    "internal": true,
+    "ipam_pools": [],
+    "load_balancer_type": "application",
+    "minimum_load_balancer_capacity": [],
+    "name": "benchmark",
+    "preserve_host_header": false,
+    "region": "us-east-1",
+    "tags": null,
+    "timeouts": null,
+    "xff_header_processing_mode": "append"
+   },
+   "refs": [
+    "aws_security_group.test",
+    "aws_subnet.test"
+   ]
+  },
+  {
+   "id": "aws_lb_listener.test",
+   "cfg": "aws_lb_listener.test",
+   "type": "aws_lb_listener",
+   "values": {
+    "alpn_policy": null,
+    "default_action": [
+     {
+      "authenticate_cognito": [],
+      "authenticate_oidc": [],
+      "fixed_response": [],
+      "forward": [],
+      "jwt_validation": [],
+      "redirect": [],
+      "type": "forward"
+     }
+    ],
+    "port": 443,
+    "protocol": "HTTPS",
+    "region": "us-east-1",
+    "ssl_policy": "ELBSecurityPolicy-TLS13-1-2-2021-06",
+    "tags": null,
+    "timeouts": null
+   },
+   "refs": [
+    "aws_acm_certificate.listener",
+    "aws_lb.test",
+    "aws_lb_target_group.test"
+   ]
+  },
+  {
+   "id": "aws_lb_listener_rule.test[0]",
+   "cfg": "aws_lb_listener_rule.test",
+   "type": "aws_lb_listener_rule",
+   "values": {
+    "action": [
+     {
+      "authenticate_cognito": [],
+      "authenticate_oidc": [],
+      "fixed_response": [],
+      "forward": [],
+      "jwt_validation": [],
+      "redirect": [],
+      "type": "forward"
+     }
+    ],
+    "condition": [
+     {
+      "host_header": [],
+      "http_header": [],
+      "http_request_method": [],
+      "path_pattern": [
+       {
+        "regex_values": [],
+        "values": [
+         "/static-0/*"
+        ]
+       }
+      ],
+      "query_string": [],
+      "source_ip": []
+     }
+    ],
+    "priority": 100,
+    "region": "us-east-1",
+    "tags": null,
+    "transform": []
+   },
+   "refs": [
+    "aws_lb_listener.test",
+    "aws_lb_target_group.test"
+   ]
+  },
+  {
+   "id": "aws_lb_target_group.test",
+   "cfg": "aws_lb_target_group.test",
+   "type": "aws_lb_target_group",
+   "values": {
+    "deregistration_delay": "300",
+    "health_check": [
+     {
+      "enabled": true,
+      "healthy_threshold": 3,
+      "interval": 60,
+      "matcher": "200-299",
+      "path": "/health",
+      "port": "8081",
+      "protocol": "HTTP",
+      "timeout": 3,
+      "unhealthy_threshold": 3
+     }
+    ],
+    "lambda_multi_value_headers_enabled": false,
+    "name": "benchmark",
+    "port": 8080,
+    "protocol": "HTTP",
+    "proxy_protocol_v2": false,
+    "region": "us-east-1",
+    "slow_start": 0,
+    "tags": null,
+    "target_control_port": null,
+    "target_type": "instance"
+   },
+   "refs": [
+    "aws_vpc.test"
+   ]
+  },
+  {
+   "id": "aws_security_group.test",
+   "cfg": "aws_security_group.test",
+   "type": "aws_security_group",
+   "values": {
+    "description": "Managed by Terraform",
+    "egress": [
+     {
+      "cidr_blocks": [
+       "10.0.0.0/16"
+      ],
+      "description": "",
+      "from_port": 0,
+      "ipv6_cidr_blocks": [],
+      "prefix_list_ids": [],
+      "protocol": "-1",
+      "security_groups": [],
+      "self": false,
+      "to_port": 0
+     }
+    ],
+    "ingress": [
+     {
+      "cidr_blocks": [
+       "10.0.0.0/16"
+      ],
+      "description": "",
+      "from_port": 0,
+      "ipv6_cidr_blocks": [],
+      "prefix_list_ids": [],
+      "protocol": "-1",
+      "security_groups": [],
+      "self": false,
+      "to_port": 0
+     }
+    ],
+    "name": "benchmark",
+    "region": "us-east-1",
+    "revoke_rules_on_delete": false,
+    "tags": null,
+    "timeouts": null
+   },
+   "refs": [
+    "aws_vpc.test"
+   ]
+  },
+  {
+   "id": "aws_subnet.test[0]",
+   "cfg": "aws_subnet.test",
+   "type": "aws_subnet",
+   "values": {
+    "assign_ipv6_address_on_creation": false,
+    "availability_zone": "us-east-1a",
+    "cidr_block": "10.0.0.0/24",
+    "customer_owned_ipv4_pool": null,
+    "enable_dns64": false,
+    "enable_lni_at_device_index": null,
+    "enable_resource_name_dns_a_record_on_launch": false,
+    "enable_resource_name_dns_aaaa_record_on_launch": false,
+    "ipv4_ipam_pool_id": null,
+    "ipv4_netmask_length": null,
+    "ipv6_ipam_pool_id": null,
+    "ipv6_native": false,
+    "ipv6_netmask_length": null,
+    "map_customer_owned_ip_on_launch": null,
+    "map_public_ip_on_launch": false,
+    "outpost_arn": null,
+    "region": "us-east-1",
+    "tags": null,
+    "timeouts": null
+   },
+   "refs": [
+    "aws_vpc.test",
+    "data.aws_availability_zones.available"
+   ]
+  },
+  {
+   "id": "aws_subnet.test[1]",
+   "cfg": "aws_subnet.test",
+   "type": "aws_subnet",
+   "values": {
+    "assign_ipv6_address_on_creation": false,
+    "availability_zone": "us-east-1b",
+    "cidr_block": "10.0.1.0/24",
+    "customer_owned_ipv4_pool": null,
+    "enable_dns64": false,
+    "enable_lni_at_device_index": null,
+    "enable_resource_name_dns_a_record_on_launch": false,
+    "enable_resource_name_dns_aaaa_record_on_launch": false,
+    "ipv4_ipam_pool_id": null,
+    "ipv4_netmask_length": null,
+    "ipv6_ipam_pool_id": null,
+    "ipv6_native": false,
+    "ipv6_netmask_length": null,
+    "map_customer_owned_ip_on_launch": null,
+    "map_public_ip_on_launch": false,
+    "outpost_arn": null,
+    "region": "us-east-1",
+    "tags": null,
+    "timeouts": null
+   },
+   "refs": [
+    "aws_vpc.test",
+    "data.aws_availability_zones.available"
+   ]
+  },
+  {
+   "id": "aws_vpc.test",
+   "cfg": "aws_vpc.test",
+   "type": "aws_vpc",
+   "values": {
+    "assign_generated_ipv6_cidr_block": null,
+    "cidr_block": "10.0.0.0/16",
+    "enable_dns_support": true,
+    "instance_tenancy": "default",
+    "ipv4_ipam_pool_id": null,
+    "ipv4_netmask_length": null,
+    "ipv6_ipam_pool_id": null,
+    "ipv6_netmask_length": null,
+    "region": "us-east-1",
+    "tags": null
+   },
+   "refs": []
+  },
+  {
+   "id": "tls_private_key.listener",
+   "cfg": "tls_private_key.listener",
+   "type": "tls_private_key",
+   "values": {
+    "algorithm": "RSA",
+    "ecdsa_curve": "P224",
+    "rsa_bits": 2048
+   },
+   "refs": []
+  },
+  {
+   "id": "tls_self_signed_cert.listener",
+   "cfg": "tls_self_signed_cert.listener",
+   "type": "tls_self_signed_cert",
+   "values": {
+    "allowed_uses": [
+     "key_encipherment",
+     "digital_signature",
+     "server_auth"
+    ],
+    "dns_names": [
+     "internal-alb.example.internal"
+    ],
+    "early_renewal_hours": 0,
+    "ip_addresses": null,
+    "is_ca_certificate": false,
+    "private_key_pem_wo": null,
+    "private_key_pem_wo_version": null,
+    "ready_for_renewal": false,
+    "set_authority_key_id": false,
+    "set_subject_key_id": false,
+    "subject": [
+     {
+      "common_name": "internal-alb.example.internal",
+      "country": null,
+      "email_address": null,
+      "locality": null,
+      "organization": null,
+      "organizational_unit": null,
+      "postal_code": null,
+      "province": null,
+      "serial_number": null,
+      "street_address": null
+     }
+    ],
+    "uris": null,
+    "validity_period_hours": 8760
+   },
+   "refs": [
+    "tls_private_key.listener"
+   ]
+  },
+  {
+   "id": "__parameter__.rName",
+   "cfg": "__parameter__.rName",
+   "type": "__parameter__",
+   "values": {
+    "name": "rName",
+    "default": "benchmark"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.region",
+   "cfg": "__parameter__.region",
+   "type": "__parameter__",
+   "values": {
+    "name": "region",
+    "default": "us-east-1"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.resource_count",
+   "cfg": "__parameter__.resource_count",
+   "type": "__parameter__",
+   "values": {
+    "name": "resource_count",
+    "default": 1
+   },
+   "refs": []
+  },
+  {
+   "id": "__declared__.aws_lb_listener_rule.test",
+   "cfg": "aws_lb_listener_rule.test",
+   "type": "__declared__",
+   "refs": [
+    "aws_lb_listener.test",
+    "aws_lb_target_group.test"
+   ],
+   "values": {
+    "type": "aws_lb_listener_rule",
+    "name": "test",
+    "gated": true,
+    "gate": "var.resource_count",
+    "properties": {
+     "count": 1,
+     "region": "us-east-1",
+     "listener_arn": "${aws_lb_listener.test.arn}",
+     "priority": "${100 + count.index}",
+     "action": [
+      {
+       "type": "forward",
+       "target_group_arn": "${aws_lb_target_group.test.arn}"
+      }
+     ],
+     "condition": [
+      {
+       "path_pattern": [
+        {
+         "values": [
+          "/static-${count.index}/*"
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_lb_listener.test",
+   "cfg": "aws_lb_listener.test",
+   "type": "__declared__",
+   "refs": [
+    "aws_acm_certificate.listener",
+    "aws_lb.test",
+    "aws_lb_target_group.test"
+   ],
+   "values": {
+    "type": "aws_lb_listener",
+    "name": "test",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "region": "us-east-1",
+     "load_balancer_arn": "${aws_lb.test.arn}",
+     "protocol": "HTTPS",
+     "port": "443",
+     "ssl_policy": "ELBSecurityPolicy-TLS13-1-2-2021-06",
+     "certificate_arn": "${aws_acm_certificate.listener.arn}",
+     "default_action": [
+      {
+       "target_group_arn": "${aws_lb_target_group.test.arn}",
+       "type": "forward"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_security_group.test",
+   "cfg": "aws_security_group.test",
+   "type": "__declared__",
+   "refs": [
+    "aws_vpc.test"
+   ],
+   "values": {
+    "type": "aws_security_group",
+    "name": "test",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "region": "us-east-1",
+     "name": "benchmark",
+     "vpc_id": "${aws_vpc.test.id}",
+     "ingress": [
+      {
+       "from_port": 0,
+       "to_port": 0,
+       "protocol": "-1",
+       "cidr_blocks": [
+        "${aws_vpc.test.cidr_block}"
+       ]
+      }
+     ],
+     "egress": [
+      {
+       "from_port": 0,
+       "to_port": 0,
+       "protocol": "-1",
+       "cidr_blocks": [
+        "${aws_vpc.test.cidr_block}"
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_lb.test",
+   "cfg": "aws_lb.test",
+   "type": "__declared__",
+   "refs": [
+    "aws_security_group.test",
+    "aws_subnet.test"
+   ],
+   "values": {
+    "type": "aws_lb",
+    "name": "test",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "region": "us-east-1",
+     "name": "benchmark",
+     "internal": true,
+     "security_groups": [
+      "${aws_security_group.test.id}"
+     ],
+     "subnets": "${aws_subnet.test[*].id}",
+     "idle_timeout": 30,
+     "enable_deletion_protection": false,
+     "drop_invalid_header_fields": true
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_lb_target_group.test",
+   "cfg": "aws_lb_target_group.test",
+   "type": "__declared__",
+   "refs": [
+    "aws_vpc.test"
+   ],
+   "values": {
+    "type": "aws_lb_target_group",
+    "name": "test",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "region": "us-east-1",
+     "name": "benchmark",
+     "port": 8080,
+     "protocol": "HTTP",
+     "vpc_id": "${aws_vpc.test.id}",
+     "health_check": [
+      {
+       "path": "/health",
+       "interval": 60,
+       "port": 8081,
+       "protocol": "HTTP",
+       "timeout": 3,
+       "healthy_threshold": 3,
+       "unhealthy_threshold": 3,
+       "matcher": "200-299"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_vpc.test",
+   "cfg": "aws_vpc.test",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_vpc",
+    "name": "test",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "region": "us-east-1",
+     "cidr_block": "10.0.0.0/16"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_subnet.test",
+   "cfg": "aws_subnet.test",
+   "type": "__declared__",
+   "refs": [
+    "aws_vpc.test",
+    "data.aws_availability_zones.available"
+   ],
+   "values": {
+    "type": "aws_subnet",
+    "name": "test",
+    "gated": true,
+    "gate": "2",
+    "properties": {
+     "region": "us-east-1",
+     "count": 2,
+     "vpc_id": "${aws_vpc.test.id}",
+     "availability_zone": "${data.aws_availability_zones.available.names[count.index]}",
+     "cidr_block": "${cidrsubnet(aws_vpc.test.cidr_block,8,count.index)}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.data.aws_availability_zones.available",
+   "cfg": "data.aws_availability_zones.available",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "data.aws_availability_zones",
+    "name": "available",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "region": "us-east-1",
+     "exclude_zone_ids": "${local.default_exclude_zone_ids}",
+     "state": "available",
+     "filter": [
+      {
+       "name": "opt-in-status",
+       "values": [
+        "opt-in-not-required"
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.tls_private_key.listener",
+   "cfg": "tls_private_key.listener",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "tls_private_key",
+    "name": "listener",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "algorithm": "RSA",
+     "rsa_bits": 2048
+    }
+   }
+  },
+  {
+   "id": "__declared__.tls_self_signed_cert.listener",
+   "cfg": "tls_self_signed_cert.listener",
+   "type": "__declared__",
+   "refs": [
+    "tls_private_key.listener"
+   ],
+   "values": {
+    "type": "tls_self_signed_cert",
+    "name": "listener",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "private_key_pem": "${tls_private_key.listener.private_key_pem}",
+     "dns_names": [
+      "internal-alb.example.internal"
+     ],
+     "validity_period_hours": 8760,
+     "allowed_uses": [
+      "key_encipherment",
+      "digital_signature",
+      "server_auth"
+     ],
+     "subject": [
+      {
+       "common_name": "internal-alb.example.internal"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_acm_certificate.listener",
+   "cfg": "aws_acm_certificate.listener",
+   "type": "__declared__",
+   "refs": [
+    "tls_private_key.listener",
+    "tls_self_signed_cert.listener"
+   ],
+   "values": {
+    "type": "aws_acm_certificate",
+    "name": "listener",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "region": "us-east-1",
+     "private_key": "${tls_private_key.listener.private_key_pem}",
+     "certificate_body": "${tls_self_signed_cert.listener.cert_pem}"
+    }
+   }
+  }
+ ]
+}

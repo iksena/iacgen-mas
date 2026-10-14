@@ -1,0 +1,493 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "e4dd18c959e7df4364e7ded893957a0cb8aacd8a8c892a8029cafb215de83d45",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "PetShopLambdaFunction",
+   "cfg": "PetShopLambdaFunction",
+   "type": "AWS::Lambda::Function",
+   "values": {
+    "Handler": "index.handler",
+    "Role": {
+     "ref": "PetShopLambdaExecutionRole",
+     "attr": "Arn"
+    },
+    "FunctionName": "PetShopLambda",
+    "Runtime": "python3.8",
+    "Code": {
+     "ZipFile": "import json\n\ndef lambda_handler(event, context):\n    pets = [\n        {\"id\": \"1\", \"name\": \"Buddy\", \"type\": \"Dog\"},\n        {\"id\": \"2\", \"name\": \"Mittens\", \"type\": \"Cat\"},\n        {\"id\": \"3\", \"name\": \"Charlie\", \"type\": \"Parrot\"}\n    ]\n\n    return {\n        \"version\": \"2018-05-29\",  # REQUIRED for AppSync to recognize the response\n        \"payload\": pets  # The data that AppSync will process\n    }\n"
+    }
+   },
+   "refs": [
+    "PetShopLambdaExecutionRole"
+   ]
+  },
+  {
+   "id": "PetShopLambdaExecutionRole",
+   "cfg": "PetShopLambdaExecutionRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       }
+      }
+     ]
+    },
+    "Policies": [
+     {
+      "PolicyName": "PetShopLambdaExecutionPolicy",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "logs:*"
+         ],
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "PetShopAppSyncAPI",
+   "cfg": "PetShopAppSyncAPI",
+   "type": "AWS::AppSync::GraphQLApi",
+   "values": {
+    "Name": "PetShopAPI",
+    "AuthenticationType": "API_KEY",
+    "XrayEnabled": true
+   },
+   "refs": []
+  },
+  {
+   "id": "PetShopGraphQLSchema",
+   "cfg": "PetShopGraphQLSchema",
+   "type": "AWS::AppSync::GraphQLSchema",
+   "values": {
+    "ApiId": {
+     "ref": "PetShopAppSyncAPI",
+     "attr": "ApiId"
+    },
+    "Definition": "type Pet {\n  id: ID!\n  name: String!\n  type: String!\n}\n\ntype Query {\n  getPets: [Pet]\n}\n"
+   },
+   "refs": [
+    "PetShopAppSyncAPI"
+   ]
+  },
+  {
+   "id": "PetShopLambdaDataSource",
+   "cfg": "PetShopLambdaDataSource",
+   "type": "AWS::AppSync::DataSource",
+   "values": {
+    "ApiId": {
+     "ref": "PetShopAppSyncAPI",
+     "attr": "ApiId"
+    },
+    "Name": "PetShopLambdaDS",
+    "Type": "AWS_LAMBDA",
+    "LambdaConfig": {
+     "LambdaFunctionArn": {
+      "ref": "PetShopLambdaFunction",
+      "attr": "Arn"
+     }
+    },
+    "ServiceRoleArn": {
+     "ref": "PetShopAppSyncExecutionRole",
+     "attr": "Arn"
+    }
+   },
+   "refs": [
+    "PetShopAppSyncAPI",
+    "PetShopAppSyncExecutionRole",
+    "PetShopLambdaFunction"
+   ]
+  },
+  {
+   "id": "PetShopResolver",
+   "cfg": "PetShopResolver",
+   "type": "AWS::AppSync::Resolver",
+   "values": {
+    "ApiId": {
+     "ref": "PetShopAppSyncAPI",
+     "attr": "ApiId"
+    },
+    "TypeName": "Query",
+    "FieldName": "getPets",
+    "DataSourceName": {
+     "ref": "PetShopLambdaDataSource",
+     "attr": "Name"
+    },
+    "RequestMappingTemplate": "{\n  \"version\": \"2018-05-29\"\n}\n",
+    "ResponseMappingTemplate": "#set($result = $context.result)\n$util.toJson($result.payload)\n"
+   },
+   "refs": [
+    "PetShopAppSyncAPI",
+    "PetShopLambdaDataSource"
+   ]
+  },
+  {
+   "id": "PetShopAppSyncExecutionRole",
+   "cfg": "PetShopAppSyncExecutionRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Principal": {
+        "Service": [
+         "appsync.amazonaws.com"
+        ]
+       }
+      }
+     ]
+    },
+    "Policies": [
+     {
+      "PolicyName": "PetShopAppSyncLambdaInvokePolicy",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "lambda:InvokeFunction"
+         ],
+         "Resource": {
+          "ref": "PetShopLambdaFunction",
+          "attr": "Arn"
+         }
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": [
+    "PetShopLambdaFunction"
+   ]
+  },
+  {
+   "id": "PetShopAPIKey",
+   "cfg": "PetShopAPIKey",
+   "type": "AWS::AppSync::ApiKey",
+   "values": {
+    "ApiId": {
+     "ref": "PetShopAppSyncAPI",
+     "attr": "ApiId"
+    }
+   },
+   "refs": [
+    "PetShopAppSyncAPI"
+   ]
+  },
+  {
+   "id": "__output__.AppSyncAPIUrl",
+   "cfg": "__output__.AppSyncAPIUrl",
+   "type": "__output__",
+   "values": {
+    "name": "AppSyncAPIUrl",
+    "value": {
+     "ref": "PetShopAppSyncAPI",
+     "attr": "GraphQLUrl"
+    },
+    "description": "The URL for the AppSync API",
+    "export": null
+   },
+   "refs": [
+    "PetShopAppSyncAPI"
+   ]
+  },
+  {
+   "id": "__output__.AppSyncAPIKey",
+   "cfg": "__output__.AppSyncAPIKey",
+   "type": "__output__",
+   "values": {
+    "name": "AppSyncAPIKey",
+    "value": {
+     "ref": "PetShopAPIKey",
+     "attr": "ApiKey"
+    },
+    "description": "The API key for the AppSync API",
+    "export": null
+   },
+   "refs": [
+    "PetShopAPIKey"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Function.PetShopLambdaFunction",
+   "cfg": "PetShopLambdaFunction",
+   "type": "__declared__",
+   "refs": [
+    "PetShopLambdaExecutionRole"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Function",
+    "name": "PetShopLambdaFunction",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Handler": "index.handler",
+     "Role": {
+      "ref": "PetShopLambdaExecutionRole",
+      "attr": "Arn"
+     },
+     "FunctionName": "PetShopLambda",
+     "Runtime": "python3.8",
+     "Code": {
+      "ZipFile": "import json\n\ndef lambda_handler(event, context):\n    pets = [\n        {\"id\": \"1\", \"name\": \"Buddy\", \"type\": \"Dog\"},\n        {\"id\": \"2\", \"name\": \"Mittens\", \"type\": \"Cat\"},\n        {\"id\": \"3\", \"name\": \"Charlie\", \"type\": \"Parrot\"}\n    ]\n\n    return {\n        \"version\": \"2018-05-29\",  # REQUIRED for AppSync to recognize the response\n        \"payload\": pets  # The data that AppSync will process\n    }\n"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.PetShopLambdaExecutionRole",
+   "cfg": "PetShopLambdaExecutionRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "PetShopLambdaExecutionRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        }
+       }
+      ]
+     },
+     "Policies": [
+      {
+       "PolicyName": "PetShopLambdaExecutionPolicy",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "logs:*"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::AppSync::GraphQLApi.PetShopAppSyncAPI",
+   "cfg": "PetShopAppSyncAPI",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::AppSync::GraphQLApi",
+    "name": "PetShopAppSyncAPI",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "PetShopAPI",
+     "AuthenticationType": "API_KEY",
+     "XrayEnabled": true
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::AppSync::GraphQLSchema.PetShopGraphQLSchema",
+   "cfg": "PetShopGraphQLSchema",
+   "type": "__declared__",
+   "refs": [
+    "PetShopAppSyncAPI"
+   ],
+   "values": {
+    "type": "AWS::AppSync::GraphQLSchema",
+    "name": "PetShopGraphQLSchema",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "PetShopAppSyncAPI",
+      "attr": "ApiId"
+     },
+     "Definition": "type Pet {\n  id: ID!\n  name: String!\n  type: String!\n}\n\ntype Query {\n  getPets: [Pet]\n}\n"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::AppSync::DataSource.PetShopLambdaDataSource",
+   "cfg": "PetShopLambdaDataSource",
+   "type": "__declared__",
+   "refs": [
+    "PetShopAppSyncAPI",
+    "PetShopAppSyncExecutionRole",
+    "PetShopLambdaFunction"
+   ],
+   "values": {
+    "type": "AWS::AppSync::DataSource",
+    "name": "PetShopLambdaDataSource",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "PetShopAppSyncAPI",
+      "attr": "ApiId"
+     },
+     "Name": "PetShopLambdaDS",
+     "Type": "AWS_LAMBDA",
+     "LambdaConfig": {
+      "LambdaFunctionArn": {
+       "ref": "PetShopLambdaFunction",
+       "attr": "Arn"
+      }
+     },
+     "ServiceRoleArn": {
+      "ref": "PetShopAppSyncExecutionRole",
+      "attr": "Arn"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::AppSync::Resolver.PetShopResolver",
+   "cfg": "PetShopResolver",
+   "type": "__declared__",
+   "refs": [
+    "PetShopAppSyncAPI",
+    "PetShopLambdaDataSource"
+   ],
+   "values": {
+    "type": "AWS::AppSync::Resolver",
+    "name": "PetShopResolver",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "PetShopAppSyncAPI",
+      "attr": "ApiId"
+     },
+     "TypeName": "Query",
+     "FieldName": "getPets",
+     "DataSourceName": {
+      "ref": "PetShopLambdaDataSource",
+      "attr": "Name"
+     },
+     "RequestMappingTemplate": "{\n  \"version\": \"2018-05-29\"\n}\n",
+     "ResponseMappingTemplate": "#set($result = $context.result)\n$util.toJson($result.payload)\n"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.PetShopAppSyncExecutionRole",
+   "cfg": "PetShopAppSyncExecutionRole",
+   "type": "__declared__",
+   "refs": [
+    "PetShopLambdaFunction"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "PetShopAppSyncExecutionRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Principal": {
+         "Service": [
+          "appsync.amazonaws.com"
+         ]
+        }
+       }
+      ]
+     },
+     "Policies": [
+      {
+       "PolicyName": "PetShopAppSyncLambdaInvokePolicy",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "lambda:InvokeFunction"
+          ],
+          "Resource": {
+           "ref": "PetShopLambdaFunction",
+           "attr": "Arn"
+          }
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::AppSync::ApiKey.PetShopAPIKey",
+   "cfg": "PetShopAPIKey",
+   "type": "__declared__",
+   "refs": [
+    "PetShopAppSyncAPI"
+   ],
+   "values": {
+    "type": "AWS::AppSync::ApiKey",
+    "name": "PetShopAPIKey",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "PetShopAppSyncAPI",
+      "attr": "ApiId"
+     }
+    }
+   }
+  }
+ ]
+}

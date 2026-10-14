@@ -1,0 +1,513 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "db6bd83fe1b2a8ef7140442dabfdedbbbf1b0ce432fe2d09c58bf3edd2cd1029",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "DevOpsAgentSpaceRole",
+   "cfg": "DevOpsAgentSpaceRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "DevOpsAgentRole-AgentSpace-cfnid",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "aidevops.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "aws:SourceAccount": "123456789012"
+        },
+        "ArnLike": {
+         "aws:SourceArn": "arn:aws:aidevops:us-east-1:123456789012:agentspace/*"
+        }
+       }
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/AIDevOpsAgentAccessPolicy"
+    ],
+    "Policies": [
+     {
+      "PolicyName": "AllowCreateServiceLinkedRoles",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Sid": "AllowCreateResourceExplorerServiceLinkedRole",
+         "Effect": "Allow",
+         "Action": [
+          "iam:CreateServiceLinkedRole"
+         ],
+         "Resource": [
+          "arn:aws:iam::123456789012:role/aws-service-role/resource-explorer-2.amazonaws.com/AWSServiceRoleForResourceExplorer"
+         ]
+        }
+       ]
+      }
+     }
+    ],
+    "Tags": [
+     {
+      "Key": "Project",
+      "Value": "ava"
+     },
+     {
+      "Key": "Component",
+      "Value": "frontier-agents/devops"
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "DevOpsOperatorRole",
+   "cfg": "DevOpsOperatorRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "DevOpsAgentRole-WebappAdmin-cfnid",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "aidevops.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole",
+        "sts:TagSession"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "aws:SourceAccount": "123456789012"
+        },
+        "ArnLike": {
+         "aws:SourceArn": "arn:aws:aidevops:us-east-1:123456789012:agentspace/*"
+        }
+       }
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/AIDevOpsOperatorAppAccessPolicy"
+    ],
+    "Tags": [
+     {
+      "Key": "Project",
+      "Value": "ava"
+     },
+     {
+      "Key": "Component",
+      "Value": "frontier-agents/devops"
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "AgentSpace",
+   "cfg": "AgentSpace",
+   "type": "AWS::DevOpsAgent::AgentSpace",
+   "values": {
+    "Name": "FSIAgentKitAgentSpace-CFN",
+    "Description": "DevOps Agent Space provisioned by AVA - CloudFormation",
+    "OperatorApp": {
+     "Iam": {
+      "OperatorAppRoleArn": {
+       "ref": "DevOpsOperatorRole",
+       "attr": "Arn"
+      }
+     }
+    },
+    "__resource__": {
+     "DependsOn": [
+      "DevOpsAgentSpaceRole",
+      "DevOpsOperatorRole"
+     ]
+    }
+   },
+   "refs": [
+    "DevOpsOperatorRole"
+   ]
+  },
+  {
+   "id": "PrimaryAccountAssociation",
+   "cfg": "PrimaryAccountAssociation",
+   "type": "AWS::DevOpsAgent::Association",
+   "values": {
+    "AgentSpaceId": {
+     "ref": "AgentSpace",
+     "attr": "AgentSpaceId"
+    },
+    "ServiceId": "aws",
+    "Configuration": {
+     "Aws": {
+      "AssumableRoleArn": {
+       "ref": "DevOpsAgentSpaceRole",
+       "attr": "Arn"
+      },
+      "AccountId": "123456789012",
+      "AccountType": "monitor"
+     }
+    }
+   },
+   "refs": [
+    "AgentSpace",
+    "DevOpsAgentSpaceRole"
+   ]
+  },
+  {
+   "id": "__parameter__.AgentSpaceName",
+   "cfg": "__parameter__.AgentSpaceName",
+   "type": "__parameter__",
+   "values": {
+    "name": "AgentSpaceName",
+    "type": "String",
+    "default": "FSIAgentKitAgentSpace-CFN",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.AgentSpaceDescription",
+   "cfg": "__parameter__.AgentSpaceDescription",
+   "type": "__parameter__",
+   "values": {
+    "name": "AgentSpaceDescription",
+    "type": "String",
+    "default": "DevOps Agent Space provisioned by AVA - CloudFormation",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.NamePostfix",
+   "cfg": "__parameter__.NamePostfix",
+   "type": "__parameter__",
+   "values": {
+    "name": "NamePostfix",
+    "type": "String",
+    "default": "",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.agentspaceid",
+   "cfg": "__output__.agentspaceid",
+   "type": "__output__",
+   "values": {
+    "name": "agentspaceid",
+    "value": {
+     "ref": "AgentSpace",
+     "attr": "AgentSpaceId"
+    },
+    "description": "ID of the created Agent Space.",
+    "export": null
+   },
+   "refs": [
+    "AgentSpace"
+   ]
+  },
+  {
+   "id": "__output__.agentspacearn",
+   "cfg": "__output__.agentspacearn",
+   "type": "__output__",
+   "values": {
+    "name": "agentspacearn",
+    "value": {
+     "ref": "AgentSpace",
+     "attr": "Arn"
+    },
+    "description": "ARN of the created Agent Space.",
+    "export": null
+   },
+   "refs": [
+    "AgentSpace"
+   ]
+  },
+  {
+   "id": "__output__.agentspacename",
+   "cfg": "__output__.agentspacename",
+   "type": "__output__",
+   "values": {
+    "name": "agentspacename",
+    "value": "FSIAgentKitAgentSpace-CFN",
+    "description": "Name of the created Agent Space.",
+    "export": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.operatorappurl",
+   "cfg": "__output__.operatorappurl",
+   "type": "__output__",
+   "values": {
+    "name": "operatorappurl",
+    "value": "https://${AgentSpace.AgentSpaceId}.aidevops.global.app.aws/home",
+    "description": "URL of the DevOps Agent operator webapp.",
+    "export": null
+   },
+   "refs": [
+    "AgentSpace"
+   ]
+  },
+  {
+   "id": "__output__.devopsagentspacerolearn",
+   "cfg": "__output__.devopsagentspacerolearn",
+   "type": "__output__",
+   "values": {
+    "name": "devopsagentspacerolearn",
+    "value": {
+     "ref": "DevOpsAgentSpaceRole",
+     "attr": "Arn"
+    },
+    "description": "ARN of the IAM role assumed by the Agent Space.",
+    "export": null
+   },
+   "refs": [
+    "DevOpsAgentSpaceRole"
+   ]
+  },
+  {
+   "id": "__output__.devopsoperatorrolearn",
+   "cfg": "__output__.devopsoperatorrolearn",
+   "type": "__output__",
+   "values": {
+    "name": "devopsoperatorrolearn",
+    "value": {
+     "ref": "DevOpsOperatorRole",
+     "attr": "Arn"
+    },
+    "description": "ARN of the operator-app IAM role.",
+    "export": null
+   },
+   "refs": [
+    "DevOpsOperatorRole"
+   ]
+  },
+  {
+   "id": "__output__.primaryaccountid",
+   "cfg": "__output__.primaryaccountid",
+   "type": "__output__",
+   "values": {
+    "name": "primaryaccountid",
+    "value": "123456789012",
+    "description": "Account ID of the primary (monitoring) account.",
+    "export": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.awsregion",
+   "cfg": "__output__.awsregion",
+   "type": "__output__",
+   "values": {
+    "name": "awsregion",
+    "value": "us-east-1",
+    "description": "AWS region the stack deployed into.",
+    "export": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.DevOpsAgentSpaceRole",
+   "cfg": "DevOpsAgentSpaceRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "DevOpsAgentSpaceRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "DevOpsAgentRole-AgentSpace-cfnid",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "aidevops.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "aws:SourceAccount": "123456789012"
+         },
+         "ArnLike": {
+          "aws:SourceArn": "arn:aws:aidevops:us-east-1:123456789012:agentspace/*"
+         }
+        }
+       }
+      ]
+     },
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/AIDevOpsAgentAccessPolicy"
+     ],
+     "Policies": [
+      {
+       "PolicyName": "AllowCreateServiceLinkedRoles",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Sid": "AllowCreateResourceExplorerServiceLinkedRole",
+          "Effect": "Allow",
+          "Action": [
+           "iam:CreateServiceLinkedRole"
+          ],
+          "Resource": [
+           "arn:aws:iam::123456789012:role/aws-service-role/resource-explorer-2.amazonaws.com/AWSServiceRoleForResourceExplorer"
+          ]
+         }
+        ]
+       }
+      }
+     ],
+     "Tags": [
+      {
+       "Key": "Project",
+       "Value": "ava"
+      },
+      {
+       "Key": "Component",
+       "Value": "frontier-agents/devops"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.DevOpsOperatorRole",
+   "cfg": "DevOpsOperatorRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "DevOpsOperatorRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "DevOpsAgentRole-WebappAdmin-cfnid",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "aidevops.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole",
+         "sts:TagSession"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "aws:SourceAccount": "123456789012"
+         },
+         "ArnLike": {
+          "aws:SourceArn": "arn:aws:aidevops:us-east-1:123456789012:agentspace/*"
+         }
+        }
+       }
+      ]
+     },
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/AIDevOpsOperatorAppAccessPolicy"
+     ],
+     "Tags": [
+      {
+       "Key": "Project",
+       "Value": "ava"
+      },
+      {
+       "Key": "Component",
+       "Value": "frontier-agents/devops"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::DevOpsAgent::AgentSpace.AgentSpace",
+   "cfg": "AgentSpace",
+   "type": "__declared__",
+   "refs": [
+    "DevOpsOperatorRole"
+   ],
+   "values": {
+    "type": "AWS::DevOpsAgent::AgentSpace",
+    "name": "AgentSpace",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "FSIAgentKitAgentSpace-CFN",
+     "Description": "DevOps Agent Space provisioned by AVA - CloudFormation",
+     "OperatorApp": {
+      "Iam": {
+       "OperatorAppRoleArn": {
+        "ref": "DevOpsOperatorRole",
+        "attr": "Arn"
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::DevOpsAgent::Association.PrimaryAccountAssociation",
+   "cfg": "PrimaryAccountAssociation",
+   "type": "__declared__",
+   "refs": [
+    "AgentSpace",
+    "DevOpsAgentSpaceRole"
+   ],
+   "values": {
+    "type": "AWS::DevOpsAgent::Association",
+    "name": "PrimaryAccountAssociation",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AgentSpaceId": {
+      "ref": "AgentSpace",
+      "attr": "AgentSpaceId"
+     },
+     "ServiceId": "aws",
+     "Configuration": {
+      "Aws": {
+       "AssumableRoleArn": {
+        "ref": "DevOpsAgentSpaceRole",
+        "attr": "Arn"
+       },
+       "AccountId": "123456789012",
+       "AccountType": "monitor"
+      }
+     }
+    }
+   }
+  }
+ ]
+}

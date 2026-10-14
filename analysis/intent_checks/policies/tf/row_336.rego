@@ -1,0 +1,563 @@
+# GENERATED from specs/tf/row_336.json by intent_checks/build.py -- do not edit.
+package intent.tf.row_336
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {
+  "create_role": {
+   "types": [
+    "aws_iam_role"
+   ],
+   "where": [
+    {
+     "path": [
+      "name"
+     ],
+     "op": "eq",
+     "value": "create_ddb_backup_role"
+    }
+   ]
+  },
+  "remove_role": {
+   "types": [
+    "aws_iam_role"
+   ],
+   "where": [
+    {
+     "path": [
+      "name"
+     ],
+     "op": "eq",
+     "value": "remove_ddb_backup_role"
+    }
+   ]
+  },
+  "create_policy": {
+   "types": [
+    "aws_iam_policy",
+    "aws_iam_role_policy"
+   ],
+   "where": [
+    {
+     "path": [
+      "name"
+     ],
+     "op": "eq",
+     "value": "create_ddb_backup_policy"
+    }
+   ]
+  },
+  "remove_policy": {
+   "types": [
+    "aws_iam_policy",
+    "aws_iam_role_policy"
+   ],
+   "where": [
+    {
+     "path": [
+      "name"
+     ],
+     "op": "eq",
+     "value": "remove_ddb_backup_policy"
+    }
+   ]
+  },
+  "logging_policy": {
+   "types": [
+    "aws_iam_policy"
+   ],
+   "where": [
+    {
+     "path": [
+      "name"
+     ],
+     "op": "eq",
+     "value": "lambda_logging"
+    }
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "create_role_named",
+   "kind": "exists",
+   "select": "create_role",
+   "tier": "core",
+   "quote": "a role named \"create_ddb_backup_role\""
+  },
+  {
+   "id": "remove_role_named",
+   "kind": "exists",
+   "select": "remove_role",
+   "tier": "core",
+   "quote": "a role named \"remove_ddb_backup_role\""
+  },
+  {
+   "id": "roles_assumable_by_lambda",
+   "kind": "all_of",
+   "tier": "core",
+   "quote": "two IAM roles assumable by Lambda",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "create_role",
+     "cond": {
+      "path": [
+       "assume_role_policy"
+      ],
+      "op": "contains",
+      "value": "lambda.amazonaws.com"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "remove_role",
+     "cond": {
+      "path": [
+       "assume_role_policy"
+      ],
+      "op": "contains",
+      "value": "lambda.amazonaws.com"
+     }
+    }
+   ]
+  },
+  {
+   "id": "create_policy_allows_create_backup",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "a policy named \"create_ddb_backup_policy\" allowing it to create DynamoDB backups",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "create_policy",
+     "cond": {
+      "path": [
+       "policy"
+      ],
+      "op": "regex",
+      "value": "dynamodb:(\\*|Create\\*|CreateBackup)"
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "in",
+        "value": [
+         "aws_iam_policy",
+         "aws_iam_role_policy"
+        ]
+       },
+       {
+        "path": [
+         "properties",
+         "name"
+        ],
+        "op": "contains",
+        "value": "create_ddb_backup_policy"
+       },
+       {
+        "path": [
+         "properties",
+         "policy"
+        ],
+        "op": "regex",
+        "value": "dynamodb:(\\*|Create\\*|CreateBackup)"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "remove_policy_allows_list",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "a policy named \"remove_ddb_backup_policy\" allowing it to list and delete DynamoDB backups",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "remove_policy",
+     "cond": {
+      "path": [
+       "policy"
+      ],
+      "op": "regex",
+      "value": "dynamodb:(\\*|List\\*|ListBackups)"
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "in",
+        "value": [
+         "aws_iam_policy",
+         "aws_iam_role_policy"
+        ]
+       },
+       {
+        "path": [
+         "properties",
+         "name"
+        ],
+        "op": "contains",
+        "value": "remove_ddb_backup_policy"
+       },
+       {
+        "path": [
+         "properties",
+         "policy"
+        ],
+        "op": "regex",
+        "value": "dynamodb:(\\*|List\\*|ListBackups)"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "remove_policy_allows_delete",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "allowing it to list and delete DynamoDB backups",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "remove_policy",
+     "cond": {
+      "path": [
+       "policy"
+      ],
+      "op": "regex",
+      "value": "dynamodb:(\\*|Delete\\*|DeleteBackup)"
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "in",
+        "value": [
+         "aws_iam_policy",
+         "aws_iam_role_policy"
+        ]
+       },
+       {
+        "path": [
+         "properties",
+         "name"
+        ],
+        "op": "contains",
+        "value": "remove_ddb_backup_policy"
+       },
+       {
+        "path": [
+         "properties",
+         "policy"
+        ],
+        "op": "regex",
+        "value": "dynamodb:(\\*|Delete\\*|DeleteBackup)"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "create_policy_on_create_role",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "a role named \"create_ddb_backup_role\" with a policy named \"create_ddb_backup_policy\"",
+   "checks": [
+    {
+     "kind": "ref",
+     "to": "create_policy",
+     "from": {
+      "types": [
+       "aws_iam_role_policy_attachment"
+      ],
+      "where": [
+       {
+        "path": [
+         "role"
+        ],
+        "op": "eq",
+        "value": "create_ddb_backup_role"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "to": "create_policy",
+     "from": {
+      "types": [
+       "aws_iam_policy_attachment"
+      ],
+      "where": [
+       {
+        "path": [
+         "roles",
+         "*"
+        ],
+        "op": "eq",
+        "value": "create_ddb_backup_role"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_role_policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "eq",
+        "value": "create_ddb_backup_policy"
+       }
+      ]
+     },
+     "to": "create_role"
+    }
+   ]
+  },
+  {
+   "id": "remove_policy_on_remove_role",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "a role named \"remove_ddb_backup_role\" with a policy named \"remove_ddb_backup_policy\"",
+   "checks": [
+    {
+     "kind": "ref",
+     "to": "remove_policy",
+     "from": {
+      "types": [
+       "aws_iam_role_policy_attachment"
+      ],
+      "where": [
+       {
+        "path": [
+         "role"
+        ],
+        "op": "eq",
+        "value": "remove_ddb_backup_role"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "to": "remove_policy",
+     "from": {
+      "types": [
+       "aws_iam_policy_attachment"
+      ],
+      "where": [
+       {
+        "path": [
+         "roles",
+         "*"
+        ],
+        "op": "eq",
+        "value": "remove_ddb_backup_role"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_role_policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "eq",
+        "value": "remove_ddb_backup_policy"
+       }
+      ]
+     },
+     "to": "remove_role"
+    }
+   ]
+  },
+  {
+   "id": "logging_policy_named",
+   "kind": "exists",
+   "select": "logging_policy",
+   "tier": "core",
+   "quote": "a customer-managed policy named \"lambda_logging\""
+  },
+  {
+   "id": "logging_policy_logs_write",
+   "kind": "attr",
+   "select": "logging_policy",
+   "tier": "detail",
+   "quote": "grants CloudWatch Logs write permissions",
+   "cond": {
+    "path": [
+     "policy"
+    ],
+    "op": "regex",
+    "value": "logs:(PutLogEvents|\\*)"
+   }
+  },
+  {
+   "id": "logging_shared_by_create_role",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "Both roles should also share a customer-managed policy named \"lambda_logging\"",
+   "checks": [
+    {
+     "kind": "ref",
+     "to": "logging_policy",
+     "from": {
+      "types": [
+       "aws_iam_role_policy_attachment"
+      ],
+      "where": [
+       {
+        "path": [
+         "role"
+        ],
+        "op": "eq",
+        "value": "create_ddb_backup_role"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "to": "logging_policy",
+     "from": {
+      "types": [
+       "aws_iam_policy_attachment"
+      ],
+      "where": [
+       {
+        "path": [
+         "roles",
+         "*"
+        ],
+        "op": "eq",
+        "value": "create_ddb_backup_role"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "logging_shared_by_remove_role",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "Both roles should also share a customer-managed policy named \"lambda_logging\"",
+   "checks": [
+    {
+     "kind": "ref",
+     "to": "logging_policy",
+     "from": {
+      "types": [
+       "aws_iam_role_policy_attachment"
+      ],
+      "where": [
+       {
+        "path": [
+         "role"
+        ],
+        "op": "eq",
+        "value": "remove_ddb_backup_role"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "to": "logging_policy",
+     "from": {
+      "types": [
+       "aws_iam_policy_attachment"
+      ],
+      "where": [
+       {
+        "path": [
+         "roles",
+         "*"
+        ],
+        "op": "eq",
+        "value": "remove_ddb_backup_role"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "outputs_both_roles",
+   "kind": "all_of",
+   "tier": "detail",
+   "quote": "the template should output both roles",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__output__"
+      ],
+      "where": []
+     },
+     "to": "create_role"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__output__"
+      ],
+      "where": []
+     },
+     "to": "remove_role"
+    }
+   ]
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

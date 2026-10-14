@@ -1,0 +1,837 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "f04ea2e635e08e1846116252640a4fbfa0823cdb5dbe490f6164b7b1a0da3dda",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "UserPool",
+   "cfg": "UserPool",
+   "type": "AWS::Cognito::UserPool",
+   "values": {
+    "UserPoolName": "anycompany-dev-user-pool",
+    "UserPoolTier": "PLUS",
+    "UserPoolAddOns": {
+     "AdvancedSecurityMode": "ENFORCED"
+    },
+    "UsernameAttributes": [
+     "email"
+    ],
+    "AutoVerifiedAttributes": [
+     "email"
+    ],
+    "AdminCreateUserConfig": {
+     "AllowAdminCreateUserOnly": true
+    },
+    "Schema": [
+     {
+      "Name": "email",
+      "AttributeDataType": "String",
+      "Required": true,
+      "Mutable": true
+     },
+     {
+      "Name": "guest_id",
+      "AttributeDataType": "String",
+      "Required": false,
+      "Mutable": true
+     },
+     {
+      "Name": "property_id",
+      "AttributeDataType": "String",
+      "Required": false,
+      "Mutable": true
+     },
+     {
+      "Name": "region",
+      "AttributeDataType": "String",
+      "Required": false,
+      "Mutable": true
+     }
+    ],
+    "Policies": {
+     "PasswordPolicy": {
+      "MinimumLength": 8,
+      "RequireUppercase": true,
+      "RequireLowercase": true,
+      "RequireNumbers": true,
+      "RequireSymbols": false,
+      "TemporaryPasswordValidityDays": 7
+     }
+    },
+    "AccountRecoverySetting": {
+     "RecoveryMechanisms": [
+      {
+       "Name": "verified_email",
+       "Priority": 1
+      }
+     ]
+    },
+    "UserPoolTags": {
+     "Environment": "dev"
+    },
+    "__resource__": {
+     "DeletionPolicy": "Delete",
+     "UpdateReplacePolicy": "Delete"
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "UserPoolClient",
+   "cfg": "UserPoolClient",
+   "type": "AWS::Cognito::UserPoolClient",
+   "values": {
+    "ClientName": "anycompany-dev-spa-client",
+    "UserPoolId": {
+     "ref": "UserPool"
+    },
+    "GenerateSecret": false,
+    "ExplicitAuthFlows": [
+     "ALLOW_USER_SRP_AUTH",
+     "ALLOW_REFRESH_TOKEN_AUTH"
+    ],
+    "PreventUserExistenceErrors": "ENABLED",
+    "ReadAttributes": [
+     "email",
+     "given_name",
+     "family_name",
+     "custom:guest_id",
+     "custom:property_id",
+     "custom:region"
+    ],
+    "WriteAttributes": [
+     "email",
+     "given_name",
+     "family_name",
+     "custom:guest_id",
+     "custom:property_id",
+     "custom:region"
+    ],
+    "AccessTokenValidity": 1,
+    "IdTokenValidity": 1,
+    "RefreshTokenValidity": 30,
+    "TokenValidityUnits": {
+     "AccessToken": "hours",
+     "IdToken": "hours",
+     "RefreshToken": "days"
+    }
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "AdminAuthClient",
+   "cfg": "AdminAuthClient",
+   "type": "AWS::Cognito::UserPoolClient",
+   "values": {
+    "ClientName": "anycompany-dev-admin-auth-client",
+    "UserPoolId": {
+     "ref": "UserPool"
+    },
+    "GenerateSecret": false,
+    "ExplicitAuthFlows": [
+     "ALLOW_ADMIN_USER_PASSWORD_AUTH",
+     "ALLOW_REFRESH_TOKEN_AUTH"
+    ],
+    "PreventUserExistenceErrors": "ENABLED",
+    "ReadAttributes": [
+     "email",
+     "given_name",
+     "family_name",
+     "custom:guest_id",
+     "custom:property_id",
+     "custom:region"
+    ],
+    "WriteAttributes": [
+     "email",
+     "given_name",
+     "family_name",
+     "custom:guest_id",
+     "custom:property_id",
+     "custom:region"
+    ],
+    "AccessTokenValidity": 1,
+    "IdTokenValidity": 1,
+    "RefreshTokenValidity": 30,
+    "TokenValidityUnits": {
+     "AccessToken": "hours",
+     "IdToken": "hours",
+     "RefreshToken": "days"
+    }
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "AdminGroup",
+   "cfg": "AdminGroup",
+   "type": "AWS::Cognito::UserPoolGroup",
+   "values": {
+    "GroupName": "Admin",
+    "UserPoolId": {
+     "ref": "UserPool"
+    },
+    "Description": "Chain-level full access to all properties and operations"
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "ManagerGroup",
+   "cfg": "ManagerGroup",
+   "type": "AWS::Cognito::UserPoolGroup",
+   "values": {
+    "GroupName": "Manager",
+    "UserPoolId": {
+     "ref": "UserPool"
+    },
+    "Description": "Chain or property-level management access"
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "RegionalManagerGroup",
+   "cfg": "RegionalManagerGroup",
+   "type": "AWS::Cognito::UserPoolGroup",
+   "values": {
+    "GroupName": "RegionalManager",
+    "UserPoolId": {
+     "ref": "UserPool"
+    },
+    "Description": "Regional oversight and reporting"
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "RevenueManagerGroup",
+   "cfg": "RevenueManagerGroup",
+   "type": "AWS::Cognito::UserPoolGroup",
+   "values": {
+    "GroupName": "RevenueManager",
+    "UserPoolId": {
+     "ref": "UserPool"
+    },
+    "Description": "Chain-wide analytics and revenue reporting"
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "FrontDeskGroup",
+   "cfg": "FrontDeskGroup",
+   "type": "AWS::Cognito::UserPoolGroup",
+   "values": {
+    "GroupName": "FrontDesk",
+    "UserPoolId": {
+     "ref": "UserPool"
+    },
+    "Description": "Property-level front desk operations"
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "HousekeepingGroup",
+   "cfg": "HousekeepingGroup",
+   "type": "AWS::Cognito::UserPoolGroup",
+   "values": {
+    "GroupName": "Housekeeping",
+    "UserPoolId": {
+     "ref": "UserPool"
+    },
+    "Description": "Property-level housekeeping task management"
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "M2MResourceServer",
+   "cfg": "M2MResourceServer",
+   "type": "AWS::Cognito::UserPoolResourceServer",
+   "values": {
+    "UserPoolId": {
+     "ref": "UserPool"
+    },
+    "Identifier": "anycompany-pms",
+    "Name": "AnyCompany Hotel PMS API",
+    "Scopes": [
+     {
+      "ScopeName": "read",
+      "ScopeDescription": "Read access to PMS resources"
+     },
+     {
+      "ScopeName": "write",
+      "ScopeDescription": "Write access to PMS resources"
+     },
+     {
+      "ScopeName": "admin",
+      "ScopeDescription": "Administrative access"
+     }
+    ]
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "M2MAppClient",
+   "cfg": "M2MAppClient",
+   "type": "AWS::Cognito::UserPoolClient",
+   "values": {
+    "UserPoolId": {
+     "ref": "UserPool"
+    },
+    "ClientName": "anycompany-pms-m2m-dev",
+    "GenerateSecret": true,
+    "AllowedOAuthFlows": [
+     "client_credentials"
+    ],
+    "AllowedOAuthFlowsUserPoolClient": true,
+    "AllowedOAuthScopes": [
+     "anycompany-pms/read",
+     "anycompany-pms/write",
+     "anycompany-pms/admin"
+    ],
+    "SupportedIdentityProviders": [
+     "COGNITO"
+    ],
+    "__resource__": {
+     "DependsOn": [
+      "M2MResourceServer"
+     ]
+    }
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "UserPoolDomain",
+   "cfg": "UserPoolDomain",
+   "type": "AWS::Cognito::UserPoolDomain",
+   "values": {
+    "UserPoolId": {
+     "ref": "UserPool"
+    },
+    "Domain": "anycompany-pms-dev-123456789012"
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "__parameter__.Environment",
+   "cfg": "__parameter__.Environment",
+   "type": "__parameter__",
+   "values": {
+    "name": "Environment",
+    "type": "String",
+    "default": "dev",
+    "allowed_values": [
+     "dev",
+     "staging",
+     "prod"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.UserPoolId",
+   "cfg": "__output__.UserPoolId",
+   "type": "__output__",
+   "values": {
+    "name": "UserPoolId",
+    "value": {
+     "ref": "UserPool"
+    },
+    "description": "Cognito User Pool ID",
+    "export": "stack-UserPoolId"
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "__output__.UserPoolClientId",
+   "cfg": "__output__.UserPoolClientId",
+   "type": "__output__",
+   "values": {
+    "name": "UserPoolClientId",
+    "value": {
+     "ref": "UserPoolClient"
+    },
+    "description": "Cognito User Pool Client ID (SPA)",
+    "export": "stack-UserPoolClientId"
+   },
+   "refs": [
+    "UserPoolClient"
+   ]
+  },
+  {
+   "id": "__output__.AdminAuthClientId",
+   "cfg": "__output__.AdminAuthClientId",
+   "type": "__output__",
+   "values": {
+    "name": "AdminAuthClientId",
+    "value": {
+     "ref": "AdminAuthClient"
+    },
+    "description": "Cognito client ID for server-side ADMIN_USER_PASSWORD_AUTH (simulator + test harnesses; not browser-facing)",
+    "export": "stack-AdminAuthClientId"
+   },
+   "refs": [
+    "AdminAuthClient"
+   ]
+  },
+  {
+   "id": "__output__.UserPoolArn",
+   "cfg": "__output__.UserPoolArn",
+   "type": "__output__",
+   "values": {
+    "name": "UserPoolArn",
+    "value": {
+     "ref": "UserPool",
+     "attr": "Arn"
+    },
+    "description": "Cognito User Pool ARN",
+    "export": "stack-UserPoolArn"
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "__output__.M2MClientId",
+   "cfg": "__output__.M2MClientId",
+   "type": "__output__",
+   "values": {
+    "name": "M2MClientId",
+    "value": {
+     "ref": "M2MAppClient"
+    },
+    "description": "M2M App Client ID for service-to-service auth",
+    "export": "stack-M2MClientId"
+   },
+   "refs": [
+    "M2MAppClient"
+   ]
+  },
+  {
+   "id": "__output__.UserPoolDomainUrl",
+   "cfg": "__output__.UserPoolDomainUrl",
+   "type": "__output__",
+   "values": {
+    "name": "UserPoolDomainUrl",
+    "value": "https://${UserPoolDomain}.auth.us-east-1.amazoncognito.com",
+    "description": "Cognito User Pool Domain for OAuth2 token endpoint",
+    "export": "stack-UserPoolDomainUrl"
+   },
+   "refs": [
+    "UserPoolDomain"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPool.UserPool",
+   "cfg": "UserPool",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Cognito::UserPool",
+    "name": "UserPool",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "UserPoolName": "anycompany-dev-user-pool",
+     "UserPoolTier": "PLUS",
+     "UserPoolAddOns": {
+      "AdvancedSecurityMode": "ENFORCED"
+     },
+     "UsernameAttributes": [
+      "email"
+     ],
+     "AutoVerifiedAttributes": [
+      "email"
+     ],
+     "AdminCreateUserConfig": {
+      "AllowAdminCreateUserOnly": true
+     },
+     "Schema": [
+      {
+       "Name": "email",
+       "AttributeDataType": "String",
+       "Required": true,
+       "Mutable": true
+      },
+      {
+       "Name": "guest_id",
+       "AttributeDataType": "String",
+       "Required": false,
+       "Mutable": true
+      },
+      {
+       "Name": "property_id",
+       "AttributeDataType": "String",
+       "Required": false,
+       "Mutable": true
+      },
+      {
+       "Name": "region",
+       "AttributeDataType": "String",
+       "Required": false,
+       "Mutable": true
+      }
+     ],
+     "Policies": {
+      "PasswordPolicy": {
+       "MinimumLength": 8,
+       "RequireUppercase": true,
+       "RequireLowercase": true,
+       "RequireNumbers": true,
+       "RequireSymbols": false,
+       "TemporaryPasswordValidityDays": 7
+      }
+     },
+     "AccountRecoverySetting": {
+      "RecoveryMechanisms": [
+       {
+        "Name": "verified_email",
+        "Priority": 1
+       }
+      ]
+     },
+     "UserPoolTags": {
+      "Environment": "dev"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolClient.UserPoolClient",
+   "cfg": "UserPoolClient",
+   "type": "__declared__",
+   "refs": [
+    "UserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolClient",
+    "name": "UserPoolClient",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ClientName": "anycompany-dev-spa-client",
+     "UserPoolId": {
+      "ref": "UserPool"
+     },
+     "GenerateSecret": false,
+     "ExplicitAuthFlows": [
+      "ALLOW_USER_SRP_AUTH",
+      "ALLOW_REFRESH_TOKEN_AUTH"
+     ],
+     "PreventUserExistenceErrors": "ENABLED",
+     "ReadAttributes": [
+      "email",
+      "given_name",
+      "family_name",
+      "custom:guest_id",
+      "custom:property_id",
+      "custom:region"
+     ],
+     "WriteAttributes": [
+      "email",
+      "given_name",
+      "family_name",
+      "custom:guest_id",
+      "custom:property_id",
+      "custom:region"
+     ],
+     "AccessTokenValidity": 1,
+     "IdTokenValidity": 1,
+     "RefreshTokenValidity": 30,
+     "TokenValidityUnits": {
+      "AccessToken": "hours",
+      "IdToken": "hours",
+      "RefreshToken": "days"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolClient.AdminAuthClient",
+   "cfg": "AdminAuthClient",
+   "type": "__declared__",
+   "refs": [
+    "UserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolClient",
+    "name": "AdminAuthClient",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ClientName": "anycompany-dev-admin-auth-client",
+     "UserPoolId": {
+      "ref": "UserPool"
+     },
+     "GenerateSecret": false,
+     "ExplicitAuthFlows": [
+      "ALLOW_ADMIN_USER_PASSWORD_AUTH",
+      "ALLOW_REFRESH_TOKEN_AUTH"
+     ],
+     "PreventUserExistenceErrors": "ENABLED",
+     "ReadAttributes": [
+      "email",
+      "given_name",
+      "family_name",
+      "custom:guest_id",
+      "custom:property_id",
+      "custom:region"
+     ],
+     "WriteAttributes": [
+      "email",
+      "given_name",
+      "family_name",
+      "custom:guest_id",
+      "custom:property_id",
+      "custom:region"
+     ],
+     "AccessTokenValidity": 1,
+     "IdTokenValidity": 1,
+     "RefreshTokenValidity": 30,
+     "TokenValidityUnits": {
+      "AccessToken": "hours",
+      "IdToken": "hours",
+      "RefreshToken": "days"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolGroup.AdminGroup",
+   "cfg": "AdminGroup",
+   "type": "__declared__",
+   "refs": [
+    "UserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolGroup",
+    "name": "AdminGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "GroupName": "Admin",
+     "UserPoolId": {
+      "ref": "UserPool"
+     },
+     "Description": "Chain-level full access to all properties and operations"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolGroup.ManagerGroup",
+   "cfg": "ManagerGroup",
+   "type": "__declared__",
+   "refs": [
+    "UserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolGroup",
+    "name": "ManagerGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "GroupName": "Manager",
+     "UserPoolId": {
+      "ref": "UserPool"
+     },
+     "Description": "Chain or property-level management access"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolGroup.RegionalManagerGroup",
+   "cfg": "RegionalManagerGroup",
+   "type": "__declared__",
+   "refs": [
+    "UserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolGroup",
+    "name": "RegionalManagerGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "GroupName": "RegionalManager",
+     "UserPoolId": {
+      "ref": "UserPool"
+     },
+     "Description": "Regional oversight and reporting"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolGroup.RevenueManagerGroup",
+   "cfg": "RevenueManagerGroup",
+   "type": "__declared__",
+   "refs": [
+    "UserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolGroup",
+    "name": "RevenueManagerGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "GroupName": "RevenueManager",
+     "UserPoolId": {
+      "ref": "UserPool"
+     },
+     "Description": "Chain-wide analytics and revenue reporting"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolGroup.FrontDeskGroup",
+   "cfg": "FrontDeskGroup",
+   "type": "__declared__",
+   "refs": [
+    "UserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolGroup",
+    "name": "FrontDeskGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "GroupName": "FrontDesk",
+     "UserPoolId": {
+      "ref": "UserPool"
+     },
+     "Description": "Property-level front desk operations"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolGroup.HousekeepingGroup",
+   "cfg": "HousekeepingGroup",
+   "type": "__declared__",
+   "refs": [
+    "UserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolGroup",
+    "name": "HousekeepingGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "GroupName": "Housekeeping",
+     "UserPoolId": {
+      "ref": "UserPool"
+     },
+     "Description": "Property-level housekeeping task management"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolResourceServer.M2MResourceServer",
+   "cfg": "M2MResourceServer",
+   "type": "__declared__",
+   "refs": [
+    "UserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolResourceServer",
+    "name": "M2MResourceServer",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "UserPoolId": {
+      "ref": "UserPool"
+     },
+     "Identifier": "anycompany-pms",
+     "Name": "AnyCompany Hotel PMS API",
+     "Scopes": [
+      {
+       "ScopeName": "read",
+       "ScopeDescription": "Read access to PMS resources"
+      },
+      {
+       "ScopeName": "write",
+       "ScopeDescription": "Write access to PMS resources"
+      },
+      {
+       "ScopeName": "admin",
+       "ScopeDescription": "Administrative access"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolClient.M2MAppClient",
+   "cfg": "M2MAppClient",
+   "type": "__declared__",
+   "refs": [
+    "UserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolClient",
+    "name": "M2MAppClient",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "UserPoolId": {
+      "ref": "UserPool"
+     },
+     "ClientName": "anycompany-pms-m2m-dev",
+     "GenerateSecret": true,
+     "AllowedOAuthFlows": [
+      "client_credentials"
+     ],
+     "AllowedOAuthFlowsUserPoolClient": true,
+     "AllowedOAuthScopes": [
+      "anycompany-pms/read",
+      "anycompany-pms/write",
+      "anycompany-pms/admin"
+     ],
+     "SupportedIdentityProviders": [
+      "COGNITO"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolDomain.UserPoolDomain",
+   "cfg": "UserPoolDomain",
+   "type": "__declared__",
+   "refs": [
+    "UserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolDomain",
+    "name": "UserPoolDomain",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "UserPoolId": {
+      "ref": "UserPool"
+     },
+     "Domain": "anycompany-pms-dev-123456789012"
+    }
+   }
+  }
+ ]
+}

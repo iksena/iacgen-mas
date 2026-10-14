@@ -1,0 +1,1469 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "1e8bda662f7ba12e2bd70d21b214e78005a9afdc9d5af94e834ebbca9471ccdb",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "GDdetector",
+   "cfg": "GDdetector",
+   "type": "AWS::GuardDuty::Detector",
+   "values": {
+    "Enable": true,
+    "FindingPublishingFrequency": "FIFTEEN_MINUTES"
+   },
+   "refs": []
+  },
+  {
+   "id": "ResourceReaderRole",
+   "cfg": "ResourceReaderRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "-ResourceReader",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+     "arn:aws:iam::aws:policy/ReadOnlyAccess"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "GetCallerArnRole",
+   "cfg": "GetCallerArnRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "-GetCallerArn",
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "Path": "/",
+    "Policies": [
+     {
+      "PolicyName": "LambdaRole",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Action": [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+         ],
+         "Effect": "Allow",
+         "Resource": [
+          "arn:aws:logs:*:*:*"
+         ]
+        },
+        {
+         "Action": [
+          "cloudformation:DescribeStacks",
+          "cloudtrail:LookupEvents"
+         ],
+         "Effect": "Allow",
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     }
+    ],
+    "__resource__": {
+     "Metadata": {
+      "cfn-lint": {
+       "config": {
+        "ignore_checks": [
+         "EIAMPolicyWildcardResource"
+        ],
+        "ignore_reasons": {
+         "EIAMPolicyWildcardResource": "the roles in this template are re-used across more than 1 eks qs deployment and as such resource names that will only be created in the future are unknown\n"
+        }
+       }
+      }
+     }
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "NodeSGRole",
+   "cfg": "NodeSGRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "-NodeSG",
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+    ],
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Policies": [
+     {
+      "PolicyName": "lambda-copier",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "eks:DescribeNodeGroup"
+         ],
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     }
+    ],
+    "__resource__": {
+     "Metadata": {
+      "cfn-lint": {
+       "config": {
+        "ignore_checks": [
+         "EIAMPolicyWildcardResource"
+        ],
+        "ignore_reasons": {
+         "EIAMPolicyWildcardResource": "the roles in this template are re-used across more than 1 eks qs deployment and as such resource names that will only be created in the future are unknown\n"
+        }
+       }
+      }
+     }
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "ExecutionRole",
+   "cfg": "ExecutionRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "MaxSessionDuration": 8400,
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "resources.cloudformation.amazonaws.com",
+         "lambda.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Path": "/",
+    "Policies": [
+     {
+      "PolicyName": "ResourceTypePolicy",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "secretsmanager:GetSecretValue",
+          "kms:Decrypt",
+          "eks:*",
+          "s3:GetObject",
+          "sts:AssumeRole",
+          "iam:PassRole",
+          "iam:ListRolePolicies",
+          "iam:ListAttachedRolePolicies",
+          "iam:GetRole",
+          "iam:GetPolicy",
+          "iam:GetPolicyVersion",
+          "ec2:*",
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents",
+          "lambda:*"
+         ],
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "LogDeliveryRole",
+   "cfg": "LogDeliveryRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "cloudformation.amazonaws.com",
+         "resources.cloudformation.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Path": "/",
+    "Policies": [
+     {
+      "PolicyName": "ResourceTypePolicy",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:DescribeLogGroups",
+          "logs:DescribeLogStreams",
+          "logs:PutLogEvents",
+          "cloudwatch:ListMetrics",
+          "cloudwatch:PutMetricData"
+         ],
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "ApplyResourceActivation",
+   "cfg": "ApplyResourceActivation",
+   "type": "AWS::CloudFormation::TypeActivation",
+   "values": {
+    "ExecutionRoleArn": {
+     "ref": "ExecutionRole",
+     "attr": "Arn"
+    },
+    "LoggingConfig": {
+     "LogGroupName": "cloudformation/registry/awsqs-kubernetes-resource",
+     "LogRoleArn": {
+      "ref": "LogDeliveryRole",
+      "attr": "Arn"
+     }
+    },
+    "PublicTypeArn": "arn:aws:cloudformation:us-east-1::type/resource/408988dff9e863704bcc72e7e13f8d645cee8311/AWSQS-Kubernetes-Resource",
+    "Type": "RESOURCE"
+   },
+   "refs": [
+    "ExecutionRole",
+    "LogDeliveryRole"
+   ]
+  },
+  {
+   "id": "HelmResourceActivation",
+   "cfg": "HelmResourceActivation",
+   "type": "AWS::CloudFormation::TypeActivation",
+   "values": {
+    "ExecutionRoleArn": {
+     "ref": "ExecutionRole",
+     "attr": "Arn"
+    },
+    "LoggingConfig": {
+     "LogGroupName": "awsqs-kubernetes-helm-logs",
+     "LogRoleArn": {
+      "ref": "LogDeliveryRole",
+      "attr": "Arn"
+     }
+    },
+    "PublicTypeArn": "arn:aws:cloudformation:us-east-1::type/resource/408988dff9e863704bcc72e7e13f8d645cee8311/AWSQS-Kubernetes-Helm",
+    "Type": "RESOURCE"
+   },
+   "refs": [
+    "ExecutionRole",
+    "LogDeliveryRole"
+   ]
+  },
+  {
+   "id": "ClusterResourceActivation",
+   "cfg": "ClusterResourceActivation",
+   "type": "AWS::CloudFormation::TypeActivation",
+   "values": {
+    "ExecutionRoleArn": {
+     "ref": "ExecutionRole",
+     "attr": "Arn"
+    },
+    "LoggingConfig": {
+     "LogGroupName": "cloudformation/registry/awsqs-eks-cluster",
+     "LogRoleArn": {
+      "ref": "LogDeliveryRole",
+      "attr": "Arn"
+     }
+    },
+    "PublicTypeArn": "arn:aws:cloudformation:us-east-1::type/resource/408988dff9e863704bcc72e7e13f8d645cee8311/AWSQS-EKS-Cluster",
+    "Type": "RESOURCE"
+   },
+   "refs": [
+    "ExecutionRole",
+    "LogDeliveryRole"
+   ]
+  },
+  {
+   "id": "EKSCodeBuildServiceRole",
+   "cfg": "EKSCodeBuildServiceRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Principal": {
+        "Service": [
+         "codebuild.amazonaws.com",
+         "eks.amazonaws.com"
+        ]
+       }
+      }
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "EKSCodeBuildServicePolicy",
+   "cfg": "EKSCodeBuildServicePolicy",
+   "type": "AWS::IAM::Policy",
+   "values": {
+    "PolicyName": "ECRCodeBuildServicePolicy",
+    "Roles": [
+     {
+      "ref": "EKSCodeBuildServiceRole"
+     }
+    ],
+    "PolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Action": [
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+       ],
+       "Resource": [
+        "arn:aws:logs:*:*:*"
+       ]
+      },
+      {
+       "Effect": "Allow",
+       "Action": [
+        "s3:GetObject",
+        "s3:GetObjectVersion",
+        "s3:PutObject"
+       ],
+       "Resource": [
+        "*"
+       ]
+      },
+      {
+       "Effect": "Allow",
+       "Action": [
+        "ecr:*"
+       ],
+       "Resource": [
+        "*"
+       ]
+      },
+      {
+       "Effect": "Allow",
+       "Action": [
+        "eks:DescribeCluster",
+        "eks:Describe"
+       ],
+       "Resource": [
+        "*"
+       ]
+      }
+     ]
+    }
+   },
+   "refs": [
+    "EKSCodeBuildServiceRole"
+   ]
+  },
+  {
+   "id": "EKSQSExtentionServiceRole",
+   "cfg": "EKSQSExtentionServiceRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Principal": {
+        "Service": [
+         "resources.cloudformation.amazonaws.com",
+         "hooks.cloudformation.amazonaws.com"
+        ]
+       }
+      }
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "EKSQSExtentionServicePolicy",
+   "cfg": "EKSQSExtentionServicePolicy",
+   "type": "AWS::IAM::Policy",
+   "values": {
+    "PolicyName": "EKSQSExtentionServicePolicy",
+    "Roles": [
+     {
+      "ref": "EKSQSExtentionServiceRole"
+     }
+    ],
+    "PolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Action": [
+        "secretsmanager:GetSecretValue",
+        "kms:Decrypt",
+        "eks:DescribeCluster",
+        "s3:GetObject",
+        "sts:AssumeRole",
+        "sts:GetCallerIdentity",
+        "iam:PassRole",
+        "ec2:CreateNetworkInterface",
+        "ec2:DescribeNetworkInterfaces",
+        "ec2:DeleteNetworkInterface",
+        "ec2:DescribeVpcs",
+        "ec2:DescribeSubnets",
+        "ec2:DescribeRouteTables",
+        "ec2:DescribeSecurityGroups",
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents",
+        "lambda:UpdateFunctionConfiguration",
+        "lambda:DeleteFunction",
+        "lambda:GetFunction",
+        "lambda:InvokeFunction",
+        "lambda:CreateFunction",
+        "lambda:UpdateFunctionCode",
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:DescribeLogGroups",
+        "logs:DescribeLogStreams",
+        "logs:PutLogEvents",
+        "cloudwatch:ListMetrics",
+        "cloudwatch:PutMetricData",
+        "ssm:PutParameter",
+        "ssm:GetParameter",
+        "ssm:DeleteParameter"
+       ],
+       "Resource": [
+        "*"
+       ]
+      }
+     ]
+    }
+   },
+   "refs": [
+    "EKSQSExtentionServiceRole"
+   ]
+  },
+  {
+   "id": "BastionRole",
+   "cfg": "BastionRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "ec2.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Policies": [
+     {
+      "PolicyName": "EKSAccess",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "s3:GetObject"
+         ],
+         "Resource": [
+          "arn:aws:s3:::/*"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "logs:CreateLogStream",
+          "logs:GetLogEvents",
+          "logs:PutLogEvents",
+          "logs:DescribeLogGroups",
+          "logs:DescribeLogStreams",
+          "logs:PutRetentionPolicy",
+          "logs:PutMetricFilter",
+          "logs:CreateLogGroup"
+         ],
+         "Resource": [
+          "arn:aws:logs:us-east-1:123456789012:log-group:*:*"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "ec2:AssociateAddress",
+          "ec2:Describe*",
+          "ecr:List*",
+          "eks:List*",
+          "eks:Describe*",
+          "codebuild:*",
+          "codepipeline:*"
+         ],
+         "Resource": [
+          "*"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "ecr:DescribeImageScanFindings",
+          "ecr:StartImageScan",
+          "ecr:GetLifecyclePolicyPreview",
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:PutImageScanningConfiguration",
+          "ecr:DescribeImageReplicationStatus",
+          "ecr:ListTagsForResource",
+          "ecr:UploadLayerPart",
+          "ecr:BatchDeleteImage",
+          "ecr:ListImages",
+          "ecr:BatchGetRepositoryScanningConfiguration",
+          "ecr:PutImage",
+          "ecr:UntagResource",
+          "ecr:BatchGetImage",
+          "ecr:CompleteLayerUpload",
+          "ecr:DescribeImages",
+          "ecr:TagResource",
+          "ecr:DescribeRepositories",
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:GetRepositoryPolicy",
+          "ecr:GetLifecyclePolicy"
+         ],
+         "Resource": [
+          "arn:aws:ecr:*:123456789012:repository/*"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "ecr:GetRegistryPolicy",
+          "ecr:BatchImportUpstreamImage",
+          "ecr:CreateRepository",
+          "ecr:DescribeRegistry",
+          "ecr:GetAuthorizationToken",
+          "ecr:GetRegistryScanningConfiguration"
+         ],
+         "Resource": [
+          "arn:aws:ecr:*:123456789012:*"
+         ]
+        }
+       ]
+      }
+     }
+    ],
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore",
+     "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy",
+     "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+    ],
+    "__resource__": {
+     "Metadata": {
+      "cfn-lint": {
+       "config": {
+        "ignore_checks": [
+         "EIAMPolicyWildcardResource"
+        ],
+        "ignore_reasons": {
+         "EIAMPolicyWildcardResource": "resource does not exist at time of policy creation, so it's address is unkown"
+        }
+       }
+      }
+     }
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.EnvAlias",
+   "cfg": "__parameter__.EnvAlias",
+   "type": "__parameter__",
+   "values": {
+    "name": "EnvAlias",
+    "type": "String",
+    "default": "",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.EnvHash",
+   "cfg": "__parameter__.EnvHash",
+   "type": "__parameter__",
+   "values": {
+    "name": "EnvHash",
+    "type": "String",
+    "default": "",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.S3Bucket",
+   "cfg": "__parameter__.S3Bucket",
+   "type": "__parameter__",
+   "values": {
+    "name": "S3Bucket",
+    "type": "String",
+    "default": "",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.EKSCodeBuildServiceRoleArn",
+   "cfg": "__output__.EKSCodeBuildServiceRoleArn",
+   "type": "__output__",
+   "values": {
+    "name": "EKSCodeBuildServiceRoleArn",
+    "value": {
+     "ref": "EKSCodeBuildServiceRole",
+     "attr": "Arn"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "EKSCodeBuildServiceRole"
+   ]
+  },
+  {
+   "id": "__output__.EKSQSExtentionRoleArn",
+   "cfg": "__output__.EKSQSExtentionRoleArn",
+   "type": "__output__",
+   "values": {
+    "name": "EKSQSExtentionRoleArn",
+    "value": {
+     "ref": "EKSQSExtentionServiceRole",
+     "attr": "Arn"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "EKSQSExtentionServiceRole"
+   ]
+  },
+  {
+   "id": "__output__.BastionHostRole",
+   "cfg": "__output__.BastionHostRole",
+   "type": "__output__",
+   "values": {
+    "name": "BastionHostRole",
+    "value": {
+     "ref": "BastionRole"
+    },
+    "description": "Bastion IAM role name.",
+    "export": null
+   },
+   "refs": [
+    "BastionRole"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::GuardDuty::Detector.GDdetector",
+   "cfg": "GDdetector",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::GuardDuty::Detector",
+    "name": "GDdetector",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Enable": true,
+     "FindingPublishingFrequency": "FIFTEEN_MINUTES"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.ResourceReaderRole",
+   "cfg": "ResourceReaderRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "ResourceReaderRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "-ResourceReader",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+      "arn:aws:iam::aws:policy/ReadOnlyAccess"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.GetCallerArnRole",
+   "cfg": "GetCallerArnRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "GetCallerArnRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "-GetCallerArn",
+     "AssumeRolePolicyDocument": {
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        }
+       }
+      ],
+      "Version": "2012-10-17"
+     },
+     "Path": "/",
+     "Policies": [
+      {
+       "PolicyName": "LambdaRole",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Action": [
+           "logs:CreateLogGroup",
+           "logs:CreateLogStream",
+           "logs:PutLogEvents"
+          ],
+          "Effect": "Allow",
+          "Resource": [
+           "arn:aws:logs:*:*:*"
+          ]
+         },
+         {
+          "Action": [
+           "cloudformation:DescribeStacks",
+           "cloudtrail:LookupEvents"
+          ],
+          "Effect": "Allow",
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.NodeSGRole",
+   "cfg": "NodeSGRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "NodeSGRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "-NodeSG",
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+     ],
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Policies": [
+      {
+       "PolicyName": "lambda-copier",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "eks:DescribeNodeGroup"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.ExecutionRole",
+   "cfg": "ExecutionRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "ExecutionRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "MaxSessionDuration": 8400,
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "resources.cloudformation.amazonaws.com",
+          "lambda.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Path": "/",
+     "Policies": [
+      {
+       "PolicyName": "ResourceTypePolicy",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "secretsmanager:GetSecretValue",
+           "kms:Decrypt",
+           "eks:*",
+           "s3:GetObject",
+           "sts:AssumeRole",
+           "iam:PassRole",
+           "iam:ListRolePolicies",
+           "iam:ListAttachedRolePolicies",
+           "iam:GetRole",
+           "iam:GetPolicy",
+           "iam:GetPolicyVersion",
+           "ec2:*",
+           "logs:CreateLogGroup",
+           "logs:CreateLogStream",
+           "logs:PutLogEvents",
+           "lambda:*"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.LogDeliveryRole",
+   "cfg": "LogDeliveryRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "LogDeliveryRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "cloudformation.amazonaws.com",
+          "resources.cloudformation.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Path": "/",
+     "Policies": [
+      {
+       "PolicyName": "ResourceTypePolicy",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "logs:CreateLogGroup",
+           "logs:CreateLogStream",
+           "logs:DescribeLogGroups",
+           "logs:DescribeLogStreams",
+           "logs:PutLogEvents",
+           "cloudwatch:ListMetrics",
+           "cloudwatch:PutMetricData"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::CloudFormation::TypeActivation.ApplyResourceActivation",
+   "cfg": "ApplyResourceActivation",
+   "type": "__declared__",
+   "refs": [
+    "ExecutionRole",
+    "LogDeliveryRole"
+   ],
+   "values": {
+    "type": "AWS::CloudFormation::TypeActivation",
+    "name": "ApplyResourceActivation",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ExecutionRoleArn": {
+      "ref": "ExecutionRole",
+      "attr": "Arn"
+     },
+     "LoggingConfig": {
+      "LogGroupName": "cloudformation/registry/awsqs-kubernetes-resource",
+      "LogRoleArn": {
+       "ref": "LogDeliveryRole",
+       "attr": "Arn"
+      }
+     },
+     "PublicTypeArn": "arn:aws:cloudformation:us-east-1::type/resource/408988dff9e863704bcc72e7e13f8d645cee8311/AWSQS-Kubernetes-Resource",
+     "Type": "RESOURCE"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::CloudFormation::TypeActivation.HelmResourceActivation",
+   "cfg": "HelmResourceActivation",
+   "type": "__declared__",
+   "refs": [
+    "ExecutionRole",
+    "LogDeliveryRole"
+   ],
+   "values": {
+    "type": "AWS::CloudFormation::TypeActivation",
+    "name": "HelmResourceActivation",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ExecutionRoleArn": {
+      "ref": "ExecutionRole",
+      "attr": "Arn"
+     },
+     "LoggingConfig": {
+      "LogGroupName": "awsqs-kubernetes-helm-logs",
+      "LogRoleArn": {
+       "ref": "LogDeliveryRole",
+       "attr": "Arn"
+      }
+     },
+     "PublicTypeArn": "arn:aws:cloudformation:us-east-1::type/resource/408988dff9e863704bcc72e7e13f8d645cee8311/AWSQS-Kubernetes-Helm",
+     "Type": "RESOURCE"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::CloudFormation::TypeActivation.ClusterResourceActivation",
+   "cfg": "ClusterResourceActivation",
+   "type": "__declared__",
+   "refs": [
+    "ExecutionRole",
+    "LogDeliveryRole"
+   ],
+   "values": {
+    "type": "AWS::CloudFormation::TypeActivation",
+    "name": "ClusterResourceActivation",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ExecutionRoleArn": {
+      "ref": "ExecutionRole",
+      "attr": "Arn"
+     },
+     "LoggingConfig": {
+      "LogGroupName": "cloudformation/registry/awsqs-eks-cluster",
+      "LogRoleArn": {
+       "ref": "LogDeliveryRole",
+       "attr": "Arn"
+      }
+     },
+     "PublicTypeArn": "arn:aws:cloudformation:us-east-1::type/resource/408988dff9e863704bcc72e7e13f8d645cee8311/AWSQS-EKS-Cluster",
+     "Type": "RESOURCE"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.EKSCodeBuildServiceRole",
+   "cfg": "EKSCodeBuildServiceRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "EKSCodeBuildServiceRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Principal": {
+         "Service": [
+          "codebuild.amazonaws.com",
+          "eks.amazonaws.com"
+         ]
+        }
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Policy.EKSCodeBuildServicePolicy",
+   "cfg": "EKSCodeBuildServicePolicy",
+   "type": "__declared__",
+   "refs": [
+    "EKSCodeBuildServiceRole"
+   ],
+   "values": {
+    "type": "AWS::IAM::Policy",
+    "name": "EKSCodeBuildServicePolicy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "PolicyName": "ECRCodeBuildServicePolicy",
+     "Roles": [
+      {
+       "ref": "EKSCodeBuildServiceRole"
+      }
+     ],
+     "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Action": [
+         "logs:CreateLogGroup",
+         "logs:CreateLogStream",
+         "logs:PutLogEvents"
+        ],
+        "Resource": [
+         "arn:aws:logs:*:*:*"
+        ]
+       },
+       {
+        "Effect": "Allow",
+        "Action": [
+         "s3:GetObject",
+         "s3:GetObjectVersion",
+         "s3:PutObject"
+        ],
+        "Resource": [
+         "*"
+        ]
+       },
+       {
+        "Effect": "Allow",
+        "Action": [
+         "ecr:*"
+        ],
+        "Resource": [
+         "*"
+        ]
+       },
+       {
+        "Effect": "Allow",
+        "Action": [
+         "eks:DescribeCluster",
+         "eks:Describe"
+        ],
+        "Resource": [
+         "*"
+        ]
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.EKSQSExtentionServiceRole",
+   "cfg": "EKSQSExtentionServiceRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "EKSQSExtentionServiceRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Principal": {
+         "Service": [
+          "resources.cloudformation.amazonaws.com",
+          "hooks.cloudformation.amazonaws.com"
+         ]
+        }
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Policy.EKSQSExtentionServicePolicy",
+   "cfg": "EKSQSExtentionServicePolicy",
+   "type": "__declared__",
+   "refs": [
+    "EKSQSExtentionServiceRole"
+   ],
+   "values": {
+    "type": "AWS::IAM::Policy",
+    "name": "EKSQSExtentionServicePolicy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "PolicyName": "EKSQSExtentionServicePolicy",
+     "Roles": [
+      {
+       "ref": "EKSQSExtentionServiceRole"
+      }
+     ],
+     "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Action": [
+         "secretsmanager:GetSecretValue",
+         "kms:Decrypt",
+         "eks:DescribeCluster",
+         "s3:GetObject",
+         "sts:AssumeRole",
+         "sts:GetCallerIdentity",
+         "iam:PassRole",
+         "ec2:CreateNetworkInterface",
+         "ec2:DescribeNetworkInterfaces",
+         "ec2:DeleteNetworkInterface",
+         "ec2:DescribeVpcs",
+         "ec2:DescribeSubnets",
+         "ec2:DescribeRouteTables",
+         "ec2:DescribeSecurityGroups",
+         "logs:CreateLogGroup",
+         "logs:CreateLogStream",
+         "logs:PutLogEvents",
+         "lambda:UpdateFunctionConfiguration",
+         "lambda:DeleteFunction",
+         "lambda:GetFunction",
+         "lambda:InvokeFunction",
+         "lambda:CreateFunction",
+         "lambda:UpdateFunctionCode",
+         "logs:CreateLogGroup",
+         "logs:CreateLogStream",
+         "logs:DescribeLogGroups",
+         "logs:DescribeLogStreams",
+         "logs:PutLogEvents",
+         "cloudwatch:ListMetrics",
+         "cloudwatch:PutMetricData",
+         "ssm:PutParameter",
+         "ssm:GetParameter",
+         "ssm:DeleteParameter"
+        ],
+        "Resource": [
+         "*"
+        ]
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.BastionRole",
+   "cfg": "BastionRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "BastionRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "ec2.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Policies": [
+      {
+       "PolicyName": "EKSAccess",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "s3:GetObject"
+          ],
+          "Resource": [
+           "arn:aws:s3:::/*"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "logs:CreateLogStream",
+           "logs:GetLogEvents",
+           "logs:PutLogEvents",
+           "logs:DescribeLogGroups",
+           "logs:DescribeLogStreams",
+           "logs:PutRetentionPolicy",
+           "logs:PutMetricFilter",
+           "logs:CreateLogGroup"
+          ],
+          "Resource": [
+           "arn:aws:logs:us-east-1:123456789012:log-group:*:*"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "ec2:AssociateAddress",
+           "ec2:Describe*",
+           "ecr:List*",
+           "eks:List*",
+           "eks:Describe*",
+           "codebuild:*",
+           "codepipeline:*"
+          ],
+          "Resource": [
+           "*"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "ecr:DescribeImageScanFindings",
+           "ecr:StartImageScan",
+           "ecr:GetLifecyclePolicyPreview",
+           "ecr:GetDownloadUrlForLayer",
+           "ecr:PutImageScanningConfiguration",
+           "ecr:DescribeImageReplicationStatus",
+           "ecr:ListTagsForResource",
+           "ecr:UploadLayerPart",
+           "ecr:BatchDeleteImage",
+           "ecr:ListImages",
+           "ecr:BatchGetRepositoryScanningConfiguration",
+           "ecr:PutImage",
+           "ecr:UntagResource",
+           "ecr:BatchGetImage",
+           "ecr:CompleteLayerUpload",
+           "ecr:DescribeImages",
+           "ecr:TagResource",
+           "ecr:DescribeRepositories",
+           "ecr:BatchCheckLayerAvailability",
+           "ecr:GetRepositoryPolicy",
+           "ecr:GetLifecyclePolicy"
+          ],
+          "Resource": [
+           "arn:aws:ecr:*:123456789012:repository/*"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "ecr:GetRegistryPolicy",
+           "ecr:BatchImportUpstreamImage",
+           "ecr:CreateRepository",
+           "ecr:DescribeRegistry",
+           "ecr:GetAuthorizationToken",
+           "ecr:GetRegistryScanningConfiguration"
+          ],
+          "Resource": [
+           "arn:aws:ecr:*:123456789012:*"
+          ]
+         }
+        ]
+       }
+      }
+     ],
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore",
+      "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy",
+      "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+     ]
+    }
+   }
+  }
+ ]
+}

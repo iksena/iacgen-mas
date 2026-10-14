@@ -1,0 +1,456 @@
+{
+ "meta": {
+  "lang": "tf",
+  "mode": "plan",
+  "warnings": [],
+  "gt_hash": "6e176afbdbc46dd00828ad6609a2c59b2701d44865a131f732033d1d0e51dfe1",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "aws_iam_instance_profile.node",
+   "cfg": "aws_iam_instance_profile.node",
+   "type": "aws_iam_instance_profile",
+   "values": {
+    "name": "tf-legion-node",
+    "path": "/",
+    "role": "tf-legion-node",
+    "tags": null
+   },
+   "refs": [
+    "aws_iam_role.node"
+   ]
+  },
+  {
+   "id": "aws_iam_policy.node_autoscaling",
+   "cfg": "aws_iam_policy.node_autoscaling",
+   "type": "aws_iam_policy",
+   "values": {
+    "delay_after_policy_creation_in_ms": null,
+    "description": "EKS worker node autoscaling policy for cluster legion",
+    "name_prefix": "eks-worker-autoscaling-legion",
+    "path": "/",
+    "policy": "{\"Statement\":[{\"Action\":[\"ec2:DescribeLaunchTemplateVersions\",\"autoscaling:DescribeTags\",\"autoscaling:DescribeLaunchConfigurations\",\"autoscaling:DescribeAutoScalingInstances\",\"autoscaling:DescribeAutoScalingGroups\"],\"Effect\":\"Allow\",\"Resource\":\"*\",\"Sid\":\"eksWorkerAutoscalingAll\"},{\"Action\":[\"autoscaling:UpdateAutoScalingGroup\",\"autoscaling:TerminateInstanceInAutoScalingGroup\",\"autoscaling:SetDesiredCapacity\"],\"Condition\":{\"StringEquals\":{\"autoscaling:ResourceTag/k8s.io/cluster-autoscaler/enabled\":\"true\",\"autoscaling:ResourceTag/kubernetes.io/cluster/legion\":\"owned\"}},\"Effect\":\"Allow\",\"Resource\":\"*\",\"Sid\":\"eksWorkerAutoscalingOwn\"}],\"Version\":\"2012-10-17\"}",
+    "tags": null
+   },
+   "refs": [
+    "data.aws_iam_policy_document.node_autoscaling"
+   ]
+  },
+  {
+   "id": "aws_iam_role.master",
+   "cfg": "aws_iam_role.master",
+   "type": "aws_iam_role",
+   "values": {
+    "assume_role_policy": "{\"Statement\":[{\"Action\":\"sts:AssumeRole\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"eks.amazonaws.com\"}}],\"Version\":\"2012-10-17\"}",
+    "description": null,
+    "force_detach_policies": false,
+    "max_session_duration": 3600,
+    "name": "tf-legion",
+    "path": "/",
+    "permissions_boundary": null,
+    "tags": null
+   },
+   "refs": []
+  },
+  {
+   "id": "aws_iam_role.node",
+   "cfg": "aws_iam_role.node",
+   "type": "aws_iam_role",
+   "values": {
+    "assume_role_policy": "{\"Statement\":[{\"Action\":\"sts:AssumeRole\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"ec2.amazonaws.com\"}}],\"Version\":\"2012-10-17\"}",
+    "description": null,
+    "force_detach_policies": false,
+    "max_session_duration": 3600,
+    "name": "tf-legion-node",
+    "path": "/",
+    "permissions_boundary": null,
+    "tags": null
+   },
+   "refs": []
+  },
+  {
+   "id": "aws_iam_role_policy_attachment.AmazonEC2ContainerRegistryReadOnly",
+   "cfg": "aws_iam_role_policy_attachment.AmazonEC2ContainerRegistryReadOnly",
+   "type": "aws_iam_role_policy_attachment",
+   "values": {
+    "policy_arn": "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly",
+    "role": "tf-legion-node"
+   },
+   "refs": [
+    "aws_iam_role.node"
+   ]
+  },
+  {
+   "id": "aws_iam_role_policy_attachment.AmazonEKSClusterPolicy",
+   "cfg": "aws_iam_role_policy_attachment.AmazonEKSClusterPolicy",
+   "type": "aws_iam_role_policy_attachment",
+   "values": {
+    "policy_arn": "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy",
+    "role": "tf-legion"
+   },
+   "refs": [
+    "aws_iam_role.master"
+   ]
+  },
+  {
+   "id": "aws_iam_role_policy_attachment.AmazonEKSServicePolicy",
+   "cfg": "aws_iam_role_policy_attachment.AmazonEKSServicePolicy",
+   "type": "aws_iam_role_policy_attachment",
+   "values": {
+    "policy_arn": "arn:aws:iam::aws:policy/AmazonEKSServicePolicy",
+    "role": "tf-legion"
+   },
+   "refs": [
+    "aws_iam_role.master"
+   ]
+  },
+  {
+   "id": "aws_iam_role_policy_attachment.AmazonEKSWorkerNodePolicy",
+   "cfg": "aws_iam_role_policy_attachment.AmazonEKSWorkerNodePolicy",
+   "type": "aws_iam_role_policy_attachment",
+   "values": {
+    "policy_arn": "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy",
+    "role": "tf-legion-node"
+   },
+   "refs": [
+    "aws_iam_role.node"
+   ]
+  },
+  {
+   "id": "aws_iam_role_policy_attachment.AmazonEKS_CNI_Policy",
+   "cfg": "aws_iam_role_policy_attachment.AmazonEKS_CNI_Policy",
+   "type": "aws_iam_role_policy_attachment",
+   "values": {
+    "policy_arn": "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy",
+    "role": "tf-legion-node"
+   },
+   "refs": [
+    "aws_iam_role.node"
+   ]
+  },
+  {
+   "id": "aws_iam_role_policy_attachment.node_autoscaling",
+   "cfg": "aws_iam_role_policy_attachment.node_autoscaling",
+   "type": "aws_iam_role_policy_attachment",
+   "values": {
+    "role": "tf-legion-node"
+   },
+   "refs": [
+    "aws_iam_policy.node_autoscaling",
+    "aws_iam_role.node"
+   ]
+  },
+  {
+   "id": "__parameter__.cluster_name",
+   "cfg": "__parameter__.cluster_name",
+   "type": "__parameter__",
+   "values": {
+    "name": "cluster_name",
+    "default": "legion"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.master_role_arn",
+   "cfg": "__output__.master_role_arn",
+   "type": "__output__",
+   "values": {
+    "name": "master_role_arn",
+    "value": null,
+    "description": null
+   },
+   "refs": [
+    "aws_iam_role.master"
+   ]
+  },
+  {
+   "id": "__output__.master_role_id",
+   "cfg": "__output__.master_role_id",
+   "type": "__output__",
+   "values": {
+    "name": "master_role_id",
+    "value": null,
+    "description": null
+   },
+   "refs": [
+    "aws_iam_role.master"
+   ]
+  },
+  {
+   "id": "__output__.node_instance_profile_name",
+   "cfg": "__output__.node_instance_profile_name",
+   "type": "__output__",
+   "values": {
+    "name": "node_instance_profile_name",
+    "value": "tf-legion-node",
+    "description": null
+   },
+   "refs": [
+    "aws_iam_instance_profile.node"
+   ]
+  },
+  {
+   "id": "__output__.node_role_arn",
+   "cfg": "__output__.node_role_arn",
+   "type": "__output__",
+   "values": {
+    "name": "node_role_arn",
+    "value": null,
+    "description": null
+   },
+   "refs": [
+    "aws_iam_role.node"
+   ]
+  },
+  {
+   "id": "__output__.node_role_id",
+   "cfg": "__output__.node_role_id",
+   "type": "__output__",
+   "values": {
+    "name": "node_role_id",
+    "value": null,
+    "description": null
+   },
+   "refs": [
+    "aws_iam_role.node"
+   ]
+  },
+  {
+   "id": "__declared__.aws_iam_role.master",
+   "cfg": "aws_iam_role.master",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_iam_role",
+    "name": "master",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "tf-${var.cluster_name}",
+     "assume_role_policy": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Principal\": {\n        \"Service\": \"eks.amazonaws.com\"\n      },\n      \"Action\": \"sts:AssumeRole\"\n    }\n  ]\n}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role_policy_attachment.AmazonEKSClusterPolicy",
+   "cfg": "aws_iam_role_policy_attachment.AmazonEKSClusterPolicy",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_role.master"
+   ],
+   "values": {
+    "type": "aws_iam_role_policy_attachment",
+    "name": "AmazonEKSClusterPolicy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "policy_arn": "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy",
+     "role": "${aws_iam_role.master.name}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role_policy_attachment.AmazonEKSServicePolicy",
+   "cfg": "aws_iam_role_policy_attachment.AmazonEKSServicePolicy",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_role.master"
+   ],
+   "values": {
+    "type": "aws_iam_role_policy_attachment",
+    "name": "AmazonEKSServicePolicy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "policy_arn": "arn:aws:iam::aws:policy/AmazonEKSServicePolicy",
+     "role": "${aws_iam_role.master.name}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role.node",
+   "cfg": "aws_iam_role.node",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_iam_role",
+    "name": "node",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "tf-${var.cluster_name}-node",
+     "assume_role_policy": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Principal\": {\n        \"Service\": \"ec2.amazonaws.com\"\n      },\n      \"Action\": \"sts:AssumeRole\"\n    }\n  ]\n}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role_policy_attachment.AmazonEKSWorkerNodePolicy",
+   "cfg": "aws_iam_role_policy_attachment.AmazonEKSWorkerNodePolicy",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_role.node"
+   ],
+   "values": {
+    "type": "aws_iam_role_policy_attachment",
+    "name": "AmazonEKSWorkerNodePolicy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "policy_arn": "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy",
+     "role": "${aws_iam_role.node.name}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role_policy_attachment.AmazonEKS_CNI_Policy",
+   "cfg": "aws_iam_role_policy_attachment.AmazonEKS_CNI_Policy",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_role.node"
+   ],
+   "values": {
+    "type": "aws_iam_role_policy_attachment",
+    "name": "AmazonEKS_CNI_Policy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "policy_arn": "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy",
+     "role": "${aws_iam_role.node.name}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role_policy_attachment.AmazonEC2ContainerRegistryReadOnly",
+   "cfg": "aws_iam_role_policy_attachment.AmazonEC2ContainerRegistryReadOnly",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_role.node"
+   ],
+   "values": {
+    "type": "aws_iam_role_policy_attachment",
+    "name": "AmazonEC2ContainerRegistryReadOnly",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "policy_arn": "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly",
+     "role": "${aws_iam_role.node.name}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_instance_profile.node",
+   "cfg": "aws_iam_instance_profile.node",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_role.node"
+   ],
+   "values": {
+    "type": "aws_iam_instance_profile",
+    "name": "node",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "tf-${var.cluster_name}-node",
+     "role": "${aws_iam_role.node.name}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role_policy_attachment.node_autoscaling",
+   "cfg": "aws_iam_role_policy_attachment.node_autoscaling",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_policy.node_autoscaling",
+    "aws_iam_role.node"
+   ],
+   "values": {
+    "type": "aws_iam_role_policy_attachment",
+    "name": "node_autoscaling",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "policy_arn": "${aws_iam_policy.node_autoscaling.arn}",
+     "role": "${aws_iam_role.node.name}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_policy.node_autoscaling",
+   "cfg": "aws_iam_policy.node_autoscaling",
+   "type": "__declared__",
+   "refs": [
+    "data.aws_iam_policy_document.node_autoscaling"
+   ],
+   "values": {
+    "type": "aws_iam_policy",
+    "name": "node_autoscaling",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name_prefix": "eks-worker-autoscaling-${var.cluster_name}",
+     "description": "EKS worker node autoscaling policy for cluster ${var.cluster_name}",
+     "policy": "${data.aws_iam_policy_document.node_autoscaling.json}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.data.aws_iam_policy_document.node_autoscaling",
+   "cfg": "data.aws_iam_policy_document.node_autoscaling",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "data.aws_iam_policy_document",
+    "name": "node_autoscaling",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "statement": [
+      {
+       "sid": "eksWorkerAutoscalingAll",
+       "effect": "Allow",
+       "actions": [
+        "autoscaling:DescribeAutoScalingGroups",
+        "autoscaling:DescribeAutoScalingInstances",
+        "autoscaling:DescribeLaunchConfigurations",
+        "autoscaling:DescribeTags",
+        "ec2:DescribeLaunchTemplateVersions"
+       ],
+       "resources": [
+        "*"
+       ]
+      },
+      {
+       "sid": "eksWorkerAutoscalingOwn",
+       "effect": "Allow",
+       "actions": [
+        "autoscaling:SetDesiredCapacity",
+        "autoscaling:TerminateInstanceInAutoScalingGroup",
+        "autoscaling:UpdateAutoScalingGroup"
+       ],
+       "resources": [
+        "*"
+       ],
+       "condition": [
+        {
+         "test": "StringEquals",
+         "variable": "autoscaling:ResourceTag/kubernetes.io/cluster/${var.cluster_name}",
+         "values": [
+          "owned"
+         ]
+        },
+        {
+         "test": "StringEquals",
+         "variable": "autoscaling:ResourceTag/k8s.io/cluster-autoscaler/enabled",
+         "values": [
+          "true"
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  }
+ ]
+}

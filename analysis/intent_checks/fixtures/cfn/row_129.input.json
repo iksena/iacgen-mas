@@ -1,0 +1,1119 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "sam_expanded",
+  "warnings": [],
+  "gt_hash": "78e58060f122559f6aef7da9d839cd524a2b16ff36db305ddb33d9a788ce3234",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "cognitoAuthRole",
+   "cfg": "cognitoAuthRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "PiBot_web_cogAuth_role",
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Federated": [
+         "cognito-identity.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRoleWithWebIdentity"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "cognito-identity.amazonaws.com:aud": {
+          "ref": "PibotIDPool"
+         }
+        },
+        "ForAnyValue:StringLike": {
+         "cognito-identity.amazonaws.com:amr": "authenticated"
+        }
+       }
+      }
+     ]
+    },
+    "Path": "/",
+    "Policies": [
+     {
+      "PolicyName": "CognitoAuthorizedPolicy",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "mobileanalytics:PutEvents",
+          "cognito-sync:*",
+          "cognito-identity:*"
+         ],
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "PolicyName": "iot-access",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "iot:Receive",
+          "iot:Send",
+          "iot:Subscribe",
+          "iot:Publish",
+          "iot:Connect",
+          "iot:GetThingShadow",
+          "iot:UpdateThingShadow",
+          "iot:AttachPrincipalPolicy",
+          "iot:ListThings"
+         ],
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "PolicyName": "kinesis-webrtc",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "kinesisvideo:ConnectAsViewer",
+          "kinesisvideo:Describe*",
+          "kinesisvideo:Get*",
+          "kinesisvideo:List*",
+          "rekognition:DetectLabels"
+         ],
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": [
+    "PibotIDPool"
+   ]
+  },
+  {
+   "id": "cognitoUnauthRole",
+   "cfg": "cognitoUnauthRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "PiBot_web_cogUNAuth_role",
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Federated": [
+         "cognito-identity.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRoleWithWebIdentity"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "cognito-identity.amazonaws.com:aud": {
+          "ref": "PibotIDPool"
+         }
+        },
+        "ForAnyValue:StringLike": {
+         "cognito-identity.amazonaws.com:amr": "unauthenticated"
+        }
+       }
+      }
+     ]
+    },
+    "Path": "/",
+    "Policies": [
+     {
+      "PolicyName": "CognitoUnauthorizedPolicy",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "mobileanalytics:PutEvents",
+          "cognito-sync:*"
+         ],
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": [
+    "PibotIDPool"
+   ]
+  },
+  {
+   "id": "cognitoProvAuthRole",
+   "cfg": "cognitoProvAuthRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "PiBot_prov_cogAuth_role",
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Federated": [
+         "cognito-identity.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRoleWithWebIdentity"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "cognito-identity.amazonaws.com:aud": {
+          "ref": "ProvisioningIDPool"
+         }
+        },
+        "ForAnyValue:StringLike": {
+         "cognito-identity.amazonaws.com:amr": "authenticated"
+        }
+       }
+      }
+     ]
+    },
+    "Path": "/",
+    "Policies": [
+     {
+      "PolicyName": "CognitoAuthorizedPolicy",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "mobileanalytics:PutEvents",
+          "cognito-sync:*",
+          "cognito-identity:*"
+         ],
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "PolicyName": "iot-trusted-user-provisioning",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "iot:CreateProvisioningClaim",
+          "iot:AttachPrincipalPolicy",
+          "iot:ListProvisioningTemplates",
+          "iot:DescribeEndpoint"
+         ],
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": [
+    "ProvisioningIDPool"
+   ]
+  },
+  {
+   "id": "cognitoProvUnauthRole",
+   "cfg": "cognitoProvUnauthRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "PiBot_prov_cogUNAuth_role",
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Federated": [
+         "cognito-identity.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRoleWithWebIdentity"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "cognito-identity.amazonaws.com:aud": {
+          "ref": "ProvisioningIDPool"
+         }
+        },
+        "ForAnyValue:StringLike": {
+         "cognito-identity.amazonaws.com:amr": "unauthenticated"
+        }
+       }
+      }
+     ]
+    },
+    "Path": "/",
+    "Policies": [
+     {
+      "PolicyName": "CognitoUnauthorizedPolicy",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "mobileanalytics:PutEvents",
+          "cognito-sync:*"
+         ],
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": [
+    "ProvisioningIDPool"
+   ]
+  },
+  {
+   "id": "PiBotUserPool",
+   "cfg": "PiBotUserPool",
+   "type": "AWS::Cognito::UserPool",
+   "values": {
+    "UserPoolName": "pibot-userpool",
+    "Schema": [
+     {
+      "Name": "name",
+      "AttributeDataType": "String",
+      "Mutable": true,
+      "Required": true
+     },
+     {
+      "Name": "email",
+      "AttributeDataType": "String",
+      "Mutable": false,
+      "Required": true
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "PibotUserPoolClient",
+   "cfg": "PibotUserPoolClient",
+   "type": "AWS::Cognito::UserPoolClient",
+   "values": {
+    "ClientName": "pibot_client",
+    "GenerateSecret": false,
+    "UserPoolId": {
+     "ref": "PiBotUserPool"
+    }
+   },
+   "refs": [
+    "PiBotUserPool"
+   ]
+  },
+  {
+   "id": "PibotIDPool",
+   "cfg": "PibotIDPool",
+   "type": "AWS::Cognito::IdentityPool",
+   "values": {
+    "IdentityPoolName": "pibot_id_pool",
+    "AllowUnauthenticatedIdentities": true,
+    "CognitoIdentityProviders": [
+     {
+      "ClientId": {
+       "ref": "PibotUserPoolClient"
+      },
+      "ProviderName": {
+       "ref": "PiBotUserPool",
+       "attr": "ProviderName"
+      }
+     }
+    ]
+   },
+   "refs": [
+    "PiBotUserPool",
+    "PibotUserPoolClient"
+   ]
+  },
+  {
+   "id": "PibotIDRoleMap",
+   "cfg": "PibotIDRoleMap",
+   "type": "AWS::Cognito::IdentityPoolRoleAttachment",
+   "values": {
+    "IdentityPoolId": {
+     "ref": "PibotIDPool"
+    },
+    "Roles": {
+     "unauthenticated": {
+      "ref": "cognitoUnauthRole",
+      "attr": "Arn"
+     },
+     "authenticated": {
+      "ref": "cognitoAuthRole",
+      "attr": "Arn"
+     }
+    }
+   },
+   "refs": [
+    "PibotIDPool",
+    "cognitoAuthRole",
+    "cognitoUnauthRole"
+   ]
+  },
+  {
+   "id": "ProvisioningUserPool",
+   "cfg": "ProvisioningUserPool",
+   "type": "AWS::Cognito::UserPool",
+   "values": {
+    "UserPoolName": "provisioning-userpool",
+    "Schema": [
+     {
+      "Name": "name",
+      "AttributeDataType": "String",
+      "Mutable": true,
+      "Required": true
+     },
+     {
+      "Name": "email",
+      "AttributeDataType": "String",
+      "Mutable": false,
+      "Required": true
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "ProvisioningUserPoolClient",
+   "cfg": "ProvisioningUserPoolClient",
+   "type": "AWS::Cognito::UserPoolClient",
+   "values": {
+    "ClientName": "provisioning_client",
+    "GenerateSecret": false,
+    "UserPoolId": {
+     "ref": "ProvisioningUserPool"
+    }
+   },
+   "refs": [
+    "ProvisioningUserPool"
+   ]
+  },
+  {
+   "id": "ProvisioningIDPool",
+   "cfg": "ProvisioningIDPool",
+   "type": "AWS::Cognito::IdentityPool",
+   "values": {
+    "IdentityPoolName": "provisioning_id_pool",
+    "AllowUnauthenticatedIdentities": true,
+    "CognitoIdentityProviders": [
+     {
+      "ClientId": {
+       "ref": "ProvisioningUserPoolClient"
+      },
+      "ProviderName": {
+       "ref": "ProvisioningUserPool",
+       "attr": "ProviderName"
+      }
+     }
+    ]
+   },
+   "refs": [
+    "ProvisioningUserPool",
+    "ProvisioningUserPoolClient"
+   ]
+  },
+  {
+   "id": "PibotProvIDRoleMap",
+   "cfg": "PibotProvIDRoleMap",
+   "type": "AWS::Cognito::IdentityPoolRoleAttachment",
+   "values": {
+    "IdentityPoolId": {
+     "ref": "ProvisioningIDPool"
+    },
+    "Roles": {
+     "unauthenticated": {
+      "ref": "cognitoProvUnauthRole",
+      "attr": "Arn"
+     },
+     "authenticated": {
+      "ref": "cognitoProvAuthRole",
+      "attr": "Arn"
+     }
+    }
+   },
+   "refs": [
+    "ProvisioningIDPool",
+    "cognitoProvAuthRole",
+    "cognitoProvUnauthRole"
+   ]
+  },
+  {
+   "id": "__output__.cognitoIdPoolIdweb",
+   "cfg": "__output__.cognitoIdPoolIdweb",
+   "type": "__output__",
+   "values": {
+    "name": "cognitoIdPoolIdweb",
+    "value": {
+     "ref": "PibotIDPool"
+    },
+    "description": "Identity Pool ID for Cognito auth for the main web app",
+    "export": null
+   },
+   "refs": [
+    "PibotIDPool"
+   ]
+  },
+  {
+   "id": "__output__.cognitoUserPoolIdweb",
+   "cfg": "__output__.cognitoUserPoolIdweb",
+   "type": "__output__",
+   "values": {
+    "name": "cognitoUserPoolIdweb",
+    "value": {
+     "ref": "PiBotUserPool"
+    },
+    "description": "UserPool ID for Cognito auth for the main web app",
+    "export": null
+   },
+   "refs": [
+    "PiBotUserPool"
+   ]
+  },
+  {
+   "id": "__output__.cognitoClientIdweb",
+   "cfg": "__output__.cognitoClientIdweb",
+   "type": "__output__",
+   "values": {
+    "name": "cognitoClientIdweb",
+    "value": {
+     "ref": "PibotUserPoolClient"
+    },
+    "description": "UserPool client ID for the main web app",
+    "export": null
+   },
+   "refs": [
+    "PibotUserPoolClient"
+   ]
+  },
+  {
+   "id": "__output__.cognitoIdPoolIdprov",
+   "cfg": "__output__.cognitoIdPoolIdprov",
+   "type": "__output__",
+   "values": {
+    "name": "cognitoIdPoolIdprov",
+    "value": {
+     "ref": "ProvisioningIDPool"
+    },
+    "description": "Identity Pool ID for Cognito auth for the Trusted User Provisioning web app",
+    "export": null
+   },
+   "refs": [
+    "ProvisioningIDPool"
+   ]
+  },
+  {
+   "id": "__output__.cognitoUserPoolprov",
+   "cfg": "__output__.cognitoUserPoolprov",
+   "type": "__output__",
+   "values": {
+    "name": "cognitoUserPoolprov",
+    "value": {
+     "ref": "ProvisioningUserPool"
+    },
+    "description": "UserPool Pool ID for Cognito auth for the Trusted User Provisioning web app",
+    "export": null
+   },
+   "refs": [
+    "ProvisioningUserPool"
+   ]
+  },
+  {
+   "id": "__output__.cognitoClientIdprov",
+   "cfg": "__output__.cognitoClientIdprov",
+   "type": "__output__",
+   "values": {
+    "name": "cognitoClientIdprov",
+    "value": {
+     "ref": "ProvisioningUserPoolClient"
+    },
+    "description": "UserPool client ID for the Trusted User Provisioning web app",
+    "export": null
+   },
+   "refs": [
+    "ProvisioningUserPoolClient"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.cognitoAuthRole",
+   "cfg": "cognitoAuthRole",
+   "type": "__declared__",
+   "refs": [
+    "PibotIDPool"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "cognitoAuthRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "PiBot_web_cogAuth_role",
+     "AssumeRolePolicyDocument": {
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Federated": [
+          "cognito-identity.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRoleWithWebIdentity"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "cognito-identity.amazonaws.com:aud": {
+           "ref": "PibotIDPool"
+          }
+         },
+         "ForAnyValue:StringLike": {
+          "cognito-identity.amazonaws.com:amr": "authenticated"
+         }
+        }
+       }
+      ]
+     },
+     "Path": "/",
+     "Policies": [
+      {
+       "PolicyName": "CognitoAuthorizedPolicy",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "mobileanalytics:PutEvents",
+           "cognito-sync:*",
+           "cognito-identity:*"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      },
+      {
+       "PolicyName": "iot-access",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "iot:Receive",
+           "iot:Send",
+           "iot:Subscribe",
+           "iot:Publish",
+           "iot:Connect",
+           "iot:GetThingShadow",
+           "iot:UpdateThingShadow",
+           "iot:AttachPrincipalPolicy",
+           "iot:ListThings"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      },
+      {
+       "PolicyName": "kinesis-webrtc",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "kinesisvideo:ConnectAsViewer",
+           "kinesisvideo:Describe*",
+           "kinesisvideo:Get*",
+           "kinesisvideo:List*",
+           "rekognition:DetectLabels"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.cognitoUnauthRole",
+   "cfg": "cognitoUnauthRole",
+   "type": "__declared__",
+   "refs": [
+    "PibotIDPool"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "cognitoUnauthRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "PiBot_web_cogUNAuth_role",
+     "AssumeRolePolicyDocument": {
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Federated": [
+          "cognito-identity.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRoleWithWebIdentity"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "cognito-identity.amazonaws.com:aud": {
+           "ref": "PibotIDPool"
+          }
+         },
+         "ForAnyValue:StringLike": {
+          "cognito-identity.amazonaws.com:amr": "unauthenticated"
+         }
+        }
+       }
+      ]
+     },
+     "Path": "/",
+     "Policies": [
+      {
+       "PolicyName": "CognitoUnauthorizedPolicy",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "mobileanalytics:PutEvents",
+           "cognito-sync:*"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.cognitoProvAuthRole",
+   "cfg": "cognitoProvAuthRole",
+   "type": "__declared__",
+   "refs": [
+    "ProvisioningIDPool"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "cognitoProvAuthRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "PiBot_prov_cogAuth_role",
+     "AssumeRolePolicyDocument": {
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Federated": [
+          "cognito-identity.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRoleWithWebIdentity"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "cognito-identity.amazonaws.com:aud": {
+           "ref": "ProvisioningIDPool"
+          }
+         },
+         "ForAnyValue:StringLike": {
+          "cognito-identity.amazonaws.com:amr": "authenticated"
+         }
+        }
+       }
+      ]
+     },
+     "Path": "/",
+     "Policies": [
+      {
+       "PolicyName": "CognitoAuthorizedPolicy",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "mobileanalytics:PutEvents",
+           "cognito-sync:*",
+           "cognito-identity:*"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      },
+      {
+       "PolicyName": "iot-trusted-user-provisioning",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "iot:CreateProvisioningClaim",
+           "iot:AttachPrincipalPolicy",
+           "iot:ListProvisioningTemplates",
+           "iot:DescribeEndpoint"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.cognitoProvUnauthRole",
+   "cfg": "cognitoProvUnauthRole",
+   "type": "__declared__",
+   "refs": [
+    "ProvisioningIDPool"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "cognitoProvUnauthRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "PiBot_prov_cogUNAuth_role",
+     "AssumeRolePolicyDocument": {
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Federated": [
+          "cognito-identity.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRoleWithWebIdentity"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "cognito-identity.amazonaws.com:aud": {
+           "ref": "ProvisioningIDPool"
+          }
+         },
+         "ForAnyValue:StringLike": {
+          "cognito-identity.amazonaws.com:amr": "unauthenticated"
+         }
+        }
+       }
+      ]
+     },
+     "Path": "/",
+     "Policies": [
+      {
+       "PolicyName": "CognitoUnauthorizedPolicy",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "mobileanalytics:PutEvents",
+           "cognito-sync:*"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPool.PiBotUserPool",
+   "cfg": "PiBotUserPool",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Cognito::UserPool",
+    "name": "PiBotUserPool",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "UserPoolName": "pibot-userpool",
+     "Schema": [
+      {
+       "Name": "name",
+       "AttributeDataType": "String",
+       "Mutable": true,
+       "Required": true
+      },
+      {
+       "Name": "email",
+       "AttributeDataType": "String",
+       "Mutable": false,
+       "Required": true
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolClient.PibotUserPoolClient",
+   "cfg": "PibotUserPoolClient",
+   "type": "__declared__",
+   "refs": [
+    "PiBotUserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolClient",
+    "name": "PibotUserPoolClient",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ClientName": "pibot_client",
+     "GenerateSecret": false,
+     "UserPoolId": {
+      "ref": "PiBotUserPool"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::IdentityPool.PibotIDPool",
+   "cfg": "PibotIDPool",
+   "type": "__declared__",
+   "refs": [
+    "PiBotUserPool",
+    "PibotUserPoolClient"
+   ],
+   "values": {
+    "type": "AWS::Cognito::IdentityPool",
+    "name": "PibotIDPool",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "IdentityPoolName": "pibot_id_pool",
+     "AllowUnauthenticatedIdentities": true,
+     "CognitoIdentityProviders": [
+      {
+       "ClientId": {
+        "ref": "PibotUserPoolClient"
+       },
+       "ProviderName": {
+        "ref": "PiBotUserPool",
+        "attr": "ProviderName"
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::IdentityPoolRoleAttachment.PibotIDRoleMap",
+   "cfg": "PibotIDRoleMap",
+   "type": "__declared__",
+   "refs": [
+    "PibotIDPool",
+    "cognitoAuthRole",
+    "cognitoUnauthRole"
+   ],
+   "values": {
+    "type": "AWS::Cognito::IdentityPoolRoleAttachment",
+    "name": "PibotIDRoleMap",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "IdentityPoolId": {
+      "ref": "PibotIDPool"
+     },
+     "Roles": {
+      "unauthenticated": {
+       "ref": "cognitoUnauthRole",
+       "attr": "Arn"
+      },
+      "authenticated": {
+       "ref": "cognitoAuthRole",
+       "attr": "Arn"
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPool.ProvisioningUserPool",
+   "cfg": "ProvisioningUserPool",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Cognito::UserPool",
+    "name": "ProvisioningUserPool",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "UserPoolName": "provisioning-userpool",
+     "Schema": [
+      {
+       "Name": "name",
+       "AttributeDataType": "String",
+       "Mutable": true,
+       "Required": true
+      },
+      {
+       "Name": "email",
+       "AttributeDataType": "String",
+       "Mutable": false,
+       "Required": true
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolClient.ProvisioningUserPoolClient",
+   "cfg": "ProvisioningUserPoolClient",
+   "type": "__declared__",
+   "refs": [
+    "ProvisioningUserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolClient",
+    "name": "ProvisioningUserPoolClient",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ClientName": "provisioning_client",
+     "GenerateSecret": false,
+     "UserPoolId": {
+      "ref": "ProvisioningUserPool"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::IdentityPool.ProvisioningIDPool",
+   "cfg": "ProvisioningIDPool",
+   "type": "__declared__",
+   "refs": [
+    "ProvisioningUserPool",
+    "ProvisioningUserPoolClient"
+   ],
+   "values": {
+    "type": "AWS::Cognito::IdentityPool",
+    "name": "ProvisioningIDPool",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "IdentityPoolName": "provisioning_id_pool",
+     "AllowUnauthenticatedIdentities": true,
+     "CognitoIdentityProviders": [
+      {
+       "ClientId": {
+        "ref": "ProvisioningUserPoolClient"
+       },
+       "ProviderName": {
+        "ref": "ProvisioningUserPool",
+        "attr": "ProviderName"
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::IdentityPoolRoleAttachment.PibotProvIDRoleMap",
+   "cfg": "PibotProvIDRoleMap",
+   "type": "__declared__",
+   "refs": [
+    "ProvisioningIDPool",
+    "cognitoProvAuthRole",
+    "cognitoProvUnauthRole"
+   ],
+   "values": {
+    "type": "AWS::Cognito::IdentityPoolRoleAttachment",
+    "name": "PibotProvIDRoleMap",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "IdentityPoolId": {
+      "ref": "ProvisioningIDPool"
+     },
+     "Roles": {
+      "unauthenticated": {
+       "ref": "cognitoProvUnauthRole",
+       "attr": "Arn"
+      },
+      "authenticated": {
+       "ref": "cognitoProvAuthRole",
+       "attr": "Arn"
+      }
+     }
+    }
+   }
+  }
+ ]
+}

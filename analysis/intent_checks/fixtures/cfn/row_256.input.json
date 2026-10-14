@@ -1,0 +1,1729 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "a8c8239b12fb1117b728a15f768215f36e9fa3234068597260ddedb2d0dd1077",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "VPC",
+   "cfg": "VPC",
+   "type": "AWS::EC2::VPC",
+   "values": {
+    "CidrBlock": "172.16.0.0/16",
+    "EnableDnsSupport": "true",
+    "EnableDnsHostnames": "true",
+    "Tags": [
+     {
+      "Key": "Env",
+      "Value": "test"
+     },
+     {
+      "Key": "Name",
+      "Value": "sc-test-vpc"
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "SubnetA",
+   "cfg": "SubnetA",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "AvailabilityZone": "us-east-1a",
+    "CidrBlock": "172.16.1.0/24",
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "Tags": [
+     {
+      "Key": "Env",
+      "Value": "test"
+     },
+     {
+      "Key": "Name",
+      "Value": "sc-test-subnet-1"
+     }
+    ]
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "SubnetB",
+   "cfg": "SubnetB",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "AvailabilityZone": "us-east-1b",
+    "CidrBlock": "172.16.2.0/24",
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "Tags": [
+     {
+      "Key": "Env",
+      "Value": "test"
+     },
+     {
+      "Key": "Name",
+      "Value": "sc-test-subnet-2"
+     }
+    ]
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "SecurityGroup",
+   "cfg": "SecurityGroup",
+   "type": "AWS::EC2::SecurityGroup",
+   "values": {
+    "GroupDescription": "SC Test Security Group",
+    "GroupName": "sc-lab-test-sg",
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "Tags": [
+     {
+      "Key": "Env",
+      "Value": "test"
+     },
+     {
+      "Key": "Name",
+      "Value": "sc-test-sg"
+     }
+    ]
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "KMSKey",
+   "cfg": "KMSKey",
+   "type": "AWS::KMS::Key",
+   "values": {
+    "Description": "Test KMS Key",
+    "KeyPolicy": {
+     "Version": "2012-10-17",
+     "Id": "key-default-1",
+     "Statement": [
+      {
+       "Sid": "Enable IAM User Permissions",
+       "Effect": "Allow",
+       "Principal": {
+        "AWS": [
+         "arn:aws:iam::123456789012:root",
+         "arn:aws:iam::123456789012:role/sc-alb-product-role",
+         "arn:aws:iam::123456789012:role/sc-autoscaling-product-role",
+         "arn:aws:iam::123456789012:role/sc-alb-listener-product-role",
+         "arn:aws:iam::123456789012:role/sc-alb-target-product-role",
+         "arn:aws:iam::123456789012:role/sc-dms-endpoint-product-role",
+         "arn:aws:iam::123456789012:role/sc-dms-instance-product-role",
+         "arn:aws:iam::123456789012:role/sc-dynamodb-product-role",
+         "arn:aws:iam::123456789012:role/sc-ebs-product-role",
+         "arn:aws:iam::123456789012:role/sc-efs-product-role",
+         "arn:aws:iam::123456789012:role/sc-elasticache-product-role",
+         "arn:aws:iam::123456789012:role/sc-elasticsearch-product-role",
+         "arn:aws:iam::123456789012:role/sc-fsx-product-role",
+         "arn:aws:iam::123456789012:role/sc-kinesis-product-role",
+         "arn:aws:iam::123456789012:role/sc-sns-product-role",
+         "arn:aws:iam::123456789012:role/sc-sqs-product-role",
+         "arn:aws:iam::123456789012:role/sc-sagemaker-product-role",
+         "arn:aws:iam::123456789012:role/sc-s3-product-role"
+        ]
+       },
+       "Action": [
+        "kms:*"
+       ],
+       "Resource": [
+        "*"
+       ]
+      }
+     ]
+    },
+    "__resource__": {
+     "DependsOn": [
+      "ScAlbProductRole",
+      "ScAutoscalingProductRole",
+      "ScAlbListenerProductRole",
+      "ScAlbTargetProductRole",
+      "ScDmsEndpointProductRole",
+      "ScDmsInstanceProductRole",
+      "ScDynamodbProductRole",
+      "ScEbsProductRole",
+      "ScEfsProductRole",
+      "ScElasticacheProductRole",
+      "ScElasticsearchProductRole",
+      "ScFsxProductRole",
+      "ScKinesisProductRole",
+      "ScSnsProductRole",
+      "ScSqsProductRole",
+      "ScSagemakerProductRole",
+      "ScS3ProductRole"
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "DMSVpcRole",
+   "cfg": "DMSVpcRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "dms-vpc-role",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "dms.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/AmazonDMSVPCManagementRole"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "DMSReplicationSubnetGroup",
+   "cfg": "DMSReplicationSubnetGroup",
+   "type": "AWS::DMS::ReplicationSubnetGroup",
+   "values": {
+    "ReplicationSubnetGroupIdentifier": "dmstestreplicationgroup",
+    "ReplicationSubnetGroupDescription": "Test DMS Replication Group",
+    "SubnetIds": [
+     {
+      "ref": "SubnetA"
+     },
+     {
+      "ref": "SubnetB"
+     }
+    ],
+    "__resource__": {
+     "DependsOn": [
+      "DMSVpcRole"
+     ]
+    }
+   },
+   "refs": [
+    "SubnetA",
+    "SubnetB"
+   ]
+  },
+  {
+   "id": "ECSubnetGroup",
+   "cfg": "ECSubnetGroup",
+   "type": "AWS::ElastiCache::SubnetGroup",
+   "values": {
+    "Description": "Cache Subnet Group",
+    "CacheSubnetGroupName": "ec-test-subnet-group",
+    "SubnetIds": [
+     {
+      "ref": "SubnetA"
+     },
+     {
+      "ref": "SubnetB"
+     }
+    ]
+   },
+   "refs": [
+    "SubnetA",
+    "SubnetB"
+   ]
+  },
+  {
+   "id": "ECSecurityGroup",
+   "cfg": "ECSecurityGroup",
+   "type": "AWS::ElastiCache::SecurityGroup",
+   "values": {
+    "Description": "ec-test-security-group"
+   },
+   "refs": []
+  },
+  {
+   "id": "SageMakerRole",
+   "cfg": "SageMakerRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "sc-test-sagemaker-role",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "sagemaker.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Path": "/",
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/AmazonSageMakerFullAccess"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "ScAlbProductRole",
+   "cfg": "ScAlbProductRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "sc-alb-product-role",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "servicecatalog.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Path": "/"
+   },
+   "refs": []
+  },
+  {
+   "id": "ScAutoscalingProductRole",
+   "cfg": "ScAutoscalingProductRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "sc-autoscaling-product-role",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "servicecatalog.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Path": "/"
+   },
+   "refs": []
+  },
+  {
+   "id": "ScAlbListenerProductRole",
+   "cfg": "ScAlbListenerProductRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "sc-alb-listener-product-role",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "servicecatalog.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Path": "/"
+   },
+   "refs": []
+  },
+  {
+   "id": "ScAlbTargetProductRole",
+   "cfg": "ScAlbTargetProductRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "sc-alb-target-product-role",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "servicecatalog.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Path": "/"
+   },
+   "refs": []
+  },
+  {
+   "id": "ScDmsEndpointProductRole",
+   "cfg": "ScDmsEndpointProductRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "sc-dms-endpoint-product-role",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "servicecatalog.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Path": "/"
+   },
+   "refs": []
+  },
+  {
+   "id": "ScDmsInstanceProductRole",
+   "cfg": "ScDmsInstanceProductRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "sc-dms-instance-product-role",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "servicecatalog.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Path": "/"
+   },
+   "refs": []
+  },
+  {
+   "id": "ScDynamodbProductRole",
+   "cfg": "ScDynamodbProductRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "sc-dynamodb-product-role",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "servicecatalog.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Path": "/"
+   },
+   "refs": []
+  },
+  {
+   "id": "ScEbsProductRole",
+   "cfg": "ScEbsProductRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "sc-ebs-product-role",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "servicecatalog.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Path": "/"
+   },
+   "refs": []
+  },
+  {
+   "id": "ScEfsProductRole",
+   "cfg": "ScEfsProductRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "sc-efs-product-role",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "servicecatalog.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Path": "/"
+   },
+   "refs": []
+  },
+  {
+   "id": "ScElasticacheProductRole",
+   "cfg": "ScElasticacheProductRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "sc-elasticache-product-role",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "servicecatalog.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Path": "/"
+   },
+   "refs": []
+  },
+  {
+   "id": "ScElasticsearchProductRole",
+   "cfg": "ScElasticsearchProductRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "sc-elasticsearch-product-role",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "servicecatalog.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Path": "/"
+   },
+   "refs": []
+  },
+  {
+   "id": "ScFsxProductRole",
+   "cfg": "ScFsxProductRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "sc-fsx-product-role",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "servicecatalog.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Path": "/"
+   },
+   "refs": []
+  },
+  {
+   "id": "ScKinesisProductRole",
+   "cfg": "ScKinesisProductRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "sc-kinesis-product-role",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "servicecatalog.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Path": "/"
+   },
+   "refs": []
+  },
+  {
+   "id": "ScSnsProductRole",
+   "cfg": "ScSnsProductRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "sc-sns-product-role",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "servicecatalog.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Path": "/"
+   },
+   "refs": []
+  },
+  {
+   "id": "ScSqsProductRole",
+   "cfg": "ScSqsProductRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "sc-sqs-product-role",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "servicecatalog.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Path": "/"
+   },
+   "refs": []
+  },
+  {
+   "id": "ScSagemakerProductRole",
+   "cfg": "ScSagemakerProductRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "sc-sagemaker-product-role",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "servicecatalog.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Path": "/"
+   },
+   "refs": []
+  },
+  {
+   "id": "ScS3ProductRole",
+   "cfg": "ScS3ProductRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "sc-s3-product-role",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "servicecatalog.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Path": "/"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.VPCId",
+   "cfg": "__output__.VPCId",
+   "type": "__output__",
+   "values": {
+    "name": "VPCId",
+    "value": {
+     "ref": "VPC"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "__output__.SubnetA",
+   "cfg": "__output__.SubnetA",
+   "type": "__output__",
+   "values": {
+    "name": "SubnetA",
+    "value": {
+     "ref": "SubnetA"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "SubnetA"
+   ]
+  },
+  {
+   "id": "__output__.SubnetB",
+   "cfg": "__output__.SubnetB",
+   "type": "__output__",
+   "values": {
+    "name": "SubnetB",
+    "value": {
+     "ref": "SubnetB"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "SubnetB"
+   ]
+  },
+  {
+   "id": "__output__.TestSG",
+   "cfg": "__output__.TestSG",
+   "type": "__output__",
+   "values": {
+    "name": "TestSG",
+    "value": {
+     "ref": "SecurityGroup"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "SecurityGroup"
+   ]
+  },
+  {
+   "id": "__output__.TestKMS",
+   "cfg": "__output__.TestKMS",
+   "type": "__output__",
+   "values": {
+    "name": "TestKMS",
+    "value": {
+     "ref": "KMSKey"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "KMSKey"
+   ]
+  },
+  {
+   "id": "__output__.DMSGroup",
+   "cfg": "__output__.DMSGroup",
+   "type": "__output__",
+   "values": {
+    "name": "DMSGroup",
+    "value": {
+     "ref": "DMSReplicationSubnetGroup"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "DMSReplicationSubnetGroup"
+   ]
+  },
+  {
+   "id": "__output__.ECSubnet",
+   "cfg": "__output__.ECSubnet",
+   "type": "__output__",
+   "values": {
+    "name": "ECSubnet",
+    "value": {
+     "ref": "ECSubnetGroup"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "ECSubnetGroup"
+   ]
+  },
+  {
+   "id": "__output__.ECSG",
+   "cfg": "__output__.ECSG",
+   "type": "__output__",
+   "values": {
+    "name": "ECSG",
+    "value": {
+     "ref": "ECSecurityGroup"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "ECSecurityGroup"
+   ]
+  },
+  {
+   "id": "__output__.SMRole",
+   "cfg": "__output__.SMRole",
+   "type": "__output__",
+   "values": {
+    "name": "SMRole",
+    "value": {
+     "ref": "SageMakerRole"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "SageMakerRole"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPC.VPC",
+   "cfg": "VPC",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::VPC",
+    "name": "VPC",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "CidrBlock": "172.16.0.0/16",
+     "EnableDnsSupport": "true",
+     "EnableDnsHostnames": "true",
+     "Tags": [
+      {
+       "Key": "Env",
+       "Value": "test"
+      },
+      {
+       "Key": "Name",
+       "Value": "sc-test-vpc"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.SubnetA",
+   "cfg": "SubnetA",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "SubnetA",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AvailabilityZone": "us-east-1a",
+     "CidrBlock": "172.16.1.0/24",
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "Tags": [
+      {
+       "Key": "Env",
+       "Value": "test"
+      },
+      {
+       "Key": "Name",
+       "Value": "sc-test-subnet-1"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.SubnetB",
+   "cfg": "SubnetB",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "SubnetB",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AvailabilityZone": "us-east-1b",
+     "CidrBlock": "172.16.2.0/24",
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "Tags": [
+      {
+       "Key": "Env",
+       "Value": "test"
+      },
+      {
+       "Key": "Name",
+       "Value": "sc-test-subnet-2"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SecurityGroup.SecurityGroup",
+   "cfg": "SecurityGroup",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::SecurityGroup",
+    "name": "SecurityGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "GroupDescription": "SC Test Security Group",
+     "GroupName": "sc-lab-test-sg",
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "Tags": [
+      {
+       "Key": "Env",
+       "Value": "test"
+      },
+      {
+       "Key": "Name",
+       "Value": "sc-test-sg"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::KMS::Key.KMSKey",
+   "cfg": "KMSKey",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::KMS::Key",
+    "name": "KMSKey",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Description": "Test KMS Key",
+     "KeyPolicy": {
+      "Version": "2012-10-17",
+      "Id": "key-default-1",
+      "Statement": [
+       {
+        "Sid": "Enable IAM User Permissions",
+        "Effect": "Allow",
+        "Principal": {
+         "AWS": [
+          "arn:aws:iam::123456789012:root",
+          "arn:aws:iam::123456789012:role/sc-alb-product-role",
+          "arn:aws:iam::123456789012:role/sc-autoscaling-product-role",
+          "arn:aws:iam::123456789012:role/sc-alb-listener-product-role",
+          "arn:aws:iam::123456789012:role/sc-alb-target-product-role",
+          "arn:aws:iam::123456789012:role/sc-dms-endpoint-product-role",
+          "arn:aws:iam::123456789012:role/sc-dms-instance-product-role",
+          "arn:aws:iam::123456789012:role/sc-dynamodb-product-role",
+          "arn:aws:iam::123456789012:role/sc-ebs-product-role",
+          "arn:aws:iam::123456789012:role/sc-efs-product-role",
+          "arn:aws:iam::123456789012:role/sc-elasticache-product-role",
+          "arn:aws:iam::123456789012:role/sc-elasticsearch-product-role",
+          "arn:aws:iam::123456789012:role/sc-fsx-product-role",
+          "arn:aws:iam::123456789012:role/sc-kinesis-product-role",
+          "arn:aws:iam::123456789012:role/sc-sns-product-role",
+          "arn:aws:iam::123456789012:role/sc-sqs-product-role",
+          "arn:aws:iam::123456789012:role/sc-sagemaker-product-role",
+          "arn:aws:iam::123456789012:role/sc-s3-product-role"
+         ]
+        },
+        "Action": [
+         "kms:*"
+        ],
+        "Resource": [
+         "*"
+        ]
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.DMSVpcRole",
+   "cfg": "DMSVpcRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "DMSVpcRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "dms-vpc-role",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "dms.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AmazonDMSVPCManagementRole"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::DMS::ReplicationSubnetGroup.DMSReplicationSubnetGroup",
+   "cfg": "DMSReplicationSubnetGroup",
+   "type": "__declared__",
+   "refs": [
+    "SubnetA",
+    "SubnetB"
+   ],
+   "values": {
+    "type": "AWS::DMS::ReplicationSubnetGroup",
+    "name": "DMSReplicationSubnetGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ReplicationSubnetGroupIdentifier": "dmstestreplicationgroup",
+     "ReplicationSubnetGroupDescription": "Test DMS Replication Group",
+     "SubnetIds": [
+      {
+       "ref": "SubnetA"
+      },
+      {
+       "ref": "SubnetB"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ElastiCache::SubnetGroup.ECSubnetGroup",
+   "cfg": "ECSubnetGroup",
+   "type": "__declared__",
+   "refs": [
+    "SubnetA",
+    "SubnetB"
+   ],
+   "values": {
+    "type": "AWS::ElastiCache::SubnetGroup",
+    "name": "ECSubnetGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Description": "Cache Subnet Group",
+     "CacheSubnetGroupName": "ec-test-subnet-group",
+     "SubnetIds": [
+      {
+       "ref": "SubnetA"
+      },
+      {
+       "ref": "SubnetB"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ElastiCache::SecurityGroup.ECSecurityGroup",
+   "cfg": "ECSecurityGroup",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::ElastiCache::SecurityGroup",
+    "name": "ECSecurityGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Description": "ec-test-security-group"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.SageMakerRole",
+   "cfg": "SageMakerRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "SageMakerRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "sc-test-sagemaker-role",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "sagemaker.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Path": "/",
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/AmazonSageMakerFullAccess"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.ScAlbProductRole",
+   "cfg": "ScAlbProductRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "ScAlbProductRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "sc-alb-product-role",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "servicecatalog.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Path": "/"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.ScAutoscalingProductRole",
+   "cfg": "ScAutoscalingProductRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "ScAutoscalingProductRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "sc-autoscaling-product-role",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "servicecatalog.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Path": "/"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.ScAlbListenerProductRole",
+   "cfg": "ScAlbListenerProductRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "ScAlbListenerProductRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "sc-alb-listener-product-role",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "servicecatalog.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Path": "/"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.ScAlbTargetProductRole",
+   "cfg": "ScAlbTargetProductRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "ScAlbTargetProductRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "sc-alb-target-product-role",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "servicecatalog.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Path": "/"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.ScDmsEndpointProductRole",
+   "cfg": "ScDmsEndpointProductRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "ScDmsEndpointProductRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "sc-dms-endpoint-product-role",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "servicecatalog.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Path": "/"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.ScDmsInstanceProductRole",
+   "cfg": "ScDmsInstanceProductRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "ScDmsInstanceProductRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "sc-dms-instance-product-role",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "servicecatalog.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Path": "/"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.ScDynamodbProductRole",
+   "cfg": "ScDynamodbProductRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "ScDynamodbProductRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "sc-dynamodb-product-role",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "servicecatalog.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Path": "/"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.ScEbsProductRole",
+   "cfg": "ScEbsProductRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "ScEbsProductRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "sc-ebs-product-role",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "servicecatalog.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Path": "/"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.ScEfsProductRole",
+   "cfg": "ScEfsProductRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "ScEfsProductRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "sc-efs-product-role",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "servicecatalog.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Path": "/"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.ScElasticacheProductRole",
+   "cfg": "ScElasticacheProductRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "ScElasticacheProductRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "sc-elasticache-product-role",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "servicecatalog.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Path": "/"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.ScElasticsearchProductRole",
+   "cfg": "ScElasticsearchProductRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "ScElasticsearchProductRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "sc-elasticsearch-product-role",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "servicecatalog.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Path": "/"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.ScFsxProductRole",
+   "cfg": "ScFsxProductRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "ScFsxProductRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "sc-fsx-product-role",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "servicecatalog.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Path": "/"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.ScKinesisProductRole",
+   "cfg": "ScKinesisProductRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "ScKinesisProductRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "sc-kinesis-product-role",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "servicecatalog.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Path": "/"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.ScSnsProductRole",
+   "cfg": "ScSnsProductRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "ScSnsProductRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "sc-sns-product-role",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "servicecatalog.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Path": "/"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.ScSqsProductRole",
+   "cfg": "ScSqsProductRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "ScSqsProductRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "sc-sqs-product-role",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "servicecatalog.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Path": "/"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.ScSagemakerProductRole",
+   "cfg": "ScSagemakerProductRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "ScSagemakerProductRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "sc-sagemaker-product-role",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "servicecatalog.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Path": "/"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.ScS3ProductRole",
+   "cfg": "ScS3ProductRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "ScS3ProductRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "sc-s3-product-role",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "servicecatalog.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Path": "/"
+    }
+   }
+  }
+ ]
+}

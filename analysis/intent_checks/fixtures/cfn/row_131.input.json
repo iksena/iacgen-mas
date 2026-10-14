@@ -1,0 +1,828 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "b158db33615e39eca683b0c63d8c5fc136ebb38ed25510e2202a7ded506de0bb",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "ProteinAgentPlaceholderExecutionRole",
+   "cfg": "ProteinAgentPlaceholderExecutionRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "protein-engineering-protein-agent-placeholder-role",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+    ],
+    "Tags": [
+     {
+      "Key": "Project",
+      "Value": "protein-engineering"
+     },
+     {
+      "Key": "Component",
+      "Value": "Gateway"
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "ProteinAgentPlaceholderFunction",
+   "cfg": "ProteinAgentPlaceholderFunction",
+   "type": "AWS::Lambda::Function",
+   "values": {
+    "FunctionName": "protein-agent-placeholder",
+    "Description": "Minimal stub target for the AgentCore GatewayTarget (invoke_endpoint / get_results) -- exercises the Gateway wiring, not the real prediction logic",
+    "Runtime": "python3.12",
+    "Handler": "index.handler",
+    "Role": {
+     "ref": "ProteinAgentPlaceholderExecutionRole",
+     "attr": "Arn"
+    },
+    "Timeout": 10,
+    "Code": {
+     "ZipFile": "def handler(event, context):\n    return {\"output_id\": \"stub-output-id\", \"status\": \"COMPLETED\", \"result\": {}}\n"
+    },
+    "Tags": [
+     {
+      "Key": "Project",
+      "Value": "protein-engineering"
+     },
+     {
+      "Key": "Component",
+      "Value": "Gateway"
+     }
+    ]
+   },
+   "refs": [
+    "ProteinAgentPlaceholderExecutionRole"
+   ]
+  },
+  {
+   "id": "PlaceholderUserPool",
+   "cfg": "PlaceholderUserPool",
+   "type": "AWS::Cognito::UserPool",
+   "values": {
+    "UserPoolName": "protein-engineering-gateway-placeholder-pool"
+   },
+   "refs": []
+  },
+  {
+   "id": "PlaceholderUserPoolClient",
+   "cfg": "PlaceholderUserPoolClient",
+   "type": "AWS::Cognito::UserPoolClient",
+   "values": {
+    "ClientName": "protein-engineering-gateway-placeholder-client",
+    "UserPoolId": {
+     "ref": "PlaceholderUserPool"
+    },
+    "GenerateSecret": false
+   },
+   "refs": [
+    "PlaceholderUserPool"
+   ]
+  },
+  {
+   "id": "GatewayRole",
+   "cfg": "GatewayRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "protein-engineering-agentcore-gateway-role",
+    "Description": "Execution role for Amazon Bedrock AgentCore Gateway to invoke Lambda functions",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "bedrock-agentcore.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "aws:SourceAccount": "123456789012"
+        },
+        "ArnLike": {
+         "aws:SourceArn": "arn:aws:bedrock-agentcore:us-east-1:123456789012:*"
+        }
+       }
+      }
+     ]
+    },
+    "Policies": [
+     {
+      "PolicyName": "LambdaInvokeAccess",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "lambda:InvokeFunction"
+         ],
+         "Resource": {
+          "ref": "ProteinAgentPlaceholderFunction",
+          "attr": "Arn"
+         }
+        }
+       ]
+      }
+     }
+    ],
+    "Tags": [
+     {
+      "Key": "Project",
+      "Value": "protein-engineering"
+     },
+     {
+      "Key": "Component",
+      "Value": "Gateway"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CloudFormation"
+     }
+    ]
+   },
+   "refs": [
+    "ProteinAgentPlaceholderFunction"
+   ]
+  },
+  {
+   "id": "GatewayRoleArnParameter",
+   "cfg": "GatewayRoleArnParameter",
+   "type": "AWS::SSM::Parameter",
+   "values": {
+    "Name": "/protein-agent/gateway/role-arn",
+    "Description": "AgentCore Gateway IAM role ARN",
+    "Type": "String",
+    "Value": {
+     "ref": "GatewayRole",
+     "attr": "Arn"
+    },
+    "Tier": "Standard",
+    "Tags": {
+     "Project": "protein-engineering",
+     "ManagedBy": "CloudFormation"
+    }
+   },
+   "refs": [
+    "GatewayRole"
+   ]
+  },
+  {
+   "id": "AgentCoreGateway",
+   "cfg": "AgentCoreGateway",
+   "type": "AWS::BedrockAgentCore::Gateway",
+   "values": {
+    "Name": "protein-engineering-gateway",
+    "Description": "AgentCore Gateway for protein engineering agent with MCP integration",
+    "RoleArn": {
+     "ref": "GatewayRole",
+     "attr": "Arn"
+    },
+    "ProtocolType": "MCP",
+    "AuthorizerType": "CUSTOM_JWT",
+    "AuthorizerConfiguration": {
+     "CustomJWTAuthorizer": {
+      "DiscoveryUrl": "https://cognito-idp.us-east-1.amazonaws.com/${PlaceholderUserPool}/.well-known/openid-configuration",
+      "AllowedClients": [
+       {
+        "ref": "PlaceholderUserPoolClient"
+       }
+      ]
+     }
+    },
+    "ProtocolConfiguration": {
+     "Mcp": {
+      "SearchType": "SEMANTIC"
+     }
+    },
+    "Tags": {
+     "Project": "protein-engineering",
+     "Component": "Gateway",
+     "ManagedBy": "CloudFormation"
+    }
+   },
+   "refs": [
+    "GatewayRole",
+    "PlaceholderUserPool",
+    "PlaceholderUserPoolClient"
+   ]
+  },
+  {
+   "id": "GatewayTarget",
+   "cfg": "GatewayTarget",
+   "type": "AWS::BedrockAgentCore::GatewayTarget",
+   "values": {
+    "Name": "protein-engineering-lambda",
+    "Description": "Lambda target for protein variant effect prediction",
+    "GatewayIdentifier": {
+     "ref": "AgentCoreGateway"
+    },
+    "TargetConfiguration": {
+     "Mcp": {
+      "Lambda": {
+       "LambdaArn": {
+        "ref": "ProteinAgentPlaceholderFunction",
+        "attr": "Arn"
+       },
+       "ToolSchema": {
+        "InlinePayload": [
+         {
+          "Name": "invoke_endpoint",
+          "Description": "Submit a job to predict the variant effects for an amino acid sequence",
+          "InputSchema": {
+           "Type": "object",
+           "Properties": {
+            "sequence": {
+             "Type": "string",
+             "Description": "Amino acid sequence"
+            }
+           },
+           "Required": [
+            "sequence"
+           ]
+          }
+         },
+         {
+          "Name": "get_results",
+          "Description": "Check if a variant effect prediction job has completed and retrieve results",
+          "InputSchema": {
+           "Type": "object",
+           "Properties": {
+            "output_id": {
+             "Type": "string",
+             "Description": "output_id returned by invoke_endpoint"
+            }
+           },
+           "Required": [
+            "output_id"
+           ]
+          }
+         }
+        ]
+       }
+      }
+     }
+    },
+    "CredentialProviderConfigurations": [
+     {
+      "CredentialProviderType": "GATEWAY_IAM_ROLE"
+     }
+    ]
+   },
+   "refs": [
+    "AgentCoreGateway",
+    "ProteinAgentPlaceholderFunction"
+   ]
+  },
+  {
+   "id": "__parameter__.ProjectName",
+   "cfg": "__parameter__.ProjectName",
+   "type": "__parameter__",
+   "values": {
+    "name": "ProjectName",
+    "type": "String",
+    "default": "protein-engineering",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.GatewayName",
+   "cfg": "__parameter__.GatewayName",
+   "type": "__parameter__",
+   "values": {
+    "name": "GatewayName",
+    "type": "String",
+    "default": "",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.GatewayDescription",
+   "cfg": "__parameter__.GatewayDescription",
+   "type": "__parameter__",
+   "values": {
+    "name": "GatewayDescription",
+    "type": "String",
+    "default": "AgentCore Gateway for protein engineering agent with MCP integration",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.GatewayId",
+   "cfg": "__output__.GatewayId",
+   "type": "__output__",
+   "values": {
+    "name": "GatewayId",
+    "value": {
+     "ref": "AgentCoreGateway"
+    },
+    "description": "AgentCore Gateway ID",
+    "export": "stack-GatewayId"
+   },
+   "refs": [
+    "AgentCoreGateway"
+   ]
+  },
+  {
+   "id": "__output__.GatewayUrl",
+   "cfg": "__output__.GatewayUrl",
+   "type": "__output__",
+   "values": {
+    "name": "GatewayUrl",
+    "value": {
+     "ref": "AgentCoreGateway",
+     "attr": "GatewayUrl"
+    },
+    "description": "AgentCore Gateway MCP URL",
+    "export": "stack-GatewayUrl"
+   },
+   "refs": [
+    "AgentCoreGateway"
+   ]
+  },
+  {
+   "id": "__output__.GatewayArn",
+   "cfg": "__output__.GatewayArn",
+   "type": "__output__",
+   "values": {
+    "name": "GatewayArn",
+    "value": {
+     "ref": "AgentCoreGateway",
+     "attr": "GatewayArn"
+    },
+    "description": "AgentCore Gateway ARN",
+    "export": "stack-GatewayArn"
+   },
+   "refs": [
+    "AgentCoreGateway"
+   ]
+  },
+  {
+   "id": "__output__.GatewayRoleArn",
+   "cfg": "__output__.GatewayRoleArn",
+   "type": "__output__",
+   "values": {
+    "name": "GatewayRoleArn",
+    "value": {
+     "ref": "GatewayRole",
+     "attr": "Arn"
+    },
+    "description": "AgentCore Gateway IAM role ARN",
+    "export": "stack-GatewayRoleArn"
+   },
+   "refs": [
+    "GatewayRole"
+   ]
+  },
+  {
+   "id": "__output__.GatewayRoleName",
+   "cfg": "__output__.GatewayRoleName",
+   "type": "__output__",
+   "values": {
+    "name": "GatewayRoleName",
+    "value": {
+     "ref": "GatewayRole"
+    },
+    "description": "AgentCore Gateway IAM role name",
+    "export": "stack-GatewayRoleName"
+   },
+   "refs": [
+    "GatewayRole"
+   ]
+  },
+  {
+   "id": "__output__.TargetId",
+   "cfg": "__output__.TargetId",
+   "type": "__output__",
+   "values": {
+    "name": "TargetId",
+    "value": {
+     "ref": "GatewayTarget"
+    },
+    "description": "Gateway Target ID",
+    "export": "stack-TargetId"
+   },
+   "refs": [
+    "GatewayTarget"
+   ]
+  },
+  {
+   "id": "__output__.TargetName",
+   "cfg": "__output__.TargetName",
+   "type": "__output__",
+   "values": {
+    "name": "TargetName",
+    "value": "protein-engineering-lambda",
+    "description": "Gateway Target name",
+    "export": "stack-TargetName"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.GatewayRoleArnParameterName",
+   "cfg": "__output__.GatewayRoleArnParameterName",
+   "type": "__output__",
+   "values": {
+    "name": "GatewayRoleArnParameterName",
+    "value": "/protein-agent/gateway/role-arn",
+    "description": "SSM Parameter name for Gateway role ARN",
+    "export": "stack-GatewayRoleArnParameter"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.ProjectName",
+   "cfg": "__output__.ProjectName",
+   "type": "__output__",
+   "values": {
+    "name": "ProjectName",
+    "value": "protein-engineering",
+    "description": "Project name used for resource naming",
+    "export": "stack-ProjectName"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.GatewayName",
+   "cfg": "__output__.GatewayName",
+   "type": "__output__",
+   "values": {
+    "name": "GatewayName",
+    "value": "protein-engineering-gateway",
+    "description": "Gateway name",
+    "export": "stack-GatewayName"
+   },
+   "refs": []
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.ProteinAgentPlaceholderExecutionRole",
+   "cfg": "ProteinAgentPlaceholderExecutionRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "ProteinAgentPlaceholderExecutionRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "protein-engineering-protein-agent-placeholder-role",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+     ],
+     "Tags": [
+      {
+       "Key": "Project",
+       "Value": "protein-engineering"
+      },
+      {
+       "Key": "Component",
+       "Value": "Gateway"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Function.ProteinAgentPlaceholderFunction",
+   "cfg": "ProteinAgentPlaceholderFunction",
+   "type": "__declared__",
+   "refs": [
+    "ProteinAgentPlaceholderExecutionRole"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Function",
+    "name": "ProteinAgentPlaceholderFunction",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "FunctionName": "protein-agent-placeholder",
+     "Description": "Minimal stub target for the AgentCore GatewayTarget (invoke_endpoint / get_results) -- exercises the Gateway wiring, not the real prediction logic",
+     "Runtime": "python3.12",
+     "Handler": "index.handler",
+     "Role": {
+      "ref": "ProteinAgentPlaceholderExecutionRole",
+      "attr": "Arn"
+     },
+     "Timeout": 10,
+     "Code": {
+      "ZipFile": "def handler(event, context):\n    return {\"output_id\": \"stub-output-id\", \"status\": \"COMPLETED\", \"result\": {}}\n"
+     },
+     "Tags": [
+      {
+       "Key": "Project",
+       "Value": "protein-engineering"
+      },
+      {
+       "Key": "Component",
+       "Value": "Gateway"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPool.PlaceholderUserPool",
+   "cfg": "PlaceholderUserPool",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Cognito::UserPool",
+    "name": "PlaceholderUserPool",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "UserPoolName": "protein-engineering-gateway-placeholder-pool"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolClient.PlaceholderUserPoolClient",
+   "cfg": "PlaceholderUserPoolClient",
+   "type": "__declared__",
+   "refs": [
+    "PlaceholderUserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolClient",
+    "name": "PlaceholderUserPoolClient",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ClientName": "protein-engineering-gateway-placeholder-client",
+     "UserPoolId": {
+      "ref": "PlaceholderUserPool"
+     },
+     "GenerateSecret": false
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.GatewayRole",
+   "cfg": "GatewayRole",
+   "type": "__declared__",
+   "refs": [
+    "ProteinAgentPlaceholderFunction"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "GatewayRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "protein-engineering-agentcore-gateway-role",
+     "Description": "Execution role for Amazon Bedrock AgentCore Gateway to invoke Lambda functions",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "bedrock-agentcore.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "aws:SourceAccount": "123456789012"
+         },
+         "ArnLike": {
+          "aws:SourceArn": "arn:aws:bedrock-agentcore:us-east-1:123456789012:*"
+         }
+        }
+       }
+      ]
+     },
+     "Policies": [
+      {
+       "PolicyName": "LambdaInvokeAccess",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "lambda:InvokeFunction"
+          ],
+          "Resource": {
+           "ref": "ProteinAgentPlaceholderFunction",
+           "attr": "Arn"
+          }
+         }
+        ]
+       }
+      }
+     ],
+     "Tags": [
+      {
+       "Key": "Project",
+       "Value": "protein-engineering"
+      },
+      {
+       "Key": "Component",
+       "Value": "Gateway"
+      },
+      {
+       "Key": "ManagedBy",
+       "Value": "CloudFormation"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SSM::Parameter.GatewayRoleArnParameter",
+   "cfg": "GatewayRoleArnParameter",
+   "type": "__declared__",
+   "refs": [
+    "GatewayRole"
+   ],
+   "values": {
+    "type": "AWS::SSM::Parameter",
+    "name": "GatewayRoleArnParameter",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "/protein-agent/gateway/role-arn",
+     "Description": "AgentCore Gateway IAM role ARN",
+     "Type": "String",
+     "Value": {
+      "ref": "GatewayRole",
+      "attr": "Arn"
+     },
+     "Tier": "Standard",
+     "Tags": {
+      "Project": "protein-engineering",
+      "ManagedBy": "CloudFormation"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::BedrockAgentCore::Gateway.AgentCoreGateway",
+   "cfg": "AgentCoreGateway",
+   "type": "__declared__",
+   "refs": [
+    "GatewayRole",
+    "PlaceholderUserPool",
+    "PlaceholderUserPoolClient"
+   ],
+   "values": {
+    "type": "AWS::BedrockAgentCore::Gateway",
+    "name": "AgentCoreGateway",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "protein-engineering-gateway",
+     "Description": "AgentCore Gateway for protein engineering agent with MCP integration",
+     "RoleArn": {
+      "ref": "GatewayRole",
+      "attr": "Arn"
+     },
+     "ProtocolType": "MCP",
+     "AuthorizerType": "CUSTOM_JWT",
+     "AuthorizerConfiguration": {
+      "CustomJWTAuthorizer": {
+       "DiscoveryUrl": "https://cognito-idp.us-east-1.amazonaws.com/${PlaceholderUserPool}/.well-known/openid-configuration",
+       "AllowedClients": [
+        {
+         "ref": "PlaceholderUserPoolClient"
+        }
+       ]
+      }
+     },
+     "ProtocolConfiguration": {
+      "Mcp": {
+       "SearchType": "SEMANTIC"
+      }
+     },
+     "Tags": {
+      "Project": "protein-engineering",
+      "Component": "Gateway",
+      "ManagedBy": "CloudFormation"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::BedrockAgentCore::GatewayTarget.GatewayTarget",
+   "cfg": "GatewayTarget",
+   "type": "__declared__",
+   "refs": [
+    "AgentCoreGateway",
+    "ProteinAgentPlaceholderFunction"
+   ],
+   "values": {
+    "type": "AWS::BedrockAgentCore::GatewayTarget",
+    "name": "GatewayTarget",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "protein-engineering-lambda",
+     "Description": "Lambda target for protein variant effect prediction",
+     "GatewayIdentifier": {
+      "ref": "AgentCoreGateway"
+     },
+     "TargetConfiguration": {
+      "Mcp": {
+       "Lambda": {
+        "LambdaArn": {
+         "ref": "ProteinAgentPlaceholderFunction",
+         "attr": "Arn"
+        },
+        "ToolSchema": {
+         "InlinePayload": [
+          {
+           "Name": "invoke_endpoint",
+           "Description": "Submit a job to predict the variant effects for an amino acid sequence",
+           "InputSchema": {
+            "Type": "object",
+            "Properties": {
+             "sequence": {
+              "Type": "string",
+              "Description": "Amino acid sequence"
+             }
+            },
+            "Required": [
+             "sequence"
+            ]
+           }
+          },
+          {
+           "Name": "get_results",
+           "Description": "Check if a variant effect prediction job has completed and retrieve results",
+           "InputSchema": {
+            "Type": "object",
+            "Properties": {
+             "output_id": {
+              "Type": "string",
+              "Description": "output_id returned by invoke_endpoint"
+             }
+            },
+            "Required": [
+             "output_id"
+            ]
+           }
+          }
+         ]
+        }
+       }
+      }
+     },
+     "CredentialProviderConfigurations": [
+      {
+       "CredentialProviderType": "GATEWAY_IAM_ROLE"
+      }
+     ]
+    }
+   }
+  }
+ ]
+}

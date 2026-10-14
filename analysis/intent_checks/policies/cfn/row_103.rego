@@ -1,0 +1,243 @@
+# GENERATED from specs/cfn/row_103.json by intent_checks/build.py -- do not edit.
+package intent.cfn.row_103
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {
+  "nb": {
+   "types": [
+    "AWS::SageMaker::NotebookInstance"
+   ],
+   "where": []
+  },
+  "lc": {
+   "types": [
+    "AWS::SageMaker::NotebookInstanceLifecycleConfig"
+   ],
+   "where": []
+  },
+  "role": {
+   "types": [
+    "AWS::IAM::Role"
+   ],
+   "where": [
+    {
+     "path": [
+      "AssumeRolePolicyDocument"
+     ],
+     "op": "contains",
+     "value": "sagemaker.amazonaws.com"
+    }
+   ]
+  },
+  "repo": {
+   "types": [
+    "AWS::SageMaker::CodeRepository"
+   ],
+   "where": [
+    {
+     "path": [
+      "GitConfig",
+      "RepositoryUrl"
+     ],
+     "op": "regex",
+     "value": "(?i)^https://github\\.com/rapidsai/notebooks(\\.git)?/?$"
+    }
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "notebook_instance_type",
+   "kind": "attr",
+   "select": "nb",
+   "tier": "core",
+   "quote": "a notebook instance of type ml.t3.medium",
+   "cond": {
+    "path": [
+     "InstanceType"
+    ],
+    "op": "eq",
+    "value": "ml.t3.medium"
+   }
+  },
+  {
+   "id": "notebook_volume_50gb",
+   "kind": "attr",
+   "select": "nb",
+   "tier": "core",
+   "quote": "with 50 GB of storage",
+   "cond": {
+    "path": [
+     "VolumeSizeInGB"
+    ],
+    "op": "eq",
+    "value": 50
+   }
+  },
+  {
+   "id": "notebook_named_rapidsai",
+   "kind": "attr",
+   "select": "nb",
+   "tier": "core",
+   "quote": "named \"rapidsai\"",
+   "cond": {
+    "path": [
+     "NotebookInstanceName"
+    ],
+    "op": "eq",
+    "value": "rapidsai"
+   }
+  },
+  {
+   "id": "default_code_repository",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "configured to clone the default repository from https://github.com/rapidsai/notebooks",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "nb",
+     "cond": {
+      "path": [
+       "DefaultCodeRepository"
+      ],
+      "op": "regex",
+      "value": "(?i)^https://github\\.com/rapidsai/notebooks(\\.git)?/?$"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": "nb",
+     "to": "repo"
+    }
+   ]
+  },
+  {
+   "id": "role_sagemaker_full_access",
+   "kind": "attr",
+   "select": "role",
+   "tier": "core",
+   "quote": "an IAM role with the AmazonSageMakerFullAccess managed policy",
+   "cond": {
+    "path": [
+     "ManagedPolicyArns",
+     "*"
+    ],
+    "op": "regex",
+    "value": "policy/AmazonSageMakerFullAccess$"
+   }
+  },
+  {
+   "id": "notebook_uses_role",
+   "kind": "ref",
+   "from": "nb",
+   "to": "role",
+   "tier": "detail",
+   "quote": "including an IAM role"
+  },
+  {
+   "id": "lifecycle_config_on_create_and_start",
+   "kind": "all_of",
+   "tier": "core",
+   "quote": "a lifecycle configuration that installs a RAPIDS AI conda environment and registers a Jupyter kernel on notebook creation and start",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "lc",
+     "cond": {
+      "path": [
+       "OnCreate"
+      ],
+      "op": "present"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "lc",
+     "cond": {
+      "path": [
+       "OnStart"
+      ],
+      "op": "present"
+     }
+    }
+   ]
+  },
+  {
+   "id": "notebook_uses_lifecycle_config",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "a lifecycle configuration",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "nb",
+     "to": "lc"
+    },
+    {
+     "kind": "join",
+     "from": "nb",
+     "from_path": [
+      "LifecycleConfigName"
+     ],
+     "to": "lc",
+     "to_path": [
+      "NotebookInstanceLifecycleConfigName"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "installs_rapids_conda_env",
+   "kind": "attr",
+   "select": "lc",
+   "tier": "core",
+   "quote": "installs a RAPIDS AI conda environment",
+   "cond": {
+    "path": [
+     "OnCreate"
+    ],
+    "op": "regex",
+    "value": "(?is)conda.{0,400}?rapids|rapids.{0,400}?conda"
+   }
+  },
+  {
+   "id": "registers_kernel_on_create",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "registers a Jupyter kernel on notebook creation",
+   "justify": "registering a Jupyter kernel is done with ipykernel/kernelspec",
+   "select": "lc",
+   "cond": {
+    "path": [
+     "OnCreate"
+    ],
+    "op": "regex",
+    "value": "(?i)(ipykernel|kernelspec|kernel)"
+   }
+  },
+  {
+   "id": "registers_kernel_on_start",
+   "kind": "attr",
+   "select": "lc",
+   "tier": "detail",
+   "quote": "registers a Jupyter kernel on notebook creation and start",
+   "cond": {
+    "path": [
+     "OnStart"
+    ],
+    "op": "regex",
+    "value": "(?i)(ipykernel|kernelspec|kernel)"
+   },
+   "justify": "registering a Jupyter kernel is done with ipykernel/kernelspec"
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

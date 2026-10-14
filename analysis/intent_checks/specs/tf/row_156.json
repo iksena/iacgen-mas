@@ -1,0 +1,1460 @@
+{
+ "lang": "tf",
+ "row_number": 156,
+ "source_hash": {
+  "gt": "51ced7d84a8d639ff1f5fe0abbd2097cc8d0aefa0c7aaa21c68a8ead39ea515c",
+  "prompt": "2c43742166033d744e8deb3a373bb6e1899ac9b756d7bb100432020bc92e5497"
+ },
+ "selectors": {
+  "vpc": {
+   "types": [
+    "aws_vpc"
+   ],
+   "where": [
+    {
+     "path": "cidr_block",
+     "op": "eq",
+     "value": "10.0.0.0/16"
+    }
+   ]
+  },
+  "subnet": {
+   "types": [
+    "aws_subnet"
+   ]
+  },
+  "priv_subnet": {
+   "types": [
+    "aws_subnet"
+   ],
+   "where": [
+    {
+     "path": "cidr_block",
+     "op": "in",
+     "value": [
+      "10.0.0.0/24",
+      "10.0.1.0/24",
+      "10.0.2.0/24"
+     ]
+    }
+   ]
+  },
+  "pub_subnet": {
+   "types": [
+    "aws_subnet"
+   ],
+   "where": [
+    {
+     "path": "cidr_block",
+     "op": "in",
+     "value": [
+      "10.0.4.0/24",
+      "10.0.5.0/24",
+      "10.0.6.0/24"
+     ]
+    }
+   ]
+  },
+  "alb": {
+   "types": [
+    "aws_lb",
+    "aws_alb"
+   ],
+   "where": [
+    {
+     "path": "load_balancer_type",
+     "op": "eq",
+     "value": "application"
+    }
+   ]
+  },
+  "sg": {
+   "types": [
+    "aws_security_group"
+   ]
+  },
+  "tg": {
+   "types": [
+    "aws_lb_target_group",
+    "aws_alb_target_group"
+   ]
+  },
+  "https_listener": {
+   "types": [
+    "aws_lb_listener",
+    "aws_alb_listener"
+   ],
+   "where": [
+    {
+     "path": "port",
+     "op": "eq",
+     "value": 443
+    },
+    {
+     "path": "protocol",
+     "op": "eq",
+     "value": "HTTPS"
+    }
+   ]
+  },
+  "acm": {
+   "types": [
+    "aws_acm_certificate"
+   ]
+  },
+  "efs": {
+   "types": [
+    "aws_efs_file_system"
+   ]
+  },
+  "service": {
+   "types": [
+    "aws_ecs_service"
+   ]
+  },
+  "taskdef": {
+   "types": [
+    "aws_ecs_task_definition"
+   ]
+  },
+  "ecs_role": {
+   "types": [
+    "aws_iam_role"
+   ],
+   "where": [
+    {
+     "path": "assume_role_policy",
+     "op": "contains",
+     "value": "ecs-tasks.amazonaws.com"
+    }
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "vpc_cidr",
+   "kind": "exists",
+   "select": "vpc",
+   "tier": "core",
+   "quote": "build a VPC using CIDR \"10.0.0.0/16\""
+  },
+  {
+   "id": "private_subnets",
+   "kind": "all_of",
+   "tier": "core",
+   "quote": "three private subnets (\"10.0.0.0/24\", \"10.0.1.0/24\", \"10.0.2.0/24\")",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": "cidr_block",
+        "op": "eq",
+        "value": "10.0.0.0/24"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": "cidr_block",
+        "op": "eq",
+        "value": "10.0.1.0/24"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": "cidr_block",
+        "op": "eq",
+        "value": "10.0.2.0/24"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "public_subnets",
+   "kind": "all_of",
+   "tier": "core",
+   "quote": "three public subnets (\"10.0.4.0/24\", \"10.0.5.0/24\", \"10.0.6.0/24\")",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": "cidr_block",
+        "op": "eq",
+        "value": "10.0.4.0/24"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": "cidr_block",
+        "op": "eq",
+        "value": "10.0.5.0/24"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": "cidr_block",
+        "op": "eq",
+        "value": "10.0.6.0/24"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "three_azs",
+   "kind": "exists",
+   "select": "subnet",
+   "distinct_path": "availability_zone",
+   "min": 3,
+   "tier": "detail",
+   "quote": "across the first three availability zones",
+   "justify": "three availability zones"
+  },
+  {
+   "id": "variables_named",
+   "kind": "all_of",
+   "tier": "detail",
+   "quote": "a desired_count defaulting to 1, a container_image defaulting to \"n8nio/n8n:1.4.0\", and a fargate_type defaulting to \"FARGATE_SPOT\"",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "eq",
+        "value": "desired_count"
+       },
+       {
+        "path": "default",
+        "op": "eq",
+        "value": 1
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "eq",
+        "value": "container_image"
+       },
+       {
+        "path": "default",
+        "op": "eq",
+        "value": "n8nio/n8n:1.4.0"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "eq",
+        "value": "fargate_type"
+       },
+       {
+        "path": "default",
+        "op": "eq",
+        "value": "FARGATE_SPOT"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "optional_cert_and_url_variables",
+   "kind": "all_of",
+   "tier": "detail",
+   "quote": "an optional certificate_arn defaulting to null, an optional url override defaulting to null",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "eq",
+        "value": "certificate_arn"
+       },
+       {
+        "path": "default",
+        "op": "absent"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "regex",
+        "value": "(?i)url"
+       },
+       {
+        "path": "default",
+        "op": "absent"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "prefix_variable",
+   "kind": "exists",
+   "tier": "detail",
+   "quote": "a resource prefix defaulting to \"n8n\"",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": "default",
+      "op": "eq",
+      "value": "n8n"
+     }
+    ]
+   }
+  },
+  {
+   "id": "internal_alb",
+   "kind": "attr",
+   "select": "alb",
+   "tier": "core",
+   "quote": "an internal Application Load Balancer",
+   "cond": {
+    "path": "internal",
+    "op": "truthy"
+   }
+  },
+  {
+   "id": "alb_drops_invalid_headers",
+   "kind": "attr",
+   "select": "alb",
+   "tier": "detail",
+   "quote": "drop invalid header fields",
+   "cond": {
+    "path": "drop_invalid_header_fields",
+    "op": "truthy"
+   }
+  },
+  {
+   "id": "alb_in_public_subnets",
+   "kind": "ref",
+   "from": "alb",
+   "to": "pub_subnet",
+   "tier": "detail",
+   "quote": "The internal Application Load Balancer must be placed in the public subnets"
+  },
+  {
+   "id": "alb_sg_http_anywhere",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "a security group allowing inbound HTTP (port 80) and HTTPS (port 443) from anywhere",
+   "justify": "from anywhere = 0.0.0.0/0",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "sg",
+     "cond": {
+      "path": "ingress.*",
+      "op": "match",
+      "value": [
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 80
+       },
+       {
+        "path": "cidr_blocks.*",
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_security_group_rule"
+      ]
+     },
+     "cond": {
+      "path": "",
+      "op": "match",
+      "value": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "ingress"
+       },
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 80
+       },
+       {
+        "path": "cidr_blocks.*",
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_vpc_security_group_ingress_rule"
+      ],
+      "where": [
+       {
+        "path": "from_port",
+        "op": "lte",
+        "value": 80
+       },
+       {
+        "path": "to_port",
+        "op": "gte",
+        "value": 80
+       },
+       {
+        "path": "cidr_ipv4",
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "alb_sg_https_anywhere",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "a security group allowing inbound HTTP (port 80) and HTTPS (port 443) from anywhere",
+   "justify": "from anywhere = 0.0.0.0/0",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "sg",
+     "cond": {
+      "path": "ingress.*",
+      "op": "match",
+      "value": [
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 443
+       },
+       {
+        "path": "cidr_blocks.*",
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_security_group_rule"
+      ]
+     },
+     "cond": {
+      "path": "",
+      "op": "match",
+      "value": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "ingress"
+       },
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 443
+       },
+       {
+        "path": "cidr_blocks.*",
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_vpc_security_group_ingress_rule"
+      ],
+      "where": [
+       {
+        "path": "from_port",
+        "op": "lte",
+        "value": 443
+       },
+       {
+        "path": "to_port",
+        "op": "gte",
+        "value": 443
+       },
+       {
+        "path": "cidr_ipv4",
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "ip_target_group_port80",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "an IP target group on port 80",
+   "select": {
+    "types": [
+     "aws_lb_target_group",
+     "aws_alb_target_group"
+    ],
+    "where": [
+     {
+      "path": "target_type",
+      "op": "eq",
+      "value": "ip"
+     },
+     {
+      "path": "port",
+      "op": "eq",
+      "value": 80
+     }
+    ]
+   }
+  },
+  {
+   "id": "tg_deregistration_delay",
+   "kind": "attr",
+   "select": "tg",
+   "tier": "detail",
+   "quote": "a 30-second deregistration delay",
+   "cond": {
+    "path": "deregistration_delay",
+    "op": "eq",
+    "value": 30
+   }
+  },
+  {
+   "id": "tg_health_check",
+   "kind": "attr",
+   "select": "tg",
+   "tier": "detail",
+   "quote": "a health check path of \"/healthz\" (2 healthy/unhealthy threshold, 3-second timeout, 30-second interval)",
+   "cond": {
+    "path": "health_check.*",
+    "op": "match",
+    "value": [
+     {
+      "path": "path",
+      "op": "eq",
+      "value": "/healthz"
+     },
+     {
+      "path": "healthy_threshold",
+      "op": "eq",
+      "value": 2
+     },
+     {
+      "path": "unhealthy_threshold",
+      "op": "eq",
+      "value": 2
+     },
+     {
+      "path": "timeout",
+      "op": "eq",
+      "value": 3
+     },
+     {
+      "path": "interval",
+      "op": "eq",
+      "value": 30
+     }
+    ]
+   }
+  },
+  {
+   "id": "https_listener_to_tg",
+   "kind": "ref",
+   "from": "https_listener",
+   "to": "tg",
+   "tier": "core",
+   "quote": "An HTTPS listener on port 443"
+  },
+  {
+   "id": "https_listener_policy",
+   "kind": "attr",
+   "select": "https_listener",
+   "tier": "detail",
+   "quote": "using \"ELBSecurityPolicy-TLS13-1-2-2021-06\"",
+   "cond": {
+    "path": "ssl_policy",
+    "op": "eq",
+    "value": "ELBSecurityPolicy-TLS13-1-2-2021-06"
+   }
+  },
+  {
+   "id": "self_signed_cert_imported",
+   "kind": "ref",
+   "from": "acm",
+   "to": {
+    "types": [
+     "tls_self_signed_cert"
+    ]
+   },
+   "tier": "core",
+   "quote": "a self-signed certificate generated in the stack and imported into ACM"
+  },
+  {
+   "id": "listener_uses_cert_fallback",
+   "kind": "ref",
+   "from": "https_listener",
+   "to": "acm",
+   "tier": "detail",
+   "quote": "using certificate_arn when provided and otherwise a self-signed certificate"
+  },
+  {
+   "id": "http_redirects_to_https",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "the HTTP listener on port 80 redirects to HTTPS",
+   "select": {
+    "types": [
+     "aws_lb_listener",
+     "aws_alb_listener"
+    ],
+    "where": [
+     {
+      "path": "port",
+      "op": "eq",
+      "value": 80
+     },
+     {
+      "path": "default_action.*.type",
+      "op": "eq",
+      "value": "redirect"
+     },
+     {
+      "path": "default_action.*.redirect.*.protocol",
+      "op": "eq",
+      "value": "HTTPS"
+     }
+    ]
+   }
+  },
+  {
+   "id": "efs_encrypted",
+   "kind": "attr",
+   "select": "efs",
+   "tier": "core",
+   "quote": "An encrypted EFS file system",
+   "cond": {
+    "path": "encrypted",
+    "op": "truthy"
+   }
+  },
+  {
+   "id": "efs_access_point",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_efs_access_point"
+    ]
+   },
+   "tier": "core",
+   "quote": "an access point rooted at \"/n8n\"",
+   "cond": {
+    "path": "root_directory.*.path",
+    "op": "eq",
+    "value": "/n8n"
+   }
+  },
+  {
+   "id": "efs_access_point_owner",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_efs_access_point"
+    ]
+   },
+   "tier": "detail",
+   "quote": "(owner UID/GID 1000, 777 permissions)",
+   "cond": {
+    "path": "root_directory.*.creation_info.*",
+    "op": "match",
+    "value": [
+     {
+      "path": "owner_uid",
+      "op": "eq",
+      "value": 1000
+     },
+     {
+      "path": "owner_gid",
+      "op": "eq",
+      "value": 1000
+     },
+     {
+      "path": "permissions",
+      "op": "regex",
+      "value": "^0?777$"
+     }
+    ]
+   }
+  },
+  {
+   "id": "efs_mount_targets_private",
+   "kind": "ref",
+   "from": {
+    "types": [
+     "aws_efs_mount_target"
+    ]
+   },
+   "to": "priv_subnet",
+   "tier": "core",
+   "quote": "mount targets in the private subnets"
+  },
+  {
+   "id": "efs_sg_nfs_from_vpc",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "restricted to NFS port 2049 from the VPC CIDR",
+   "justify": "VPC CIDR is the stated 10.0.0.0/16",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "sg",
+     "cond": {
+      "path": "ingress.*",
+      "op": "match",
+      "value": [
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 2049
+       },
+       {
+        "path": "cidr_blocks.*",
+        "op": "eq",
+        "value": "10.0.0.0/16"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_security_group_rule"
+      ]
+     },
+     "cond": {
+      "path": "",
+      "op": "match",
+      "value": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "ingress"
+       },
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 2049
+       },
+       {
+        "path": "cidr_blocks.*",
+        "op": "eq",
+        "value": "10.0.0.0/16"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_vpc_security_group_ingress_rule"
+      ],
+      "where": [
+       {
+        "path": "from_port",
+        "op": "lte",
+        "value": 2049
+       },
+       {
+        "path": "to_port",
+        "op": "gte",
+        "value": 2049
+       },
+       {
+        "path": "cidr_ipv4",
+        "op": "eq",
+        "value": "10.0.0.0/16"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "cluster_insights_disabled",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "An ECS cluster with container insights disabled",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_ecs_cluster"
+      ]
+     },
+     "cond": {
+      "path": "setting.*",
+      "op": "match",
+      "value": [
+       {
+        "path": "name",
+        "op": "eq",
+        "value": "containerInsights"
+       },
+       {
+        "path": "value",
+        "op": "eq",
+        "value": "disabled"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "fargate_spot_capacity",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "must use the chosen Fargate capacity provider",
+   "justify": "fargate_type defaults to FARGATE_SPOT",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "service",
+     "cond": {
+      "path": "capacity_provider_strategy.*.capacity_provider",
+      "op": "eq",
+      "value": "FARGATE_SPOT"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_ecs_cluster_capacity_providers"
+      ]
+     },
+     "cond": {
+      "path": "default_capacity_provider_strategy.*.capacity_provider",
+      "op": "eq",
+      "value": "FARGATE_SPOT"
+     }
+    }
+   ]
+  },
+  {
+   "id": "capacity_base_weight",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "with base 1 and weight 100",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "service",
+     "cond": {
+      "path": "capacity_provider_strategy.*",
+      "op": "match",
+      "value": [
+       {
+        "path": "base",
+        "op": "eq",
+        "value": 1
+       },
+       {
+        "path": "weight",
+        "op": "eq",
+        "value": 100
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_ecs_cluster_capacity_providers"
+      ]
+     },
+     "cond": {
+      "path": "default_capacity_provider_strategy.*",
+      "op": "match",
+      "value": [
+       {
+        "path": "base",
+        "op": "eq",
+        "value": 1
+       },
+       {
+        "path": "weight",
+        "op": "eq",
+        "value": 100
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "service_public_ip_public_subnets",
+   "kind": "all_of",
+   "tier": "core",
+   "quote": "places tasks in the public subnets with public IP assignment enabled",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "service",
+     "cond": {
+      "path": "network_configuration.*.assign_public_ip",
+      "op": "truthy"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": "service",
+     "to": "pub_subnet"
+    }
+   ]
+  },
+  {
+   "id": "service_sg_5678_from_lb",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "a security group allowing port 5678 only from the load balancer",
+   "justify": "only from the load balancer = not open to 0.0.0.0/0",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_security_group"
+      ],
+      "where": [
+       {
+        "path": "ingress.*",
+        "op": "port_covers",
+        "value": 5678
+       },
+       {
+        "path": "ingress.*.cidr_blocks.*",
+        "op": "none_eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     },
+     "to": "sg"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_security_group_rule"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "ingress"
+       },
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 5678
+       },
+       {
+        "path": "cidr_blocks.*",
+        "op": "none_eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     },
+     "to": "sg"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_vpc_security_group_ingress_rule"
+      ],
+      "where": [
+       {
+        "path": "from_port",
+        "op": "lte",
+        "value": 5678
+       },
+       {
+        "path": "to_port",
+        "op": "gte",
+        "value": 5678
+       },
+       {
+        "path": "cidr_ipv4",
+        "op": "absent"
+       }
+      ]
+     },
+     "to": "sg"
+    }
+   ]
+  },
+  {
+   "id": "service_to_target_group",
+   "kind": "ref",
+   "from": "service",
+   "to": "tg",
+   "tier": "detail",
+   "quote": "forwarding traffic to an IP target group on port 80"
+  },
+  {
+   "id": "taskdef_cpu_memory",
+   "kind": "attr",
+   "select": "taskdef",
+   "tier": "core",
+   "quote": "The Fargate task definition must use 256 CPU and 512 memory",
+   "cond": {
+    "path": "",
+    "op": "match",
+    "value": [
+     {
+      "path": "cpu",
+      "op": "eq",
+      "value": 256
+     },
+     {
+      "path": "memory",
+      "op": "eq",
+      "value": 512
+     }
+    ]
+   }
+  },
+  {
+   "id": "taskdef_efs_volume",
+   "kind": "attr",
+   "select": "taskdef",
+   "tier": "core",
+   "quote": "mount the EFS volume with transit encryption and IAM authorization",
+   "cond": {
+    "path": "volume.*.efs_volume_configuration.*",
+    "op": "match",
+    "value": [
+     {
+      "path": "transit_encryption",
+      "op": "eq",
+      "value": "ENABLED"
+     },
+     {
+      "path": "authorization_config.*.iam",
+      "op": "eq",
+      "value": "ENABLED"
+     }
+    ]
+   }
+  },
+  {
+   "id": "container_mount_path",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "to \"/home/node/.n8n\"",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_ecs_task_definition"
+       },
+       {
+        "path": "properties",
+        "op": "regex",
+        "value": "/home/node/\\.n8n"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "taskdef",
+     "cond": {
+      "path": "container_definitions",
+      "op": "regex",
+      "value": "/home/node/\\.n8n"
+     }
+    }
+   ]
+  },
+  {
+   "id": "container_port_5678",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "run an essential container on port 5678",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_ecs_task_definition"
+       },
+       {
+        "path": "properties",
+        "op": "regex",
+        "value": "5678"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "taskdef",
+     "cond": {
+      "path": "container_definitions",
+      "op": "regex",
+      "value": "5678"
+     }
+    }
+   ]
+  },
+  {
+   "id": "container_awslogs",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "logs through the awslogs driver",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_ecs_task_definition"
+       },
+       {
+        "path": "properties",
+        "op": "regex",
+        "value": "awslogs"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "taskdef",
+     "cond": {
+      "path": "container_definitions",
+      "op": "regex",
+      "value": "awslogs"
+     }
+    }
+   ]
+  },
+  {
+   "id": "container_env_skip_deregistration",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "setting N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN to \"true\"",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_ecs_task_definition"
+       },
+       {
+        "path": "properties",
+        "op": "regex",
+        "value": "(?is)N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN.{0,60}?true"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "taskdef",
+     "cond": {
+      "path": "container_definitions",
+      "op": "regex",
+      "value": "(?is)N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN.{0,60}?true"
+     }
+    }
+   ]
+  },
+  {
+   "id": "container_env_webhook_url",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "WEBHOOK_URL to the url variable or otherwise the HTTPS load balancer endpoint",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_ecs_task_definition"
+       },
+       {
+        "path": "properties",
+        "op": "regex",
+        "value": "WEBHOOK_URL"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "taskdef",
+     "cond": {
+      "path": "container_definitions",
+      "op": "regex",
+      "value": "WEBHOOK_URL"
+     }
+    }
+   ]
+  },
+  {
+   "id": "log_group_named",
+   "kind": "exists",
+   "tier": "detail",
+   "quote": "a CloudWatch log group named with the prefix followed by \"-logs\" with 1-day retention",
+   "justify": "prefix defaults to n8n, so the group is n8n-logs",
+   "select": {
+    "types": [
+     "aws_cloudwatch_log_group"
+    ],
+    "where": [
+     {
+      "path": "name",
+      "op": "eq",
+      "value": "n8n-logs"
+     },
+     {
+      "path": "retention_in_days",
+      "op": "eq",
+      "value": 1
+     }
+    ]
+   }
+  },
+  {
+   "id": "sg_egress_vpc_only",
+   "kind": "attr",
+   "select": "sg",
+   "quantifier": "all",
+   "tier": "detail",
+   "quote": "All security groups must limit outbound traffic to the VPC CIDR",
+   "justify": "limited to the VPC CIDR = no 0.0.0.0/0 egress",
+   "cond": {
+    "path": "egress.*.cidr_blocks.*",
+    "op": "none_eq",
+    "value": "0.0.0.0/0"
+   }
+  },
+  {
+   "id": "ecs_task_roles",
+   "kind": "exists",
+   "select": "ecs_role",
+   "min": 2,
+   "tier": "core",
+   "quote": "create task and execution IAM roles assumable by \"ecs-tasks.amazonaws.com\"",
+   "justify": "a task role and an execution role"
+  },
+  {
+   "id": "roles_logs_inline_policy",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "each with an inline policy permitting CloudWatch log group and stream operations",
+   "justify": "one inline policy per role, two roles",
+   "checks": [
+    {
+     "kind": "exists",
+     "min": 2,
+     "select": {
+      "types": [
+       "aws_iam_role"
+      ],
+      "where": [
+       {
+        "path": "inline_policy.*.policy",
+        "op": "regex",
+        "value": "(?i)logs:(\\*|Create|Put|Describe)"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "min": 2,
+     "select": {
+      "types": [
+       "aws_iam_role_policy"
+      ],
+      "where": [
+       {
+        "path": "policy",
+        "op": "regex",
+        "value": "(?i)logs:(\\*|Create|Put|Describe)"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "min": 2,
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "in",
+        "value": [
+         "aws_iam_role_policy",
+         "aws_iam_role"
+        ]
+       },
+       {
+        "path": "properties",
+        "op": "regex",
+        "value": "(?i)logs:(\\*|Create|Put|Describe)"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "taskdef_uses_roles",
+   "kind": "ref",
+   "from": "taskdef",
+   "to": "ecs_role",
+   "tier": "detail",
+   "quote": "create task and execution IAM roles"
+  }
+ ],
+ "notes": "Container definitions are unknown at plan in the GT (WEBHOOK_URL embeds the LB DNS name), so container-level checks accept either the planned container_definitions string or the declared task-definition configuration. 'No NAT or VPN gateways' is not checked: the schema cannot express that a resource type is absent (exists min must be >= 1)."
+}

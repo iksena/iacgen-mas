@@ -1,0 +1,882 @@
+# GENERATED from specs/tf/row_131.json by intent_checks/build.py -- do not edit.
+package intent.tf.row_131
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {
+  "vpc": {
+   "types": [
+    "aws_vpc"
+   ],
+   "where": [
+    {
+     "path": [
+      "cidr_block"
+     ],
+     "op": "eq",
+     "value": "10.0.0.0/16"
+    }
+   ]
+  },
+  "sn1": {
+   "types": [
+    "aws_subnet"
+   ],
+   "where": [
+    {
+     "path": [
+      "cidr_block"
+     ],
+     "op": "eq",
+     "value": "10.0.2.0/24"
+    }
+   ]
+  },
+  "sn2": {
+   "types": [
+    "aws_subnet"
+   ],
+   "where": [
+    {
+     "path": [
+      "cidr_block"
+     ],
+     "op": "eq",
+     "value": "10.0.3.0/24"
+    }
+   ]
+  },
+  "s3ep": {
+   "types": [
+    "aws_vpc_endpoint"
+   ],
+   "where": [
+    {
+     "path": [
+      "service_name"
+     ],
+     "op": "regex",
+     "value": "(?i)\\.s3$"
+    }
+   ]
+  },
+  "nacl": {
+   "types": [
+    "aws_network_acl"
+   ],
+   "where": []
+  }
+ },
+ "checks": [
+  {
+   "id": "vpc_cidr",
+   "kind": "exists",
+   "select": "vpc",
+   "tier": "core",
+   "quote": "a main CIDR block defaulting to \"10.0.0.0/16\""
+  },
+  {
+   "id": "vpc_dns",
+   "kind": "all_of",
+   "tier": "core",
+   "quote": "enabled DNS hostnames (true), enabled DNS support (true)",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "vpc",
+     "cond": {
+      "path": [
+       "enable_dns_hostnames"
+      ],
+      "op": "truthy"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "vpc",
+     "cond": {
+      "path": [
+       "enable_dns_support"
+      ],
+      "op": "truthy"
+     }
+    }
+   ]
+  },
+  {
+   "id": "vpc_tenancy_default",
+   "kind": "attr",
+   "select": "vpc",
+   "tier": "detail",
+   "cond": {
+    "path": [
+     "instance_tenancy"
+    ],
+    "op": "eq",
+    "value": "default"
+   },
+   "quote": "instance tenancy defaulting to \"default\""
+  },
+  {
+   "id": "region_us_east_1",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "a variable region defaulting to \"us-east-1\"",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": [
+         "default"
+        ],
+        "op": "eq",
+        "value": "us-east-1"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "vpc",
+     "cond": {
+      "path": [
+       "region"
+      ],
+      "op": "eq",
+      "value": "us-east-1"
+     }
+    }
+   ]
+  },
+  {
+   "id": "name_prefix_var",
+   "kind": "exists",
+   "tier": "detail",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": [
+       "default"
+      ],
+      "op": "eq",
+      "value": "tfm-aws"
+     }
+    ]
+   },
+   "quote": "a resource name prefix variable defaulting to \"tfm-aws\""
+  },
+  {
+   "id": "private_subnets",
+   "kind": "all_of",
+   "tier": "core",
+   "quote": "two private subnets across the first two available availability zones in the region using CIDR blocks specified by a private_subnets list variable defaulting to [\"10.0.2.0/24\", \"10.0.3.0/24\"]",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "sn1",
+     "to": "vpc"
+    },
+    {
+     "kind": "ref",
+     "from": "sn2",
+     "to": "vpc"
+    }
+   ]
+  },
+  {
+   "id": "subnets_first_two_azs",
+   "kind": "exists",
+   "tier": "detail",
+   "quote": "across the first two available availability zones in the region",
+   "select": {
+    "types": [
+     "aws_subnet"
+    ],
+    "where": []
+   },
+   "distinct_path": [
+    "availability_zone"
+   ],
+   "min": 2,
+   "justify": "\"first two availability zones\" -> subnets span >=2 distinct AZs; AZ names not pinned"
+  },
+  {
+   "id": "subnets_private",
+   "kind": "attr",
+   "tier": "detail",
+   "quantifier": "all",
+   "select": {
+    "types": [
+     "aws_subnet"
+    ],
+    "where": []
+   },
+   "cond": {
+    "path": [
+     "map_public_ip_on_launch"
+    ],
+    "op": "falsy"
+   },
+   "quote": "isolated private VPC networking infrastructure"
+  },
+  {
+   "id": "private_subnets_var",
+   "kind": "exists",
+   "tier": "detail",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": [
+       "name"
+      ],
+      "op": "eq",
+      "value": "private_subnets"
+     },
+     {
+      "path": [
+       "default",
+       0
+      ],
+      "op": "eq",
+      "value": "10.0.2.0/24"
+     },
+     {
+      "path": [
+       "default",
+       1
+      ],
+      "op": "eq",
+      "value": "10.0.3.0/24"
+     }
+    ]
+   },
+   "quote": "a private_subnets list variable defaulting to [\"10.0.2.0/24\", \"10.0.3.0/24\"]"
+  },
+  {
+   "id": "two_route_tables",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_route_table"
+    ],
+    "where": []
+   },
+   "min": 2,
+   "tier": "core",
+   "quote": "paired with two dedicated private route tables"
+  },
+  {
+   "id": "subnet_rt_associations",
+   "kind": "all_of",
+   "tier": "detail",
+   "quote": "subnet route table associations",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route_table_association"
+      ],
+      "where": []
+     },
+     "to": "sn1"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route_table_association"
+      ],
+      "where": []
+     },
+     "to": "sn2"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route_table_association"
+      ],
+      "where": []
+     },
+     "to": {
+      "types": [
+       "aws_route_table"
+      ],
+      "where": []
+     }
+    }
+   ]
+  },
+  {
+   "id": "s3_gateway_endpoint",
+   "kind": "ref",
+   "tier": "core",
+   "to": "vpc",
+   "from": {
+    "types": [
+     "aws_vpc_endpoint"
+    ],
+    "where": [
+     {
+      "path": [
+       "service_name"
+      ],
+      "op": "regex",
+      "value": "(?i)\\.s3$"
+     },
+     {
+      "path": [
+       "vpc_endpoint_type"
+      ],
+      "op": "eq",
+      "value": "Gateway"
+     }
+    ]
+   },
+   "quote": "S3 gateway endpoint access"
+  },
+  {
+   "id": "endpoint_route_tables",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "associate an S3 VPC gateway endpoint with both private route tables",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_vpc_endpoint_route_table_association"
+      ],
+      "where": []
+     },
+     "to": "s3ep"
+    },
+    {
+     "kind": "ref",
+     "from": "s3ep",
+     "to": {
+      "types": [
+       "aws_route_table"
+      ],
+      "where": []
+     }
+    }
+   ]
+  },
+  {
+   "id": "endpoint_both_route_tables",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "with both private route tables",
+   "checks": [
+    {
+     "kind": "exists",
+     "min": 2,
+     "select": {
+      "types": [
+       "aws_vpc_endpoint_route_table_association"
+      ],
+      "where": []
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "s3ep",
+     "cond": {
+      "path": [
+       "route_table_ids"
+      ],
+      "op": "len_gte",
+      "value": 2
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_vpc_endpoint"
+       },
+       {
+        "path": [
+         "properties",
+         "route_table_ids"
+        ],
+        "op": "regex",
+        "value": "\\[\\*\\]|\\.\\*\\.|for |aws_route_table\\.[^,]+,[^\\]]*aws_route_table\\."
+       }
+      ]
+     }
+    }
+   ],
+   "justify": "\"both private route tables\" = 2; route_table_ids accepted as a splat/for over the route tables when unknown at plan"
+  },
+  {
+   "id": "nacl_on_private_subnets",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "associate a shared network ACL with the private subnets",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "nacl",
+     "to": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": []
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_network_acl_association"
+      ],
+      "where": []
+     },
+     "to": "nacl"
+    }
+   ]
+  },
+  {
+   "id": "nacl_inbound_return_traffic",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "the inbound rule defaulting to rule number 100 allowing TCP ports 1024 to 65535 from \"0.0.0.0/0\" for return traffic",
+   "checks": [
+    {
+     "kind": "ref",
+     "to": "nacl",
+     "from": {
+      "types": [
+       "aws_network_acl_rule"
+      ],
+      "where": [
+       {
+        "path": [
+         "egress"
+        ],
+        "op": "eq",
+        "value": false
+       },
+       {
+        "path": [
+         "rule_number"
+        ],
+        "op": "eq",
+        "value": 100
+       },
+       {
+        "path": [
+         "protocol"
+        ],
+        "op": "in",
+        "value": [
+         "tcp",
+         "6"
+        ]
+       },
+       {
+        "path": [
+         "from_port"
+        ],
+        "op": "eq",
+        "value": 1024
+       },
+       {
+        "path": [
+         "to_port"
+        ],
+        "op": "eq",
+        "value": 65535
+       },
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       },
+       {
+        "path": [
+         "rule_action"
+        ],
+        "op": "eq",
+        "value": "allow"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "nacl",
+     "cond": {
+      "path": [
+       "ingress",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "rule_no"
+        ],
+        "op": "eq",
+        "value": 100
+       },
+       {
+        "path": [
+         "protocol"
+        ],
+        "op": "in",
+        "value": [
+         "tcp",
+         "6"
+        ]
+       },
+       {
+        "path": [
+         "from_port"
+        ],
+        "op": "eq",
+        "value": 1024
+       },
+       {
+        "path": [
+         "to_port"
+        ],
+        "op": "eq",
+        "value": 65535
+       },
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       },
+       {
+        "path": [
+         "action"
+        ],
+        "op": "eq",
+        "value": "allow"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "nacl_outbound_https",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "the outbound rule defaulting to rule number 100 allowing only TCP port 443 to \"0.0.0.0/0\"",
+   "checks": [
+    {
+     "kind": "ref",
+     "to": "nacl",
+     "from": {
+      "types": [
+       "aws_network_acl_rule"
+      ],
+      "where": [
+       {
+        "path": [
+         "egress"
+        ],
+        "op": "eq",
+        "value": true
+       },
+       {
+        "path": [
+         "rule_number"
+        ],
+        "op": "eq",
+        "value": 100
+       },
+       {
+        "path": [
+         "protocol"
+        ],
+        "op": "in",
+        "value": [
+         "tcp",
+         "6"
+        ]
+       },
+       {
+        "path": [
+         "from_port"
+        ],
+        "op": "eq",
+        "value": 443
+       },
+       {
+        "path": [
+         "to_port"
+        ],
+        "op": "eq",
+        "value": 443
+       },
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       },
+       {
+        "path": [
+         "rule_action"
+        ],
+        "op": "eq",
+        "value": "allow"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "nacl",
+     "cond": {
+      "path": [
+       "egress",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "rule_no"
+        ],
+        "op": "eq",
+        "value": 100
+       },
+       {
+        "path": [
+         "protocol"
+        ],
+        "op": "in",
+        "value": [
+         "tcp",
+         "6"
+        ]
+       },
+       {
+        "path": [
+         "from_port"
+        ],
+        "op": "eq",
+        "value": 443
+       },
+       {
+        "path": [
+         "to_port"
+        ],
+        "op": "eq",
+        "value": 443
+       },
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       },
+       {
+        "path": [
+         "action"
+        ],
+        "op": "eq",
+        "value": "allow"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "nacl_outbound_only_443",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "allowing only TCP port 443",
+   "checks": [
+    {
+     "kind": "attr",
+     "quantifier": "all",
+     "select": {
+      "types": [
+       "aws_network_acl_rule"
+      ],
+      "where": [
+       {
+        "path": [
+         "egress"
+        ],
+        "op": "truthy"
+       },
+       {
+        "path": [
+         "rule_action"
+        ],
+        "op": "eq",
+        "value": "allow"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "to_port"
+      ],
+      "op": "eq",
+      "value": 443
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "nacl",
+     "cond": {
+      "path": [
+       "egress",
+       "*",
+       "to_port"
+      ],
+      "op": "eq",
+      "value": 443,
+      "every": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "acl_rule_vars",
+   "kind": "all_of",
+   "tier": "detail",
+   "quote": "configured from variable lists public_inbound_acl_rules and public_outbound_acl_rules",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "eq",
+        "value": "public_inbound_acl_rules"
+       },
+       {
+        "path": [
+         "default",
+         "*"
+        ],
+        "op": "match",
+        "value": [
+         {
+          "path": [
+           "rule_number"
+          ],
+          "op": "eq",
+          "value": 100
+         },
+         {
+          "path": [
+           "from_port"
+          ],
+          "op": "eq",
+          "value": 1024
+         },
+         {
+          "path": [
+           "to_port"
+          ],
+          "op": "eq",
+          "value": 65535
+         }
+        ]
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "eq",
+        "value": "public_outbound_acl_rules"
+       },
+       {
+        "path": [
+         "default",
+         "*"
+        ],
+        "op": "match",
+        "value": [
+         {
+          "path": [
+           "rule_number"
+          ],
+          "op": "eq",
+          "value": 100
+         },
+         {
+          "path": [
+           "from_port"
+          ],
+          "op": "eq",
+          "value": 443
+         },
+         {
+          "path": [
+           "to_port"
+          ],
+          "op": "eq",
+          "value": 443
+         }
+        ]
+       }
+      ]
+     }
+    }
+   ]
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

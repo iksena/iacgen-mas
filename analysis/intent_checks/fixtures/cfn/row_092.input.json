@@ -1,0 +1,863 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "2a5137c2f8735278a7f6249bcec150f4d607469c1ac8b9699f146d7d1caecca9",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "CognitoUserPool",
+   "cfg": "CognitoUserPool",
+   "type": "AWS::Cognito::UserPool",
+   "values": {
+    "UserPoolName": "maths-mcp-users",
+    "Policies": {
+     "PasswordPolicy": {
+      "MinimumLength": 8,
+      "RequireUppercase": true,
+      "RequireLowercase": true,
+      "RequireNumbers": true,
+      "RequireSymbols": false
+     }
+    },
+    "AutoVerifiedAttributes": [
+     "email"
+    ],
+    "UsernameAttributes": [
+     "email"
+    ],
+    "Schema": [
+     {
+      "Name": "email",
+      "AttributeDataType": "String",
+      "Required": true,
+      "Mutable": true
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "CognitoUserPoolClient",
+   "cfg": "CognitoUserPoolClient",
+   "type": "AWS::Cognito::UserPoolClient",
+   "values": {
+    "ClientName": "maths-mcp-client",
+    "UserPoolId": {
+     "ref": "CognitoUserPool"
+    },
+    "GenerateSecret": false,
+    "ExplicitAuthFlows": [
+     "ADMIN_NO_SRP_AUTH",
+     "USER_PASSWORD_AUTH"
+    ],
+    "TokenValidityUnits": {
+     "AccessToken": "hours",
+     "IdToken": "hours",
+     "RefreshToken": "days"
+    },
+    "AccessTokenValidity": 1,
+    "IdTokenValidity": 1,
+    "RefreshTokenValidity": 30
+   },
+   "refs": [
+    "CognitoUserPool"
+   ]
+  },
+  {
+   "id": "LambdaExecutionRole",
+   "cfg": "LambdaExecutionRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "stack-lambda-role",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+    ],
+    "Policies": [
+     {
+      "PolicyName": "CloudWatchLogs",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "logs:CreateLogGroup"
+         ],
+         "Resource": [
+          "arn:aws:logs:us-east-1:123456789012:log-group:/aws/lambda/stack-mcp-server"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+         ],
+         "Resource": [
+          "arn:aws:logs:us-east-1:123456789012:log-group:/aws/lambda/stack-mcp-server:*"
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "MCPLambdaFunction",
+   "cfg": "MCPLambdaFunction",
+   "type": "AWS::Lambda::Function",
+   "values": {
+    "FunctionName": "stack-mcp-server",
+    "Runtime": "python3.12",
+    "Handler": "lambda_function.lambda_handler",
+    "Role": {
+     "ref": "LambdaExecutionRole",
+     "attr": "Arn"
+    },
+    "Code": {
+     "ZipFile": "def lambda_handler(event, context):\n    return {'statusCode': 200, 'body': 'Placeholder - will be updated'}\n"
+    },
+    "Timeout": 30,
+    "MemorySize": 512,
+    "Environment": {
+     "Variables": {
+      "PYTHONPATH": "/var/task"
+     }
+    }
+   },
+   "refs": [
+    "LambdaExecutionRole"
+   ]
+  },
+  {
+   "id": "MCPApiGateway",
+   "cfg": "MCPApiGateway",
+   "type": "AWS::ApiGateway::RestApi",
+   "values": {
+    "Name": "stack-mcp-api",
+    "Description": "Maths MCP Server API Gateway with Cognito Authentication",
+    "EndpointConfiguration": {
+     "Types": [
+      "REGIONAL"
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "CognitoAuthorizer",
+   "cfg": "CognitoAuthorizer",
+   "type": "AWS::ApiGateway::Authorizer",
+   "values": {
+    "Name": "stack-cognito-authorizer",
+    "RestApiId": {
+     "ref": "MCPApiGateway"
+    },
+    "Type": "COGNITO_USER_POOLS",
+    "ProviderARNs": [
+     {
+      "ref": "CognitoUserPool",
+      "attr": "Arn"
+     }
+    ],
+    "IdentitySource": "method.request.header.Authorization"
+   },
+   "refs": [
+    "CognitoUserPool",
+    "MCPApiGateway"
+   ]
+  },
+  {
+   "id": "MCPApiResource",
+   "cfg": "MCPApiResource",
+   "type": "AWS::ApiGateway::Resource",
+   "values": {
+    "RestApiId": {
+     "ref": "MCPApiGateway"
+    },
+    "ParentId": {
+     "ref": "MCPApiGateway",
+     "attr": "RootResourceId"
+    },
+    "PathPart": "mcp"
+   },
+   "refs": [
+    "MCPApiGateway"
+   ]
+  },
+  {
+   "id": "MCPApiMethod",
+   "cfg": "MCPApiMethod",
+   "type": "AWS::ApiGateway::Method",
+   "values": {
+    "RestApiId": {
+     "ref": "MCPApiGateway"
+    },
+    "ResourceId": {
+     "ref": "MCPApiResource"
+    },
+    "HttpMethod": "POST",
+    "AuthorizationType": "COGNITO_USER_POOLS",
+    "AuthorizerId": {
+     "ref": "CognitoAuthorizer"
+    },
+    "Integration": {
+     "Type": "AWS_PROXY",
+     "IntegrationHttpMethod": "POST",
+     "Uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/${MCPLambdaFunction.Arn}/invocations"
+    }
+   },
+   "refs": [
+    "CognitoAuthorizer",
+    "MCPApiGateway",
+    "MCPApiResource",
+    "MCPLambdaFunction"
+   ]
+  },
+  {
+   "id": "MCPApiOptionsMethod",
+   "cfg": "MCPApiOptionsMethod",
+   "type": "AWS::ApiGateway::Method",
+   "values": {
+    "RestApiId": {
+     "ref": "MCPApiGateway"
+    },
+    "ResourceId": {
+     "ref": "MCPApiResource"
+    },
+    "HttpMethod": "OPTIONS",
+    "AuthorizationType": "NONE",
+    "Integration": {
+     "Type": "MOCK",
+     "IntegrationResponses": [
+      {
+       "StatusCode": 200,
+       "ResponseParameters": {
+        "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'",
+        "method.response.header.Access-Control-Allow-Methods": "'POST,OPTIONS'",
+        "method.response.header.Access-Control-Allow-Origin": "'*'"
+       }
+      }
+     ],
+     "RequestTemplates": {
+      "application/json": "{\"statusCode\": 200}"
+     }
+    },
+    "MethodResponses": [
+     {
+      "StatusCode": 200,
+      "ResponseParameters": {
+       "method.response.header.Access-Control-Allow-Headers": true,
+       "method.response.header.Access-Control-Allow-Methods": true,
+       "method.response.header.Access-Control-Allow-Origin": true
+      }
+     }
+    ]
+   },
+   "refs": [
+    "MCPApiGateway",
+    "MCPApiResource"
+   ]
+  },
+  {
+   "id": "MCPApiRootMethod",
+   "cfg": "MCPApiRootMethod",
+   "type": "AWS::ApiGateway::Method",
+   "values": {
+    "RestApiId": {
+     "ref": "MCPApiGateway"
+    },
+    "ResourceId": {
+     "ref": "MCPApiGateway",
+     "attr": "RootResourceId"
+    },
+    "HttpMethod": "GET",
+    "AuthorizationType": "NONE",
+    "Integration": {
+     "Type": "AWS_PROXY",
+     "IntegrationHttpMethod": "POST",
+     "Uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/${MCPLambdaFunction.Arn}/invocations"
+    }
+   },
+   "refs": [
+    "MCPApiGateway",
+    "MCPLambdaFunction"
+   ]
+  },
+  {
+   "id": "LambdaApiGatewayPermission",
+   "cfg": "LambdaApiGatewayPermission",
+   "type": "AWS::Lambda::Permission",
+   "values": {
+    "FunctionName": {
+     "ref": "MCPLambdaFunction"
+    },
+    "Action": "lambda:InvokeFunction",
+    "Principal": "apigateway.amazonaws.com",
+    "SourceArn": "arn:aws:execute-api:us-east-1:123456789012:${MCPApiGateway}/*/*"
+   },
+   "refs": [
+    "MCPApiGateway",
+    "MCPLambdaFunction"
+   ]
+  },
+  {
+   "id": "MCPApiDeployment",
+   "cfg": "MCPApiDeployment",
+   "type": "AWS::ApiGateway::Deployment",
+   "values": {
+    "RestApiId": {
+     "ref": "MCPApiGateway"
+    },
+    "StageName": "dev",
+    "__resource__": {
+     "DependsOn": [
+      "MCPApiMethod",
+      "MCPApiOptionsMethod",
+      "MCPApiRootMethod"
+     ]
+    }
+   },
+   "refs": [
+    "MCPApiGateway"
+   ]
+  },
+  {
+   "id": "__parameter__.DeploymentStage",
+   "cfg": "__parameter__.DeploymentStage",
+   "type": "__parameter__",
+   "values": {
+    "name": "DeploymentStage",
+    "type": "String",
+    "default": "dev",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.UserPoolName",
+   "cfg": "__parameter__.UserPoolName",
+   "type": "__parameter__",
+   "values": {
+    "name": "UserPoolName",
+    "type": "String",
+    "default": "maths-mcp-users",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.AppClientName",
+   "cfg": "__parameter__.AppClientName",
+   "type": "__parameter__",
+   "values": {
+    "name": "AppClientName",
+    "type": "String",
+    "default": "maths-mcp-client",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.ApiGatewayUrl",
+   "cfg": "__output__.ApiGatewayUrl",
+   "type": "__output__",
+   "values": {
+    "name": "ApiGatewayUrl",
+    "value": "https://${MCPApiGateway}.execute-api.us-east-1.amazonaws.com/dev",
+    "description": "API Gateway endpoint URL",
+    "export": "stack-api-url"
+   },
+   "refs": [
+    "MCPApiGateway"
+   ]
+  },
+  {
+   "id": "__output__.LambdaFunctionName",
+   "cfg": "__output__.LambdaFunctionName",
+   "type": "__output__",
+   "values": {
+    "name": "LambdaFunctionName",
+    "value": {
+     "ref": "MCPLambdaFunction"
+    },
+    "description": "Lambda function name",
+    "export": "stack-lambda-name"
+   },
+   "refs": [
+    "MCPLambdaFunction"
+   ]
+  },
+  {
+   "id": "__output__.CognitoUserPoolId",
+   "cfg": "__output__.CognitoUserPoolId",
+   "type": "__output__",
+   "values": {
+    "name": "CognitoUserPoolId",
+    "value": {
+     "ref": "CognitoUserPool"
+    },
+    "description": "Cognito User Pool ID",
+    "export": "stack-user-pool-id"
+   },
+   "refs": [
+    "CognitoUserPool"
+   ]
+  },
+  {
+   "id": "__output__.CognitoUserPoolClientId",
+   "cfg": "__output__.CognitoUserPoolClientId",
+   "type": "__output__",
+   "values": {
+    "name": "CognitoUserPoolClientId",
+    "value": {
+     "ref": "CognitoUserPoolClient"
+    },
+    "description": "Cognito User Pool Client ID",
+    "export": "stack-user-pool-client-id"
+   },
+   "refs": [
+    "CognitoUserPoolClient"
+   ]
+  },
+  {
+   "id": "__output__.CognitoUserPoolArn",
+   "cfg": "__output__.CognitoUserPoolArn",
+   "type": "__output__",
+   "values": {
+    "name": "CognitoUserPoolArn",
+    "value": {
+     "ref": "CognitoUserPool",
+     "attr": "Arn"
+    },
+    "description": "Cognito User Pool ARN",
+    "export": "stack-user-pool-arn"
+   },
+   "refs": [
+    "CognitoUserPool"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPool.CognitoUserPool",
+   "cfg": "CognitoUserPool",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Cognito::UserPool",
+    "name": "CognitoUserPool",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "UserPoolName": "maths-mcp-users",
+     "Policies": {
+      "PasswordPolicy": {
+       "MinimumLength": 8,
+       "RequireUppercase": true,
+       "RequireLowercase": true,
+       "RequireNumbers": true,
+       "RequireSymbols": false
+      }
+     },
+     "AutoVerifiedAttributes": [
+      "email"
+     ],
+     "UsernameAttributes": [
+      "email"
+     ],
+     "Schema": [
+      {
+       "Name": "email",
+       "AttributeDataType": "String",
+       "Required": true,
+       "Mutable": true
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolClient.CognitoUserPoolClient",
+   "cfg": "CognitoUserPoolClient",
+   "type": "__declared__",
+   "refs": [
+    "CognitoUserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolClient",
+    "name": "CognitoUserPoolClient",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ClientName": "maths-mcp-client",
+     "UserPoolId": {
+      "ref": "CognitoUserPool"
+     },
+     "GenerateSecret": false,
+     "ExplicitAuthFlows": [
+      "ADMIN_NO_SRP_AUTH",
+      "USER_PASSWORD_AUTH"
+     ],
+     "TokenValidityUnits": {
+      "AccessToken": "hours",
+      "IdToken": "hours",
+      "RefreshToken": "days"
+     },
+     "AccessTokenValidity": 1,
+     "IdTokenValidity": 1,
+     "RefreshTokenValidity": 30
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.LambdaExecutionRole",
+   "cfg": "LambdaExecutionRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "LambdaExecutionRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "stack-lambda-role",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+     ],
+     "Policies": [
+      {
+       "PolicyName": "CloudWatchLogs",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "logs:CreateLogGroup"
+          ],
+          "Resource": [
+           "arn:aws:logs:us-east-1:123456789012:log-group:/aws/lambda/stack-mcp-server"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "logs:CreateLogStream",
+           "logs:PutLogEvents"
+          ],
+          "Resource": [
+           "arn:aws:logs:us-east-1:123456789012:log-group:/aws/lambda/stack-mcp-server:*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Function.MCPLambdaFunction",
+   "cfg": "MCPLambdaFunction",
+   "type": "__declared__",
+   "refs": [
+    "LambdaExecutionRole"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Function",
+    "name": "MCPLambdaFunction",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "FunctionName": "stack-mcp-server",
+     "Runtime": "python3.12",
+     "Handler": "lambda_function.lambda_handler",
+     "Role": {
+      "ref": "LambdaExecutionRole",
+      "attr": "Arn"
+     },
+     "Code": {
+      "ZipFile": "def lambda_handler(event, context):\n    return {'statusCode': 200, 'body': 'Placeholder - will be updated'}\n"
+     },
+     "Timeout": 30,
+     "MemorySize": 512,
+     "Environment": {
+      "Variables": {
+       "PYTHONPATH": "/var/task"
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::RestApi.MCPApiGateway",
+   "cfg": "MCPApiGateway",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::ApiGateway::RestApi",
+    "name": "MCPApiGateway",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "stack-mcp-api",
+     "Description": "Maths MCP Server API Gateway with Cognito Authentication",
+     "EndpointConfiguration": {
+      "Types": [
+       "REGIONAL"
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::Authorizer.CognitoAuthorizer",
+   "cfg": "CognitoAuthorizer",
+   "type": "__declared__",
+   "refs": [
+    "CognitoUserPool",
+    "MCPApiGateway"
+   ],
+   "values": {
+    "type": "AWS::ApiGateway::Authorizer",
+    "name": "CognitoAuthorizer",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "stack-cognito-authorizer",
+     "RestApiId": {
+      "ref": "MCPApiGateway"
+     },
+     "Type": "COGNITO_USER_POOLS",
+     "ProviderARNs": [
+      {
+       "ref": "CognitoUserPool",
+       "attr": "Arn"
+      }
+     ],
+     "IdentitySource": "method.request.header.Authorization"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::Resource.MCPApiResource",
+   "cfg": "MCPApiResource",
+   "type": "__declared__",
+   "refs": [
+    "MCPApiGateway"
+   ],
+   "values": {
+    "type": "AWS::ApiGateway::Resource",
+    "name": "MCPApiResource",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RestApiId": {
+      "ref": "MCPApiGateway"
+     },
+     "ParentId": {
+      "ref": "MCPApiGateway",
+      "attr": "RootResourceId"
+     },
+     "PathPart": "mcp"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::Method.MCPApiMethod",
+   "cfg": "MCPApiMethod",
+   "type": "__declared__",
+   "refs": [
+    "CognitoAuthorizer",
+    "MCPApiGateway",
+    "MCPApiResource",
+    "MCPLambdaFunction"
+   ],
+   "values": {
+    "type": "AWS::ApiGateway::Method",
+    "name": "MCPApiMethod",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RestApiId": {
+      "ref": "MCPApiGateway"
+     },
+     "ResourceId": {
+      "ref": "MCPApiResource"
+     },
+     "HttpMethod": "POST",
+     "AuthorizationType": "COGNITO_USER_POOLS",
+     "AuthorizerId": {
+      "ref": "CognitoAuthorizer"
+     },
+     "Integration": {
+      "Type": "AWS_PROXY",
+      "IntegrationHttpMethod": "POST",
+      "Uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/${MCPLambdaFunction.Arn}/invocations"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::Method.MCPApiOptionsMethod",
+   "cfg": "MCPApiOptionsMethod",
+   "type": "__declared__",
+   "refs": [
+    "MCPApiGateway",
+    "MCPApiResource"
+   ],
+   "values": {
+    "type": "AWS::ApiGateway::Method",
+    "name": "MCPApiOptionsMethod",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RestApiId": {
+      "ref": "MCPApiGateway"
+     },
+     "ResourceId": {
+      "ref": "MCPApiResource"
+     },
+     "HttpMethod": "OPTIONS",
+     "AuthorizationType": "NONE",
+     "Integration": {
+      "Type": "MOCK",
+      "IntegrationResponses": [
+       {
+        "StatusCode": 200,
+        "ResponseParameters": {
+         "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'",
+         "method.response.header.Access-Control-Allow-Methods": "'POST,OPTIONS'",
+         "method.response.header.Access-Control-Allow-Origin": "'*'"
+        }
+       }
+      ],
+      "RequestTemplates": {
+       "application/json": "{\"statusCode\": 200}"
+      }
+     },
+     "MethodResponses": [
+      {
+       "StatusCode": 200,
+       "ResponseParameters": {
+        "method.response.header.Access-Control-Allow-Headers": true,
+        "method.response.header.Access-Control-Allow-Methods": true,
+        "method.response.header.Access-Control-Allow-Origin": true
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::Method.MCPApiRootMethod",
+   "cfg": "MCPApiRootMethod",
+   "type": "__declared__",
+   "refs": [
+    "MCPApiGateway",
+    "MCPLambdaFunction"
+   ],
+   "values": {
+    "type": "AWS::ApiGateway::Method",
+    "name": "MCPApiRootMethod",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RestApiId": {
+      "ref": "MCPApiGateway"
+     },
+     "ResourceId": {
+      "ref": "MCPApiGateway",
+      "attr": "RootResourceId"
+     },
+     "HttpMethod": "GET",
+     "AuthorizationType": "NONE",
+     "Integration": {
+      "Type": "AWS_PROXY",
+      "IntegrationHttpMethod": "POST",
+      "Uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/${MCPLambdaFunction.Arn}/invocations"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Permission.LambdaApiGatewayPermission",
+   "cfg": "LambdaApiGatewayPermission",
+   "type": "__declared__",
+   "refs": [
+    "MCPApiGateway",
+    "MCPLambdaFunction"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Permission",
+    "name": "LambdaApiGatewayPermission",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "FunctionName": {
+      "ref": "MCPLambdaFunction"
+     },
+     "Action": "lambda:InvokeFunction",
+     "Principal": "apigateway.amazonaws.com",
+     "SourceArn": "arn:aws:execute-api:us-east-1:123456789012:${MCPApiGateway}/*/*"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::Deployment.MCPApiDeployment",
+   "cfg": "MCPApiDeployment",
+   "type": "__declared__",
+   "refs": [
+    "MCPApiGateway"
+   ],
+   "values": {
+    "type": "AWS::ApiGateway::Deployment",
+    "name": "MCPApiDeployment",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RestApiId": {
+      "ref": "MCPApiGateway"
+     },
+     "StageName": "dev"
+    }
+   }
+  }
+ ]
+}

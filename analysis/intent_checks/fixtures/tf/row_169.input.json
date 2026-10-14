@@ -1,0 +1,998 @@
+{
+ "meta": {
+  "lang": "tf",
+  "mode": "plan",
+  "warnings": [],
+  "gt_hash": "2b55ea5e885e5151be1a8a57359cc8b2314659c152b7921eaeb3b4c70f4cd9ca",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "aws_iam_account_password_policy.strict",
+   "cfg": "aws_iam_account_password_policy.strict",
+   "type": "aws_iam_account_password_policy",
+   "values": {
+    "allow_users_to_change_password": true,
+    "minimum_password_length": 12,
+    "require_lowercase_characters": true,
+    "require_numbers": true,
+    "require_symbols": true,
+    "require_uppercase_characters": true
+   },
+   "refs": []
+  },
+  {
+   "id": "aws_iam_group.admin",
+   "cfg": "aws_iam_group.admin",
+   "type": "aws_iam_group",
+   "values": {
+    "name": "app_admin",
+    "path": "/"
+   },
+   "refs": []
+  },
+  {
+   "id": "aws_iam_group.developer",
+   "cfg": "aws_iam_group.developer",
+   "type": "aws_iam_group",
+   "values": {
+    "name": "app_developer",
+    "path": "/"
+   },
+   "refs": []
+  },
+  {
+   "id": "aws_iam_group_policy_attachment.assume_role_to_admin",
+   "cfg": "aws_iam_group_policy_attachment.assume_role_to_admin",
+   "type": "aws_iam_group_policy_attachment",
+   "values": {
+    "group": "app_admin"
+   },
+   "refs": [
+    "aws_iam_group.admin",
+    "aws_iam_policy.assume_role_to_admin"
+   ]
+  },
+  {
+   "id": "aws_iam_group_policy_attachment.developers_allow_ec2_if_mfa_enabled",
+   "cfg": "aws_iam_group_policy_attachment.developers_allow_ec2_if_mfa_enabled",
+   "type": "aws_iam_group_policy_attachment",
+   "values": {
+    "group": "app_developer"
+   },
+   "refs": [
+    "aws_iam_group.developer",
+    "aws_iam_policy.allow_ec2_if_mfa_enabled"
+   ]
+  },
+  {
+   "id": "aws_iam_group_policy_attachment.developers_allow_s3_mfa",
+   "cfg": "aws_iam_group_policy_attachment.developers_allow_s3_mfa",
+   "type": "aws_iam_group_policy_attachment",
+   "values": {
+    "group": "app_developer"
+   },
+   "refs": [
+    "aws_iam_group.developer",
+    "aws_iam_policy.allow_S3_mfa"
+   ]
+  },
+  {
+   "id": "aws_iam_group_policy_attachment.developers_iam_User_change_password",
+   "cfg": "aws_iam_group_policy_attachment.developers_iam_User_change_password",
+   "type": "aws_iam_group_policy_attachment",
+   "values": {
+    "group": "app_developer",
+    "policy_arn": "arn:aws:iam::aws:policy/IAMUserChangePassword"
+   },
+   "refs": [
+    "aws_iam_group.developer"
+   ]
+  },
+  {
+   "id": "aws_iam_group_policy_attachment.developers_iam_read_only_access",
+   "cfg": "aws_iam_group_policy_attachment.developers_iam_read_only_access",
+   "type": "aws_iam_group_policy_attachment",
+   "values": {
+    "group": "app_developer",
+    "policy_arn": "arn:aws:iam::aws:policy/IAMReadOnlyAccess"
+   },
+   "refs": [
+    "aws_iam_group.developer"
+   ]
+  },
+  {
+   "id": "aws_iam_group_policy_attachment.developers_iam_user_ssh_keys",
+   "cfg": "aws_iam_group_policy_attachment.developers_iam_user_ssh_keys",
+   "type": "aws_iam_group_policy_attachment",
+   "values": {
+    "group": "app_developer",
+    "policy_arn": "arn:aws:iam::aws:policy/IAMUserSSHKeys"
+   },
+   "refs": [
+    "aws_iam_group.developer"
+   ]
+  },
+  {
+   "id": "aws_iam_group_policy_attachment.developers_manage_personal_keys",
+   "cfg": "aws_iam_group_policy_attachment.developers_manage_personal_keys",
+   "type": "aws_iam_group_policy_attachment",
+   "values": {
+    "group": "app_developer"
+   },
+   "refs": [
+    "aws_iam_group.developer",
+    "aws_iam_policy.developers_manage_personal_keys"
+   ]
+  },
+  {
+   "id": "aws_iam_group_policy_attachment.developers_manage_personal_mfa",
+   "cfg": "aws_iam_group_policy_attachment.developers_manage_personal_mfa",
+   "type": "aws_iam_group_policy_attachment",
+   "values": {
+    "group": "app_developer"
+   },
+   "refs": [
+    "aws_iam_group.developer",
+    "aws_iam_policy.manage_personal_mfa"
+   ]
+  },
+  {
+   "id": "aws_iam_policy.allow_S3_mfa",
+   "cfg": "aws_iam_policy.allow_S3_mfa",
+   "type": "aws_iam_policy",
+   "values": {
+    "delay_after_policy_creation_in_ms": null,
+    "description": null,
+    "name": "allow_S3_mfa",
+    "path": "/",
+    "policy": "{\"Statement\":[{\"Action\":\"s3:*\",\"Condition\":{\"Bool\":{\"aws:MultiFactorAuthPresent\":\"true\"}},\"Effect\":\"Allow\",\"Resource\":\"*\",\"Sid\":\"allowS3Mfa\"},{\"Action\":\"s3:CreateBucket\",\"Condition\":{\"StringNotEquals\":{\"aws:RequestedRegion\":\"eu-west-2\"}},\"Effect\":\"Deny\",\"Resource\":\"*\",\"Sid\":\"ForceS3Region\"},{\"Action\":\"s3:*\",\"Effect\":\"Deny\",\"Resource\":[\"arn:aws:s3:::ceb-terraform-remote-state-storage-s3/*\",\"arn:aws:s3:::ceb-terraform-remote-state-storage-s3\"],\"Sid\":\"DenyStateBucket\"}],\"Version\":\"2012-10-17\"}",
+    "tags": null
+   },
+   "refs": [
+    "data.aws_iam_policy_document.allow_S3_mfa"
+   ]
+  },
+  {
+   "id": "aws_iam_policy.allow_admin_if_mfa",
+   "cfg": "aws_iam_policy.allow_admin_if_mfa",
+   "type": "aws_iam_policy",
+   "values": {
+    "delay_after_policy_creation_in_ms": null,
+    "description": null,
+    "name": "allow_admin_if_mfa",
+    "path": "/",
+    "policy": "{\"Statement\":[{\"Action\":\"*\",\"Condition\":{\"Bool\":{\"aws:MultiFactorAuthPresent\":\"true\"}},\"Effect\":\"Allow\",\"Resource\":\"*\",\"Sid\":\"RequireAdminMFA\"}],\"Version\":\"2012-10-17\"}",
+    "tags": null
+   },
+   "refs": [
+    "data.aws_iam_policy_document.allow_admin_if_mfa"
+   ]
+  },
+  {
+   "id": "aws_iam_policy.allow_ec2_if_mfa_enabled",
+   "cfg": "aws_iam_policy.allow_ec2_if_mfa_enabled",
+   "type": "aws_iam_policy",
+   "values": {
+    "delay_after_policy_creation_in_ms": null,
+    "description": null,
+    "name": "allow_ec2_if_mfa_enabled",
+    "path": "/",
+    "policy": "{\"Statement\":[{\"Action\":[\"elasticloadbalancing:*\",\"ec2:*\",\"cloudwatch:*\",\"autoscaling:*\"],\"Condition\":{\"Bool\":{\"aws:MultiFactorAuthPresent\":\"true\"}},\"Effect\":\"Allow\",\"Resource\":\"*\",\"Sid\":\"AllowEC2General\"},{\"Action\":\"iam:CreateServiceLinkedRole\",\"Condition\":{\"Bool\":{\"aws:MultiFactorAuthPresent\":\"true\"},\"StringEquals\":{\"iam:AWSServiceName\":[\"autoscaling.amazonaws.com\",\"ec2scheduled.amazonaws.com\",\"elasticloadbalancing.amazonaws.com\",\"spot.amazonaws.com\",\"spotfleet.amazonaws.com\",\"transitgateway.amazonaws.com\"]}},\"Effect\":\"Allow\",\"Resource\":\"*\",\"Sid\":\"AllowEC2GeneralLinkedRoles\"}],\"Version\":\"2012-10-17\"}",
+    "tags": null
+   },
+   "refs": [
+    "data.aws_iam_policy_document.allow_ec2_if_mfa_enabled"
+   ]
+  },
+  {
+   "id": "aws_iam_policy.assume_role_to_admin",
+   "cfg": "aws_iam_policy.assume_role_to_admin",
+   "type": "aws_iam_policy",
+   "values": {
+    "delay_after_policy_creation_in_ms": null,
+    "description": null,
+    "name": "assume_role_to_admin",
+    "path": "/",
+    "policy": "{\"Statement\":[{\"Action\":\"sts:AssumeRole\",\"Condition\":{\"Bool\":{\"aws:MultiFactorAuthPresent\":\"true\"}},\"Effect\":\"Allow\",\"Resource\":\"arn:aws:iam::000000000000:role/admin\"}],\"Version\":\"2012-10-17\"}",
+    "tags": null
+   },
+   "refs": [
+    "data.aws_iam_policy_document.assume_role_to_admin"
+   ]
+  },
+  {
+   "id": "aws_iam_policy.developers_manage_personal_keys",
+   "cfg": "aws_iam_policy.developers_manage_personal_keys",
+   "type": "aws_iam_policy",
+   "values": {
+    "delay_after_policy_creation_in_ms": null,
+    "description": null,
+    "name": "developers_manage_personal_keys",
+    "path": "/",
+    "policy": "{\"Statement\":[{\"Action\":[\"iam:UpdateAccessKey\",\"iam:DeleteAccessKey\",\"iam:CreateAccessKey\"],\"Effect\":\"Allow\",\"Resource\":\"arn:aws:iam::*:user/${aws:username}\",\"Sid\":\"ManageSSHKeys\"}],\"Version\":\"2012-10-17\"}",
+    "tags": null
+   },
+   "refs": [
+    "data.aws_iam_policy_document.developers_manage_personal_keys"
+   ]
+  },
+  {
+   "id": "aws_iam_policy.manage_personal_mfa",
+   "cfg": "aws_iam_policy.manage_personal_mfa",
+   "type": "aws_iam_policy",
+   "values": {
+    "delay_after_policy_creation_in_ms": null,
+    "description": null,
+    "name": "manage_personal_mfa",
+    "path": "/",
+    "policy": "{\"Statement\":[{\"Action\":\"iam:ListMFADevices\",\"Effect\":\"Allow\",\"Resource\":[\"arn:aws:iam::*:user/${aws:username}\",\"arn:aws:iam::*:mfa/*\"]},{\"Action\":[\"iam:ResyncMFADevice\",\"iam:EnableMFADevice\",\"iam:DeleteVirtualMFADevice\",\"iam:CreateVirtualMFADevice\"],\"Effect\":\"Allow\",\"Resource\":[\"arn:aws:iam::*:user/${aws:username}\",\"arn:aws:iam::*:mfa/*\"]},{\"Action\":\"iam:DeactivateMFADevice\",\"Condition\":{\"Bool\":{\"aws:MultiFactorAuthPresent\":\"true\"}},\"Effect\":\"Allow\",\"Resource\":[\"arn:aws:iam::*:user/${aws:username}\",\"arn:aws:iam::*:mfa/*\"]}],\"Version\":\"2012-10-17\"}",
+    "tags": null
+   },
+   "refs": [
+    "data.aws_iam_policy_document.manage_personal_mfa"
+   ]
+  },
+  {
+   "id": "aws_iam_policy_attachment.admin_assume_role_policy",
+   "cfg": "aws_iam_policy_attachment.admin_assume_role_policy",
+   "type": "aws_iam_policy_attachment",
+   "values": {
+    "groups": null,
+    "name": "admin_assume_role_policy",
+    "roles": [
+     "admin"
+    ],
+    "users": null
+   },
+   "refs": [
+    "aws_iam_policy.allow_admin_if_mfa",
+    "aws_iam_role.admin_assume_role"
+   ]
+  },
+  {
+   "id": "aws_iam_role.admin_assume_role",
+   "cfg": "aws_iam_role.admin_assume_role",
+   "type": "aws_iam_role",
+   "values": {
+    "assume_role_policy": "{\"Statement\":[{\"Action\":\"sts:AssumeRole\",\"Effect\":\"Allow\",\"Principal\":{\"AWS\":\"arn:aws:iam::000000000000:root\"}}],\"Version\":\"2012-10-17\"}",
+    "description": null,
+    "force_detach_policies": false,
+    "max_session_duration": 3600,
+    "name": "admin",
+    "path": "/",
+    "permissions_boundary": null,
+    "tags": null
+   },
+   "refs": [
+    "data.aws_iam_policy_document.admin_assume_role_policy"
+   ]
+  },
+  {
+   "id": "aws_s3_account_public_access_block.secure_s3_public_acls",
+   "cfg": "aws_s3_account_public_access_block.secure_s3_public_acls",
+   "type": "aws_s3_account_public_access_block",
+   "values": {
+    "block_public_acls": true,
+    "block_public_policy": true,
+    "ignore_public_acls": true,
+    "restrict_public_buckets": true
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.group_name_prefix",
+   "cfg": "__parameter__.group_name_prefix",
+   "type": "__parameter__",
+   "values": {
+    "name": "group_name_prefix",
+    "default": "app"
+   },
+   "refs": []
+  },
+  {
+   "id": "__declared__.aws_iam_account_password_policy.strict",
+   "cfg": "aws_iam_account_password_policy.strict",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_iam_account_password_policy",
+    "name": "strict",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "minimum_password_length": 12,
+     "require_lowercase_characters": true,
+     "require_numbers": true,
+     "require_uppercase_characters": true,
+     "require_symbols": true,
+     "allow_users_to_change_password": true
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_s3_account_public_access_block.secure_s3_public_acls",
+   "cfg": "aws_s3_account_public_access_block.secure_s3_public_acls",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_s3_account_public_access_block",
+    "name": "secure_s3_public_acls",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "block_public_acls": true,
+     "block_public_policy": true,
+     "restrict_public_buckets": true,
+     "ignore_public_acls": true
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_group.developer",
+   "cfg": "aws_iam_group.developer",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_iam_group",
+    "name": "developer",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "${var.group_name_prefix}_developer"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_group.admin",
+   "cfg": "aws_iam_group.admin",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_iam_group",
+    "name": "admin",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "${var.group_name_prefix}_admin"
+    }
+   }
+  },
+  {
+   "id": "__declared__.data.aws_caller_identity.current",
+   "cfg": "data.aws_caller_identity.current",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "data.aws_caller_identity",
+    "name": "current",
+    "gated": false,
+    "gate": null,
+    "properties": {}
+   }
+  },
+  {
+   "id": "__declared__.data.aws_iam_policy_document.manage_personal_mfa",
+   "cfg": "data.aws_iam_policy_document.manage_personal_mfa",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "data.aws_iam_policy_document",
+    "name": "manage_personal_mfa",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "statement": [
+      {
+       "actions": [
+        "iam:ListMFADevices"
+       ],
+       "resources": [
+        "arn:aws:iam::*:mfa/*",
+        "arn:aws:iam::*:user/$${aws:username}"
+       ]
+      },
+      {
+       "actions": [
+        "iam:CreateVirtualMFADevice",
+        "iam:DeleteVirtualMFADevice",
+        "iam:EnableMFADevice",
+        "iam:ResyncMFADevice"
+       ],
+       "resources": [
+        "arn:aws:iam::*:mfa/*",
+        "arn:aws:iam::*:user/$${aws:username}"
+       ]
+      },
+      {
+       "actions": [
+        "iam:DeactivateMFADevice"
+       ],
+       "resources": [
+        "arn:aws:iam::*:mfa/*",
+        "arn:aws:iam::*:user/$${aws:username}"
+       ],
+       "condition": [
+        {
+         "test": "Bool",
+         "variable": "aws:MultiFactorAuthPresent",
+         "values": [
+          "true"
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_policy.manage_personal_mfa",
+   "cfg": "aws_iam_policy.manage_personal_mfa",
+   "type": "__declared__",
+   "refs": [
+    "data.aws_iam_policy_document.manage_personal_mfa"
+   ],
+   "values": {
+    "type": "aws_iam_policy",
+    "name": "manage_personal_mfa",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "manage_personal_mfa",
+     "path": "/",
+     "policy": "${data.aws_iam_policy_document.manage_personal_mfa.json}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.data.aws_iam_policy_document.developers_manage_personal_keys",
+   "cfg": "data.aws_iam_policy_document.developers_manage_personal_keys",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "data.aws_iam_policy_document",
+    "name": "developers_manage_personal_keys",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "statement": [
+      {
+       "sid": "ManageSSHKeys",
+       "actions": [
+        "iam:CreateAccessKey",
+        "iam:DeleteAccessKey",
+        "iam:UpdateAccessKey"
+       ],
+       "resources": [
+        "arn:aws:iam::*:user/$${aws:username}"
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_policy.developers_manage_personal_keys",
+   "cfg": "aws_iam_policy.developers_manage_personal_keys",
+   "type": "__declared__",
+   "refs": [
+    "data.aws_iam_policy_document.developers_manage_personal_keys"
+   ],
+   "values": {
+    "type": "aws_iam_policy",
+    "name": "developers_manage_personal_keys",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "developers_manage_personal_keys",
+     "path": "/",
+     "policy": "${data.aws_iam_policy_document.developers_manage_personal_keys.json}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.data.aws_iam_policy_document.allow_S3_mfa",
+   "cfg": "data.aws_iam_policy_document.allow_S3_mfa",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "data.aws_iam_policy_document",
+    "name": "allow_S3_mfa",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "statement": [
+      {
+       "sid": "allowS3Mfa",
+       "actions": [
+        "s3:*"
+       ],
+       "resources": [
+        "*"
+       ],
+       "condition": [
+        {
+         "test": "Bool",
+         "variable": "aws:MultiFactorAuthPresent",
+         "values": [
+          "true"
+         ]
+        }
+       ]
+      },
+      {
+       "sid": "ForceS3Region",
+       "effect": "Deny",
+       "actions": [
+        "s3:CreateBucket"
+       ],
+       "resources": [
+        "*"
+       ],
+       "condition": [
+        {
+         "test": "StringNotEquals",
+         "variable": "aws:RequestedRegion",
+         "values": [
+          "eu-west-2"
+         ]
+        }
+       ]
+      },
+      {
+       "sid": "DenyStateBucket",
+       "effect": "Deny",
+       "actions": [
+        "s3:*"
+       ],
+       "resources": [
+        "arn:aws:s3:::ceb-terraform-remote-state-storage-s3/*",
+        "arn:aws:s3:::ceb-terraform-remote-state-storage-s3"
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_policy.allow_S3_mfa",
+   "cfg": "aws_iam_policy.allow_S3_mfa",
+   "type": "__declared__",
+   "refs": [
+    "data.aws_iam_policy_document.allow_S3_mfa"
+   ],
+   "values": {
+    "type": "aws_iam_policy",
+    "name": "allow_S3_mfa",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "allow_S3_mfa",
+     "path": "/",
+     "policy": "${data.aws_iam_policy_document.allow_S3_mfa.json}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.data.aws_iam_policy_document.allow_ec2_if_mfa_enabled",
+   "cfg": "data.aws_iam_policy_document.allow_ec2_if_mfa_enabled",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "data.aws_iam_policy_document",
+    "name": "allow_ec2_if_mfa_enabled",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "statement": [
+      {
+       "sid": "AllowEC2General",
+       "actions": [
+        "ec2:*",
+        "elasticloadbalancing:*",
+        "cloudwatch:*",
+        "autoscaling:*"
+       ],
+       "resources": [
+        "*"
+       ],
+       "condition": [
+        {
+         "test": "Bool",
+         "variable": "aws:MultiFactorAuthPresent",
+         "values": [
+          "true"
+         ]
+        }
+       ]
+      },
+      {
+       "sid": "AllowEC2GeneralLinkedRoles",
+       "actions": [
+        "iam:CreateServiceLinkedRole"
+       ],
+       "resources": [
+        "*"
+       ],
+       "condition": [
+        {
+         "test": "Bool",
+         "variable": "aws:MultiFactorAuthPresent",
+         "values": [
+          "true"
+         ]
+        },
+        {
+         "test": "Bool",
+         "variable": "aws:MultiFactorAuthPresent",
+         "values": [
+          "true"
+         ]
+        },
+        {
+         "test": "StringEquals",
+         "variable": "iam:AWSServiceName",
+         "values": [
+          "autoscaling.amazonaws.com",
+          "ec2scheduled.amazonaws.com",
+          "elasticloadbalancing.amazonaws.com",
+          "spot.amazonaws.com",
+          "spotfleet.amazonaws.com",
+          "transitgateway.amazonaws.com"
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_policy.allow_ec2_if_mfa_enabled",
+   "cfg": "aws_iam_policy.allow_ec2_if_mfa_enabled",
+   "type": "__declared__",
+   "refs": [
+    "data.aws_iam_policy_document.allow_ec2_if_mfa_enabled"
+   ],
+   "values": {
+    "type": "aws_iam_policy",
+    "name": "allow_ec2_if_mfa_enabled",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "allow_ec2_if_mfa_enabled",
+     "path": "/",
+     "policy": "${data.aws_iam_policy_document.allow_ec2_if_mfa_enabled.json}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.data.aws_iam_policy_document.allow_admin_if_mfa",
+   "cfg": "data.aws_iam_policy_document.allow_admin_if_mfa",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "data.aws_iam_policy_document",
+    "name": "allow_admin_if_mfa",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "statement": [
+      {
+       "sid": "RequireAdminMFA",
+       "actions": [
+        "*"
+       ],
+       "resources": [
+        "*"
+       ],
+       "condition": [
+        {
+         "test": "Bool",
+         "variable": "aws:MultiFactorAuthPresent",
+         "values": [
+          "true"
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_policy.allow_admin_if_mfa",
+   "cfg": "aws_iam_policy.allow_admin_if_mfa",
+   "type": "__declared__",
+   "refs": [
+    "data.aws_iam_policy_document.allow_admin_if_mfa"
+   ],
+   "values": {
+    "type": "aws_iam_policy",
+    "name": "allow_admin_if_mfa",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "allow_admin_if_mfa",
+     "path": "/",
+     "policy": "${data.aws_iam_policy_document.allow_admin_if_mfa.json}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.data.aws_iam_policy_document.assume_role_to_admin",
+   "cfg": "data.aws_iam_policy_document.assume_role_to_admin",
+   "type": "__declared__",
+   "refs": [
+    "data.aws_caller_identity.current"
+   ],
+   "values": {
+    "type": "data.aws_iam_policy_document",
+    "name": "assume_role_to_admin",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "statement": [
+      {
+       "actions": [
+        "sts:AssumeRole"
+       ],
+       "resources": [
+        "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/admin"
+       ],
+       "condition": [
+        {
+         "test": "Bool",
+         "variable": "aws:MultiFactorAuthPresent",
+         "values": [
+          "true"
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_policy.assume_role_to_admin",
+   "cfg": "aws_iam_policy.assume_role_to_admin",
+   "type": "__declared__",
+   "refs": [
+    "data.aws_iam_policy_document.assume_role_to_admin"
+   ],
+   "values": {
+    "type": "aws_iam_policy",
+    "name": "assume_role_to_admin",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "assume_role_to_admin",
+     "path": "/",
+     "policy": "${data.aws_iam_policy_document.assume_role_to_admin.json}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.data.aws_iam_policy_document.admin_assume_role_policy",
+   "cfg": "data.aws_iam_policy_document.admin_assume_role_policy",
+   "type": "__declared__",
+   "refs": [
+    "data.aws_caller_identity.current"
+   ],
+   "values": {
+    "type": "data.aws_iam_policy_document",
+    "name": "admin_assume_role_policy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "statement": [
+      {
+       "actions": [
+        "sts:AssumeRole"
+       ],
+       "principals": [
+        {
+         "type": "AWS",
+         "identifiers": [
+          "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role.admin_assume_role",
+   "cfg": "aws_iam_role.admin_assume_role",
+   "type": "__declared__",
+   "refs": [
+    "data.aws_iam_policy_document.admin_assume_role_policy"
+   ],
+   "values": {
+    "type": "aws_iam_role",
+    "name": "admin_assume_role",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "admin",
+     "assume_role_policy": "${data.aws_iam_policy_document.admin_assume_role_policy.json}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_policy_attachment.admin_assume_role_policy",
+   "cfg": "aws_iam_policy_attachment.admin_assume_role_policy",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_policy.allow_admin_if_mfa",
+    "aws_iam_role.admin_assume_role"
+   ],
+   "values": {
+    "type": "aws_iam_policy_attachment",
+    "name": "admin_assume_role_policy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "admin_assume_role_policy",
+     "roles": [
+      "${aws_iam_role.admin_assume_role.name}"
+     ],
+     "policy_arn": "${aws_iam_policy.allow_admin_if_mfa.arn}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_group_policy_attachment.developers_iam_read_only_access",
+   "cfg": "aws_iam_group_policy_attachment.developers_iam_read_only_access",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_group.developer"
+   ],
+   "values": {
+    "type": "aws_iam_group_policy_attachment",
+    "name": "developers_iam_read_only_access",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "group": "${aws_iam_group.developer.name}",
+     "policy_arn": "arn:aws:iam::aws:policy/IAMReadOnlyAccess"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_group_policy_attachment.developers_iam_User_change_password",
+   "cfg": "aws_iam_group_policy_attachment.developers_iam_User_change_password",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_group.developer"
+   ],
+   "values": {
+    "type": "aws_iam_group_policy_attachment",
+    "name": "developers_iam_User_change_password",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "group": "${aws_iam_group.developer.name}",
+     "policy_arn": "arn:aws:iam::aws:policy/IAMUserChangePassword"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_group_policy_attachment.developers_iam_user_ssh_keys",
+   "cfg": "aws_iam_group_policy_attachment.developers_iam_user_ssh_keys",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_group.developer"
+   ],
+   "values": {
+    "type": "aws_iam_group_policy_attachment",
+    "name": "developers_iam_user_ssh_keys",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "group": "${aws_iam_group.developer.name}",
+     "policy_arn": "arn:aws:iam::aws:policy/IAMUserSSHKeys"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_group_policy_attachment.developers_manage_personal_keys",
+   "cfg": "aws_iam_group_policy_attachment.developers_manage_personal_keys",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_group.developer",
+    "aws_iam_policy.developers_manage_personal_keys"
+   ],
+   "values": {
+    "type": "aws_iam_group_policy_attachment",
+    "name": "developers_manage_personal_keys",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "group": "${aws_iam_group.developer.name}",
+     "policy_arn": "${aws_iam_policy.developers_manage_personal_keys.arn}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_group_policy_attachment.developers_manage_personal_mfa",
+   "cfg": "aws_iam_group_policy_attachment.developers_manage_personal_mfa",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_group.developer",
+    "aws_iam_policy.manage_personal_mfa"
+   ],
+   "values": {
+    "type": "aws_iam_group_policy_attachment",
+    "name": "developers_manage_personal_mfa",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "group": "${aws_iam_group.developer.name}",
+     "policy_arn": "${aws_iam_policy.manage_personal_mfa.arn}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_group_policy_attachment.developers_allow_s3_mfa",
+   "cfg": "aws_iam_group_policy_attachment.developers_allow_s3_mfa",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_group.developer",
+    "aws_iam_policy.allow_S3_mfa"
+   ],
+   "values": {
+    "type": "aws_iam_group_policy_attachment",
+    "name": "developers_allow_s3_mfa",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "group": "${aws_iam_group.developer.name}",
+     "policy_arn": "${aws_iam_policy.allow_S3_mfa.arn}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_group_policy_attachment.developers_allow_ec2_if_mfa_enabled",
+   "cfg": "aws_iam_group_policy_attachment.developers_allow_ec2_if_mfa_enabled",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_group.developer",
+    "aws_iam_policy.allow_ec2_if_mfa_enabled"
+   ],
+   "values": {
+    "type": "aws_iam_group_policy_attachment",
+    "name": "developers_allow_ec2_if_mfa_enabled",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "group": "${aws_iam_group.developer.name}",
+     "policy_arn": "${aws_iam_policy.allow_ec2_if_mfa_enabled.arn}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_group_policy_attachment.assume_role_to_admin",
+   "cfg": "aws_iam_group_policy_attachment.assume_role_to_admin",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_group.admin",
+    "aws_iam_policy.assume_role_to_admin"
+   ],
+   "values": {
+    "type": "aws_iam_group_policy_attachment",
+    "name": "assume_role_to_admin",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "group": "${aws_iam_group.admin.name}",
+     "policy_arn": "${aws_iam_policy.assume_role_to_admin.arn}"
+    }
+   }
+  }
+ ]
+}

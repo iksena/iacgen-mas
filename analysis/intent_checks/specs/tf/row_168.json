@@ -1,0 +1,998 @@
+{
+ "lang": "tf",
+ "row_number": 168,
+ "source_hash": {
+  "gt": "af4a9ea479fbfdcdea7448465a0305bb2656e98fdbf91bfe7104d73940a97343",
+  "prompt": "e791cf444d90c239e63b77c355afa994c3606cb72f509153ae617384d0b6e48a"
+ },
+ "selectors": {
+  "bucket": {
+   "types": [
+    "aws_s3_bucket"
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "s3_bucket",
+   "kind": "exists",
+   "select": "bucket",
+   "tier": "core",
+   "quote": "The S3 bucket must accept an optional name"
+  },
+  {
+   "id": "name_and_prefix_variables",
+   "kind": "all_of",
+   "tier": "detail",
+   "quote": "accept an optional name (validated to 63 characters max) or name_prefix (validated to 37 characters max)",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "regex",
+        "value": "(?i)(^|_)name$"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "regex",
+        "value": "(?i)name_?prefix$"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "force_destroy_false",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "force_destroy defaulting to false",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "eq",
+        "value": "force_destroy"
+       },
+       {
+        "path": "default",
+        "op": "eq",
+        "value": false
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "bucket",
+     "cond": {
+      "path": "force_destroy",
+      "op": "falsy"
+     }
+    }
+   ]
+  },
+  {
+   "id": "ownership_bucket_owner_enforced",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "object ownership defaulting to \"BucketOwnerEnforced\"",
+   "select": {
+    "types": [
+     "aws_s3_bucket_ownership_controls"
+    ],
+    "where": [
+     {
+      "path": "rule.*.object_ownership",
+      "op": "eq",
+      "value": "BucketOwnerEnforced"
+     }
+    ]
+   }
+  },
+  {
+   "id": "ownership_variable_default",
+   "kind": "exists",
+   "tier": "detail",
+   "quote": "object ownership defaulting to \"BucketOwnerEnforced\"",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": "default",
+      "op": "eq",
+      "value": "BucketOwnerEnforced"
+     }
+    ]
+   }
+  },
+  {
+   "id": "acl_only_for_object_writer",
+   "kind": "exists",
+   "tier": "detail",
+   "quote": "conditionally provisions canned ACLs only when set to \"ObjectWriter\"",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": "type",
+      "op": "in",
+      "value": [
+       "aws_s3_bucket_acl"
+      ]
+     },
+     {
+      "path": "gated",
+      "op": "truthy"
+     }
+    ]
+   }
+  },
+  {
+   "id": "public_access_block_defaults",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "public access block controls defaulting block_public_acls, block_public_policy, ignore_public_acls, and restrict_public_buckets to true",
+   "select": {
+    "types": [
+     "aws_s3_bucket_public_access_block"
+    ],
+    "where": [
+     {
+      "path": "block_public_acls",
+      "op": "truthy"
+     },
+     {
+      "path": "block_public_policy",
+      "op": "truthy"
+     },
+     {
+      "path": "ignore_public_acls",
+      "op": "truthy"
+     },
+     {
+      "path": "restrict_public_buckets",
+      "op": "truthy"
+     }
+    ]
+   }
+  },
+  {
+   "id": "public_access_block_variables",
+   "kind": "all_of",
+   "tier": "detail",
+   "quote": "defaulting block_public_acls, block_public_policy, ignore_public_acls, and restrict_public_buckets to true",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "eq",
+        "value": "block_public_acls"
+       },
+       {
+        "path": "default",
+        "op": "eq",
+        "value": true
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "eq",
+        "value": "block_public_policy"
+       },
+       {
+        "path": "default",
+        "op": "eq",
+        "value": true
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "eq",
+        "value": "ignore_public_acls"
+       },
+       {
+        "path": "default",
+        "op": "eq",
+        "value": true
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "eq",
+        "value": "restrict_public_buckets"
+       },
+       {
+        "path": "default",
+        "op": "eq",
+        "value": true
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "sse_aes256_default",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "Server-side encryption must automatically default to AES256",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_s3_bucket_server_side_encryption_configuration"
+      ],
+      "where": [
+       {
+        "path": "rule.*.apply_server_side_encryption_by_default.*.sse_algorithm",
+        "op": "eq",
+        "value": "AES256"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "bucket",
+     "cond": {
+      "path": "server_side_encryption_configuration.*.rule.*.apply_server_side_encryption_by_default.*.sse_algorithm",
+      "op": "eq",
+      "value": "AES256"
+     }
+    }
+   ]
+  },
+  {
+   "id": "kms_switch_and_bucket_key",
+   "kind": "exists",
+   "tier": "detail",
+   "quote": "unless a kms_key_arn is provided, which switches the algorithm to \"aws:kms\" and enables bucket keys",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": "type",
+      "op": "in",
+      "value": [
+       "aws_s3_bucket_server_side_encryption_configuration",
+       "aws_s3_bucket"
+      ]
+     },
+     {
+      "path": "properties",
+      "op": "regex",
+      "value": "aws:kms|kms_key_arn"
+     },
+     {
+      "path": "properties",
+      "op": "regex",
+      "value": "bucket_key_enabled"
+     }
+    ]
+   }
+  },
+  {
+   "id": "kms_key_arn_variable",
+   "kind": "exists",
+   "tier": "detail",
+   "quote": "unless a kms_key_arn is provided",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": "name",
+      "op": "eq",
+      "value": "kms_key_arn"
+     }
+    ]
+   }
+  },
+  {
+   "id": "versioning_suspended_by_default",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "bucket versioning defaults to \"Suspended\" unless enabled via a boolean flag",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_s3_bucket_versioning"
+      ],
+      "where": [
+       {
+        "path": "versioning_configuration.*.status",
+        "op": "eq",
+        "value": "Suspended"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "in",
+        "value": [
+         "aws_s3_bucket_versioning"
+        ]
+       },
+       {
+        "path": "properties",
+        "op": "regex",
+        "value": "Suspended"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "versioning_flag",
+   "kind": "exists",
+   "tier": "detail",
+   "quote": "unless enabled via a boolean flag",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": "name",
+      "op": "regex",
+      "value": "(?i)versioning"
+     },
+     {
+      "path": "default",
+      "op": "eq",
+      "value": false
+     }
+    ]
+   },
+   "justify": "the flag is off by default since versioning defaults to Suspended"
+  },
+  {
+   "id": "bucket_policy_attached",
+   "kind": "ref",
+   "tier": "core",
+   "quote": "The bucket policy must combine",
+   "from": {
+    "types": [
+     "aws_s3_bucket_policy"
+    ]
+   },
+   "to": "bucket"
+  },
+  {
+   "id": "ssl_only_deny",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "an enforced SSL-only access policy (denying s3:* requests when \"aws:SecureTransport\" is false)",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "data.aws_iam_policy_document"
+      ]
+     },
+     "cond": {
+      "path": "statement.*",
+      "op": "match",
+      "value": [
+       {
+        "path": "effect",
+        "op": "eq",
+        "value": "Deny"
+       },
+       {
+        "path": "condition.*.variable",
+        "op": "eq",
+        "value": "aws:SecureTransport"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_s3_bucket_policy"
+      ]
+     },
+     "cond": {
+      "path": "policy",
+      "op": "regex",
+      "value": "(?is)deny.{0,600}?aws:SecureTransport|aws:SecureTransport.{0,600}?deny"
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "in",
+        "value": [
+         "aws_s3_bucket_policy",
+         "data.aws_iam_policy_document"
+        ]
+       },
+       {
+        "path": "properties",
+        "op": "regex",
+        "value": "(?is)deny.{0,600}?aws:SecureTransport|aws:SecureTransport.{0,600}?deny"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "custom_policy_variable",
+   "kind": "exists",
+   "tier": "detail",
+   "quote": "combine any supplied custom JSON policy",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": "name",
+      "op": "regex",
+      "value": "(?i)policy"
+     }
+    ]
+   }
+  },
+  {
+   "id": "logging_delivery_policy",
+   "kind": "exists",
+   "tier": "detail",
+   "quote": "a conditional logging permissions policy allowing \"logging.s3.amazonaws.com\" to perform PutObject",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": "properties",
+      "op": "regex",
+      "value": "logging\\.s3\\.amazonaws\\.com"
+     },
+     {
+      "path": "properties",
+      "op": "regex",
+      "value": "s3:PutObject"
+     }
+    ]
+   }
+  },
+  {
+   "id": "eventbridge_notifications",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "support optional EventBridge notifications",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": "type",
+      "op": "in",
+      "value": [
+       "aws_s3_bucket_notification"
+      ]
+     },
+     {
+      "path": "properties",
+      "op": "regex",
+      "value": "(?i)eventbridge"
+     }
+    ]
+   }
+  },
+  {
+   "id": "server_access_logging",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "server access logging",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "in",
+        "value": [
+         "aws_s3_bucket_logging"
+        ]
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "in",
+        "value": [
+         "aws_s3_bucket"
+        ]
+       },
+       {
+        "path": "properties",
+        "op": "regex",
+        "value": "target_bucket"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "logging_object_lock_preconditions",
+   "kind": "exists",
+   "tier": "detail",
+   "quote": "preconditions preventing combined logging and object locking",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": "properties",
+      "op": "regex",
+      "value": "precondition"
+     },
+     {
+      "path": "properties",
+      "op": "regex",
+      "value": "(?i)object_lock"
+     },
+     {
+      "path": "properties",
+      "op": "regex",
+      "value": "(?i)logging"
+     }
+    ]
+   }
+  },
+  {
+   "id": "object_lock_retention",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "object lock retention rules (mode, days, years)",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "in",
+        "value": [
+         "aws_s3_bucket_object_lock_configuration"
+        ]
+       },
+       {
+        "path": "properties",
+        "op": "regex",
+        "value": "default_retention"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "in",
+        "value": [
+         "aws_s3_bucket"
+        ]
+       },
+       {
+        "path": "properties",
+        "op": "regex",
+        "value": "default_retention"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "object_lock_mode_days_years",
+   "kind": "exists",
+   "tier": "detail",
+   "quote": "object lock retention rules (mode, days, years)",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": "type",
+      "op": "in",
+      "value": [
+       "aws_s3_bucket_object_lock_configuration",
+       "aws_s3_bucket"
+      ]
+     },
+     {
+      "path": "properties",
+      "op": "regex",
+      "value": "mode"
+     },
+     {
+      "path": "properties",
+      "op": "regex",
+      "value": "days"
+     },
+     {
+      "path": "properties",
+      "op": "regex",
+      "value": "years"
+     }
+    ]
+   }
+  },
+  {
+   "id": "replication_rules",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "multi-rule cross-region replication settings",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "in",
+        "value": [
+         "aws_s3_bucket_replication_configuration"
+        ]
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "in",
+        "value": [
+         "aws_s3_bucket"
+        ]
+       },
+       {
+        "path": "properties",
+        "op": "regex",
+        "value": "replication_configuration"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "replication_priority_selection",
+   "kind": "exists",
+   "tier": "detail",
+   "quote": "with priority keys and source selection criteria",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": "type",
+      "op": "in",
+      "value": [
+       "aws_s3_bucket_replication_configuration",
+       "aws_s3_bucket"
+      ]
+     },
+     {
+      "path": "properties",
+      "op": "regex",
+      "value": "priority"
+     },
+     {
+      "path": "properties",
+      "op": "regex",
+      "value": "source_selection_criteria"
+     }
+    ]
+   }
+  },
+  {
+   "id": "inventory_configuration",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "inventory configurations",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": "type",
+      "op": "in",
+      "value": [
+       "aws_s3_bucket_inventory"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "inventory_encrypted_destination",
+   "kind": "exists",
+   "tier": "detail",
+   "quote": "targeting Parquet or SSE-KMS/SSE-S3 encrypted destinations on a schedule",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": "type",
+      "op": "in",
+      "value": [
+       "aws_s3_bucket_inventory"
+      ]
+     },
+     {
+      "path": "properties",
+      "op": "regex",
+      "value": "(?i)parquet|sse_kms|sse_s3"
+     },
+     {
+      "path": "properties",
+      "op": "regex",
+      "value": "schedule"
+     }
+    ]
+   }
+  },
+  {
+   "id": "cors_configuration",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "CORS configuration",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "in",
+        "value": [
+         "aws_s3_bucket_cors_configuration"
+        ]
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "in",
+        "value": [
+         "aws_s3_bucket"
+        ]
+       },
+       {
+        "path": "properties",
+        "op": "regex",
+        "value": "cors_rule"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "lifecycle_rules",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "dynamic lifecycle management rules",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "in",
+        "value": [
+         "aws_s3_bucket_lifecycle_configuration"
+        ]
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "in",
+        "value": [
+         "aws_s3_bucket"
+        ]
+       },
+       {
+        "path": "properties",
+        "op": "regex",
+        "value": "lifecycle_rule"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "lifecycle_rule_actions",
+   "kind": "exists",
+   "tier": "detail",
+   "quote": "handling object expirations, transitions, noncurrent versions, and incomplete multipart upload aborts",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": "type",
+      "op": "in",
+      "value": [
+       "aws_s3_bucket_lifecycle_configuration",
+       "aws_s3_bucket"
+      ]
+     },
+     {
+      "path": "properties",
+      "op": "regex",
+      "value": "expiration"
+     },
+     {
+      "path": "properties",
+      "op": "regex",
+      "value": "transition"
+     },
+     {
+      "path": "properties",
+      "op": "regex",
+      "value": "noncurrent_version"
+     },
+     {
+      "path": "properties",
+      "op": "regex",
+      "value": "abort_incomplete_multipart_upload"
+     }
+    ]
+   }
+  }
+ ],
+ "notes": "Configurable module: only the bucket, ownership controls, public access block, SSE, versioning and bucket policy are created by default; every optional capability is checked as declared (separate resource or inline on the bucket). Variable validation rules (63/37 chars) are not visible in the normalised input and are not checked. 'Parquet' inventory format is a variable value in the GT and is not checked."
+}

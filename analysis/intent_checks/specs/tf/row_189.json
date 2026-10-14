@@ -1,0 +1,399 @@
+{
+  "lang": "tf",
+  "row_number": 189,
+  "source_hash": {
+    "gt": "681db3ad6c463364152341e479ae3d74e9f0890edc29daf6d300e8d846685dd3",
+    "prompt": "c2c2839c87948564b646e7440444ca03179fad7585fa992cc47ccfeae8f0dc17"
+  },
+  "selectors": {
+    "vpc": {
+      "types": [
+        "aws_vpc"
+      ],
+      "where": [
+        {
+          "path": "cidr_block",
+          "op": "eq",
+          "value": "10.0.0.0/18"
+        }
+      ]
+    },
+    "igw": {
+      "types": [
+        "aws_internet_gateway"
+      ]
+    },
+    "nat": {
+      "types": [
+        "aws_nat_gateway"
+      ]
+    }
+  },
+  "checks": [
+    {
+      "id": "vpc_cidr",
+      "kind": "exists",
+      "select": "vpc",
+      "tier": "core",
+      "quote": "The VPC should use a CIDR block of 10.0.0.0/18"
+    },
+    {
+      "id": "subnets_in_vpc",
+      "kind": "ref",
+      "tier": "core",
+      "from": {
+        "types": [
+          "aws_subnet"
+        ]
+      },
+      "to": "vpc",
+      "quote": "including public and private subnets"
+    },
+    {
+      "id": "public_and_private_subnets",
+      "kind": "exists",
+      "tier": "detail",
+      "min": 2,
+      "select": {
+        "types": [
+          "aws_subnet"
+        ]
+      },
+      "quote": "including public and private subnets",
+      "justify": "'public and private subnets' -> at least one of each (>=2)"
+    },
+    {
+      "id": "internet_gateway",
+      "kind": "any_of",
+      "tier": "core",
+      "quote": "an internet gateway",
+      "checks": [
+        {
+          "kind": "ref",
+          "from": "igw",
+          "to": "vpc"
+        },
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "aws_internet_gateway_attachment"
+            ]
+          },
+          "to": "vpc"
+        }
+      ]
+    },
+    {
+      "id": "nat_gateway",
+      "kind": "ref",
+      "tier": "core",
+      "from": "nat",
+      "to": {
+        "types": [
+          "aws_subnet"
+        ]
+      },
+      "quote": "a NAT gateway"
+    },
+    {
+      "id": "nat_eip",
+      "kind": "ref",
+      "tier": "detail",
+      "from": "nat",
+      "to": {
+        "types": [
+          "aws_eip"
+        ]
+      },
+      "quote": "All necessary dependencies should be created as part of the stack."
+    },
+    {
+      "id": "public_route_to_igw",
+      "kind": "ref",
+      "tier": "core",
+      "quote": "route tables",
+      "from": {
+        "types": [
+          "aws_route",
+          "aws_route_table"
+        ]
+      },
+      "to": "igw"
+    },
+    {
+      "id": "private_route_to_nat",
+      "kind": "any_of",
+      "tier": "detail",
+      "quote": "route tables",
+      "checks": [
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "aws_route",
+              "aws_route_table"
+            ]
+          },
+          "to": "nat"
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "in",
+                "value": [
+                  "aws_route",
+                  "aws_route_table"
+                ]
+              },
+              {
+                "path": "properties",
+                "op": "regex",
+                "value": "aws_nat_gateway"
+              }
+            ]
+          }
+        }
+      ],
+      "justify": "NAT routes are often dynamic/count-gated blocks; the declared route text is read"
+    },
+    {
+      "id": "route_table_associations",
+      "kind": "ref",
+      "tier": "detail",
+      "quote": "route tables",
+      "from": {
+        "types": [
+          "aws_route_table_association"
+        ]
+      },
+      "to": {
+        "types": [
+          "aws_subnet"
+        ]
+      }
+    },
+    {
+      "id": "network_acls",
+      "kind": "any_of",
+      "tier": "core",
+      "quote": "network ACLs",
+      "checks": [
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "aws_network_acl"
+            ]
+          },
+          "to": {
+            "types": [
+              "aws_subnet"
+            ]
+          }
+        },
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "aws_network_acl_association"
+            ]
+          },
+          "to": {
+            "types": [
+              "aws_network_acl"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "subnets_span_all_azs",
+      "kind": "any_of",
+      "tier": "detail",
+      "checks": [
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "aws_subnet"
+            ]
+          },
+          "to": {
+            "types": [
+              "data.aws_availability_zones"
+            ]
+          }
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "aws_subnet"
+            ]
+          },
+          "distinct_path": "availability_zone",
+          "min": 6
+        }
+      ],
+      "quote": "The number of availability zones should be configurable, defaulting to all available AZs in the region.",
+      "justify": "'defaulting to all available AZs in the region' -> subnets driven by the availability-zones data source, or spanning all 6 us-east-1 AZs (region stated)"
+    },
+    {
+      "id": "toggle_subnets_and_nat",
+      "kind": "all_of",
+      "tier": "detail",
+      "quote": "allow toggling the creation of public subnets, private subnets, and the NAT gateway via boolean variables",
+      "checks": [
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "eq",
+                "value": "aws_nat_gateway"
+              },
+              {
+                "path": "gated",
+                "op": "truthy"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "exists",
+          "min": 2,
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "eq",
+                "value": "aws_subnet"
+              },
+              {
+                "path": "gated",
+                "op": "truthy"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "exists",
+          "min": 3,
+          "select": {
+            "types": [
+              "__parameter__"
+            ],
+            "where": [
+              {
+                "path": "default",
+                "op": "in",
+                "value": [
+                  true,
+                  false
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "justify": "three boolean toggles stated (public subnets, private subnets, NAT gateway); public and private subnets are both gated"
+    },
+    {
+      "id": "vpc_name_default",
+      "kind": "any_of",
+      "tier": "detail",
+      "quote": "The VPC name should be configurable with a default of \"benchmark-vpc\"",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "vpc",
+          "cond": {
+            "path": "tags.Name",
+            "op": "eq",
+            "value": "benchmark-vpc"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "vpc",
+          "cond": {
+            "path": "tags_all.Name",
+            "op": "eq",
+            "value": "benchmark-vpc"
+          }
+        }
+      ]
+    },
+    {
+      "id": "vpc_name_variable",
+      "kind": "exists",
+      "tier": "detail",
+      "select": {
+        "types": [
+          "__parameter__"
+        ],
+        "where": [
+          {
+            "path": "default",
+            "op": "eq",
+            "value": "benchmark-vpc"
+          }
+        ]
+      },
+      "quote": "The VPC name should be configurable with a default of \"benchmark-vpc\""
+    },
+    {
+      "id": "region_us_east_1",
+      "kind": "any_of",
+      "tier": "detail",
+      "quote": "The AWS region should default to us-east-1.",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "vpc",
+          "cond": {
+            "path": "region",
+            "op": "eq",
+            "value": "us-east-1"
+          }
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "__parameter__"
+            ],
+            "where": [
+              {
+                "path": "name",
+                "op": "regex",
+                "value": "(?i)region"
+              },
+              {
+                "path": "default",
+                "op": "eq",
+                "value": "us-east-1"
+              }
+            ]
+          }
+        }
+      ],
+      "justify": "\"should default to us-east-1\" -> a region variable defaulting to it"
+    }
+  ],
+  "notes": "Public/private roles of subnets cannot be tied to specific route tables in one leaf (no multi-hop), so routes are checked per gateway. Defaulting to all available AZs is checked as subnets referencing the aws_availability_zones data source or spanning 6 distinct AZs (AZ names not pinned); the variable that makes the count configurable is not named in the prompt and is not pinned. The GT declares no region variable; the region check reads the planned region of the VPC. Review 2026-09-24: route checks no longer pin the 0.0.0.0/0 destination (any route to the IGW/NAT). | 2026-10-03 review: region accepted as a variable default (plan carries no region attribute on this provider version); NAT routes accepted from declared route blocks."
+}

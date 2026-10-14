@@ -1,0 +1,351 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "26524ccfc9a16670c873ddc007eef3f281af8a079a4ca7b6a7054e0d18c97e5f",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "Trigger",
+   "cfg": "Trigger",
+   "type": "AWS::Events::Rule",
+   "values": {
+    "ScheduleExpression": "rate(1 day)",
+    "State": "ENABLED",
+    "Targets": [
+     {
+      "Arn": "arn:aws:ssm:us-east-1:123456789012:automation-definition/${EnableS3BlockPublicAccessDocument}",
+      "Id": "EnableS3BlockPublicAccessViaSSM",
+      "RoleArn": {
+       "ref": "SSMAutomationExecutionRoleforCWEvents",
+       "attr": "Arn"
+      }
+     }
+    ]
+   },
+   "refs": [
+    "EnableS3BlockPublicAccessDocument",
+    "SSMAutomationExecutionRoleforCWEvents"
+   ]
+  },
+  {
+   "id": "SSMAutomationExecutionRoleforCWEvents",
+   "cfg": "SSMAutomationExecutionRoleforCWEvents",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "events.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Path": "/",
+    "Policies": [
+     {
+      "PolicyName": "AllowStartAutomationExecution",
+      "PolicyDocument": {
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "ssm:StartAutomationExecution"
+         ],
+         "Resource": [
+          "arn:aws:ssm:us-east-1:123456789012:automation-definition/${EnableS3BlockPublicAccessDocument}:*"
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": [
+    "EnableS3BlockPublicAccessDocument"
+   ]
+  },
+  {
+   "id": "EnableS3BlockPublicAccessDocument",
+   "cfg": "EnableS3BlockPublicAccessDocument",
+   "type": "AWS::SSM::Document",
+   "values": {
+    "DocumentType": "Automation",
+    "Content": {
+     "schemaVersion": "0.3",
+     "assumeRole": {
+      "ref": "S3BlockPublicAccessRoleForSSM",
+      "attr": "Arn"
+     },
+     "parameters": {
+      "AutomationAssumeRole": {
+       "type": "String",
+       "description": "(Optional) The ARN of the role that allows Automation to perform the actions on your behalf.",
+       "default": {
+        "ref": "S3BlockPublicAccessRoleForSSM",
+        "attr": "Arn"
+       }
+      }
+     },
+     "mainSteps": [
+      {
+       "name": "PutAccountPublicAccessBlock",
+       "action": "aws:executeAwsApi",
+       "inputs": {
+        "Service": "s3control",
+        "Api": "PutPublicAccessBlock",
+        "PublicAccessBlockConfiguration": {
+         "BlockPublicAcls": true,
+         "BlockPublicPolicy": true,
+         "IgnorePublicAcls": true,
+         "RestrictPublicBuckets": true
+        },
+        "AccountId": "{{ global:ACCOUNT_ID }}"
+       },
+       "isEnd": true
+      }
+     ]
+    }
+   },
+   "refs": [
+    "S3BlockPublicAccessRoleForSSM"
+   ]
+  },
+  {
+   "id": "S3BlockPublicAccessRoleForSSM",
+   "cfg": "S3BlockPublicAccessRoleForSSM",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "ssm.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Path": "/",
+    "Policies": [
+     {
+      "PolicyName": "AllowBlockPublicAccess",
+      "PolicyDocument": {
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "s3:PutAccountPublicAccessBlock",
+          "s3:GetAccountPublicAccessBlock"
+         ],
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__declared__.AWS::Events::Rule.Trigger",
+   "cfg": "Trigger",
+   "type": "__declared__",
+   "refs": [
+    "EnableS3BlockPublicAccessDocument",
+    "SSMAutomationExecutionRoleforCWEvents"
+   ],
+   "values": {
+    "type": "AWS::Events::Rule",
+    "name": "Trigger",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ScheduleExpression": "rate(1 day)",
+     "State": "ENABLED",
+     "Targets": [
+      {
+       "Arn": "arn:aws:ssm:us-east-1:123456789012:automation-definition/${EnableS3BlockPublicAccessDocument}",
+       "Id": "EnableS3BlockPublicAccessViaSSM",
+       "RoleArn": {
+        "ref": "SSMAutomationExecutionRoleforCWEvents",
+        "attr": "Arn"
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.SSMAutomationExecutionRoleforCWEvents",
+   "cfg": "SSMAutomationExecutionRoleforCWEvents",
+   "type": "__declared__",
+   "refs": [
+    "EnableS3BlockPublicAccessDocument"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "SSMAutomationExecutionRoleforCWEvents",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "events.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Path": "/",
+     "Policies": [
+      {
+       "PolicyName": "AllowStartAutomationExecution",
+       "PolicyDocument": {
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "ssm:StartAutomationExecution"
+          ],
+          "Resource": [
+           "arn:aws:ssm:us-east-1:123456789012:automation-definition/${EnableS3BlockPublicAccessDocument}:*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SSM::Document.EnableS3BlockPublicAccessDocument",
+   "cfg": "EnableS3BlockPublicAccessDocument",
+   "type": "__declared__",
+   "refs": [
+    "S3BlockPublicAccessRoleForSSM"
+   ],
+   "values": {
+    "type": "AWS::SSM::Document",
+    "name": "EnableS3BlockPublicAccessDocument",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "DocumentType": "Automation",
+     "Content": {
+      "schemaVersion": "0.3",
+      "assumeRole": {
+       "ref": "S3BlockPublicAccessRoleForSSM",
+       "attr": "Arn"
+      },
+      "parameters": {
+       "AutomationAssumeRole": {
+        "type": "String",
+        "description": "(Optional) The ARN of the role that allows Automation to perform the actions on your behalf.",
+        "default": {
+         "ref": "S3BlockPublicAccessRoleForSSM",
+         "attr": "Arn"
+        }
+       }
+      },
+      "mainSteps": [
+       {
+        "name": "PutAccountPublicAccessBlock",
+        "action": "aws:executeAwsApi",
+        "inputs": {
+         "Service": "s3control",
+         "Api": "PutPublicAccessBlock",
+         "PublicAccessBlockConfiguration": {
+          "BlockPublicAcls": true,
+          "BlockPublicPolicy": true,
+          "IgnorePublicAcls": true,
+          "RestrictPublicBuckets": true
+         },
+         "AccountId": "{{ global:ACCOUNT_ID }}"
+        },
+        "isEnd": true
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.S3BlockPublicAccessRoleForSSM",
+   "cfg": "S3BlockPublicAccessRoleForSSM",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "S3BlockPublicAccessRoleForSSM",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "ssm.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Path": "/",
+     "Policies": [
+      {
+       "PolicyName": "AllowBlockPublicAccess",
+       "PolicyDocument": {
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "s3:PutAccountPublicAccessBlock",
+           "s3:GetAccountPublicAccessBlock"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  }
+ ]
+}

@@ -1,0 +1,265 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "4f3c493d6a069763daa1b8ebd53b703c6e4e80d5bd93bcc5855499e3823d61d5",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "GlobalNetwork",
+   "cfg": "GlobalNetwork",
+   "type": "AWS::NetworkManager::GlobalNetwork",
+   "values": {
+    "Description": "Global Network - Centralized Outbound",
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "global-network-centralized-outbound"
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "CoreNetwork",
+   "cfg": "CoreNetwork",
+   "type": "AWS::NetworkManager::CoreNetwork",
+   "values": {
+    "Description": "Core Network - Centralized Outbound",
+    "GlobalNetworkId": {
+     "ref": "GlobalNetwork"
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "core-network-centralized-outbound"
+     }
+    ],
+    "PolicyDocument": {
+     "version": "2025.11",
+     "core-network-configuration": {
+      "vpn-ecmp-support": false,
+      "asn-ranges": [
+       "64520-64525"
+      ],
+      "edge-locations": [
+       {
+        "location": "eu-west-1"
+       },
+       {
+        "location": "us-east-1"
+       },
+       {
+        "location": "ap-southeast-2"
+       }
+      ]
+     },
+     "segments": [
+      {
+       "name": "production",
+       "require-attachment-acceptance": false,
+       "isolate-attachments": true
+      },
+      {
+       "name": "development",
+       "require-attachment-acceptance": false
+      }
+     ],
+     "network-function-groups": [
+      {
+       "name": "inspectionVpcs",
+       "require-attachment-acceptance": false
+      }
+     ],
+     "attachment-policies": [
+      {
+       "rule-number": 100,
+       "conditions": [
+        {
+         "type": "tag-value",
+         "operator": "equals",
+         "key": "inspection",
+         "value": true
+        }
+       ],
+       "action": {
+        "add-to-network-function-group": "inspectionVpcs"
+       }
+      },
+      {
+       "rule-number": 200,
+       "conditions": [
+        {
+         "type": "tag-exists",
+         "key": "domain"
+        }
+       ],
+       "action": {
+        "association-method": "tag",
+        "tag-value-of-key": "domain"
+       }
+      }
+     ],
+     "segment-actions": [
+      {
+       "action": "send-to",
+       "segment": "production",
+       "via": {
+        "network-function-groups": [
+         "inspectionVpcs"
+        ]
+       }
+      },
+      {
+       "action": "send-to",
+       "segment": "development",
+       "via": {
+        "network-function-groups": [
+         "inspectionVpcs"
+        ]
+       }
+      }
+     ]
+    }
+   },
+   "refs": [
+    "GlobalNetwork"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::NetworkManager::GlobalNetwork.GlobalNetwork",
+   "cfg": "GlobalNetwork",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::NetworkManager::GlobalNetwork",
+    "name": "GlobalNetwork",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Description": "Global Network - Centralized Outbound",
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "global-network-centralized-outbound"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::NetworkManager::CoreNetwork.CoreNetwork",
+   "cfg": "CoreNetwork",
+   "type": "__declared__",
+   "refs": [
+    "GlobalNetwork"
+   ],
+   "values": {
+    "type": "AWS::NetworkManager::CoreNetwork",
+    "name": "CoreNetwork",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Description": "Core Network - Centralized Outbound",
+     "GlobalNetworkId": {
+      "ref": "GlobalNetwork"
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "core-network-centralized-outbound"
+      }
+     ],
+     "PolicyDocument": {
+      "version": "2025.11",
+      "core-network-configuration": {
+       "vpn-ecmp-support": false,
+       "asn-ranges": [
+        "64520-64525"
+       ],
+       "edge-locations": [
+        {
+         "location": "eu-west-1"
+        },
+        {
+         "location": "us-east-1"
+        },
+        {
+         "location": "ap-southeast-2"
+        }
+       ]
+      },
+      "segments": [
+       {
+        "name": "production",
+        "require-attachment-acceptance": false,
+        "isolate-attachments": true
+       },
+       {
+        "name": "development",
+        "require-attachment-acceptance": false
+       }
+      ],
+      "network-function-groups": [
+       {
+        "name": "inspectionVpcs",
+        "require-attachment-acceptance": false
+       }
+      ],
+      "attachment-policies": [
+       {
+        "rule-number": 100,
+        "conditions": [
+         {
+          "type": "tag-value",
+          "operator": "equals",
+          "key": "inspection",
+          "value": true
+         }
+        ],
+        "action": {
+         "add-to-network-function-group": "inspectionVpcs"
+        }
+       },
+       {
+        "rule-number": 200,
+        "conditions": [
+         {
+          "type": "tag-exists",
+          "key": "domain"
+         }
+        ],
+        "action": {
+         "association-method": "tag",
+         "tag-value-of-key": "domain"
+        }
+       }
+      ],
+      "segment-actions": [
+       {
+        "action": "send-to",
+        "segment": "production",
+        "via": {
+         "network-function-groups": [
+          "inspectionVpcs"
+         ]
+        }
+       },
+       {
+        "action": "send-to",
+        "segment": "development",
+        "via": {
+         "network-function-groups": [
+          "inspectionVpcs"
+         ]
+        }
+       }
+      ]
+     }
+    }
+   }
+  }
+ ]
+}

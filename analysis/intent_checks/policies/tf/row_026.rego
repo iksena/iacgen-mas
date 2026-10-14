@@ -1,0 +1,239 @@
+# GENERATED from specs/tf/row_026.json by intent_checks/build.py -- do not edit.
+package intent.tf.row_026
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {
+  "vpc": {
+   "types": [
+    "aws_vpc"
+   ],
+   "where": [
+    {
+     "path": [
+      "cidr_block"
+     ],
+     "op": "eq",
+     "value": "10.0.0.0/16"
+    }
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "vpc_cidr",
+   "kind": "exists",
+   "select": "vpc",
+   "tier": "core",
+   "quote": "using a configurable CIDR block that defaults to \"10.0.0.0/16\""
+  },
+  {
+   "id": "vpc_dns_support",
+   "kind": "attr",
+   "select": "vpc",
+   "tier": "core",
+   "cond": {
+    "path": [
+     "enable_dns_support"
+    ],
+    "op": "truthy"
+   },
+   "quote": "a VPC with DNS support and hostnames enabled"
+  },
+  {
+   "id": "vpc_dns_hostnames",
+   "kind": "attr",
+   "select": "vpc",
+   "tier": "core",
+   "cond": {
+    "path": [
+     "enable_dns_hostnames"
+    ],
+    "op": "truthy"
+   },
+   "quote": "a VPC with DNS support and hostnames enabled"
+  },
+  {
+   "id": "vpc_tag_name",
+   "kind": "attr",
+   "select": "vpc",
+   "tier": "detail",
+   "cond": {
+    "path": [
+     "tags",
+     "Name"
+    ],
+    "op": "eq",
+    "value": "main-vpc"
+   },
+   "quote": "tagged as \"main-vpc\""
+  },
+  {
+   "id": "vpc_cidr_configurable",
+   "kind": "exists",
+   "tier": "detail",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": [
+       "default"
+      ],
+      "op": "eq",
+      "value": "10.0.0.0/16"
+     }
+    ]
+   },
+   "quote": "a configurable CIDR block that defaults to \"10.0.0.0/16\""
+  },
+  {
+   "id": "subnet_1",
+   "kind": "ref",
+   "tier": "core",
+   "to": "vpc",
+   "from": {
+    "types": [
+     "aws_subnet"
+    ],
+    "where": [
+     {
+      "path": [
+       "cidr_block"
+      ],
+      "op": "eq",
+      "value": "10.0.1.0/24"
+     }
+    ]
+   },
+   "quote": "default subnet CIDR blocks of \"10.0.1.0/24\" and \"10.0.2.0/24\""
+  },
+  {
+   "id": "subnet_2",
+   "kind": "ref",
+   "tier": "core",
+   "to": "vpc",
+   "from": {
+    "types": [
+     "aws_subnet"
+    ],
+    "where": [
+     {
+      "path": [
+       "cidr_block"
+      ],
+      "op": "eq",
+      "value": "10.0.2.0/24"
+     }
+    ]
+   },
+   "quote": "default subnet CIDR blocks of \"10.0.1.0/24\" and \"10.0.2.0/24\""
+  },
+  {
+   "id": "subnets_first_two_azs",
+   "kind": "exists",
+   "tier": "detail",
+   "quote": "defaulting to the first two availability zones in the region",
+   "select": {
+    "types": [
+     "aws_subnet"
+    ],
+    "where": []
+   },
+   "distinct_path": [
+    "availability_zone"
+   ],
+   "min": 2,
+   "justify": "\"first two availability zones\" -> subnets span >=2 distinct AZs; AZ names not pinned"
+  },
+  {
+   "id": "subnet_name_tags",
+   "kind": "all_of",
+   "tier": "detail",
+   "quote": "each subnet is individually tagged with an index-based name following the pattern \"main-subnet-N\"",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": []
+     },
+     "quantifier": "all",
+     "cond": {
+      "path": [
+       "tags",
+       "Name"
+      ],
+      "op": "regex",
+      "value": "^main-subnet-[0-9]+$"
+     }
+    },
+    {
+     "kind": "exists",
+     "min": 2,
+     "select": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": [
+         "tags",
+         "Name"
+        ],
+        "op": "regex",
+        "value": "^main-subnet-[0-9]+$"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "region_us_east_1",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "with the AWS region defaulting to \"us-east-1\"",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": [
+         "default"
+        ],
+        "op": "eq",
+        "value": "us-east-1"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "vpc",
+     "cond": {
+      "path": [
+       "region"
+      ],
+      "op": "eq",
+      "value": "us-east-1"
+     }
+    }
+   ]
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

@@ -1,0 +1,598 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "sam_expanded",
+  "warnings": [],
+  "gt_hash": "1110c982edc3c3df8cbb3d001ec1f7d537547b4000c5d8dfdb5dfd46231c33db",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "WebSocketApi",
+   "cfg": "WebSocketApi",
+   "type": "AWS::ApiGatewayV2::Api",
+   "values": {
+    "Name": "stack-WebSocketApi",
+    "ProtocolType": "WEBSOCKET",
+    "RouteSelectionExpression": "$request.body.action"
+   },
+   "refs": []
+  },
+  {
+   "id": "Deployment",
+   "cfg": "Deployment",
+   "type": "AWS::ApiGatewayV2::Deployment",
+   "values": {
+    "ApiId": {
+     "ref": "WebSocketApi"
+    },
+    "__resource__": {
+     "DependsOn": [
+      "DefaultRoute"
+     ]
+    }
+   },
+   "refs": [
+    "WebSocketApi"
+   ]
+  },
+  {
+   "id": "Stage",
+   "cfg": "Stage",
+   "type": "AWS::ApiGatewayV2::Stage",
+   "values": {
+    "StageName": "api",
+    "DeploymentId": {
+     "ref": "Deployment"
+    },
+    "ApiId": {
+     "ref": "WebSocketApi"
+    }
+   },
+   "refs": [
+    "Deployment",
+    "WebSocketApi"
+   ]
+  },
+  {
+   "id": "DefaultRoute",
+   "cfg": "DefaultRoute",
+   "type": "AWS::ApiGatewayV2::Route",
+   "values": {
+    "ApiId": {
+     "ref": "WebSocketApi"
+    },
+    "RouteKey": "$default",
+    "AuthorizationType": "NONE",
+    "OperationName": "DefaultRoute",
+    "Target": {
+     "Fn::Join": [
+      "/",
+      [
+       "integrations",
+       {
+        "ref": "DefaultRouteIntegration"
+       }
+      ]
+     ]
+    }
+   },
+   "refs": [
+    "DefaultRouteIntegration",
+    "WebSocketApi"
+   ]
+  },
+  {
+   "id": "DefaultRouteIntegration",
+   "cfg": "DefaultRouteIntegration",
+   "type": "AWS::ApiGatewayV2::Integration",
+   "values": {
+    "ApiId": {
+     "ref": "WebSocketApi"
+    },
+    "IntegrationType": "AWS",
+    "IntegrationMethod": "POST",
+    "IntegrationUri": "arn:aws:apigateway:us-east-1:states:action/StartExecution",
+    "CredentialsArn": "${StepFunctionsAsyncExecutionRole.Arn}",
+    "TemplateSelectionExpression": "\\$default",
+    "RequestTemplates": {
+     "$default": "#set($sfn_input=$util.escapeJavaScript($input.body).replaceAll(\"\\\\'\",\"'\")) {\n  \"input\": \"{\\\"data\\\":$sfn_input, \\\"ConnectionID\\\":\\\"$context.connectionId\\\"}\",\n  \"stateMachineArn\": \"${AsyncSFn}\"\n}\n"
+    }
+   },
+   "refs": [
+    "AsyncSFn",
+    "StepFunctionsAsyncExecutionRole",
+    "WebSocketApi"
+   ]
+  },
+  {
+   "id": "DefaultRouteResponse",
+   "cfg": "DefaultRouteResponse",
+   "type": "AWS::ApiGatewayV2::RouteResponse",
+   "values": {
+    "RouteId": {
+     "ref": "DefaultRoute"
+    },
+    "ApiId": {
+     "ref": "WebSocketApi"
+    },
+    "RouteResponseKey": "$default"
+   },
+   "refs": [
+    "DefaultRoute",
+    "WebSocketApi"
+   ]
+  },
+  {
+   "id": "DefaultRouteIntegrationResponse",
+   "cfg": "DefaultRouteIntegrationResponse",
+   "type": "AWS::ApiGatewayV2::IntegrationResponse",
+   "values": {
+    "ApiId": {
+     "ref": "WebSocketApi"
+    },
+    "IntegrationId": {
+     "ref": "DefaultRouteIntegration"
+    },
+    "IntegrationResponseKey": "$default"
+   },
+   "refs": [
+    "DefaultRouteIntegration",
+    "WebSocketApi"
+   ]
+  },
+  {
+   "id": "AsyncSFnRole",
+   "cfg": "AsyncSFnRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "states.amazonaws.com"
+        ]
+       }
+      }
+     ]
+    },
+    "Path": "/",
+    "Policies": [
+     {
+      "PolicyName": "APIGWConnectionsAccess",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "execute-api:ManageConnections"
+         ],
+         "Resource": [
+          "arn:aws:execute-api:us-east-1:123456789012:${WebSocketApi}/api/POST/@connections/{connectionId}"
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": [
+    "WebSocketApi"
+   ]
+  },
+  {
+   "id": "StepFunctionsAsyncExecutionRole",
+   "cfg": "StepFunctionsAsyncExecutionRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "apigateway.amazonaws.com"
+        ]
+       }
+      }
+     ]
+    },
+    "Path": "/",
+    "Policies": [
+     {
+      "PolicyName": "StepFunctionsAsyncExecution",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "states:StartExecution"
+         ],
+         "Resource": {
+          "ref": "AsyncSFn"
+         }
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": [
+    "AsyncSFn"
+   ]
+  },
+  {
+   "id": "AsyncSFn",
+   "cfg": "AsyncSFn",
+   "type": "AWS::StepFunctions::StateMachine",
+   "values": {
+    "DefinitionString": "{\n    \"Comment\": \"Sample Standard Workflow for Asynchronous Execution by API Gateway\",\n    \"StartAt\": \"Wait for 5 Seconds\",\n    \"States\": {\n        \"Send Message to WebSocket Client\": {\n            \"End\": true,\n            \"Parameters\": {\n                \"ApiEndpoint\": \"${definition_substitution_1}\",\n                \"AuthType\": \"IAM_ROLE\",\n                \"Method\": \"POST\",\n                \"Path.$\": \"States.Format('/@connections/{}', $.ConnectionID)\",\n                \"RequestBody\": {\n                    \"Message\": \"Hello from asynchronous workflow execution!\"\n                },\n                \"Stage\": \"${definition_substitution_2}\"\n            },\n            \"Resource\": \"arn:aws:states:::apigateway:invoke\",\n            \"Type\": \"Task\"\n        },\n        \"Wait for 5 Seconds\": {\n            \"Next\": \"Send Message to WebSocket Client\",\n            \"Seconds\": 5,\n            \"Type\": \"Wait\"\n        }\n    }\n}",
+    "RoleArn": "${AsyncSFnRole.Arn}",
+    "StateMachineType": "STANDARD",
+    "Tags": [
+     {
+      "Key": "stateMachine:createdBy",
+      "Value": "SAM"
+     }
+    ],
+    "DefinitionSubstitutions": {
+     "definition_substitution_1": "${WebSocketApi}.execute-api.us-east-1.amazonaws.com",
+     "definition_substitution_2": "api"
+    },
+    "TracingConfiguration": {
+     "Enabled": true
+    }
+   },
+   "refs": [
+    "AsyncSFnRole",
+    "WebSocketApi"
+   ]
+  },
+  {
+   "id": "__parameter__.ApiStageName",
+   "cfg": "__parameter__.ApiStageName",
+   "type": "__parameter__",
+   "values": {
+    "name": "ApiStageName",
+    "type": "String",
+    "default": "api",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.APIEndpoint",
+   "cfg": "__output__.APIEndpoint",
+   "type": "__output__",
+   "values": {
+    "name": "APIEndpoint",
+    "value": "wss://${WebSocketApi}.execute-api.us-east-1.amazonaws.com/api",
+    "description": "API Gateway WebSocket endpoint URL",
+    "export": null
+   },
+   "refs": [
+    "WebSocketApi"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::ApiGatewayV2::Api.WebSocketApi",
+   "cfg": "WebSocketApi",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::ApiGatewayV2::Api",
+    "name": "WebSocketApi",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "stack-WebSocketApi",
+     "ProtocolType": "WEBSOCKET",
+     "RouteSelectionExpression": "$request.body.action"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGatewayV2::Deployment.Deployment",
+   "cfg": "Deployment",
+   "type": "__declared__",
+   "refs": [
+    "WebSocketApi"
+   ],
+   "values": {
+    "type": "AWS::ApiGatewayV2::Deployment",
+    "name": "Deployment",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "WebSocketApi"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGatewayV2::Stage.Stage",
+   "cfg": "Stage",
+   "type": "__declared__",
+   "refs": [
+    "Deployment",
+    "WebSocketApi"
+   ],
+   "values": {
+    "type": "AWS::ApiGatewayV2::Stage",
+    "name": "Stage",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "StageName": "api",
+     "DeploymentId": {
+      "ref": "Deployment"
+     },
+     "ApiId": {
+      "ref": "WebSocketApi"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGatewayV2::Route.DefaultRoute",
+   "cfg": "DefaultRoute",
+   "type": "__declared__",
+   "refs": [
+    "DefaultRouteIntegration",
+    "WebSocketApi"
+   ],
+   "values": {
+    "type": "AWS::ApiGatewayV2::Route",
+    "name": "DefaultRoute",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "WebSocketApi"
+     },
+     "RouteKey": "$default",
+     "AuthorizationType": "NONE",
+     "OperationName": "DefaultRoute",
+     "Target": {
+      "Fn::Join": [
+       "/",
+       [
+        "integrations",
+        {
+         "ref": "DefaultRouteIntegration"
+        }
+       ]
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGatewayV2::Integration.DefaultRouteIntegration",
+   "cfg": "DefaultRouteIntegration",
+   "type": "__declared__",
+   "refs": [
+    "AsyncSFn",
+    "StepFunctionsAsyncExecutionRole",
+    "WebSocketApi"
+   ],
+   "values": {
+    "type": "AWS::ApiGatewayV2::Integration",
+    "name": "DefaultRouteIntegration",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "WebSocketApi"
+     },
+     "IntegrationType": "AWS",
+     "IntegrationMethod": "POST",
+     "IntegrationUri": "arn:aws:apigateway:us-east-1:states:action/StartExecution",
+     "CredentialsArn": "${StepFunctionsAsyncExecutionRole.Arn}",
+     "TemplateSelectionExpression": "\\$default",
+     "RequestTemplates": {
+      "$default": "#set($sfn_input=$util.escapeJavaScript($input.body).replaceAll(\"\\\\'\",\"'\")) {\n  \"input\": \"{\\\"data\\\":$sfn_input, \\\"ConnectionID\\\":\\\"$context.connectionId\\\"}\",\n  \"stateMachineArn\": \"${AsyncSFn}\"\n}\n"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGatewayV2::RouteResponse.DefaultRouteResponse",
+   "cfg": "DefaultRouteResponse",
+   "type": "__declared__",
+   "refs": [
+    "DefaultRoute",
+    "WebSocketApi"
+   ],
+   "values": {
+    "type": "AWS::ApiGatewayV2::RouteResponse",
+    "name": "DefaultRouteResponse",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RouteId": {
+      "ref": "DefaultRoute"
+     },
+     "ApiId": {
+      "ref": "WebSocketApi"
+     },
+     "RouteResponseKey": "$default"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGatewayV2::IntegrationResponse.DefaultRouteIntegrationResponse",
+   "cfg": "DefaultRouteIntegrationResponse",
+   "type": "__declared__",
+   "refs": [
+    "DefaultRouteIntegration",
+    "WebSocketApi"
+   ],
+   "values": {
+    "type": "AWS::ApiGatewayV2::IntegrationResponse",
+    "name": "DefaultRouteIntegrationResponse",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "WebSocketApi"
+     },
+     "IntegrationId": {
+      "ref": "DefaultRouteIntegration"
+     },
+     "IntegrationResponseKey": "$default"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.AsyncSFnRole",
+   "cfg": "AsyncSFnRole",
+   "type": "__declared__",
+   "refs": [
+    "WebSocketApi"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "AsyncSFnRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "states.amazonaws.com"
+         ]
+        }
+       }
+      ]
+     },
+     "Path": "/",
+     "Policies": [
+      {
+       "PolicyName": "APIGWConnectionsAccess",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "execute-api:ManageConnections"
+          ],
+          "Resource": [
+           "arn:aws:execute-api:us-east-1:123456789012:${WebSocketApi}/api/POST/@connections/{connectionId}"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.StepFunctionsAsyncExecutionRole",
+   "cfg": "StepFunctionsAsyncExecutionRole",
+   "type": "__declared__",
+   "refs": [
+    "AsyncSFn"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "StepFunctionsAsyncExecutionRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "apigateway.amazonaws.com"
+         ]
+        }
+       }
+      ]
+     },
+     "Path": "/",
+     "Policies": [
+      {
+       "PolicyName": "StepFunctionsAsyncExecution",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "states:StartExecution"
+          ],
+          "Resource": {
+           "ref": "AsyncSFn"
+          }
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::StepFunctions::StateMachine.AsyncSFn",
+   "cfg": "AsyncSFn",
+   "type": "__declared__",
+   "refs": [
+    "AsyncSFnRole",
+    "WebSocketApi"
+   ],
+   "values": {
+    "type": "AWS::StepFunctions::StateMachine",
+    "name": "AsyncSFn",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "DefinitionString": "{\n    \"Comment\": \"Sample Standard Workflow for Asynchronous Execution by API Gateway\",\n    \"StartAt\": \"Wait for 5 Seconds\",\n    \"States\": {\n        \"Send Message to WebSocket Client\": {\n            \"End\": true,\n            \"Parameters\": {\n                \"ApiEndpoint\": \"${definition_substitution_1}\",\n                \"AuthType\": \"IAM_ROLE\",\n                \"Method\": \"POST\",\n                \"Path.$\": \"States.Format('/@connections/{}', $.ConnectionID)\",\n                \"RequestBody\": {\n                    \"Message\": \"Hello from asynchronous workflow execution!\"\n                },\n                \"Stage\": \"${definition_substitution_2}\"\n            },\n            \"Resource\": \"arn:aws:states:::apigateway:invoke\",\n            \"Type\": \"Task\"\n        },\n        \"Wait for 5 Seconds\": {\n            \"Next\": \"Send Message to WebSocket Client\",\n            \"Seconds\": 5,\n            \"Type\": \"Wait\"\n        }\n    }\n}",
+     "RoleArn": "${AsyncSFnRole.Arn}",
+     "StateMachineType": "STANDARD",
+     "Tags": [
+      {
+       "Key": "stateMachine:createdBy",
+       "Value": "SAM"
+      }
+     ],
+     "DefinitionSubstitutions": {
+      "definition_substitution_1": "${WebSocketApi}.execute-api.us-east-1.amazonaws.com",
+      "definition_substitution_2": "api"
+     },
+     "TracingConfiguration": {
+      "Enabled": true
+     }
+    }
+   }
+  }
+ ]
+}

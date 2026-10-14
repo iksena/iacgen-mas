@@ -1,0 +1,134 @@
+from __future__ import annotations
+
+from state import GraphState, Message, append_and_cap
+from agents.llm_client import _build_client, _call_llm_with_history, build_session_id
+from prompts.engineer_prompt import (
+    get_engineer_system_prompt,
+    get_engineer_user_initial,
+    get_engineer_user_simple_fix,
+    get_engineer_user_remediation,
+)
+from tools.retriever_helpers import (
+    extract_errors,
+    format_cfn_lint_errors,
+    format_deploy_errors,
+)
+from tracking.recorder import ResearchRecorder
+
+
+def _build_simple_fix_errors(state: GraphState) -> str:
+    validation_results = state.get("validation_results", [])
+    deploy_result = state.get("deploy_validation_result")
+
+    error_blocks: list[str] = []
+
+    latest_by_stage: dict[str, dict] = {}
+    for result in validation_results:
+        stage = str(result.get("stage") or "").strip()
+        if stage:
+            latest_by_stage[stage] = result
+
+    for result in latest_by_stage.values():
+        if result.get("passed"):
+            continue
+        errors = [str(e) for e in result.get("errors", []) if str(e).strip()]
+        if not errors:
+            continue
+        stage = result["stage"]
+        if stage == "cfn-lint":
+            errors_text = format_cfn_lint_errors(errors)
+        else:
+            errors_text = "\n".join(f"  - {e}" for e in errors)
+        error_blocks.append(f"### {stage.upper()} Errors\n{errors_text}")
+
+    if (
+        deploy_result
+        and not deploy_result.get("passed")
+        and deploy_result.get("target") != "skipped"
+    ):
+        error_blocks.append(
+            f"### DEPLOYABILITY Errors\n{format_deploy_errors(deploy_result)}"
+        )
+
+    return "\n\n".join(error_blocks) if error_blocks else "No validation errors reported."
+
+
+def engineer_agent(state: GraphState, recorder: ResearchRecorder) -> GraphState:
+    iteration = state["current_iteration"]
+    iac_type = state.get("iac_type", "cloudformation")
+    lang_label = "HCL" if iac_type == "terraform" else "CFN"
+    print(f"\n[Engineer] Generating {lang_label} template (iteration {iteration})...")
+
+    client, model = _build_client()
+
+    system = get_engineer_system_prompt(iac_type).format(
+        user_request=state["user_request"],
+        objectives="\n".join(f"{i+1}. {obj}" for i, obj in enumerate(state["objectives"]))
+    )
+
+    has_remediation_history = bool(state.get("remediation_history"))
+    has_validation_errors = (
+        not state.get("validation_passed", True)
+        and bool(state.get("validation_results"))
+    )
+
+    if not has_remediation_history and not has_validation_errors:
+        print("[Engineer] Path A: initial generation.")
+        user_content = get_engineer_user_initial(iac_type)
+        history_to_pass: list[Message] = []
+
+    elif has_validation_errors and not has_remediation_history:
+        print("[Engineer] Path B: simple self-correction from validation errors.")
+        validation_errors = _build_simple_fix_errors(state)
+        user_content = get_engineer_user_simple_fix(iac_type).format(
+            iteration=iteration,
+            validation_errors=validation_errors,
+        )
+        history_to_pass = state.get("engineer_history", [])
+
+    else:
+        print("[Engineer] Path C: moderate remediation with RCA & fix objectives.")
+        latest = state["remediation_history"][-1]
+        user_content = get_engineer_user_remediation(iac_type).format(
+            iteration=latest["iteration"],
+            formatted_errors=latest["formatted_errors"],
+            remediation_suggestion=latest["suggestion"],
+        )
+        history_to_pass = state.get("engineer_history", [])
+
+    user_msg: Message = {"role": "user", "content": user_content}
+
+    content, usage = _call_llm_with_history(
+        client, model, system,
+        history_to_pass + [user_msg],
+        session_id=build_session_id(state, "engineer"),
+    )
+    template = _strip_code_fences(content)
+    assistant_msg: Message = {"role": "assistant", "content": content}
+
+    llm_record = recorder.record_llm_call(
+        state=state,
+        agent="engineer",
+        model=usage.get("reported_model") or model,
+        prompt=f"SYSTEM:\n{system}\n\nUSER:\n{user_content}",
+        response=content,
+        token_usage=usage,
+    )
+
+    print(f"[Engineer] Template generated ({len(template.splitlines())} lines).")
+    return {
+        "iac_template": template,
+        "llm_call_log": state["llm_call_log"] + [llm_record],
+        "engineer_history": append_and_cap(
+            state.get("engineer_history", []), user_msg, assistant_msg
+        ),
+    }
+
+
+def _strip_code_fences(text: str) -> str:
+    lines = text.strip().split("\n")
+    if lines and lines[0].startswith("```"):
+        lines = lines[1:]
+    if lines and lines[-1].startswith("```"):
+        lines = lines[:-1]
+    return "\n".join(lines)

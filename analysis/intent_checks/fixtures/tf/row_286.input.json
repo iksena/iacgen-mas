@@ -1,0 +1,841 @@
+{
+ "meta": {
+  "lang": "tf",
+  "mode": "plan",
+  "warnings": [],
+  "gt_hash": "7d195aea31ea19145b82c81a10148de539df22af54172487e1018612202261e4",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "aws_apigatewayv2_api.websocket_api",
+   "cfg": "aws_apigatewayv2_api.websocket_api",
+   "type": "aws_apigatewayv2_api",
+   "values": {
+    "api_key_selection_expression": "$request.header.x-api-key",
+    "body": null,
+    "cors_configuration": [],
+    "credentials_arn": null,
+    "description": null,
+    "disable_execute_api_endpoint": null,
+    "fail_on_warnings": null,
+    "protocol_type": "WEBSOCKET",
+    "region": "us-east-1",
+    "route_key": null,
+    "route_selection_expression": "$request.body.action",
+    "tags": null,
+    "target": null,
+    "version": null
+   },
+   "refs": [
+    "random_pet.random"
+   ]
+  },
+  {
+   "id": "aws_apigatewayv2_integration.disconnect_sqs_integration",
+   "cfg": "aws_apigatewayv2_integration.disconnect_sqs_integration",
+   "type": "aws_apigatewayv2_integration",
+   "values": {
+    "connection_id": null,
+    "connection_type": "INTERNET",
+    "content_handling_strategy": null,
+    "description": null,
+    "integration_method": "POST",
+    "integration_subtype": null,
+    "integration_type": "AWS",
+    "passthrough_behavior": "NEVER",
+    "payload_format_version": "1.0",
+    "region": "us-east-1",
+    "request_parameters": {
+     "integration.request.header.Content-Type": "'application/x-www-form-urlencoded'"
+    },
+    "request_templates": {
+     "default": "Action=SendMessage&MessageBody=$util.urlEncode('Client disconnected')"
+    },
+    "response_parameters": [],
+    "template_selection_expression": "default",
+    "tls_config": []
+   },
+   "refs": [
+    "aws_apigatewayv2_api.websocket_api",
+    "aws_iam_role.execution_role",
+    "aws_sqs_queue.sqs_queue",
+    "data.aws_caller_identity.current",
+    "data.aws_region.current"
+   ]
+  },
+  {
+   "id": "aws_apigatewayv2_integration.mock_integration",
+   "cfg": "aws_apigatewayv2_integration.mock_integration",
+   "type": "aws_apigatewayv2_integration",
+   "values": {
+    "connection_id": null,
+    "connection_type": "INTERNET",
+    "content_handling_strategy": null,
+    "credentials_arn": null,
+    "description": null,
+    "integration_method": null,
+    "integration_subtype": null,
+    "integration_type": "MOCK",
+    "integration_uri": null,
+    "passthrough_behavior": null,
+    "payload_format_version": "1.0",
+    "region": "us-east-1",
+    "request_parameters": null,
+    "request_templates": {
+     "default": "{\n  \"statusCode\": 200\n}\n"
+    },
+    "response_parameters": [],
+    "template_selection_expression": "default",
+    "tls_config": []
+   },
+   "refs": [
+    "aws_apigatewayv2_api.websocket_api"
+   ]
+  },
+  {
+   "id": "aws_apigatewayv2_integration.sqs_integration",
+   "cfg": "aws_apigatewayv2_integration.sqs_integration",
+   "type": "aws_apigatewayv2_integration",
+   "values": {
+    "connection_id": null,
+    "connection_type": "INTERNET",
+    "content_handling_strategy": null,
+    "description": null,
+    "integration_method": "POST",
+    "integration_subtype": null,
+    "integration_type": "AWS",
+    "passthrough_behavior": "NEVER",
+    "payload_format_version": "1.0",
+    "region": "us-east-1",
+    "request_parameters": {
+     "integration.request.header.Content-Type": "'application/x-www-form-urlencoded'"
+    },
+    "request_templates": {
+     "default": "Action=SendMessage&MessageBody=$util.urlEncode($input.body)"
+    },
+    "response_parameters": [],
+    "template_selection_expression": "default",
+    "tls_config": []
+   },
+   "refs": [
+    "aws_apigatewayv2_api.websocket_api",
+    "aws_iam_role.execution_role",
+    "aws_sqs_queue.sqs_queue",
+    "data.aws_caller_identity.current",
+    "data.aws_region.current"
+   ]
+  },
+  {
+   "id": "aws_apigatewayv2_integration_response.mock_response",
+   "cfg": "aws_apigatewayv2_integration_response.mock_response",
+   "type": "aws_apigatewayv2_integration_response",
+   "values": {
+    "content_handling_strategy": null,
+    "integration_response_key": "$default",
+    "region": "us-east-1",
+    "response_templates": {
+     "$default": "{'statusCode': 200}"
+    },
+    "template_selection_expression": null
+   },
+   "refs": [
+    "aws_apigatewayv2_api.websocket_api",
+    "aws_apigatewayv2_integration.mock_integration"
+   ]
+  },
+  {
+   "id": "aws_apigatewayv2_integration_response.sqs_response",
+   "cfg": "aws_apigatewayv2_integration_response.sqs_response",
+   "type": "aws_apigatewayv2_integration_response",
+   "values": {
+    "content_handling_strategy": null,
+    "integration_response_key": "$default",
+    "region": "us-east-1",
+    "response_templates": {
+     "$default": "$input.body"
+    },
+    "template_selection_expression": null
+   },
+   "refs": [
+    "aws_apigatewayv2_api.websocket_api",
+    "aws_apigatewayv2_integration.sqs_integration"
+   ]
+  },
+  {
+   "id": "aws_apigatewayv2_route.connect_route",
+   "cfg": "aws_apigatewayv2_route.connect_route",
+   "type": "aws_apigatewayv2_route",
+   "values": {
+    "api_key_required": false,
+    "authorization_scopes": null,
+    "authorization_type": "NONE",
+    "authorizer_id": null,
+    "model_selection_expression": null,
+    "operation_name": null,
+    "region": "us-east-1",
+    "request_models": null,
+    "request_parameter": [],
+    "route_key": "$connect",
+    "route_response_selection_expression": null
+   },
+   "refs": [
+    "aws_apigatewayv2_api.websocket_api",
+    "aws_apigatewayv2_integration.mock_integration"
+   ]
+  },
+  {
+   "id": "aws_apigatewayv2_route.default_route",
+   "cfg": "aws_apigatewayv2_route.default_route",
+   "type": "aws_apigatewayv2_route",
+   "values": {
+    "api_key_required": false,
+    "authorization_scopes": null,
+    "authorization_type": "NONE",
+    "authorizer_id": null,
+    "model_selection_expression": null,
+    "operation_name": null,
+    "region": "us-east-1",
+    "request_models": null,
+    "request_parameter": [],
+    "route_key": "$default",
+    "route_response_selection_expression": null
+   },
+   "refs": [
+    "aws_apigatewayv2_api.websocket_api",
+    "aws_apigatewayv2_integration.sqs_integration"
+   ]
+  },
+  {
+   "id": "aws_apigatewayv2_route.disconnect_route",
+   "cfg": "aws_apigatewayv2_route.disconnect_route",
+   "type": "aws_apigatewayv2_route",
+   "values": {
+    "api_key_required": false,
+    "authorization_scopes": null,
+    "authorization_type": "NONE",
+    "authorizer_id": null,
+    "model_selection_expression": null,
+    "operation_name": null,
+    "region": "us-east-1",
+    "request_models": null,
+    "request_parameter": [],
+    "route_key": "$disconnect",
+    "route_response_selection_expression": null
+   },
+   "refs": [
+    "aws_apigatewayv2_api.websocket_api",
+    "aws_apigatewayv2_integration.disconnect_sqs_integration"
+   ]
+  },
+  {
+   "id": "aws_apigatewayv2_route_response.connect_route_response",
+   "cfg": "aws_apigatewayv2_route_response.connect_route_response",
+   "type": "aws_apigatewayv2_route_response",
+   "values": {
+    "model_selection_expression": null,
+    "region": "us-east-1",
+    "response_models": null,
+    "route_response_key": "$default"
+   },
+   "refs": [
+    "aws_apigatewayv2_api.websocket_api",
+    "aws_apigatewayv2_route.connect_route"
+   ]
+  },
+  {
+   "id": "aws_apigatewayv2_route_response.default_route_response",
+   "cfg": "aws_apigatewayv2_route_response.default_route_response",
+   "type": "aws_apigatewayv2_route_response",
+   "values": {
+    "model_selection_expression": null,
+    "region": "us-east-1",
+    "response_models": null,
+    "route_response_key": "$default"
+   },
+   "refs": [
+    "aws_apigatewayv2_api.websocket_api",
+    "aws_apigatewayv2_route.default_route"
+   ]
+  },
+  {
+   "id": "aws_apigatewayv2_stage.stage",
+   "cfg": "aws_apigatewayv2_stage.stage",
+   "type": "aws_apigatewayv2_stage",
+   "values": {
+    "access_log_settings": [
+     {
+      "format": "$context.identity.sourceIp $context.identity.caller $context.identity.user [$context.requestTime] \"$context.httpMethod $context.routeKey $context.protocol\" $context.status $context.responseLength $context.requestId"
+     }
+    ],
+    "auto_deploy": true,
+    "client_certificate_id": null,
+    "default_route_settings": [],
+    "description": null,
+    "name": "dev",
+    "region": "us-east-1",
+    "route_settings": [],
+    "stage_variables": null,
+    "tags": null
+   },
+   "refs": [
+    "aws_apigatewayv2_api.websocket_api",
+    "aws_cloudwatch_log_group.apigw_logs"
+   ]
+  },
+  {
+   "id": "aws_cloudwatch_log_group.apigw_logs",
+   "cfg": "aws_cloudwatch_log_group.apigw_logs",
+   "type": "aws_cloudwatch_log_group",
+   "values": {
+    "kms_key_id": null,
+    "region": "us-east-1",
+    "retention_in_days": 1,
+    "skip_destroy": false,
+    "tags": null
+   },
+   "refs": [
+    "aws_apigatewayv2_api.websocket_api"
+   ]
+  },
+  {
+   "id": "aws_iam_role.execution_role",
+   "cfg": "aws_iam_role.execution_role",
+   "type": "aws_iam_role",
+   "values": {
+    "assume_role_policy": "{\"Statement\":[{\"Action\":\"sts:AssumeRole\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"apigateway.amazonaws.com\"},\"Sid\":\"\"}],\"Version\":\"2012-10-17\"}",
+    "description": null,
+    "force_detach_policies": false,
+    "max_session_duration": 3600,
+    "name": "api-gateway-sqs-execution-role",
+    "path": "/",
+    "permissions_boundary": null,
+    "tags": null
+   },
+   "refs": []
+  },
+  {
+   "id": "aws_iam_role_policy.apigw_logs",
+   "cfg": "aws_iam_role_policy.apigw_logs",
+   "type": "aws_iam_role_policy",
+   "values": {
+    "name": "APIGWLogsPolicy",
+    "policy": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Action\":[\"logs:CreateLogGroup\",\"logs:CreateLogStream\",\"logs:DescribeLogGroups\",\"logs:DescribeLogStreams\",\"logs:PutLogEvents\",\"logs:GetLogEvents\",\"logs:FilterLogEvents\"],\"Effect\":\"Allow\",\"Resource\":\"*\"}]}"
+   },
+   "refs": [
+    "aws_iam_role.execution_role"
+   ]
+  },
+  {
+   "id": "aws_iam_role_policy_attachment.execution_role",
+   "cfg": "aws_iam_role_policy_attachment.execution_role",
+   "type": "aws_iam_role_policy_attachment",
+   "values": {
+    "policy_arn": "arn:aws:iam::aws:policy/AmazonSQSFullAccess",
+    "role": "api-gateway-sqs-execution-role"
+   },
+   "refs": [
+    "aws_iam_role.execution_role"
+   ]
+  },
+  {
+   "id": "aws_kms_key.sqs_queue",
+   "cfg": "aws_kms_key.sqs_queue",
+   "type": "aws_kms_key",
+   "values": {
+    "bypass_policy_lockout_safety_check": false,
+    "custom_key_store_id": null,
+    "customer_master_key_spec": "SYMMETRIC_DEFAULT",
+    "deletion_window_in_days": null,
+    "enable_key_rotation": true,
+    "is_enabled": true,
+    "key_usage": "ENCRYPT_DECRYPT",
+    "region": "us-east-1",
+    "tags": null,
+    "timeouts": null,
+    "xks_key_id": null
+   },
+   "refs": [
+    "random_pet.random"
+   ]
+  },
+  {
+   "id": "aws_sqs_queue.sqs_queue",
+   "cfg": "aws_sqs_queue.sqs_queue",
+   "type": "aws_sqs_queue",
+   "values": {
+    "content_based_deduplication": false,
+    "delay_seconds": 0,
+    "fifo_queue": false,
+    "max_message_size": 262144,
+    "message_retention_seconds": 345600,
+    "receive_wait_time_seconds": 0,
+    "region": "us-east-1",
+    "tags": null,
+    "timeouts": null,
+    "visibility_timeout_seconds": 30
+   },
+   "refs": [
+    "aws_kms_key.sqs_queue",
+    "random_pet.random"
+   ]
+  },
+  {
+   "id": "random_pet.random",
+   "cfg": "random_pet.random",
+   "type": "random_pet",
+   "values": {
+    "keepers": null,
+    "length": 2,
+    "prefix": null,
+    "separator": "-"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.ws_endpoint",
+   "cfg": "__output__.ws_endpoint",
+   "type": "__output__",
+   "values": {
+    "name": "ws_endpoint",
+    "value": null,
+    "description": null
+   },
+   "refs": [
+    "aws_apigatewayv2_api.websocket_api",
+    "aws_apigatewayv2_stage.stage"
+   ]
+  },
+  {
+   "id": "__declared__.data.aws_region.current",
+   "cfg": "data.aws_region.current",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "data.aws_region",
+    "name": "current",
+    "gated": false,
+    "gate": null,
+    "properties": {}
+   }
+  },
+  {
+   "id": "__declared__.data.aws_caller_identity.current",
+   "cfg": "data.aws_caller_identity.current",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "data.aws_caller_identity",
+    "name": "current",
+    "gated": false,
+    "gate": null,
+    "properties": {}
+   }
+  },
+  {
+   "id": "__declared__.random_pet.random",
+   "cfg": "random_pet.random",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "random_pet",
+    "name": "random",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "length": 2,
+     "separator": "-"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role.execution_role",
+   "cfg": "aws_iam_role.execution_role",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_iam_role",
+    "name": "execution_role",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "api-gateway-sqs-execution-role",
+     "assume_role_policy": "{\n    \"Version\": \"2012-10-17\",\n    \"Statement\": [\n        {\n        \"Sid\": \"\",\n        \"Effect\": \"Allow\",\n        \"Principal\": {\n            \"Service\": \"apigateway.amazonaws.com\"\n        },\n        \"Action\": \"sts:AssumeRole\"\n        }\n    ]\n}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role_policy_attachment.execution_role",
+   "cfg": "aws_iam_role_policy_attachment.execution_role",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_role.execution_role"
+   ],
+   "values": {
+    "type": "aws_iam_role_policy_attachment",
+    "name": "execution_role",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "role": "${aws_iam_role.execution_role.name}",
+     "policy_arn": "arn:aws:iam::aws:policy/AmazonSQSFullAccess"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_apigatewayv2_api.websocket_api",
+   "cfg": "aws_apigatewayv2_api.websocket_api",
+   "type": "__declared__",
+   "refs": [
+    "random_pet.random"
+   ],
+   "values": {
+    "type": "aws_apigatewayv2_api",
+    "name": "websocket_api",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "${random_pet.random.id}",
+     "protocol_type": "WEBSOCKET",
+     "route_selection_expression": "$request.body.action"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_kms_key.sqs_queue",
+   "cfg": "aws_kms_key.sqs_queue",
+   "type": "__declared__",
+   "refs": [
+    "random_pet.random"
+   ],
+   "values": {
+    "type": "aws_kms_key",
+    "name": "sqs_queue",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "description": "CMK for ${random_pet.random.id} SQS queue",
+     "enable_key_rotation": true
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_sqs_queue.sqs_queue",
+   "cfg": "aws_sqs_queue.sqs_queue",
+   "type": "__declared__",
+   "refs": [
+    "aws_kms_key.sqs_queue",
+    "random_pet.random"
+   ],
+   "values": {
+    "type": "aws_sqs_queue",
+    "name": "sqs_queue",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "${random_pet.random.id}",
+     "kms_master_key_id": "${aws_kms_key.sqs_queue.key_id}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_apigatewayv2_integration.sqs_integration",
+   "cfg": "aws_apigatewayv2_integration.sqs_integration",
+   "type": "__declared__",
+   "refs": [
+    "aws_apigatewayv2_api.websocket_api",
+    "aws_iam_role.execution_role",
+    "aws_sqs_queue.sqs_queue",
+    "data.aws_caller_identity.current",
+    "data.aws_region.current"
+   ],
+   "values": {
+    "type": "aws_apigatewayv2_integration",
+    "name": "sqs_integration",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "api_id": "${aws_apigatewayv2_api.websocket_api.id}",
+     "credentials_arn": "${aws_iam_role.execution_role.arn}",
+     "integration_type": "AWS",
+     "payload_format_version": "1.0",
+     "integration_method": "POST",
+     "integration_uri": "arn:aws:apigateway:${data.aws_region.current.name}:sqs:path/${data.aws_caller_identity.current.account_id}/${aws_sqs_queue.sqs_queue.name}",
+     "passthrough_behavior": "NEVER",
+     "request_parameters": {
+      "integration.request.header.Content-Type": "'application/x-www-form-urlencoded'"
+     },
+     "request_templates": {
+      "default": "Action=SendMessage&MessageBody=$util.urlEncode($input.body)"
+     },
+     "template_selection_expression": "default"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_apigatewayv2_integration.mock_integration",
+   "cfg": "aws_apigatewayv2_integration.mock_integration",
+   "type": "__declared__",
+   "refs": [
+    "aws_apigatewayv2_api.websocket_api"
+   ],
+   "values": {
+    "type": "aws_apigatewayv2_integration",
+    "name": "mock_integration",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "api_id": "${aws_apigatewayv2_api.websocket_api.id}",
+     "integration_type": "MOCK",
+     "request_templates": {
+      "default": "{\n  \"statusCode\": 200\n}"
+     },
+     "template_selection_expression": "default"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_apigatewayv2_integration.disconnect_sqs_integration",
+   "cfg": "aws_apigatewayv2_integration.disconnect_sqs_integration",
+   "type": "__declared__",
+   "refs": [
+    "aws_apigatewayv2_api.websocket_api",
+    "aws_iam_role.execution_role",
+    "aws_sqs_queue.sqs_queue",
+    "data.aws_caller_identity.current",
+    "data.aws_region.current"
+   ],
+   "values": {
+    "type": "aws_apigatewayv2_integration",
+    "name": "disconnect_sqs_integration",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "api_id": "${aws_apigatewayv2_api.websocket_api.id}",
+     "credentials_arn": "${aws_iam_role.execution_role.arn}",
+     "integration_type": "AWS",
+     "payload_format_version": "1.0",
+     "integration_method": "POST",
+     "integration_uri": "arn:aws:apigateway:${data.aws_region.current.name}:sqs:path/${data.aws_caller_identity.current.account_id}/${aws_sqs_queue.sqs_queue.name}",
+     "passthrough_behavior": "NEVER",
+     "request_parameters": {
+      "integration.request.header.Content-Type": "'application/x-www-form-urlencoded'"
+     },
+     "request_templates": {
+      "default": "Action=SendMessage&MessageBody=$util.urlEncode('Client disconnected')"
+     },
+     "template_selection_expression": "default"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_apigatewayv2_route.connect_route",
+   "cfg": "aws_apigatewayv2_route.connect_route",
+   "type": "__declared__",
+   "refs": [
+    "aws_apigatewayv2_api.websocket_api",
+    "aws_apigatewayv2_integration.mock_integration"
+   ],
+   "values": {
+    "type": "aws_apigatewayv2_route",
+    "name": "connect_route",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "api_id": "${aws_apigatewayv2_api.websocket_api.id}",
+     "route_key": "$connect",
+     "target": "integrations/${aws_apigatewayv2_integration.mock_integration.id}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_apigatewayv2_route.default_route",
+   "cfg": "aws_apigatewayv2_route.default_route",
+   "type": "__declared__",
+   "refs": [
+    "aws_apigatewayv2_api.websocket_api",
+    "aws_apigatewayv2_integration.sqs_integration"
+   ],
+   "values": {
+    "type": "aws_apigatewayv2_route",
+    "name": "default_route",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "api_id": "${aws_apigatewayv2_api.websocket_api.id}",
+     "route_key": "$default",
+     "target": "integrations/${aws_apigatewayv2_integration.sqs_integration.id}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_apigatewayv2_route.disconnect_route",
+   "cfg": "aws_apigatewayv2_route.disconnect_route",
+   "type": "__declared__",
+   "refs": [
+    "aws_apigatewayv2_api.websocket_api",
+    "aws_apigatewayv2_integration.disconnect_sqs_integration"
+   ],
+   "values": {
+    "type": "aws_apigatewayv2_route",
+    "name": "disconnect_route",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "api_id": "${aws_apigatewayv2_api.websocket_api.id}",
+     "route_key": "$disconnect",
+     "target": "integrations/${aws_apigatewayv2_integration.disconnect_sqs_integration.id}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_apigatewayv2_route_response.connect_route_response",
+   "cfg": "aws_apigatewayv2_route_response.connect_route_response",
+   "type": "__declared__",
+   "refs": [
+    "aws_apigatewayv2_api.websocket_api",
+    "aws_apigatewayv2_route.connect_route"
+   ],
+   "values": {
+    "type": "aws_apigatewayv2_route_response",
+    "name": "connect_route_response",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "api_id": "${aws_apigatewayv2_api.websocket_api.id}",
+     "route_id": "${aws_apigatewayv2_route.connect_route.id}",
+     "route_response_key": "$default"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_apigatewayv2_integration_response.mock_response",
+   "cfg": "aws_apigatewayv2_integration_response.mock_response",
+   "type": "__declared__",
+   "refs": [
+    "aws_apigatewayv2_api.websocket_api",
+    "aws_apigatewayv2_integration.mock_integration"
+   ],
+   "values": {
+    "type": "aws_apigatewayv2_integration_response",
+    "name": "mock_response",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "api_id": "${aws_apigatewayv2_api.websocket_api.id}",
+     "integration_id": "${aws_apigatewayv2_integration.mock_integration.id}",
+     "integration_response_key": "$default",
+     "response_templates": {
+      "$default": "{'statusCode': 200}"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_apigatewayv2_route_response.default_route_response",
+   "cfg": "aws_apigatewayv2_route_response.default_route_response",
+   "type": "__declared__",
+   "refs": [
+    "aws_apigatewayv2_api.websocket_api",
+    "aws_apigatewayv2_route.default_route"
+   ],
+   "values": {
+    "type": "aws_apigatewayv2_route_response",
+    "name": "default_route_response",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "api_id": "${aws_apigatewayv2_api.websocket_api.id}",
+     "route_id": "${aws_apigatewayv2_route.default_route.id}",
+     "route_response_key": "$default"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_apigatewayv2_integration_response.sqs_response",
+   "cfg": "aws_apigatewayv2_integration_response.sqs_response",
+   "type": "__declared__",
+   "refs": [
+    "aws_apigatewayv2_api.websocket_api",
+    "aws_apigatewayv2_integration.sqs_integration"
+   ],
+   "values": {
+    "type": "aws_apigatewayv2_integration_response",
+    "name": "sqs_response",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "api_id": "${aws_apigatewayv2_api.websocket_api.id}",
+     "integration_id": "${aws_apigatewayv2_integration.sqs_integration.id}",
+     "integration_response_key": "$default",
+     "response_templates": {
+      "$default": "$input.body"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_cloudwatch_log_group.apigw_logs",
+   "cfg": "aws_cloudwatch_log_group.apigw_logs",
+   "type": "__declared__",
+   "refs": [
+    "aws_apigatewayv2_api.websocket_api"
+   ],
+   "values": {
+    "type": "aws_cloudwatch_log_group",
+    "name": "apigw_logs",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "/aws/apigateway/${aws_apigatewayv2_api.websocket_api.name}",
+     "retention_in_days": 1
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role_policy.apigw_logs",
+   "cfg": "aws_iam_role_policy.apigw_logs",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_role.execution_role"
+   ],
+   "values": {
+    "type": "aws_iam_role_policy",
+    "name": "apigw_logs",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "APIGWLogsPolicy",
+     "role": "${aws_iam_role.execution_role.id}",
+     "policy": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": [\n        \"logs:CreateLogGroup\",\n        \"logs:CreateLogStream\",\n        \"logs:DescribeLogGroups\",\n        \"logs:DescribeLogStreams\",\n        \"logs:PutLogEvents\",\n        \"logs:GetLogEvents\",\n        \"logs:FilterLogEvents\"\n      ],\n      \"Resource\": \"*\"\n    }\n  ]\n}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_apigatewayv2_stage.stage",
+   "cfg": "aws_apigatewayv2_stage.stage",
+   "type": "__declared__",
+   "refs": [
+    "aws_apigatewayv2_api.websocket_api",
+    "aws_cloudwatch_log_group.apigw_logs"
+   ],
+   "values": {
+    "type": "aws_apigatewayv2_stage",
+    "name": "stage",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "api_id": "${aws_apigatewayv2_api.websocket_api.id}",
+     "name": "dev",
+     "auto_deploy": true,
+     "access_log_settings": [
+      {
+       "destination_arn": "${aws_cloudwatch_log_group.apigw_logs.arn}",
+       "format": "$context.identity.sourceIp $context.identity.caller $context.identity.user [$context.requestTime] \\\"$context.httpMethod $context.routeKey $context.protocol\\\" $context.status $context.responseLength $context.requestId"
+      }
+     ]
+    }
+   }
+  }
+ ]
+}

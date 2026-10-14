@@ -1,0 +1,409 @@
+# GENERATED from specs/cfn/row_091.json by intent_checks/build.py -- do not edit.
+package intent.cfn.row_091
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {
+  "pipeline": {
+   "types": [
+    "AWS::ImageBuilder::ImagePipeline"
+   ],
+   "where": []
+  },
+  "recipe": {
+   "types": [
+    "AWS::ImageBuilder::ImageRecipe"
+   ],
+   "where": []
+  },
+  "component": {
+   "types": [
+    "AWS::ImageBuilder::Component"
+   ],
+   "where": []
+  },
+  "dist": {
+   "types": [
+    "AWS::ImageBuilder::DistributionConfiguration"
+   ],
+   "where": []
+  },
+  "lifecycle": {
+   "types": [
+    "AWS::ImageBuilder::LifecyclePolicy"
+   ],
+   "where": []
+  }
+ },
+ "checks": [
+  {
+   "id": "image_pipeline",
+   "kind": "exists",
+   "select": "pipeline",
+   "tier": "core",
+   "quote": "an automated EC2 Image Builder pipeline"
+  },
+  {
+   "id": "pipeline_uses_recipe",
+   "kind": "ref",
+   "from": "pipeline",
+   "to": "recipe",
+   "tier": "detail",
+   "quote": "an automated EC2 Image Builder pipeline to produce a custom Amazon Linux 2023 ARM-based AMI"
+  },
+  {
+   "id": "cis_parent_image",
+   "kind": "attr",
+   "select": "recipe",
+   "cond": {
+    "path": [
+     "ParentImage"
+    ],
+    "op": "contains",
+    "value": "cis-hardened-image-level-1-on-amazon-linux-2023-arm-r5sqt5uxgygqi"
+   },
+   "tier": "core",
+   "quote": "use the specific parent image 'cis-hardened-image-level-1-on-amazon-linux-2023-arm-r5sqt5uxgygqi/x.x.x'"
+  },
+  {
+   "id": "custom_component_in_recipe",
+   "kind": "ref",
+   "from": "recipe",
+   "to": "component",
+   "tier": "core",
+   "quote": "include a custom component to pre-configure it for Elastic Beanstalk compatibility"
+  },
+  {
+   "id": "daily_schedule",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "The image should be built daily",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "pipeline",
+     "cond": {
+      "path": [
+       "Schedule",
+       "ScheduleExpression"
+      ],
+      "op": "regex",
+      "value": "(?i)^\\s*rate\\(\\s*1\\s+days?\\s*\\)\\s*$"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "pipeline",
+     "cond": {
+      "path": [
+       "Schedule",
+       "ScheduleExpression"
+      ],
+      "op": "regex",
+      "value": "(?i)^\\s*cron\\(\\s*\\d+\\s+\\d+\\s+[*?]\\s+\\*\\s+[*?]\\s+\\*\\s*\\)\\s*$"
+     }
+    }
+   ],
+   "justify": "\"built daily\" = rate(1 day) or a once-a-day cron expression"
+  },
+  {
+   "id": "vulnerability_scanning",
+   "kind": "attr",
+   "select": "pipeline",
+   "cond": {
+    "path": [
+     "ImageScanningConfiguration",
+     "ImageScanningEnabled"
+    ],
+    "op": "truthy"
+   },
+   "tier": "core",
+   "quote": "scanned for vulnerabilities"
+  },
+  {
+   "id": "root_volume_50gb",
+   "kind": "attr",
+   "select": "recipe",
+   "cond": {
+    "path": [
+     "BlockDeviceMappings",
+     "*",
+     "Ebs",
+     "VolumeSize"
+    ],
+    "op": "eq",
+    "value": 50
+   },
+   "tier": "core",
+   "quote": "use a 50 GB root EBS volume"
+  },
+  {
+   "id": "pipeline_distribution",
+   "kind": "ref",
+   "from": "pipeline",
+   "to": "dist",
+   "tier": "core",
+   "quote": "Distribute the AMI to the current region"
+  },
+  {
+   "id": "distribution_current_region",
+   "kind": "attr",
+   "select": "dist",
+   "cond": {
+    "path": [
+     "Distributions",
+     "*",
+     "Region"
+    ],
+    "op": "eq",
+    "value": "us-east-1"
+   },
+   "tier": "detail",
+   "quote": "Distribute the AMI to the current region",
+   "justify": "\"current region\" = AWS::Region, which resolves to us-east-1"
+  },
+  {
+   "id": "share_with_organization",
+   "kind": "attr",
+   "select": "dist",
+   "cond": {
+    "path": [
+     "Distributions",
+     "*",
+     "AmiDistributionConfiguration",
+     "LaunchPermissionConfiguration",
+     "OrganizationArns",
+     "*"
+    ],
+    "op": "regex",
+    "value": "(?i)organization/o-"
+   },
+   "tier": "core",
+   "quote": "launch permissions shared to a provided AWS Organization ID parameter"
+  },
+  {
+   "id": "share_with_two_accounts",
+   "kind": "attr",
+   "select": "dist",
+   "cond": {
+    "path": [
+     "Distributions",
+     "*",
+     "AmiDistributionConfiguration",
+     "LaunchPermissionConfiguration",
+     "UserIds"
+    ],
+    "op": "len_eq",
+    "value": 2
+   },
+   "tier": "detail",
+   "quote": "a list of two dummy AWS account IDs representing separate dev and prod deployment environments"
+  },
+  {
+   "id": "lifecycle_delete_after_6_months",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "images must be automatically deleted after 6 months via a lifecycle policy",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "lifecycle",
+     "cond": {
+      "path": [
+       "PolicyDetails",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "Action",
+         "Type"
+        ],
+        "op": "eq",
+        "value": "DELETE"
+       },
+       {
+        "path": [
+         "Filter",
+         "Type"
+        ],
+        "op": "eq",
+        "value": "AGE"
+       },
+       {
+        "path": [
+         "Filter",
+         "Unit"
+        ],
+        "op": "eq",
+        "value": "MONTHS"
+       },
+       {
+        "path": [
+         "Filter",
+         "Value"
+        ],
+        "op": "eq",
+        "value": 6
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "lifecycle",
+     "cond": {
+      "path": [
+       "PolicyDetails",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "Action",
+         "Type"
+        ],
+        "op": "eq",
+        "value": "DELETE"
+       },
+       {
+        "path": [
+         "Filter",
+         "Type"
+        ],
+        "op": "eq",
+        "value": "AGE"
+       },
+       {
+        "path": [
+         "Filter",
+         "Unit"
+        ],
+        "op": "eq",
+        "value": "DAYS"
+       },
+       {
+        "path": [
+         "Filter",
+         "Value"
+        ],
+        "op": "in",
+        "value": [
+         180,
+         181,
+         182,
+         183,
+         184
+        ]
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "lifecycle",
+     "cond": {
+      "path": [
+       "PolicyDetails",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "Action",
+         "Type"
+        ],
+        "op": "eq",
+        "value": "DELETE"
+       },
+       {
+        "path": [
+         "Filter",
+         "Type"
+        ],
+        "op": "eq",
+        "value": "AGE"
+       },
+       {
+        "path": [
+         "Filter",
+         "Unit"
+        ],
+        "op": "eq",
+        "value": "WEEKS"
+       },
+       {
+        "path": [
+         "Filter",
+         "Value"
+        ],
+        "op": "eq",
+        "value": 26
+       }
+      ]
+     }
+    }
+   ],
+   "justify": "\"6 months\" expressed as 6 MONTHS, ~180 DAYS or 26 WEEKS"
+  },
+  {
+   "id": "lifecycle_targets_amis",
+   "kind": "attr",
+   "select": "lifecycle",
+   "cond": {
+    "path": [
+     "ResourceType"
+    ],
+    "op": "eq",
+    "value": "AMI_IMAGE"
+   },
+   "tier": "detail",
+   "quote": "images must be automatically deleted"
+  },
+  {
+   "id": "lifecycle_selects_pipeline_images",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "images must be automatically deleted after 6 months via a lifecycle policy",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "lifecycle",
+     "to": "recipe"
+    },
+    {
+     "kind": "attr",
+     "select": "lifecycle",
+     "cond": {
+      "path": [
+       "ResourceSelection",
+       "TagMap"
+      ],
+      "op": "present"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "lifecycle",
+     "cond": {
+      "path": [
+       "ResourceSelection",
+       "Recipes"
+      ],
+      "op": "present"
+     }
+    }
+   ]
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

@@ -1,0 +1,736 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "0a0b39bc12af56871f942e2588a75be6e837c9a13cde56bc5c4fbcd289cd32ca",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "UserPool",
+   "cfg": "UserPool",
+   "type": "AWS::Cognito::UserPool",
+   "values": {
+    "UserPoolName": "hospitality-insights-user-pool-prod",
+    "UsernameAttributes": [
+     "email"
+    ],
+    "AutoVerifiedAttributes": [
+     "email"
+    ],
+    "Schema": [
+     {
+      "Name": "email",
+      "AttributeDataType": "String",
+      "Required": true,
+      "Mutable": false
+     },
+     {
+      "Name": "role",
+      "AttributeDataType": "String",
+      "Mutable": true
+     },
+     {
+      "Name": "last_login",
+      "AttributeDataType": "String",
+      "Mutable": true
+     }
+    ],
+    "Policies": {
+     "PasswordPolicy": {
+      "MinimumLength": 12,
+      "RequireUppercase": true,
+      "RequireLowercase": true,
+      "RequireNumbers": true,
+      "RequireSymbols": true,
+      "TemporaryPasswordValidityDays": 7
+     }
+    },
+    "AccountRecoverySetting": {
+     "RecoveryMechanisms": [
+      {
+       "Name": "verified_email",
+       "Priority": 1
+      }
+     ]
+    },
+    "UserAttributeUpdateSettings": {
+     "AttributesRequireVerificationBeforeUpdate": [
+      "email"
+     ]
+    },
+    "AdminCreateUserConfig": {
+     "InviteMessageTemplate": {
+      "EmailSubject": "Your Hospitality Insights account",
+      "EmailMessage": "<p>Hello,</p>\n<p>You have been invited to <strong>Hospitality Insights</strong>.</p>\n<p>Your login details:</p>\n<ul>\n  <li><strong>Username:</strong> {username}</li>\n  <li><strong>Temporary password:</strong> {####}</li>\n</ul>\n<p>Sign in at: <a href=\"\"></a></p>\n<p>You will be prompted to set a new password on first login.</p>\n"
+     }
+    },
+    "LambdaConfig": {
+     "PostAuthentication": {
+      "ref": "PostAuthTriggerFunction",
+      "attr": "Arn"
+     }
+    },
+    "UserPoolTags": {
+     "Environment": "prod",
+     "Project": "hospitality-insights"
+    }
+   },
+   "refs": [
+    "PostAuthTriggerFunction"
+   ]
+  },
+  {
+   "id": "UserPoolClient",
+   "cfg": "UserPoolClient",
+   "type": "AWS::Cognito::UserPoolClient",
+   "values": {
+    "ClientName": "hospitality-insights-client-prod",
+    "UserPoolId": {
+     "ref": "UserPool"
+    },
+    "GenerateSecret": false,
+    "ExplicitAuthFlows": [
+     "ALLOW_USER_PASSWORD_AUTH",
+     "ALLOW_REFRESH_TOKEN_AUTH",
+     "ALLOW_USER_SRP_AUTH"
+    ],
+    "PreventUserExistenceErrors": "ENABLED",
+    "RefreshTokenValidity": 30,
+    "AccessTokenValidity": 24,
+    "IdTokenValidity": 24,
+    "TokenValidityUnits": {
+     "RefreshToken": "days",
+     "AccessToken": "hours",
+     "IdToken": "hours"
+    },
+    "ReadAttributes": [
+     "email",
+     "given_name",
+     "name",
+     "nickname",
+     "custom:role",
+     "custom:last_login"
+    ],
+    "WriteAttributes": [
+     "email",
+     "given_name",
+     "name",
+     "nickname",
+     "custom:role",
+     "custom:last_login"
+    ],
+    "AllowedOAuthFlowsUserPoolClient": false,
+    "SupportedIdentityProviders": [
+     "COGNITO"
+    ]
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "PostAuthTriggerFunction",
+   "cfg": "PostAuthTriggerFunction",
+   "type": "AWS::Lambda::Function",
+   "values": {
+    "FunctionName": "hospitality-insights-post-auth-trigger-prod",
+    "Runtime": "python3.12",
+    "Handler": "index.lambda_handler",
+    "Role": {
+     "ref": "PostAuthTriggerRole",
+     "attr": "Arn"
+    },
+    "Code": {
+     "ZipFile": "import boto3\nfrom datetime import datetime, timezone\ncognito = boto3.client('cognito-idp')\ndef lambda_handler(event, context):\n    try:\n        cognito.admin_update_user_attributes(\n            UserPoolId=event['userPoolId'],\n            Username=event['userName'],\n            UserAttributes=[{'Name': 'custom:last_login', 'Value': datetime.now(timezone.utc).isoformat()}],\n        )\n    except Exception as e:\n        print(f\"post_auth_trigger: failed to update last_login: {e}\")\n    return event\n"
+    },
+    "Timeout": 10
+   },
+   "refs": [
+    "PostAuthTriggerRole"
+   ]
+  },
+  {
+   "id": "PostAuthTriggerRole",
+   "cfg": "PostAuthTriggerRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "hospitality-insights-post-auth-trigger-role-prod",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+    ],
+    "Policies": [
+     {
+      "PolicyName": "CognitoUpdateAttributes",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "cognito-idp:AdminUpdateUserAttributes"
+         ],
+         "Resource": [
+          "arn:aws:cognito-idp:us-east-1:123456789012:userpool/*"
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "PostAuthTriggerPermission",
+   "cfg": "PostAuthTriggerPermission",
+   "type": "AWS::Lambda::Permission",
+   "values": {
+    "FunctionName": {
+     "ref": "PostAuthTriggerFunction",
+     "attr": "Arn"
+    },
+    "Action": "lambda:InvokeFunction",
+    "Principal": "cognito-idp.amazonaws.com",
+    "SourceArn": "arn:aws:cognito-idp:us-east-1:123456789012:userpool/*"
+   },
+   "refs": [
+    "PostAuthTriggerFunction"
+   ]
+  },
+  {
+   "id": "AdminUserGroup",
+   "cfg": "AdminUserGroup",
+   "type": "AWS::Cognito::UserPoolGroup",
+   "values": {
+    "GroupName": "Admin",
+    "Description": "Administrator users with full access",
+    "UserPoolId": {
+     "ref": "UserPool"
+    },
+    "Precedence": 1
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "RegularUserGroup",
+   "cfg": "RegularUserGroup",
+   "type": "AWS::Cognito::UserPoolGroup",
+   "values": {
+    "GroupName": "RegularUser",
+    "Description": "Regular users with read-only access",
+    "UserPoolId": {
+     "ref": "UserPool"
+    },
+    "Precedence": 2
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "PowerUserGroup",
+   "cfg": "PowerUserGroup",
+   "type": "AWS::Cognito::UserPoolGroup",
+   "values": {
+    "GroupName": "PowerUser",
+    "Description": "Power users with read-only access to admin section",
+    "UserPoolId": {
+     "ref": "UserPool"
+    },
+    "Precedence": 3
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "__parameter__.Environment",
+   "cfg": "__parameter__.Environment",
+   "type": "__parameter__",
+   "values": {
+    "name": "Environment",
+    "type": "String",
+    "default": "prod",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.ProjectName",
+   "cfg": "__parameter__.ProjectName",
+   "type": "__parameter__",
+   "values": {
+    "name": "ProjectName",
+    "type": "String",
+    "default": "hospitality-insights",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.ProjectTag",
+   "cfg": "__parameter__.ProjectTag",
+   "type": "__parameter__",
+   "values": {
+    "name": "ProjectTag",
+    "type": "String",
+    "default": "hospitality-insights",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.SessionTimeoutHours",
+   "cfg": "__parameter__.SessionTimeoutHours",
+   "type": "__parameter__",
+   "values": {
+    "name": "SessionTimeoutHours",
+    "type": "Number",
+    "default": 24,
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.LoginUrl",
+   "cfg": "__parameter__.LoginUrl",
+   "type": "__parameter__",
+   "values": {
+    "name": "LoginUrl",
+    "type": "String",
+    "default": "",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.SSOProvider",
+   "cfg": "__parameter__.SSOProvider",
+   "type": "__parameter__",
+   "values": {
+    "name": "SSOProvider",
+    "type": "String",
+    "default": "",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.CognitoDomainPrefix",
+   "cfg": "__parameter__.CognitoDomainPrefix",
+   "type": "__parameter__",
+   "values": {
+    "name": "CognitoDomainPrefix",
+    "type": "String",
+    "default": "",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.UserPoolId",
+   "cfg": "__output__.UserPoolId",
+   "type": "__output__",
+   "values": {
+    "name": "UserPoolId",
+    "value": {
+     "ref": "UserPool"
+    },
+    "description": "ID of the Cognito User Pool",
+    "export": null
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "__output__.UserPoolArn",
+   "cfg": "__output__.UserPoolArn",
+   "type": "__output__",
+   "values": {
+    "name": "UserPoolArn",
+    "value": {
+     "ref": "UserPool",
+     "attr": "Arn"
+    },
+    "description": "ARN of the Cognito User Pool",
+    "export": null
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "__output__.UserPoolClientId",
+   "cfg": "__output__.UserPoolClientId",
+   "type": "__output__",
+   "values": {
+    "name": "UserPoolClientId",
+    "value": {
+     "ref": "UserPoolClient"
+    },
+    "description": "ID of the Cognito User Pool Client",
+    "export": null
+   },
+   "refs": [
+    "UserPoolClient"
+   ]
+  },
+  {
+   "id": "__output__.AdminUserGroupName",
+   "cfg": "__output__.AdminUserGroupName",
+   "type": "__output__",
+   "values": {
+    "name": "AdminUserGroupName",
+    "value": {
+     "ref": "AdminUserGroup"
+    },
+    "description": "Name of the Admin user group",
+    "export": null
+   },
+   "refs": [
+    "AdminUserGroup"
+   ]
+  },
+  {
+   "id": "__output__.RegularUserGroupName",
+   "cfg": "__output__.RegularUserGroupName",
+   "type": "__output__",
+   "values": {
+    "name": "RegularUserGroupName",
+    "value": {
+     "ref": "RegularUserGroup"
+    },
+    "description": "Name of the RegularUser group",
+    "export": null
+   },
+   "refs": [
+    "RegularUserGroup"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPool.UserPool",
+   "cfg": "UserPool",
+   "type": "__declared__",
+   "refs": [
+    "PostAuthTriggerFunction"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPool",
+    "name": "UserPool",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "UserPoolName": "hospitality-insights-user-pool-prod",
+     "UsernameAttributes": [
+      "email"
+     ],
+     "AutoVerifiedAttributes": [
+      "email"
+     ],
+     "Schema": [
+      {
+       "Name": "email",
+       "AttributeDataType": "String",
+       "Required": true,
+       "Mutable": false
+      },
+      {
+       "Name": "role",
+       "AttributeDataType": "String",
+       "Mutable": true
+      },
+      {
+       "Name": "last_login",
+       "AttributeDataType": "String",
+       "Mutable": true
+      }
+     ],
+     "Policies": {
+      "PasswordPolicy": {
+       "MinimumLength": 12,
+       "RequireUppercase": true,
+       "RequireLowercase": true,
+       "RequireNumbers": true,
+       "RequireSymbols": true,
+       "TemporaryPasswordValidityDays": 7
+      }
+     },
+     "AccountRecoverySetting": {
+      "RecoveryMechanisms": [
+       {
+        "Name": "verified_email",
+        "Priority": 1
+       }
+      ]
+     },
+     "UserAttributeUpdateSettings": {
+      "AttributesRequireVerificationBeforeUpdate": [
+       "email"
+      ]
+     },
+     "AdminCreateUserConfig": {
+      "InviteMessageTemplate": {
+       "EmailSubject": "Your Hospitality Insights account",
+       "EmailMessage": "<p>Hello,</p>\n<p>You have been invited to <strong>Hospitality Insights</strong>.</p>\n<p>Your login details:</p>\n<ul>\n  <li><strong>Username:</strong> {username}</li>\n  <li><strong>Temporary password:</strong> {####}</li>\n</ul>\n<p>Sign in at: <a href=\"\"></a></p>\n<p>You will be prompted to set a new password on first login.</p>\n"
+      }
+     },
+     "LambdaConfig": {
+      "PostAuthentication": {
+       "ref": "PostAuthTriggerFunction",
+       "attr": "Arn"
+      }
+     },
+     "UserPoolTags": {
+      "Environment": "prod",
+      "Project": "hospitality-insights"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolClient.UserPoolClient",
+   "cfg": "UserPoolClient",
+   "type": "__declared__",
+   "refs": [
+    "UserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolClient",
+    "name": "UserPoolClient",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ClientName": "hospitality-insights-client-prod",
+     "UserPoolId": {
+      "ref": "UserPool"
+     },
+     "GenerateSecret": false,
+     "ExplicitAuthFlows": [
+      "ALLOW_USER_PASSWORD_AUTH",
+      "ALLOW_REFRESH_TOKEN_AUTH",
+      "ALLOW_USER_SRP_AUTH"
+     ],
+     "PreventUserExistenceErrors": "ENABLED",
+     "RefreshTokenValidity": 30,
+     "AccessTokenValidity": 24,
+     "IdTokenValidity": 24,
+     "TokenValidityUnits": {
+      "RefreshToken": "days",
+      "AccessToken": "hours",
+      "IdToken": "hours"
+     },
+     "ReadAttributes": [
+      "email",
+      "given_name",
+      "name",
+      "nickname",
+      "custom:role",
+      "custom:last_login"
+     ],
+     "WriteAttributes": [
+      "email",
+      "given_name",
+      "name",
+      "nickname",
+      "custom:role",
+      "custom:last_login"
+     ],
+     "AllowedOAuthFlowsUserPoolClient": false,
+     "SupportedIdentityProviders": [
+      "COGNITO"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Function.PostAuthTriggerFunction",
+   "cfg": "PostAuthTriggerFunction",
+   "type": "__declared__",
+   "refs": [
+    "PostAuthTriggerRole"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Function",
+    "name": "PostAuthTriggerFunction",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "FunctionName": "hospitality-insights-post-auth-trigger-prod",
+     "Runtime": "python3.12",
+     "Handler": "index.lambda_handler",
+     "Role": {
+      "ref": "PostAuthTriggerRole",
+      "attr": "Arn"
+     },
+     "Code": {
+      "ZipFile": "import boto3\nfrom datetime import datetime, timezone\ncognito = boto3.client('cognito-idp')\ndef lambda_handler(event, context):\n    try:\n        cognito.admin_update_user_attributes(\n            UserPoolId=event['userPoolId'],\n            Username=event['userName'],\n            UserAttributes=[{'Name': 'custom:last_login', 'Value': datetime.now(timezone.utc).isoformat()}],\n        )\n    except Exception as e:\n        print(f\"post_auth_trigger: failed to update last_login: {e}\")\n    return event\n"
+     },
+     "Timeout": 10
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.PostAuthTriggerRole",
+   "cfg": "PostAuthTriggerRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "PostAuthTriggerRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "hospitality-insights-post-auth-trigger-role-prod",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+     ],
+     "Policies": [
+      {
+       "PolicyName": "CognitoUpdateAttributes",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "cognito-idp:AdminUpdateUserAttributes"
+          ],
+          "Resource": [
+           "arn:aws:cognito-idp:us-east-1:123456789012:userpool/*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Permission.PostAuthTriggerPermission",
+   "cfg": "PostAuthTriggerPermission",
+   "type": "__declared__",
+   "refs": [
+    "PostAuthTriggerFunction"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Permission",
+    "name": "PostAuthTriggerPermission",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "FunctionName": {
+      "ref": "PostAuthTriggerFunction",
+      "attr": "Arn"
+     },
+     "Action": "lambda:InvokeFunction",
+     "Principal": "cognito-idp.amazonaws.com",
+     "SourceArn": "arn:aws:cognito-idp:us-east-1:123456789012:userpool/*"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolGroup.AdminUserGroup",
+   "cfg": "AdminUserGroup",
+   "type": "__declared__",
+   "refs": [
+    "UserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolGroup",
+    "name": "AdminUserGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "GroupName": "Admin",
+     "Description": "Administrator users with full access",
+     "UserPoolId": {
+      "ref": "UserPool"
+     },
+     "Precedence": 1
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolGroup.RegularUserGroup",
+   "cfg": "RegularUserGroup",
+   "type": "__declared__",
+   "refs": [
+    "UserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolGroup",
+    "name": "RegularUserGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "GroupName": "RegularUser",
+     "Description": "Regular users with read-only access",
+     "UserPoolId": {
+      "ref": "UserPool"
+     },
+     "Precedence": 2
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolGroup.PowerUserGroup",
+   "cfg": "PowerUserGroup",
+   "type": "__declared__",
+   "refs": [
+    "UserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolGroup",
+    "name": "PowerUserGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "GroupName": "PowerUser",
+     "Description": "Power users with read-only access to admin section",
+     "UserPoolId": {
+      "ref": "UserPool"
+     },
+     "Precedence": 3
+    }
+   }
+  }
+ ]
+}

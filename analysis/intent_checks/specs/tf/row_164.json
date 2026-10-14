@@ -1,0 +1,1759 @@
+{
+ "lang": "tf",
+ "row_number": 164,
+ "source_hash": {
+  "gt": "be231f8ef66814be82de0e41f9361886457b535b9e1c96b6f2da5d76a420aa08",
+  "prompt": "8bdbb7a1190b4c82d8d8c1131b0dd2688d83f1319d597bcb66da6a5f9e16a3e1"
+ },
+ "selectors": {
+  "vpc": {
+   "types": [
+    "aws_vpc"
+   ],
+   "where": [
+    {
+     "path": "cidr_block",
+     "op": "eq",
+     "value": "10.0.0.0/16"
+    }
+   ]
+  },
+  "igw": {
+   "types": [
+    "aws_internet_gateway"
+   ]
+  },
+  "dhcp": {
+   "types": [
+    "aws_vpc_dhcp_options"
+   ],
+   "where": [
+    {
+     "path": "domain_name",
+     "op": "eq",
+     "value": "internal"
+    }
+   ]
+  },
+  "home_sg": {
+   "types": [
+    "aws_security_group"
+   ],
+   "where": [
+    {
+     "path": "",
+     "op": "regex",
+     "value": "(?i)home.?ssh"
+    }
+   ]
+  },
+  "packer_sg": {
+   "types": [
+    "aws_security_group"
+   ],
+   "where": [
+    {
+     "path": "",
+     "op": "regex",
+     "value": "(?i)packer.?ssh"
+    }
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "vpc_cidr_dns",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "a VPC named \"main\" with CIDR block \"10.0.0.0/16\" and DNS support and DNS hostnames enabled",
+   "select": {
+    "types": [
+     "aws_vpc"
+    ],
+    "where": [
+     {
+      "path": "cidr_block",
+      "op": "eq",
+      "value": "10.0.0.0/16"
+     },
+     {
+      "path": "enable_dns_support",
+      "op": "truthy"
+     },
+     {
+      "path": "enable_dns_hostnames",
+      "op": "truthy"
+     }
+    ]
+   }
+  },
+  {
+   "id": "vpc_named_main",
+   "kind": "attr",
+   "tier": "detail",
+   "select": "vpc",
+   "cond": {
+    "path": "tags.Name",
+    "op": "eq",
+    "value": "main"
+   },
+   "quote": "a VPC named \"main\""
+  },
+  {
+   "id": "igw_attached",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "an internet gateway named \"ig\"",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "igw",
+     "to": "vpc"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_internet_gateway_attachment"
+      ]
+     },
+     "to": "vpc"
+    }
+   ]
+  },
+  {
+   "id": "igw_named_ig",
+   "kind": "attr",
+   "tier": "detail",
+   "select": "igw",
+   "cond": {
+    "path": "tags.Name",
+    "op": "eq",
+    "value": "ig"
+   },
+   "quote": "an internet gateway named \"ig\""
+  },
+  {
+   "id": "dhcp_internal_domain_associated",
+   "kind": "all_of",
+   "tier": "core",
+   "quote": "DHCP options that set the internal domain name (defaulting to \"internal\")",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_vpc_dhcp_options_association"
+      ]
+     },
+     "to": "dhcp"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_vpc_dhcp_options_association"
+      ]
+     },
+     "to": "vpc"
+    }
+   ]
+  },
+  {
+   "id": "dhcp_dns_resolvers",
+   "kind": "exists",
+   "tier": "detail",
+   "quote": "DNS resolvers defaulting to the VPC's built-in resolver plus a standard public DNS server",
+   "select": {
+    "types": [
+     "aws_vpc_dhcp_options"
+    ],
+    "where": [
+     {
+      "path": "domain_name_servers.*",
+      "op": "in",
+      "value": [
+       "AmazonProvidedDNS",
+       "10.0.0.2",
+       "169.254.169.253"
+      ]
+     },
+     {
+      "path": "domain_name_servers.*",
+      "op": "in",
+      "value": [
+       "8.8.8.8",
+       "8.8.4.4",
+       "1.1.1.1",
+       "1.0.0.1",
+       "9.9.9.9",
+       "149.112.112.112",
+       "208.67.222.222",
+       "208.67.220.220"
+      ]
+     }
+    ]
+   },
+   "justify": "VPC built-in resolver = AmazonProvidedDNS / VPC base+2 (10.0.0.2) / 169.254.169.253; 'standard public DNS server' = any well-known public resolver (Google, Cloudflare, Quad9, OpenDNS)"
+  },
+  {
+   "id": "private_zone_internal",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "a private Route 53 hosted zone for that internal domain associated with the VPC",
+   "checks": [
+    {
+     "kind": "ref",
+     "to": "vpc",
+     "from": {
+      "types": [
+       "aws_route53_zone"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "regex",
+        "value": "(?i)^internal\\.?$"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route53_zone_association"
+      ]
+     },
+     "to": "vpc"
+    }
+   ]
+  },
+  {
+   "id": "five_subnets",
+   "kind": "all_of",
+   "tier": "core",
+   "quote": "\"reserved\" (\"10.0.0.0/24\"), \"sandbox\" (\"10.0.1.0/24\"), \"web\" (\"10.0.2.0/24\"), \"database\" (\"10.0.3.0/24\"), and \"gameserver\" (\"10.0.4.0/22\")",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": "cidr_block",
+        "op": "eq",
+        "value": "10.0.0.0/24"
+       }
+      ]
+     },
+     "to": "vpc"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": "cidr_block",
+        "op": "eq",
+        "value": "10.0.1.0/24"
+       }
+      ]
+     },
+     "to": "vpc"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": "cidr_block",
+        "op": "eq",
+        "value": "10.0.2.0/24"
+       }
+      ]
+     },
+     "to": "vpc"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": "cidr_block",
+        "op": "eq",
+        "value": "10.0.3.0/24"
+       }
+      ]
+     },
+     "to": "vpc"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": "cidr_block",
+        "op": "eq",
+        "value": "10.0.4.0/22"
+       }
+      ]
+     },
+     "to": "vpc"
+    }
+   ]
+  },
+  {
+   "id": "subnet_names",
+   "kind": "all_of",
+   "tier": "detail",
+   "quote": "\"reserved\" (\"10.0.0.0/24\"), \"sandbox\" (\"10.0.1.0/24\"), \"web\" (\"10.0.2.0/24\"), \"database\" (\"10.0.3.0/24\"), and \"gameserver\" (\"10.0.4.0/22\")",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": "cidr_block",
+        "op": "eq",
+        "value": "10.0.0.0/24"
+       }
+      ]
+     },
+     "cond": {
+      "path": "tags.Name",
+      "op": "eq",
+      "value": "reserved"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": "cidr_block",
+        "op": "eq",
+        "value": "10.0.1.0/24"
+       }
+      ]
+     },
+     "cond": {
+      "path": "tags.Name",
+      "op": "eq",
+      "value": "sandbox"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": "cidr_block",
+        "op": "eq",
+        "value": "10.0.2.0/24"
+       }
+      ]
+     },
+     "cond": {
+      "path": "tags.Name",
+      "op": "eq",
+      "value": "web"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": "cidr_block",
+        "op": "eq",
+        "value": "10.0.3.0/24"
+       }
+      ]
+     },
+     "cond": {
+      "path": "tags.Name",
+      "op": "eq",
+      "value": "database"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": "cidr_block",
+        "op": "eq",
+        "value": "10.0.4.0/22"
+       }
+      ]
+     },
+     "cond": {
+      "path": "tags.Name",
+      "op": "eq",
+      "value": "gameserver"
+     }
+    }
+   ]
+  },
+  {
+   "id": "no_public_ip_on_launch",
+   "kind": "attr",
+   "tier": "core",
+   "quantifier": "all",
+   "select": {
+    "types": [
+     "aws_subnet"
+    ]
+   },
+   "cond": {
+    "path": "map_public_ip_on_launch",
+    "op": "falsy"
+   },
+   "quote": "none of which auto-assign public IP addresses on launch"
+  },
+  {
+   "id": "five_route_tables_default_route",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "each with its own route table sending internet-bound traffic to the internet gateway",
+   "justify": "five subnets each with its own route table -> >=5 route tables with a 0.0.0.0/0 route",
+   "checks": [
+    {
+     "kind": "exists",
+     "min": 5,
+     "select": {
+      "types": [
+       "aws_route_table"
+      ],
+      "where": [
+       {
+        "path": "route.*.cidr_block",
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "min": 5,
+     "select": {
+      "types": [
+       "aws_route"
+      ],
+      "where": [
+       {
+        "path": "destination_cidr_block",
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "default_route_to_igw",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "sending internet-bound traffic to the internet gateway",
+   "checks": [
+    {
+     "kind": "ref",
+     "to": "igw",
+     "from": {
+      "types": [
+       "aws_route_table"
+      ],
+      "where": [
+       {
+        "path": "route.*.cidr_block",
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "to": "igw",
+     "from": {
+      "types": [
+       "aws_route"
+      ],
+      "where": [
+       {
+        "path": "destination_cidr_block",
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     }
+    }
+   ],
+   "justify": "'internet-bound traffic' -> the 0.0.0.0/0 default route"
+  },
+  {
+   "id": "route_table_associations",
+   "kind": "exists",
+   "tier": "detail",
+   "min": 5,
+   "select": {
+    "types": [
+     "aws_route_table_association"
+    ]
+   },
+   "quote": "each with its own route table",
+   "justify": "five subnets each with its own route table -> 5 associations"
+  },
+  {
+   "id": "nacls_attached",
+   "kind": "all_of",
+   "tier": "core",
+   "quote": "Attach dedicated network ACLs to the sandbox, web, database, and gameserver subnets",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_network_acl",
+       "aws_network_acl_association"
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": "cidr_block",
+        "op": "eq",
+        "value": "10.0.1.0/24"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_network_acl",
+       "aws_network_acl_association"
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": "cidr_block",
+        "op": "eq",
+        "value": "10.0.2.0/24"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_network_acl",
+       "aws_network_acl_association"
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": "cidr_block",
+        "op": "eq",
+        "value": "10.0.3.0/24"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_network_acl",
+       "aws_network_acl_association"
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": "cidr_block",
+        "op": "eq",
+        "value": "10.0.4.0/22"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "sandbox_acl_all_tcp",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "the sandbox ACL allows all TCP in and out",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_network_acl"
+      ],
+      "where": [
+       {
+        "path": "ingress.*",
+        "op": "match",
+        "value": [
+         {
+          "path": "protocol",
+          "op": "in",
+          "value": [
+           "tcp",
+           "6"
+          ]
+         },
+         {
+          "path": "from_port",
+          "op": "eq",
+          "value": 0
+         },
+         {
+          "path": "to_port",
+          "op": "eq",
+          "value": 65535
+         },
+         {
+          "path": "cidr_block",
+          "op": "eq",
+          "value": "0.0.0.0/0"
+         }
+        ]
+       },
+       {
+        "path": "egress.*",
+        "op": "match",
+        "value": [
+         {
+          "path": "protocol",
+          "op": "in",
+          "value": [
+           "tcp",
+           "6"
+          ]
+         },
+         {
+          "path": "from_port",
+          "op": "eq",
+          "value": 0
+         },
+         {
+          "path": "to_port",
+          "op": "eq",
+          "value": 65535
+         },
+         {
+          "path": "cidr_block",
+          "op": "eq",
+          "value": "0.0.0.0/0"
+         }
+        ]
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_network_acl_rule"
+      ],
+      "where": [
+       {
+        "path": "egress",
+        "op": "falsy"
+       },
+       {
+        "path": "rule_action",
+        "op": "eq",
+        "value": "allow"
+       },
+       {
+        "path": "protocol",
+        "op": "in",
+        "value": [
+         "tcp",
+         "6"
+        ]
+       },
+       {
+        "path": "from_port",
+        "op": "eq",
+        "value": 0
+       },
+       {
+        "path": "to_port",
+        "op": "eq",
+        "value": 65535
+       },
+       {
+        "path": "cidr_block",
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     }
+    }
+   ],
+   "justify": "'allows all TCP in and out' -> TCP ports 0-65535 to/from any address (0.0.0.0/0)"
+  },
+  {
+   "id": "web_acl_ingress",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "the web ACL allows inbound TCP for SSH, HTTP, HTTPS, and ephemeral ports 32768-65535 and all outbound TCP",
+   "justify": "SSH/HTTP/HTTPS -> 22/80/443",
+   "checks": [
+    {
+     "kind": "ref",
+     "to": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": "cidr_block",
+        "op": "eq",
+        "value": "10.0.2.0/24"
+       }
+      ]
+     },
+     "from": {
+      "types": [
+       "aws_network_acl"
+      ],
+      "where": [
+       {
+        "path": "ingress.*",
+        "op": "match",
+        "value": [
+         {
+          "path": "protocol",
+          "op": "in",
+          "value": [
+           "tcp",
+           "6"
+          ]
+         },
+         {
+          "path": "",
+          "op": "port_covers",
+          "value": 22
+         }
+        ]
+       },
+       {
+        "path": "ingress.*",
+        "op": "match",
+        "value": [
+         {
+          "path": "protocol",
+          "op": "in",
+          "value": [
+           "tcp",
+           "6"
+          ]
+         },
+         {
+          "path": "",
+          "op": "port_covers",
+          "value": 80
+         }
+        ]
+       },
+       {
+        "path": "ingress.*",
+        "op": "match",
+        "value": [
+         {
+          "path": "protocol",
+          "op": "in",
+          "value": [
+           "tcp",
+           "6"
+          ]
+         },
+         {
+          "path": "",
+          "op": "port_covers",
+          "value": 443
+         }
+        ]
+       },
+       {
+        "path": "ingress.*",
+        "op": "match",
+        "value": [
+         {
+          "path": "protocol",
+          "op": "in",
+          "value": [
+           "tcp",
+           "6"
+          ]
+         },
+         {
+          "path": "from_port",
+          "op": "lte",
+          "value": 32768
+         },
+         {
+          "path": "to_port",
+          "op": "gte",
+          "value": 65535
+         }
+        ]
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_network_acl"
+      ],
+      "where": [
+       {
+        "path": "ingress.*",
+        "op": "match",
+        "value": [
+         {
+          "path": "protocol",
+          "op": "in",
+          "value": [
+           "tcp",
+           "6"
+          ]
+         },
+         {
+          "path": "",
+          "op": "port_covers",
+          "value": 22
+         }
+        ]
+       },
+       {
+        "path": "ingress.*",
+        "op": "match",
+        "value": [
+         {
+          "path": "protocol",
+          "op": "in",
+          "value": [
+           "tcp",
+           "6"
+          ]
+         },
+         {
+          "path": "",
+          "op": "port_covers",
+          "value": 80
+         }
+        ]
+       },
+       {
+        "path": "ingress.*",
+        "op": "match",
+        "value": [
+         {
+          "path": "protocol",
+          "op": "in",
+          "value": [
+           "tcp",
+           "6"
+          ]
+         },
+         {
+          "path": "",
+          "op": "port_covers",
+          "value": 443
+         }
+        ]
+       },
+       {
+        "path": "ingress.*",
+        "op": "match",
+        "value": [
+         {
+          "path": "protocol",
+          "op": "in",
+          "value": [
+           "tcp",
+           "6"
+          ]
+         },
+         {
+          "path": "from_port",
+          "op": "lte",
+          "value": 32768
+         },
+         {
+          "path": "to_port",
+          "op": "gte",
+          "value": 65535
+         }
+        ]
+       },
+       {
+        "path": "ingress.*.from_port",
+        "op": "none_eq",
+        "value": 0
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_network_acl_rule"
+      ],
+      "where": [
+       {
+        "path": "egress",
+        "op": "falsy"
+       },
+       {
+        "path": "from_port",
+        "op": "eq",
+        "value": 443
+       },
+       {
+        "path": "protocol",
+        "op": "in",
+        "value": [
+         "tcp",
+         "6"
+        ]
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "database_acl_web_game_only",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "the database ACL only allows TCP to and from the web and gameserver subnet CIDRs",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_network_acl"
+      ],
+      "where": [
+       {
+        "path": "ingress.*.cidr_block",
+        "op": "eq",
+        "value": "10.0.2.0/24"
+       },
+       {
+        "path": "ingress.*.cidr_block",
+        "op": "eq",
+        "value": "10.0.4.0/22"
+       },
+       {
+        "path": "egress.*.cidr_block",
+        "op": "eq",
+        "value": "10.0.2.0/24"
+       },
+       {
+        "path": "egress.*.cidr_block",
+        "op": "eq",
+        "value": "10.0.4.0/22"
+       },
+       {
+        "path": "ingress.*",
+        "op": "regex",
+        "value": "10\\.0\\.2\\.0/24|10\\.0\\.4\\.0/22|\\bdeny\\b",
+        "every": true
+       },
+       {
+        "path": "egress.*",
+        "op": "regex",
+        "value": "10\\.0\\.2\\.0/24|10\\.0\\.4\\.0/22|\\bdeny\\b",
+        "every": true
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_network_acl_rule"
+      ],
+      "where": [
+       {
+        "path": "cidr_block",
+        "op": "eq",
+        "value": "10.0.4.0/22"
+       },
+       {
+        "path": "protocol",
+        "op": "in",
+        "value": [
+         "tcp",
+         "6"
+        ]
+       }
+      ]
+     }
+    }
+   ],
+   "justify": "'only allows TCP to and from the web and gameserver subnet CIDRs' -> every rule targets those CIDRs or is an explicit deny"
+  },
+  {
+   "id": "gameserver_acl_game_ports",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "the gameserver ACL allows inbound SSH, TCP and UDP on game ports 27015 and 27020",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_network_acl"
+      ],
+      "where": [
+       {
+        "path": "ingress.*",
+        "op": "match",
+        "value": [
+         {
+          "path": "protocol",
+          "op": "in",
+          "value": [
+           "tcp",
+           "6"
+          ]
+         },
+         {
+          "path": "",
+          "op": "port_covers",
+          "value": 22
+         }
+        ]
+       },
+       {
+        "path": "ingress.*",
+        "op": "match",
+        "value": [
+         {
+          "path": "protocol",
+          "op": "in",
+          "value": [
+           "tcp",
+           "6"
+          ]
+         },
+         {
+          "path": "",
+          "op": "port_covers",
+          "value": 27015
+         }
+        ]
+       },
+       {
+        "path": "ingress.*",
+        "op": "match",
+        "value": [
+         {
+          "path": "protocol",
+          "op": "in",
+          "value": [
+           "udp",
+           "17"
+          ]
+         },
+         {
+          "path": "",
+          "op": "port_covers",
+          "value": 27015
+         }
+        ]
+       },
+       {
+        "path": "ingress.*",
+        "op": "match",
+        "value": [
+         {
+          "path": "protocol",
+          "op": "in",
+          "value": [
+           "tcp",
+           "6"
+          ]
+         },
+         {
+          "path": "",
+          "op": "port_covers",
+          "value": 27020
+         }
+        ]
+       },
+       {
+        "path": "ingress.*",
+        "op": "match",
+        "value": [
+         {
+          "path": "protocol",
+          "op": "in",
+          "value": [
+           "udp",
+           "17"
+          ]
+         },
+         {
+          "path": "",
+          "op": "port_covers",
+          "value": 27020
+         }
+        ]
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_network_acl_rule"
+      ],
+      "where": [
+       {
+        "path": "egress",
+        "op": "falsy"
+       },
+       {
+        "path": "protocol",
+        "op": "in",
+        "value": [
+         "udp",
+         "17"
+        ]
+       },
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 27015
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "gameserver_acl_ephemeral_and_egress",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "TCP and UDP ephemeral ports 32768-65535, with all TCP and UDP allowed outbound",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_network_acl"
+      ],
+      "where": [
+       {
+        "path": "ingress.*",
+        "op": "match",
+        "value": [
+         {
+          "path": "protocol",
+          "op": "in",
+          "value": [
+           "tcp",
+           "6"
+          ]
+         },
+         {
+          "path": "from_port",
+          "op": "lte",
+          "value": 32768
+         },
+         {
+          "path": "to_port",
+          "op": "gte",
+          "value": 65535
+         }
+        ]
+       },
+       {
+        "path": "ingress.*",
+        "op": "match",
+        "value": [
+         {
+          "path": "protocol",
+          "op": "in",
+          "value": [
+           "udp",
+           "17"
+          ]
+         },
+         {
+          "path": "from_port",
+          "op": "lte",
+          "value": 32768
+         },
+         {
+          "path": "to_port",
+          "op": "gte",
+          "value": 65535
+         }
+        ]
+       },
+       {
+        "path": "egress.*",
+        "op": "match",
+        "value": [
+         {
+          "path": "protocol",
+          "op": "in",
+          "value": [
+           "tcp",
+           "6"
+          ]
+         }
+        ]
+       },
+       {
+        "path": "egress.*",
+        "op": "match",
+        "value": [
+         {
+          "path": "protocol",
+          "op": "in",
+          "value": [
+           "udp",
+           "17"
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_network_acl_rule"
+      ],
+      "where": [
+       {
+        "path": "egress",
+        "op": "falsy"
+       },
+       {
+        "path": "protocol",
+        "op": "in",
+        "value": [
+         "udp",
+         "17"
+        ]
+       },
+       {
+        "path": "from_port",
+        "op": "lte",
+        "value": 32768
+       },
+       {
+        "path": "to_port",
+        "op": "gte",
+        "value": 65535
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "home_ssh_from_admin_cidr",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "a \"Home SSH\" security group allowing SSH from a configurable list of admin CIDRs (defaulting to the documentation range \"203.0.113.0/24\")",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "home_sg",
+     "cond": {
+      "path": "ingress.*",
+      "op": "match",
+      "value": [
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 22
+       },
+       {
+        "path": "cidr_blocks.*",
+        "op": "eq",
+        "value": "203.0.113.0/24"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "to": "home_sg",
+     "from": {
+      "types": [
+       "aws_security_group_rule"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "ingress"
+       },
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 22
+       },
+       {
+        "path": "cidr_blocks.*",
+        "op": "eq",
+        "value": "203.0.113.0/24"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "to": "home_sg",
+     "from": {
+      "types": [
+       "aws_vpc_security_group_ingress_rule"
+      ],
+      "where": [
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 22
+       },
+       {
+        "path": "cidr_ipv4",
+        "op": "eq",
+        "value": "203.0.113.0/24"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "admin_cidrs_configurable",
+   "kind": "exists",
+   "tier": "detail",
+   "quote": "a configurable list of admin CIDRs (defaulting to the documentation range \"203.0.113.0/24\")",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": "default.*",
+      "op": "eq",
+      "value": "203.0.113.0/24"
+     }
+    ]
+   }
+  },
+  {
+   "id": "home_ssh_from_self",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "and from itself",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "home_sg",
+     "cond": {
+      "path": "ingress.*",
+      "op": "match",
+      "value": [
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 22
+       },
+       {
+        "path": "self",
+        "op": "truthy"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "to": "home_sg",
+     "from": {
+      "types": [
+       "aws_security_group_rule"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "ingress"
+       },
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 22
+       },
+       {
+        "path": "self",
+        "op": "truthy"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "to": "home_sg",
+     "from": {
+      "types": [
+       "aws_vpc_security_group_ingress_rule"
+      ],
+      "where": [
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 22
+       },
+       {
+        "path": "cidr_ipv4",
+        "op": "absent"
+       },
+       {
+        "path": "cidr_ipv6",
+        "op": "absent"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "home_egress_vpc_only",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "with both groups restricting outbound traffic to the VPC CIDR",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "home_sg",
+     "cond": {
+      "path": "egress.*.cidr_blocks.*",
+      "op": "eq",
+      "value": "10.0.0.0/16",
+      "every": true
+     }
+    },
+    {
+     "kind": "ref",
+     "to": "home_sg",
+     "from": {
+      "types": [
+       "aws_security_group_rule"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "egress"
+       },
+       {
+        "path": "cidr_blocks.*",
+        "op": "eq",
+        "value": "10.0.0.0/16",
+        "every": true
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "to": "home_sg",
+     "from": {
+      "types": [
+       "aws_vpc_security_group_egress_rule"
+      ],
+      "where": [
+       {
+        "path": "cidr_ipv4",
+        "op": "eq",
+        "value": "10.0.0.0/16"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "packer_ssh_from_vpc",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "a \"Packer SSH\" security group allowing SSH from the VPC CIDR",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "packer_sg",
+     "cond": {
+      "path": "ingress.*",
+      "op": "match",
+      "value": [
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 22
+       },
+       {
+        "path": "cidr_blocks.*",
+        "op": "eq",
+        "value": "10.0.0.0/16"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "to": "packer_sg",
+     "from": {
+      "types": [
+       "aws_security_group_rule"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "ingress"
+       },
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 22
+       },
+       {
+        "path": "cidr_blocks.*",
+        "op": "eq",
+        "value": "10.0.0.0/16"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "to": "packer_sg",
+     "from": {
+      "types": [
+       "aws_vpc_security_group_ingress_rule"
+      ],
+      "where": [
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 22
+       },
+       {
+        "path": "cidr_ipv4",
+        "op": "eq",
+        "value": "10.0.0.0/16"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "packer_ssh_from_self",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "allowing SSH from the VPC CIDR and from itself",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "packer_sg",
+     "cond": {
+      "path": "ingress.*",
+      "op": "match",
+      "value": [
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 22
+       },
+       {
+        "path": "self",
+        "op": "truthy"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "to": "packer_sg",
+     "from": {
+      "types": [
+       "aws_security_group_rule"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "ingress"
+       },
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 22
+       },
+       {
+        "path": "self",
+        "op": "truthy"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "to": "packer_sg",
+     "from": {
+      "types": [
+       "aws_vpc_security_group_ingress_rule"
+      ],
+      "where": [
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 22
+       },
+       {
+        "path": "cidr_ipv4",
+        "op": "absent"
+       },
+       {
+        "path": "cidr_ipv6",
+        "op": "absent"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "packer_egress_vpc_only",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "with both groups restricting outbound traffic to the VPC CIDR",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "packer_sg",
+     "cond": {
+      "path": "egress.*.cidr_blocks.*",
+      "op": "eq",
+      "value": "10.0.0.0/16",
+      "every": true
+     }
+    },
+    {
+     "kind": "ref",
+     "to": "packer_sg",
+     "from": {
+      "types": [
+       "aws_security_group_rule"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "egress"
+       },
+       {
+        "path": "cidr_blocks.*",
+        "op": "eq",
+        "value": "10.0.0.0/16",
+        "every": true
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "to": "packer_sg",
+     "from": {
+      "types": [
+       "aws_vpc_security_group_egress_rule"
+      ],
+      "where": [
+       {
+        "path": "cidr_ipv4",
+        "op": "eq",
+        "value": "10.0.0.0/16"
+       }
+      ]
+     }
+    }
+   ]
+  }
+ ],
+ "notes": "NACL rule checks accept inline aws_network_acl blocks fully; for standalone aws_network_acl_rule resources only one distinctive rule per ACL is required (multi-rule conjunctions cannot be expressed per-resource)."
+}

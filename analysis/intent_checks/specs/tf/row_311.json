@@ -1,0 +1,825 @@
+{
+ "lang": "tf",
+ "row_number": 311,
+ "source_hash": {
+  "gt": "88090d9dd0c3330944b42ddbd9dbf64641c406628b474077de4451af2e386df2",
+  "prompt": "da4139da8041d799335d9e47ef5e7a9bd097e5260c80f793c969371c189e8035"
+ },
+ "selectors": {
+  "primary_bucket": {
+   "types": [
+    "aws_s3_bucket"
+   ],
+   "where": [
+    {
+     "path": "bucket",
+     "op": "regex",
+     "value": "^example1-?\\d{12}$"
+    }
+   ]
+  },
+  "secondary_bucket": {
+   "types": [
+    "aws_s3_bucket"
+   ],
+   "where": [
+    {
+     "path": "bucket",
+     "op": "regex",
+     "value": "^example2-?\\d{12}$"
+    }
+   ]
+  },
+  "bucket": {
+   "types": [
+    "aws_s3_bucket"
+   ]
+  },
+  "kms_key": {
+   "types": [
+    "aws_kms_key"
+   ]
+  },
+  "repl": {
+   "types": [
+    "aws_s3_bucket_replication_configuration"
+   ]
+  },
+  "repl_role": {
+   "types": [
+    "aws_iam_role"
+   ],
+   "where": [
+    {
+     "path": "assume_role_policy",
+     "op": "contains",
+     "value": "s3.amazonaws.com"
+    }
+   ]
+  },
+  "policy_doc": {
+   "types": [
+    "aws_iam_policy",
+    "aws_iam_role_policy",
+    "aws_iam_role",
+    "data.aws_iam_policy_document"
+   ]
+  },
+  "mrap": {
+   "types": [
+    "aws_s3control_multi_region_access_point"
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "primary_bucket_named",
+   "kind": "exists",
+   "select": "primary_bucket",
+   "tier": "core",
+   "quote": "bucket names taken from variables defaulting to \"example1\" and \"example2\" and suffixed with the AWS account ID",
+   "justify": "the account-ID suffix is 12 digits"
+  },
+  {
+   "id": "secondary_bucket_named",
+   "kind": "exists",
+   "select": "secondary_bucket",
+   "tier": "core",
+   "quote": "bucket names taken from variables defaulting to \"example1\" and \"example2\" and suffixed with the AWS account ID",
+   "justify": "the account-ID suffix is 12 digits"
+  },
+  {
+   "id": "bucket_name_variables",
+   "kind": "all_of",
+   "tier": "detail",
+   "quote": "taken from variables defaulting to \"example1\" and \"example2\"",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": "default",
+        "op": "eq",
+        "value": "example1"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": "default",
+        "op": "eq",
+        "value": "example2"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "versioning_enabled_both",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "Each bucket needs versioning enabled",
+   "justify": "each of the two buckets",
+   "checks": [
+    {
+     "kind": "exists",
+     "min": 2,
+     "select": {
+      "types": [
+       "aws_s3_bucket_versioning"
+      ],
+      "where": [
+       {
+        "path": "versioning_configuration.*.status",
+        "op": "eq",
+        "value": "Enabled"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "min": 2,
+     "select": {
+      "types": [
+       "aws_s3_bucket"
+      ],
+      "where": [
+       {
+        "path": "versioning.*.enabled",
+        "op": "truthy"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "private_acl",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "a private ACL",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_s3_bucket_acl"
+      ],
+      "where": [
+       {
+        "path": "acl",
+        "op": "eq",
+        "value": "private"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "bucket",
+     "cond": {
+      "path": "acl",
+      "op": "eq",
+      "value": "private"
+     }
+    },
+    {
+     "kind": "exists",
+     "min": 2,
+     "select": {
+      "types": [
+       "aws_s3_bucket_public_access_block"
+      ],
+      "where": [
+       {
+        "path": "block_public_acls",
+        "op": "truthy"
+       },
+       {
+        "path": "ignore_public_acls",
+        "op": "truthy"
+       }
+      ]
+     }
+    }
+   ],
+   "justify": "a new bucket's ACL is private by default; blocking and ignoring public ACLs on both buckets keeps it private"
+  },
+  {
+   "id": "ownership_bucket_owner_preferred",
+   "kind": "exists",
+   "tier": "detail",
+   "quote": "BucketOwnerPreferred object ownership",
+   "select": {
+    "types": [
+     "aws_s3_bucket_ownership_controls"
+    ],
+    "where": [
+     {
+      "path": "rule.*.object_ownership",
+      "op": "eq",
+      "value": "BucketOwnerPreferred"
+     }
+    ]
+   }
+  },
+  {
+   "id": "public_access_blocked_both",
+   "kind": "exists",
+   "min": 2,
+   "tier": "core",
+   "quote": "all public access blocked",
+   "justify": "each of the two buckets",
+   "select": {
+    "types": [
+     "aws_s3_bucket_public_access_block"
+    ],
+    "where": [
+     {
+      "path": "block_public_acls",
+      "op": "truthy"
+     },
+     {
+      "path": "block_public_policy",
+      "op": "truthy"
+     },
+     {
+      "path": "ignore_public_acls",
+      "op": "truthy"
+     },
+     {
+      "path": "restrict_public_buckets",
+      "op": "truthy"
+     }
+    ]
+   }
+  },
+  {
+   "id": "two_rotating_cmks",
+   "kind": "exists",
+   "min": 2,
+   "tier": "core",
+   "quote": "its own customer-managed KMS key with automatic rotation",
+   "justify": "one key per bucket, two buckets",
+   "select": {
+    "types": [
+     "aws_kms_key"
+    ],
+    "where": [
+     {
+      "path": "enable_key_rotation",
+      "op": "truthy"
+     }
+    ]
+   }
+  },
+  {
+   "id": "sse_kms_both",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "default SSE-KMS encryption",
+   "justify": "each of the two buckets",
+   "checks": [
+    {
+     "kind": "exists",
+     "min": 2,
+     "select": {
+      "types": [
+       "aws_s3_bucket_server_side_encryption_configuration"
+      ],
+      "where": [
+       {
+        "path": "rule.*.apply_server_side_encryption_by_default.*.sse_algorithm",
+        "op": "eq",
+        "value": "aws:kms"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "min": 2,
+     "select": {
+      "types": [
+       "aws_s3_bucket"
+      ],
+      "where": [
+       {
+        "path": "server_side_encryption_configuration.*.rule.*.apply_server_side_encryption_by_default.*.sse_algorithm",
+        "op": "eq",
+        "value": "aws:kms"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "sse_uses_cmk",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "using its own customer-managed KMS key",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_s3_bucket_server_side_encryption_configuration"
+      ]
+     },
+     "to": "kms_key"
+    },
+    {
+     "kind": "ref",
+     "from": "bucket",
+     "to": "kms_key"
+    }
+   ]
+  },
+  {
+   "id": "replication_configured",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "Configure replication from the primary bucket to the secondary bucket",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "repl",
+     "to": "secondary_bucket"
+    },
+    {
+     "kind": "ref",
+     "from": "primary_bucket",
+     "to": "secondary_bucket"
+    }
+   ]
+  },
+  {
+   "id": "replication_kms_objects",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "for KMS-encrypted objects",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "repl",
+     "cond": {
+      "path": "rule.*.source_selection_criteria.*.sse_kms_encrypted_objects.*.status",
+      "op": "eq",
+      "value": "Enabled"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "bucket",
+     "cond": {
+      "path": "replication_configuration.*.rules.*.source_selection_criteria.*.sse_kms_encrypted_objects.*.enabled",
+      "op": "truthy"
+     }
+    }
+   ]
+  },
+  {
+   "id": "replication_standard_class",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "using the STANDARD storage class",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "repl",
+     "cond": {
+      "path": "rule.*.destination.*.storage_class",
+      "op": "eq",
+      "value": "STANDARD"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "bucket",
+     "cond": {
+      "path": "replication_configuration.*.rules.*.destination.*.storage_class",
+      "op": "eq",
+      "value": "STANDARD"
+     }
+    }
+   ]
+  },
+  {
+   "id": "replication_replica_kms_key",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "the secondary key for replicas",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "repl",
+     "to": "kms_key"
+    },
+    {
+     "kind": "ref",
+     "from": "primary_bucket",
+     "to": "kms_key"
+    }
+   ]
+  },
+  {
+   "id": "replication_role_s3",
+   "kind": "exists",
+   "select": "repl_role",
+   "tier": "core",
+   "quote": "an IAM role assumable by S3"
+  },
+  {
+   "id": "replication_uses_role",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "using an IAM role assumable by S3",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "repl",
+     "to": "repl_role"
+    },
+    {
+     "kind": "ref",
+     "from": "primary_bucket",
+     "to": "repl_role"
+    }
+   ]
+  },
+  {
+   "id": "role_s3_read_permissions",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "grants the required read, replicate, decrypt, and encrypt permissions",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "policy_doc",
+     "cond": {
+      "path": "",
+      "op": "regex",
+      "value": "(?i)s3:(GetObjectVersion|GetReplicationConfiguration|Get\\*|\\*)"
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "in",
+        "value": [
+         "aws_iam_policy",
+         "aws_iam_role_policy",
+         "aws_iam_role",
+         "data.aws_iam_policy_document"
+        ]
+       },
+       {
+        "path": "properties",
+        "op": "regex",
+        "value": "(?i)s3:(GetObjectVersion|GetReplicationConfiguration|Get\\*|\\*)"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "role_s3_replicate_permissions",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "grants the required read, replicate, decrypt, and encrypt permissions",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "policy_doc",
+     "cond": {
+      "path": "",
+      "op": "regex",
+      "value": "(?i)s3:(Replicate|\\*)"
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "in",
+        "value": [
+         "aws_iam_policy",
+         "aws_iam_role_policy",
+         "aws_iam_role",
+         "data.aws_iam_policy_document"
+        ]
+       },
+       {
+        "path": "properties",
+        "op": "regex",
+        "value": "(?i)s3:(Replicate|\\*)"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "role_kms_decrypt_permission",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "grants the required read, replicate, decrypt, and encrypt permissions",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "policy_doc",
+     "cond": {
+      "path": "",
+      "op": "regex",
+      "value": "(?i)kms:(Decrypt|\\*)"
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "in",
+        "value": [
+         "aws_iam_policy",
+         "aws_iam_role_policy",
+         "aws_iam_role",
+         "data.aws_iam_policy_document"
+        ]
+       },
+       {
+        "path": "properties",
+        "op": "regex",
+        "value": "(?i)kms:(Decrypt|\\*)"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "role_kms_encrypt_permission",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "grants the required read, replicate, decrypt, and encrypt permissions",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "policy_doc",
+     "cond": {
+      "path": "",
+      "op": "regex",
+      "value": "(?i)kms:(Encrypt|GenerateDataKey|\\*)"
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "in",
+        "value": [
+         "aws_iam_policy",
+         "aws_iam_role_policy",
+         "aws_iam_role",
+         "data.aws_iam_policy_document"
+        ]
+       },
+       {
+        "path": "properties",
+        "op": "regex",
+        "value": "(?i)kms:(Encrypt|GenerateDataKey|\\*)"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "mrap_named",
+   "kind": "attr",
+   "select": "mrap",
+   "tier": "core",
+   "quote": "a Multi-Region Access Point named from a variable defaulting to \"example-mrap\"",
+   "cond": {
+    "path": "details.*.name",
+    "op": "eq",
+    "value": "example-mrap"
+   }
+  },
+  {
+   "id": "mrap_spans_both_buckets",
+   "kind": "all_of",
+   "tier": "core",
+   "quote": "spanning both buckets",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "mrap",
+     "to": "primary_bucket"
+    },
+    {
+     "kind": "ref",
+     "from": "mrap",
+     "to": "secondary_bucket"
+    }
+   ]
+  },
+  {
+   "id": "mrap_name_variable",
+   "kind": "exists",
+   "tier": "detail",
+   "quote": "named from a variable defaulting to \"example-mrap\"",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": "default",
+      "op": "eq",
+      "value": "example-mrap"
+     }
+    ]
+   }
+  },
+  {
+   "id": "mrap_policy",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "with an access point policy",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_s3control_multi_region_access_point_policy"
+      ]
+     },
+     "to": "mrap"
+    },
+    {
+     "kind": "join",
+     "from": {
+      "types": [
+       "aws_s3control_multi_region_access_point_policy"
+      ]
+     },
+     "from_path": "details.*.name",
+     "to": "mrap",
+     "to_path": "details.*.name"
+    }
+   ]
+  },
+  {
+   "id": "mrap_policy_get_put",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "allows only the owning account to get and put objects through it",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_s3control_multi_region_access_point_policy"
+       },
+       {
+        "path": "properties",
+        "op": "regex",
+        "value": "(?i)s3:(GetObject|Get\\*|\\*)"
+       },
+       {
+        "path": "properties",
+        "op": "regex",
+        "value": "(?i)s3:(PutObject|Put\\*|\\*)"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_s3control_multi_region_access_point_policy"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "data.aws_iam_policy_document"
+      ],
+      "where": [
+       {
+        "path": "",
+        "op": "regex",
+        "value": "(?i)s3:(GetObject|Get\\*|\\*)"
+       },
+       {
+        "path": "",
+        "op": "regex",
+        "value": "(?i)s3:(PutObject|Put\\*|\\*)"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_s3control_multi_region_access_point_policy"
+      ]
+     },
+     "cond": {
+      "path": "details.*.policy",
+      "op": "regex",
+      "value": "(?is)s3:(GetObject|Get\\*|\\*).{0,300}?s3:(PutObject|Put\\*|\\*)|s3:(PutObject|Put\\*|\\*).{0,300}?s3:(GetObject|Get\\*|\\*)"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_s3control_multi_region_access_point_policy"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "data.aws_iam_policy_document"
+       },
+       {
+        "path": "properties",
+        "op": "regex",
+        "value": "(?i)s3:(GetObject|Get\\*|\\*)"
+       },
+       {
+        "path": "properties",
+        "op": "regex",
+        "value": "(?i)s3:(PutObject|Put\\*|\\*)"
+       }
+      ]
+     }
+    }
+   ]
+  }
+ ],
+ "notes": "The MRAP policy document is unknown at plan (it embeds the access point alias), so its actions are checked on the declared configuration or a referenced policy-document data source. Bucket/control-plane regions are not checked: the planned values of this provider version carry no region attribute and provider aliases are not visible in the normalised input (schema limitation). The 'only the owning account' principal is a computed account ID and is not checked. IAM permission checks also read the declared policy text because policies that embed bucket/key ARNs are unknown at plan."
+}

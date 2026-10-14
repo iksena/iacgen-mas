@@ -1,0 +1,631 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "b3e5ab585bd4a47c202d6d93bfb08d48f7cb323c448860c93d463fde35881db7",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "MainFunction",
+   "cfg": "MainFunction",
+   "type": "AWS::Lambda::Function",
+   "values": {
+    "FunctionName": "dva-lab-08-03-main",
+    "Runtime": "python3.12",
+    "Handler": "index.handler",
+    "Role": {
+     "ref": "MainRole",
+     "attr": "Arn"
+    },
+    "Code": {
+     "ZipFile": "import os\ndef handler(event, context):\n    return {\"msg\": os.environ.get(\"MESSAGE\", \"version 1 message\")}\n"
+    },
+    "Environment": {
+     "Variables": {
+      "MESSAGE": "version 1 message"
+     }
+    }
+   },
+   "refs": [
+    "MainRole"
+   ]
+  },
+  {
+   "id": "MainRole",
+   "cfg": "MainRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "InitialVersion",
+   "cfg": "InitialVersion",
+   "type": "AWS::Lambda::Version",
+   "values": {
+    "FunctionName": {
+     "ref": "MainFunction"
+    },
+    "Description": "Initial version"
+   },
+   "refs": [
+    "MainFunction"
+   ]
+  },
+  {
+   "id": "LiveAlias",
+   "cfg": "LiveAlias",
+   "type": "AWS::Lambda::Alias",
+   "values": {
+    "FunctionName": {
+     "ref": "MainFunction"
+    },
+    "Name": "live",
+    "FunctionVersion": {
+     "ref": "InitialVersion",
+     "attr": "Version"
+    }
+   },
+   "refs": [
+    "InitialVersion",
+    "MainFunction"
+   ]
+  },
+  {
+   "id": "HookRole",
+   "cfg": "HookRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+    ],
+    "Policies": [
+     {
+      "PolicyName": "codedeploy-hook",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "codedeploy:PutLifecycleEventHookExecutionStatus"
+         ],
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "PreTrafficHook",
+   "cfg": "PreTrafficHook",
+   "type": "AWS::Lambda::Function",
+   "values": {
+    "FunctionName": "dva-lab-08-03-pre",
+    "Runtime": "python3.12",
+    "Handler": "index.handler",
+    "Role": {
+     "ref": "HookRole",
+     "attr": "Arn"
+    },
+    "Code": {
+     "ZipFile": "import boto3\ndef handler(event, context):\n    cd = boto3.client(\"codedeploy\")\n    cd.put_lifecycle_event_hook_execution_status(\n        deploymentId=event[\"DeploymentId\"],\n        lifecycleEventHookExecutionId=event[\"LifecycleEventHookExecutionId\"],\n        status=\"Succeeded\",\n    )\n    return {\"ok\": True}\n"
+    }
+   },
+   "refs": [
+    "HookRole"
+   ]
+  },
+  {
+   "id": "PostTrafficHook",
+   "cfg": "PostTrafficHook",
+   "type": "AWS::Lambda::Function",
+   "values": {
+    "FunctionName": "dva-lab-08-03-post",
+    "Runtime": "python3.12",
+    "Handler": "index.handler",
+    "Role": {
+     "ref": "HookRole",
+     "attr": "Arn"
+    },
+    "Code": {
+     "ZipFile": "import boto3\ndef handler(event, context):\n    cd = boto3.client(\"codedeploy\")\n    cd.put_lifecycle_event_hook_execution_status(\n        deploymentId=event[\"DeploymentId\"],\n        lifecycleEventHookExecutionId=event[\"LifecycleEventHookExecutionId\"],\n        status=\"Succeeded\",\n    )\n    return {\"ok\": True}\n"
+    }
+   },
+   "refs": [
+    "HookRole"
+   ]
+  },
+  {
+   "id": "CodeDeployRole",
+   "cfg": "CodeDeployRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "codedeploy.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/AWSCodeDeployRoleForLambda"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "CodeDeployApp",
+   "cfg": "CodeDeployApp",
+   "type": "AWS::CodeDeploy::Application",
+   "values": {
+    "ApplicationName": "dva-lab-08-03-app",
+    "ComputePlatform": "Lambda"
+   },
+   "refs": []
+  },
+  {
+   "id": "DeploymentGroup",
+   "cfg": "DeploymentGroup",
+   "type": "AWS::CodeDeploy::DeploymentGroup",
+   "values": {
+    "ApplicationName": {
+     "ref": "CodeDeployApp"
+    },
+    "DeploymentGroupName": "dva-lab-08-03-dg",
+    "DeploymentConfigName": "CodeDeployDefault.LambdaCanary10Percent5Minutes",
+    "ServiceRoleArn": {
+     "ref": "CodeDeployRole",
+     "attr": "Arn"
+    },
+    "DeploymentStyle": {
+     "DeploymentType": "BLUE_GREEN",
+     "DeploymentOption": "WITH_TRAFFIC_CONTROL"
+    }
+   },
+   "refs": [
+    "CodeDeployApp",
+    "CodeDeployRole"
+   ]
+  },
+  {
+   "id": "__output__.FunctionName",
+   "cfg": "__output__.FunctionName",
+   "type": "__output__",
+   "values": {
+    "name": "FunctionName",
+    "value": {
+     "ref": "MainFunction"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "MainFunction"
+   ]
+  },
+  {
+   "id": "__output__.AliasArn",
+   "cfg": "__output__.AliasArn",
+   "type": "__output__",
+   "values": {
+    "name": "AliasArn",
+    "value": {
+     "ref": "LiveAlias"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "LiveAlias"
+   ]
+  },
+  {
+   "id": "__output__.AppName",
+   "cfg": "__output__.AppName",
+   "type": "__output__",
+   "values": {
+    "name": "AppName",
+    "value": {
+     "ref": "CodeDeployApp"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "CodeDeployApp"
+   ]
+  },
+  {
+   "id": "__output__.DeploymentGroup",
+   "cfg": "__output__.DeploymentGroup",
+   "type": "__output__",
+   "values": {
+    "name": "DeploymentGroup",
+    "value": {
+     "ref": "DeploymentGroup"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "DeploymentGroup"
+   ]
+  },
+  {
+   "id": "__output__.PreHook",
+   "cfg": "__output__.PreHook",
+   "type": "__output__",
+   "values": {
+    "name": "PreHook",
+    "value": {
+     "ref": "PreTrafficHook"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "PreTrafficHook"
+   ]
+  },
+  {
+   "id": "__output__.PostHook",
+   "cfg": "__output__.PostHook",
+   "type": "__output__",
+   "values": {
+    "name": "PostHook",
+    "value": {
+     "ref": "PostTrafficHook"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "PostTrafficHook"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Function.MainFunction",
+   "cfg": "MainFunction",
+   "type": "__declared__",
+   "refs": [
+    "MainRole"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Function",
+    "name": "MainFunction",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "FunctionName": "dva-lab-08-03-main",
+     "Runtime": "python3.12",
+     "Handler": "index.handler",
+     "Role": {
+      "ref": "MainRole",
+      "attr": "Arn"
+     },
+     "Code": {
+      "ZipFile": "import os\ndef handler(event, context):\n    return {\"msg\": os.environ.get(\"MESSAGE\", \"version 1 message\")}\n"
+     },
+     "Environment": {
+      "Variables": {
+       "MESSAGE": "version 1 message"
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.MainRole",
+   "cfg": "MainRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "MainRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Version.InitialVersion",
+   "cfg": "InitialVersion",
+   "type": "__declared__",
+   "refs": [
+    "MainFunction"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Version",
+    "name": "InitialVersion",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "FunctionName": {
+      "ref": "MainFunction"
+     },
+     "Description": "Initial version"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Alias.LiveAlias",
+   "cfg": "LiveAlias",
+   "type": "__declared__",
+   "refs": [
+    "InitialVersion",
+    "MainFunction"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Alias",
+    "name": "LiveAlias",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "FunctionName": {
+      "ref": "MainFunction"
+     },
+     "Name": "live",
+     "FunctionVersion": {
+      "ref": "InitialVersion",
+      "attr": "Version"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.HookRole",
+   "cfg": "HookRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "HookRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+     ],
+     "Policies": [
+      {
+       "PolicyName": "codedeploy-hook",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "codedeploy:PutLifecycleEventHookExecutionStatus"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Function.PreTrafficHook",
+   "cfg": "PreTrafficHook",
+   "type": "__declared__",
+   "refs": [
+    "HookRole"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Function",
+    "name": "PreTrafficHook",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "FunctionName": "dva-lab-08-03-pre",
+     "Runtime": "python3.12",
+     "Handler": "index.handler",
+     "Role": {
+      "ref": "HookRole",
+      "attr": "Arn"
+     },
+     "Code": {
+      "ZipFile": "import boto3\ndef handler(event, context):\n    cd = boto3.client(\"codedeploy\")\n    cd.put_lifecycle_event_hook_execution_status(\n        deploymentId=event[\"DeploymentId\"],\n        lifecycleEventHookExecutionId=event[\"LifecycleEventHookExecutionId\"],\n        status=\"Succeeded\",\n    )\n    return {\"ok\": True}\n"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Function.PostTrafficHook",
+   "cfg": "PostTrafficHook",
+   "type": "__declared__",
+   "refs": [
+    "HookRole"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Function",
+    "name": "PostTrafficHook",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "FunctionName": "dva-lab-08-03-post",
+     "Runtime": "python3.12",
+     "Handler": "index.handler",
+     "Role": {
+      "ref": "HookRole",
+      "attr": "Arn"
+     },
+     "Code": {
+      "ZipFile": "import boto3\ndef handler(event, context):\n    cd = boto3.client(\"codedeploy\")\n    cd.put_lifecycle_event_hook_execution_status(\n        deploymentId=event[\"DeploymentId\"],\n        lifecycleEventHookExecutionId=event[\"LifecycleEventHookExecutionId\"],\n        status=\"Succeeded\",\n    )\n    return {\"ok\": True}\n"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.CodeDeployRole",
+   "cfg": "CodeDeployRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "CodeDeployRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "codedeploy.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AWSCodeDeployRoleForLambda"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::CodeDeploy::Application.CodeDeployApp",
+   "cfg": "CodeDeployApp",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::CodeDeploy::Application",
+    "name": "CodeDeployApp",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApplicationName": "dva-lab-08-03-app",
+     "ComputePlatform": "Lambda"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::CodeDeploy::DeploymentGroup.DeploymentGroup",
+   "cfg": "DeploymentGroup",
+   "type": "__declared__",
+   "refs": [
+    "CodeDeployApp",
+    "CodeDeployRole"
+   ],
+   "values": {
+    "type": "AWS::CodeDeploy::DeploymentGroup",
+    "name": "DeploymentGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApplicationName": {
+      "ref": "CodeDeployApp"
+     },
+     "DeploymentGroupName": "dva-lab-08-03-dg",
+     "DeploymentConfigName": "CodeDeployDefault.LambdaCanary10Percent5Minutes",
+     "ServiceRoleArn": {
+      "ref": "CodeDeployRole",
+      "attr": "Arn"
+     },
+     "DeploymentStyle": {
+      "DeploymentType": "BLUE_GREEN",
+      "DeploymentOption": "WITH_TRAFFIC_CONTROL"
+     }
+    }
+   }
+  }
+ ]
+}

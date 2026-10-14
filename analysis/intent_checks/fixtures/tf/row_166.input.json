@@ -1,0 +1,1195 @@
+{
+ "meta": {
+  "lang": "tf",
+  "mode": "plan",
+  "warnings": [],
+  "gt_hash": "1b012b6e8870b1d98fd18d2c82b9aaaa0a7dd3f22b83f800750aedaff79ac9cd",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "aws_s3_bucket.private_bucket",
+   "cfg": "aws_s3_bucket.private_bucket",
+   "type": "aws_s3_bucket",
+   "values": {
+    "bucket": "benchmark-bucket-tf5x",
+    "force_destroy": false,
+    "region": "us-east-1",
+    "tags": null,
+    "timeouts": null
+   },
+   "refs": [
+    "data.aws_iam_account_alias.current"
+   ]
+  },
+  {
+   "id": "aws_s3_bucket_analytics_configuration.private_analytics_config[0]",
+   "cfg": "aws_s3_bucket_analytics_configuration.private_analytics_config",
+   "type": "aws_s3_bucket_analytics_configuration",
+   "values": {
+    "filter": [],
+    "name": "Analytics",
+    "region": "us-east-1",
+    "storage_class_analysis": [
+     {
+      "data_export": [
+       {
+        "destination": [
+         {
+          "s3_bucket_destination": [
+           {
+            "bucket_account_id": null,
+            "format": "CSV",
+            "prefix": "_AWSBucketAnalytics"
+           }
+          ]
+         }
+        ],
+        "output_schema_version": "V_1"
+       }
+      ]
+     }
+    ]
+   },
+   "refs": [
+    "aws_s3_bucket.private_bucket"
+   ]
+  },
+  {
+   "id": "aws_s3_bucket_lifecycle_configuration.private_bucket",
+   "cfg": "aws_s3_bucket_lifecycle_configuration.private_bucket",
+   "type": "aws_s3_bucket_lifecycle_configuration",
+   "values": {
+    "region": "us-east-1",
+    "rule": [
+     {
+      "abort_incomplete_multipart_upload": [
+       {
+        "days_after_initiation": 14
+       }
+      ],
+      "expiration": [
+       {
+        "date": null,
+        "days": 0,
+        "expired_object_delete_marker": true
+       }
+      ],
+      "filter": [
+       {
+        "and": [],
+        "object_size_greater_than": null,
+        "object_size_less_than": null,
+        "prefix": "",
+        "tag": []
+       }
+      ],
+      "id": "abort-incomplete-multipart-upload",
+      "noncurrent_version_expiration": [
+       {
+        "newer_noncurrent_versions": null,
+        "noncurrent_days": 365
+       }
+      ],
+      "noncurrent_version_transition": [
+       {
+        "newer_noncurrent_versions": null,
+        "noncurrent_days": 30,
+        "storage_class": "STANDARD_IA"
+       }
+      ],
+      "prefix": "",
+      "status": "Enabled",
+      "transition": []
+     },
+     {
+      "abort_incomplete_multipart_upload": [],
+      "expiration": [
+       {
+        "date": null,
+        "days": 14,
+        "expired_object_delete_marker": false
+       }
+      ],
+      "filter": [
+       {
+        "and": [],
+        "object_size_greater_than": null,
+        "object_size_less_than": null,
+        "prefix": "_AWSBucketInventory/",
+        "tag": []
+       }
+      ],
+      "id": "aws-bucket-inventory",
+      "noncurrent_version_expiration": [],
+      "noncurrent_version_transition": [],
+      "prefix": "",
+      "status": "Disabled",
+      "transition": []
+     },
+     {
+      "abort_incomplete_multipart_upload": [],
+      "expiration": [
+       {
+        "date": null,
+        "days": 30,
+        "expired_object_delete_marker": false
+       }
+      ],
+      "filter": [
+       {
+        "and": [],
+        "object_size_greater_than": null,
+        "object_size_less_than": null,
+        "prefix": "_AWSBucketAnalytics/",
+        "tag": []
+       }
+      ],
+      "id": "aws-bucket-analytics",
+      "noncurrent_version_expiration": [],
+      "noncurrent_version_transition": [],
+      "prefix": "",
+      "status": "Enabled",
+      "transition": []
+     }
+    ],
+    "timeouts": null,
+    "transition_default_minimum_object_size": "all_storage_classes_128K"
+   },
+   "refs": [
+    "aws_s3_bucket.private_bucket"
+   ]
+  },
+  {
+   "id": "aws_s3_bucket_ownership_controls.private_bucket[0]",
+   "cfg": "aws_s3_bucket_ownership_controls.private_bucket",
+   "type": "aws_s3_bucket_ownership_controls",
+   "values": {
+    "region": "us-east-1",
+    "rule": [
+     {
+      "object_ownership": "BucketOwnerEnforced"
+     }
+    ]
+   },
+   "refs": [
+    "aws_s3_bucket.private_bucket",
+    "aws_s3_bucket_policy.private_bucket",
+    "aws_s3_bucket_public_access_block.public_access_block"
+   ]
+  },
+  {
+   "id": "aws_s3_bucket_policy.private_bucket",
+   "cfg": "aws_s3_bucket_policy.private_bucket",
+   "type": "aws_s3_bucket_policy",
+   "values": {
+    "policy": "{\"Statement\":[{\"Action\":\"s3:*\",\"Condition\":{\"Bool\":{\"aws:SecureTransport\":\"false\"}},\"Effect\":\"Deny\",\"Principal\":{\"AWS\":\"*\"},\"Resource\":\"arn:aws:s3:::benchmark-bucket-tf5x/*\",\"Sid\":\"enforce-tls-requests-only\"},{\"Action\":\"s3:PutObject\",\"Condition\":{\"ArnLike\":{\"aws:SourceArn\":\"arn:aws:s3:::benchmark-bucket-tf5x\"},\"StringEquals\":{\"aws:SourceAccount\":\"000000000000\",\"s3:x-amz-acl\":\"bucket-owner-full-control\"}},\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"s3.amazonaws.com\"},\"Resource\":\"arn:aws:s3:::benchmark-bucket-tf5x/*\",\"Sid\":\"inventory-and-analytics\"}],\"Version\":\"2012-10-17\"}",
+    "region": "us-east-1"
+   },
+   "refs": [
+    "aws_s3_bucket.private_bucket",
+    "data.aws_iam_policy_document.supplemental_policy"
+   ]
+  },
+  {
+   "id": "aws_s3_bucket_public_access_block.public_access_block[0]",
+   "cfg": "aws_s3_bucket_public_access_block.public_access_block",
+   "type": "aws_s3_bucket_public_access_block",
+   "values": {
+    "block_public_acls": true,
+    "block_public_policy": true,
+    "ignore_public_acls": true,
+    "region": "us-east-1",
+    "restrict_public_buckets": true,
+    "skip_destroy": null
+   },
+   "refs": [
+    "aws_s3_bucket.private_bucket"
+   ]
+  },
+  {
+   "id": "aws_s3_bucket_server_side_encryption_configuration.private_bucket",
+   "cfg": "aws_s3_bucket_server_side_encryption_configuration.private_bucket",
+   "type": "aws_s3_bucket_server_side_encryption_configuration",
+   "values": {
+    "expected_bucket_owner": null,
+    "region": "us-east-1",
+    "rule": [
+     {
+      "apply_server_side_encryption_by_default": [
+       {
+        "sse_algorithm": "AES256"
+       }
+      ],
+      "bucket_key_enabled": false
+     }
+    ]
+   },
+   "refs": [
+    "aws_s3_bucket.private_bucket"
+   ]
+  },
+  {
+   "id": "aws_s3_bucket_versioning.private_bucket",
+   "cfg": "aws_s3_bucket_versioning.private_bucket",
+   "type": "aws_s3_bucket_versioning",
+   "values": {
+    "expected_bucket_owner": null,
+    "mfa": null,
+    "region": "us-east-1",
+    "versioning_configuration": [
+     {
+      "status": "Enabled"
+     }
+    ]
+   },
+   "refs": [
+    "aws_s3_bucket.private_bucket"
+   ]
+  },
+  {
+   "id": "__parameter__.abort_incomplete_multipart_upload_days",
+   "cfg": "__parameter__.abort_incomplete_multipart_upload_days",
+   "type": "__parameter__",
+   "values": {
+    "name": "abort_incomplete_multipart_upload_days",
+    "default": 14
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.additional_lifecycle_rules",
+   "cfg": "__parameter__.additional_lifecycle_rules",
+   "type": "__parameter__",
+   "values": {
+    "name": "additional_lifecycle_rules",
+    "default": []
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.bucket",
+   "cfg": "__parameter__.bucket",
+   "type": "__parameter__",
+   "values": {
+    "name": "bucket",
+    "default": "benchmark-bucket-tf5x"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.bucket_key_enabled",
+   "cfg": "__parameter__.bucket_key_enabled",
+   "type": "__parameter__",
+   "values": {
+    "name": "bucket_key_enabled",
+    "default": false
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.control_object_ownership",
+   "cfg": "__parameter__.control_object_ownership",
+   "type": "__parameter__",
+   "values": {
+    "name": "control_object_ownership",
+    "default": true
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.cors_rules",
+   "cfg": "__parameter__.cors_rules",
+   "type": "__parameter__",
+   "values": {
+    "name": "cors_rules",
+    "default": []
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.custom_bucket_policy",
+   "cfg": "__parameter__.custom_bucket_policy",
+   "type": "__parameter__",
+   "values": {
+    "name": "custom_bucket_policy",
+    "default": ""
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.enable_analytics",
+   "cfg": "__parameter__.enable_analytics",
+   "type": "__parameter__",
+   "values": {
+    "name": "enable_analytics",
+    "default": true
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.enable_bucket_force_destroy",
+   "cfg": "__parameter__.enable_bucket_force_destroy",
+   "type": "__parameter__",
+   "values": {
+    "name": "enable_bucket_force_destroy",
+    "default": false
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.enable_bucket_inventory",
+   "cfg": "__parameter__.enable_bucket_inventory",
+   "type": "__parameter__",
+   "values": {
+    "name": "enable_bucket_inventory",
+    "default": false
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.enable_s3_public_access_block",
+   "cfg": "__parameter__.enable_s3_public_access_block",
+   "type": "__parameter__",
+   "values": {
+    "name": "enable_s3_public_access_block",
+    "default": true
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.inventory_bucket_format",
+   "cfg": "__parameter__.inventory_bucket_format",
+   "type": "__parameter__",
+   "values": {
+    "name": "inventory_bucket_format",
+    "default": "ORC"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.kms_master_key_id",
+   "cfg": "__parameter__.kms_master_key_id",
+   "type": "__parameter__",
+   "values": {
+    "name": "kms_master_key_id",
+    "default": ""
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.lifecycle_abort_incomplete_upload",
+   "cfg": "__parameter__.lifecycle_abort_incomplete_upload",
+   "type": "__parameter__",
+   "values": {
+    "name": "lifecycle_abort_incomplete_upload",
+    "default": {
+     "expiration": {
+      "date": null,
+      "days": null,
+      "expired_object_delete_marker": true
+     },
+     "nve": {
+      "newer_noncurrent_versions": null,
+      "noncurrent_days": 365
+     },
+     "nvt": {
+      "newer_noncurrent_versions": null,
+      "noncurrent_days": 30,
+      "storage_class": "STANDARD_IA"
+     },
+     "transition": null
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.lifecycle_aws_bucket_analytics_expiration",
+   "cfg": "__parameter__.lifecycle_aws_bucket_analytics_expiration",
+   "type": "__parameter__",
+   "values": {
+    "name": "lifecycle_aws_bucket_analytics_expiration",
+    "default": 30
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.lifecycle_aws_bucket_inventory_expiration",
+   "cfg": "__parameter__.lifecycle_aws_bucket_inventory_expiration",
+   "type": "__parameter__",
+   "values": {
+    "name": "lifecycle_aws_bucket_inventory_expiration",
+    "default": 14
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.logging_bucket",
+   "cfg": "__parameter__.logging_bucket",
+   "type": "__parameter__",
+   "values": {
+    "name": "logging_bucket",
+    "default": ""
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.object_ownership",
+   "cfg": "__parameter__.object_ownership",
+   "type": "__parameter__",
+   "values": {
+    "name": "object_ownership",
+    "default": "BucketOwnerEnforced"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.s3_bucket_acl",
+   "cfg": "__parameter__.s3_bucket_acl",
+   "type": "__parameter__",
+   "values": {
+    "name": "s3_bucket_acl",
+    "default": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.schedule_frequency",
+   "cfg": "__parameter__.schedule_frequency",
+   "type": "__parameter__",
+   "values": {
+    "name": "schedule_frequency",
+    "default": "Weekly"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.tags",
+   "cfg": "__parameter__.tags",
+   "type": "__parameter__",
+   "values": {
+    "name": "tags",
+    "default": {}
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.transfer_acceleration",
+   "cfg": "__parameter__.transfer_acceleration",
+   "type": "__parameter__",
+   "values": {
+    "name": "transfer_acceleration",
+    "default": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.transition_default_minimum_object_size",
+   "cfg": "__parameter__.transition_default_minimum_object_size",
+   "type": "__parameter__",
+   "values": {
+    "name": "transition_default_minimum_object_size",
+    "default": "all_storage_classes_128K"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.use_account_alias_prefix",
+   "cfg": "__parameter__.use_account_alias_prefix",
+   "type": "__parameter__",
+   "values": {
+    "name": "use_account_alias_prefix",
+    "default": false
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.use_random_suffix",
+   "cfg": "__parameter__.use_random_suffix",
+   "type": "__parameter__",
+   "values": {
+    "name": "use_random_suffix",
+    "default": false
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.versioning_status",
+   "cfg": "__parameter__.versioning_status",
+   "type": "__parameter__",
+   "values": {
+    "name": "versioning_status",
+    "default": "Enabled"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.arn",
+   "cfg": "__output__.arn",
+   "type": "__output__",
+   "values": {
+    "name": "arn",
+    "value": null,
+    "description": "The ARN of the bucket. Will be of format arn:aws:s3:::bucketname."
+   },
+   "refs": [
+    "aws_s3_bucket.private_bucket"
+   ]
+  },
+  {
+   "id": "__output__.bucket_domain_name",
+   "cfg": "__output__.bucket_domain_name",
+   "type": "__output__",
+   "values": {
+    "name": "bucket_domain_name",
+    "value": null,
+    "description": "The bucket domain name."
+   },
+   "refs": [
+    "aws_s3_bucket.private_bucket"
+   ]
+  },
+  {
+   "id": "__output__.bucket_logging_prefix",
+   "cfg": "__output__.bucket_logging_prefix",
+   "type": "__output__",
+   "values": {
+    "name": "bucket_logging_prefix",
+    "value": [],
+    "description": "Prefix defined for logging to an S3 bucket."
+   },
+   "refs": [
+    "aws_s3_bucket_logging.private_bucket"
+   ]
+  },
+  {
+   "id": "__output__.bucket_regional_domain_name",
+   "cfg": "__output__.bucket_regional_domain_name",
+   "type": "__output__",
+   "values": {
+    "name": "bucket_regional_domain_name",
+    "value": null,
+    "description": "The bucket region-specific domain name."
+   },
+   "refs": [
+    "aws_s3_bucket.private_bucket"
+   ]
+  },
+  {
+   "id": "__output__.id",
+   "cfg": "__output__.id",
+   "type": "__output__",
+   "values": {
+    "name": "id",
+    "value": null,
+    "description": "The name of the bucket."
+   },
+   "refs": [
+    "aws_s3_bucket.private_bucket"
+   ]
+  },
+  {
+   "id": "__output__.name",
+   "cfg": "__output__.name",
+   "type": "__output__",
+   "values": {
+    "name": "name",
+    "value": "benchmark-bucket-tf5x",
+    "description": "The Name of the bucket. Will be of format bucketprefix-bucketname."
+   },
+   "refs": [
+    "data.aws_iam_account_alias.current"
+   ]
+  },
+  {
+   "id": "__declared__.data.aws_iam_account_alias.current",
+   "cfg": "data.aws_iam_account_alias.current",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "data.aws_iam_account_alias",
+    "name": "current",
+    "gated": true,
+    "gate": "var.use_account_alias_prefix ? 1 : 0",
+    "properties": {
+     "count": "${var.use_account_alias_prefix ? 1 : 0}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.data.aws_partition.current",
+   "cfg": "data.aws_partition.current",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "data.aws_partition",
+    "name": "current",
+    "gated": false,
+    "gate": null,
+    "properties": {}
+   }
+  },
+  {
+   "id": "__declared__.data.aws_caller_identity.current",
+   "cfg": "data.aws_caller_identity.current",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "data.aws_caller_identity",
+    "name": "current",
+    "gated": false,
+    "gate": null,
+    "properties": {}
+   }
+  },
+  {
+   "id": "__declared__.data.aws_iam_policy_document.supplemental_policy",
+   "cfg": "data.aws_iam_policy_document.supplemental_policy",
+   "type": "__declared__",
+   "refs": [
+    "data.aws_caller_identity.current",
+    "data.aws_partition.current"
+   ],
+   "values": {
+    "type": "data.aws_iam_policy_document",
+    "name": "supplemental_policy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "source_policy_documents": [
+      ""
+     ],
+     "statement": [
+      {
+       "sid": "enforce-tls-requests-only",
+       "effect": "Deny",
+       "principals": [
+        {
+         "type": "AWS",
+         "identifiers": [
+          "*"
+         ]
+        }
+       ],
+       "actions": [
+        "s3:*"
+       ],
+       "resources": [
+        "arn:${data.aws_partition.current.partition}:s3:::${local.bucket_id}/*"
+       ],
+       "condition": [
+        {
+         "test": "Bool",
+         "variable": "aws:SecureTransport",
+         "values": [
+          "false"
+         ]
+        }
+       ]
+      },
+      {
+       "sid": "inventory-and-analytics",
+       "effect": "Allow",
+       "principals": [
+        {
+         "type": "Service",
+         "identifiers": [
+          "s3.amazonaws.com"
+         ]
+        }
+       ],
+       "actions": [
+        "s3:PutObject"
+       ],
+       "resources": [
+        "arn:${data.aws_partition.current.partition}:s3:::${local.bucket_id}/*"
+       ],
+       "condition": [
+        {
+         "test": "ArnLike",
+         "variable": "aws:SourceArn",
+         "values": [
+          "arn:${data.aws_partition.current.partition}:s3:::${local.bucket_id}"
+         ]
+        },
+        {
+         "test": "StringEquals",
+         "variable": "aws:SourceAccount",
+         "values": [
+          "${data.aws_caller_identity.current.account_id}"
+         ]
+        },
+        {
+         "test": "StringEquals",
+         "variable": "s3:x-amz-acl",
+         "values": [
+          "bucket-owner-full-control"
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_s3_bucket.private_bucket",
+   "cfg": "aws_s3_bucket.private_bucket",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_s3_bucket",
+    "name": "private_bucket",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "bucket": "${var.use_random_suffix ? None : local.bucket_id}",
+     "bucket_prefix": "${var.use_random_suffix ? local.bucket_id : None}",
+     "tags": [
+      {}
+     ],
+     "force_destroy": false,
+     "lifecycle": [
+      {
+       "ignore_changes": [
+        "${versioning}",
+        "${grant}",
+        "${cors_rule}",
+        "${lifecycle_rule}",
+        "${logging}",
+        "${server_side_encryption_configuration}"
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_s3_bucket_policy.private_bucket",
+   "cfg": "aws_s3_bucket_policy.private_bucket",
+   "type": "__declared__",
+   "refs": [
+    "aws_s3_bucket.private_bucket",
+    "data.aws_iam_policy_document.supplemental_policy"
+   ],
+   "values": {
+    "type": "aws_s3_bucket_policy",
+    "name": "private_bucket",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "bucket": "${aws_s3_bucket.private_bucket.id}",
+     "policy": "${data.aws_iam_policy_document.supplemental_policy.json}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_s3_bucket_accelerate_configuration.private_bucket",
+   "cfg": "aws_s3_bucket_accelerate_configuration.private_bucket",
+   "type": "__declared__",
+   "refs": [
+    "aws_s3_bucket.private_bucket"
+   ],
+   "values": {
+    "type": "aws_s3_bucket_accelerate_configuration",
+    "name": "private_bucket",
+    "gated": true,
+    "gate": "var.transfer_acceleration != null ? 1 : 0",
+    "properties": {
+     "count": "${var.transfer_acceleration != None ? 1 : 0}",
+     "bucket": "${aws_s3_bucket.private_bucket.id}",
+     "status": "${var.transfer_acceleration ? \"Enabled\" : \"Suspended\"}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_s3_bucket_acl.private_bucket",
+   "cfg": "aws_s3_bucket_acl.private_bucket",
+   "type": "__declared__",
+   "refs": [
+    "aws_s3_bucket.private_bucket",
+    "aws_s3_bucket_ownership_controls.private_bucket"
+   ],
+   "values": {
+    "type": "aws_s3_bucket_acl",
+    "name": "private_bucket",
+    "gated": true,
+    "gate": "var.s3_bucket_acl != null ? 1 : 0",
+    "properties": {
+     "count": "${var.s3_bucket_acl != None ? 1 : 0}",
+     "bucket": "${aws_s3_bucket.private_bucket.id}",
+     "acl": "${var.s3_bucket_acl}",
+     "depends_on": [
+      "${aws_s3_bucket_ownership_controls.private_bucket}"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_s3_bucket_ownership_controls.private_bucket",
+   "cfg": "aws_s3_bucket_ownership_controls.private_bucket",
+   "type": "__declared__",
+   "refs": [
+    "aws_s3_bucket.private_bucket",
+    "aws_s3_bucket_policy.private_bucket",
+    "aws_s3_bucket_public_access_block.public_access_block"
+   ],
+   "values": {
+    "type": "aws_s3_bucket_ownership_controls",
+    "name": "private_bucket",
+    "gated": true,
+    "gate": "var.control_object_ownership ? 1 : 0",
+    "properties": {
+     "count": "${var.control_object_ownership ? 1 : 0}",
+     "bucket": "${aws_s3_bucket.private_bucket.id}",
+     "rule": [
+      {
+       "object_ownership": "BucketOwnerEnforced"
+      }
+     ],
+     "depends_on": [
+      "${aws_s3_bucket_policy.private_bucket}",
+      "${aws_s3_bucket_public_access_block.public_access_block}",
+      "${aws_s3_bucket.private_bucket}"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_s3_bucket_versioning.private_bucket",
+   "cfg": "aws_s3_bucket_versioning.private_bucket",
+   "type": "__declared__",
+   "refs": [
+    "aws_s3_bucket.private_bucket"
+   ],
+   "values": {
+    "type": "aws_s3_bucket_versioning",
+    "name": "private_bucket",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "bucket": "${aws_s3_bucket.private_bucket.id}",
+     "versioning_configuration": [
+      {
+       "status": "Enabled"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_s3_bucket_lifecycle_configuration.private_bucket",
+   "cfg": "aws_s3_bucket_lifecycle_configuration.private_bucket",
+   "type": "__declared__",
+   "refs": [
+    "aws_s3_bucket.private_bucket",
+    "noncurrent_version_expiration.value",
+    "noncurrent_version_transition.value"
+   ],
+   "values": {
+    "type": "aws_s3_bucket_lifecycle_configuration",
+    "name": "private_bucket",
+    "gated": true,
+    "gate": "local.aiu_has_expiration == true ? [var.lifecycle_abort_incomplete_upload.expiration] : []",
+    "properties": {
+     "bucket": "${aws_s3_bucket.private_bucket.id}",
+     "transition_default_minimum_object_size": "all_storage_classes_128K",
+     "rule": [
+      {
+       "id": "abort-incomplete-multipart-upload",
+       "status": "Enabled",
+       "filter": [
+        {}
+       ],
+       "abort_incomplete_multipart_upload": [
+        {
+         "days_after_initiation": 14
+        }
+       ],
+       "dynamic": {
+        "expiration": {
+         "for_each": "${local.aiu_has_expiration == True ? ['${var.lifecycle_abort_incomplete_upload.expiration}'] : []}",
+         "content": [
+          {
+           "date": "${expiration.value.date}",
+           "days": "${expiration.value.days}",
+           "expired_object_delete_marker": "${expiration.value.expired_object_delete_marker}"
+          }
+         ]
+        },
+        "transition": {
+         "for_each": "${local.aiu_has_transition == True ? ['${var.lifecycle_abort_incomplete_upload.transition}'] : []}",
+         "content": [
+          {
+           "days": "${transition.value.days}",
+           "storage_class": "${transition.value.storage_class}"
+          }
+         ]
+        },
+        "noncurrent_version_transition": {
+         "for_each": "${local.aiu_has_nvt == True ? ['${var.lifecycle_abort_incomplete_upload.nvt}'] : []}",
+         "content": [
+          {
+           "newer_noncurrent_versions": "${noncurrent_version_transition.value.newer_noncurrent_versions}",
+           "noncurrent_days": "${noncurrent_version_transition.value.noncurrent_days}",
+           "storage_class": "${noncurrent_version_transition.value.storage_class}"
+          }
+         ]
+        },
+        "noncurrent_version_expiration": {
+         "for_each": "${local.aiu_has_nve == True ? ['${var.lifecycle_abort_incomplete_upload.nve}'] : []}",
+         "content": [
+          {
+           "newer_noncurrent_versions": "${noncurrent_version_expiration.value.newer_noncurrent_versions}",
+           "noncurrent_days": "${noncurrent_version_expiration.value.noncurrent_days}"
+          }
+         ]
+        }
+       }
+      },
+      {
+       "id": "aws-bucket-inventory",
+       "status": "${var.enable_bucket_inventory ? \"Enabled\" : \"Disabled\"}",
+       "filter": [
+        {
+         "prefix": "_AWSBucketInventory/"
+        }
+       ],
+       "expiration": [
+        {
+         "days": 14
+        }
+       ]
+      },
+      {
+       "id": "aws-bucket-analytics",
+       "status": "${var.enable_analytics ? \"Enabled\" : \"Disabled\"}",
+       "filter": [
+        {
+         "prefix": "_AWSBucketAnalytics/"
+        }
+       ],
+       "expiration": [
+        {
+         "days": 30
+        }
+       ]
+      }
+     ],
+     "dynamic": {
+      "rule": {
+       "for_each": [],
+       "content": [
+        {
+         "id": "${rule.value[\"id\"]}",
+         "status": "${rule.value[\"status\"]}",
+         "dynamic": {
+          "filter": {
+           "for_each": "${rule.value.filter}",
+           "content": [
+            {
+             "prefix": "${filter.value[\"prefix\"]}"
+            }
+           ]
+          },
+          "expiration": {
+           "for_each": "${rule.value.expiration}",
+           "content": [
+            {
+             "days": "${expiration.value[\"days\"]}"
+            }
+           ]
+          }
+         }
+        }
+       ]
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_s3_bucket_logging.private_bucket",
+   "cfg": "aws_s3_bucket_logging.private_bucket",
+   "type": "__declared__",
+   "refs": [
+    "aws_s3_bucket.private_bucket"
+   ],
+   "values": {
+    "type": "aws_s3_bucket_logging",
+    "name": "private_bucket",
+    "gated": true,
+    "gate": "local.enable_bucket_logging ? 1 : 0",
+    "properties": {
+     "count": "${local.enable_bucket_logging ? 1 : 0}",
+     "bucket": "${aws_s3_bucket.private_bucket.id}",
+     "target_bucket": "",
+     "target_prefix": "s3/${local.bucket_id}/"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_s3_bucket_server_side_encryption_configuration.private_bucket",
+   "cfg": "aws_s3_bucket_server_side_encryption_configuration.private_bucket",
+   "type": "__declared__",
+   "refs": [
+    "aws_s3_bucket.private_bucket"
+   ],
+   "values": {
+    "type": "aws_s3_bucket_server_side_encryption_configuration",
+    "name": "private_bucket",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "bucket": "${aws_s3_bucket.private_bucket.id}",
+     "rule": [
+      {
+       "apply_server_side_encryption_by_default": [
+        {
+         "sse_algorithm": "${length(var.kms_master_key_id) > 0 ? \"aws:kms\" : \"AES256\"}",
+         "kms_master_key_id": "${length(var.kms_master_key_id) > 0 ? var.kms_master_key_id : None}"
+        }
+       ],
+       "bucket_key_enabled": false
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_s3_bucket_cors_configuration.private_bucket",
+   "cfg": "aws_s3_bucket_cors_configuration.private_bucket",
+   "type": "__declared__",
+   "refs": [
+    "aws_s3_bucket.private_bucket"
+   ],
+   "values": {
+    "type": "aws_s3_bucket_cors_configuration",
+    "name": "private_bucket",
+    "gated": true,
+    "gate": "length(var.cors_rules)",
+    "properties": {
+     "count": "${length(var.cors_rules)}",
+     "bucket": "${aws_s3_bucket.private_bucket.id}",
+     "cors_rule": [
+      {
+       "allowed_methods": "${var.cors_rules[count.index].allowed_methods}",
+       "allowed_origins": "${var.cors_rules[count.index].allowed_origins}",
+       "allowed_headers": "${lookup(var.cors_rules[count.index],\"allowed_headers\",None)}",
+       "expose_headers": "${lookup(var.cors_rules[count.index],\"expose_headers\",None)}",
+       "max_age_seconds": "${lookup(var.cors_rules[count.index],\"max_age_seconds\",None)}"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_s3_bucket_analytics_configuration.private_analytics_config",
+   "cfg": "aws_s3_bucket_analytics_configuration.private_analytics_config",
+   "type": "__declared__",
+   "refs": [
+    "aws_s3_bucket.private_bucket"
+   ],
+   "values": {
+    "type": "aws_s3_bucket_analytics_configuration",
+    "name": "private_analytics_config",
+    "gated": true,
+    "gate": "var.enable_analytics ? 1 : 0",
+    "properties": {
+     "count": "${var.enable_analytics ? 1 : 0}",
+     "bucket": "${aws_s3_bucket.private_bucket.id}",
+     "name": "Analytics",
+     "storage_class_analysis": [
+      {
+       "data_export": [
+        {
+         "destination": [
+          {
+           "s3_bucket_destination": [
+            {
+             "bucket_arn": "${aws_s3_bucket.private_bucket.arn}",
+             "prefix": "_AWSBucketAnalytics"
+            }
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_s3_bucket_public_access_block.public_access_block",
+   "cfg": "aws_s3_bucket_public_access_block.public_access_block",
+   "type": "__declared__",
+   "refs": [
+    "aws_s3_bucket.private_bucket"
+   ],
+   "values": {
+    "type": "aws_s3_bucket_public_access_block",
+    "name": "public_access_block",
+    "gated": true,
+    "gate": "var.enable_s3_public_access_block ? 1 : 0",
+    "properties": {
+     "count": "${var.enable_s3_public_access_block ? 1 : 0}",
+     "bucket": "${aws_s3_bucket.private_bucket.id}",
+     "block_public_acls": true,
+     "ignore_public_acls": true,
+     "block_public_policy": true,
+     "restrict_public_buckets": true
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_s3_bucket_inventory.inventory",
+   "cfg": "aws_s3_bucket_inventory.inventory",
+   "type": "__declared__",
+   "refs": [
+    "aws_s3_bucket.private_bucket"
+   ],
+   "values": {
+    "type": "aws_s3_bucket_inventory",
+    "name": "inventory",
+    "gated": true,
+    "gate": "var.enable_bucket_inventory ? 1 : 0",
+    "properties": {
+     "count": "${var.enable_bucket_inventory ? 1 : 0}",
+     "bucket": "${aws_s3_bucket.private_bucket.id}",
+     "name": "BucketInventory",
+     "included_object_versions": "All",
+     "schedule": [
+      {
+       "frequency": "Weekly"
+      }
+     ],
+     "destination": [
+      {
+       "bucket": [
+        {
+         "format": "ORC",
+         "bucket_arn": "${aws_s3_bucket.private_bucket.arn}",
+         "prefix": "_AWSBucketInventory/"
+        }
+       ]
+      }
+     ],
+     "optional_fields": [
+      "Size",
+      "LastModifiedDate",
+      "StorageClass",
+      "ETag",
+      "IsMultipartUploaded",
+      "ReplicationStatus",
+      "EncryptionStatus",
+      "ObjectLockRetainUntilDate",
+      "ObjectLockMode",
+      "ObjectLockLegalHoldStatus",
+      "IntelligentTieringAccessTier"
+     ]
+    }
+   }
+  }
+ ]
+}

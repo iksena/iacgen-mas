@@ -1,0 +1,1156 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "d04df3a4b3b7bb06c04dd7aec8d2560482f8e888854dc59f2a2ed5a4cfb83fcf",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "BackboneVpc",
+   "cfg": "BackboneVpc",
+   "type": "AWS::EC2::VPC",
+   "values": {
+    "CidrBlock": "10.94.0.0/16",
+    "EnableDnsSupport": true,
+    "EnableDnsHostnames": true,
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "stack-vpc-backbone"
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "BackboneLogKey",
+   "cfg": "BackboneLogKey",
+   "type": "AWS::KMS::Key",
+   "values": {
+    "Description": "stack VPC flow log encryption key",
+    "EnableKeyRotation": true,
+    "KeyPolicy": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Sid": "EnableAccountAdministration",
+       "Effect": "Allow",
+       "Principal": {
+        "AWS": [
+         "arn:aws:iam::123456789012:root"
+        ]
+       },
+       "Action": [
+        "kms:*"
+       ],
+       "Resource": [
+        "*"
+       ]
+      },
+      {
+       "Sid": "AllowCloudWatchLogsUse",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "logs.us-east-1.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "kms:Decrypt",
+        "kms:DescribeKey",
+        "kms:Encrypt",
+        "kms:GenerateDataKey",
+        "kms:ReEncrypt*"
+       ],
+       "Resource": [
+        "*"
+       ]
+      }
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "BackboneFlowLogGroup",
+   "cfg": "BackboneFlowLogGroup",
+   "type": "AWS::Logs::LogGroup",
+   "values": {
+    "KmsKeyId": {
+     "ref": "BackboneLogKey",
+     "attr": "Arn"
+    },
+    "RetentionInDays": 30
+   },
+   "refs": [
+    "BackboneLogKey"
+   ]
+  },
+  {
+   "id": "BackboneFlowLogRole",
+   "cfg": "BackboneFlowLogRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "vpc-flow-logs.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Policies": [
+     {
+      "PolicyName": "write-vpc-flow-logs",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "logs:CreateLogStream",
+          "logs:DescribeLogGroups",
+          "logs:DescribeLogStreams",
+          "logs:PutLogEvents"
+         ],
+         "Resource": [
+          "${BackboneFlowLogGroup.Arn}:*"
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": [
+    "BackboneFlowLogGroup"
+   ]
+  },
+  {
+   "id": "BackboneVpcFlowLog",
+   "cfg": "BackboneVpcFlowLog",
+   "type": "AWS::EC2::FlowLog",
+   "values": {
+    "DeliverLogsPermissionArn": {
+     "ref": "BackboneFlowLogRole",
+     "attr": "Arn"
+    },
+    "LogDestinationType": "cloud-watch-logs",
+    "LogGroupName": {
+     "ref": "BackboneFlowLogGroup"
+    },
+    "ResourceId": {
+     "ref": "BackboneVpc"
+    },
+    "ResourceType": "VPC",
+    "TrafficType": "ALL"
+   },
+   "refs": [
+    "BackboneFlowLogGroup",
+    "BackboneFlowLogRole",
+    "BackboneVpc"
+   ]
+  },
+  {
+   "id": "InternetGateway",
+   "cfg": "InternetGateway",
+   "type": "AWS::EC2::InternetGateway",
+   "values": {
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "stack-igw-backbone"
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "VpcIgwAttachment",
+   "cfg": "VpcIgwAttachment",
+   "type": "AWS::EC2::VPCGatewayAttachment",
+   "values": {
+    "VpcId": {
+     "ref": "BackboneVpc"
+    },
+    "InternetGatewayId": {
+     "ref": "InternetGateway"
+    }
+   },
+   "refs": [
+    "BackboneVpc",
+    "InternetGateway"
+   ]
+  },
+  {
+   "id": "BackboneRouteTable",
+   "cfg": "BackboneRouteTable",
+   "type": "AWS::EC2::RouteTable",
+   "values": {
+    "VpcId": {
+     "ref": "BackboneVpc"
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "stack-rt-backbone"
+     }
+    ]
+   },
+   "refs": [
+    "BackboneVpc"
+   ]
+  },
+  {
+   "id": "DefaultRoute",
+   "cfg": "DefaultRoute",
+   "type": "AWS::EC2::Route",
+   "values": {
+    "RouteTableId": {
+     "ref": "BackboneRouteTable"
+    },
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "GatewayId": {
+     "ref": "InternetGateway"
+    },
+    "__resource__": {
+     "DependsOn": [
+      "VpcIgwAttachment"
+     ]
+    }
+   },
+   "refs": [
+    "BackboneRouteTable",
+    "InternetGateway"
+   ]
+  },
+  {
+   "id": "BackboneSubnet",
+   "cfg": "BackboneSubnet",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "VpcId": {
+     "ref": "BackboneVpc"
+    },
+    "CidrBlock": "10.94.10.0/24",
+    "AvailabilityZone": "us-east-1a",
+    "MapPublicIpOnLaunch": false,
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "stack-sn-backbone"
+     }
+    ]
+   },
+   "refs": [
+    "BackboneVpc"
+   ]
+  },
+  {
+   "id": "SubnetRouteAssociation",
+   "cfg": "SubnetRouteAssociation",
+   "type": "AWS::EC2::SubnetRouteTableAssociation",
+   "values": {
+    "SubnetId": {
+     "ref": "BackboneSubnet"
+    },
+    "RouteTableId": {
+     "ref": "BackboneRouteTable"
+    }
+   },
+   "refs": [
+    "BackboneRouteTable",
+    "BackboneSubnet"
+   ]
+  },
+  {
+   "id": "BackboneSecurityGroup",
+   "cfg": "BackboneSecurityGroup",
+   "type": "AWS::EC2::SecurityGroup",
+   "values": {
+    "GroupDescription": "AWS backbone security group for OCI hybrid interconnect demos.",
+    "VpcId": {
+     "ref": "BackboneVpc"
+    },
+    "SecurityGroupIngress": [
+     {
+      "Description": "Allow approved HTTPS ingress to the backbone edge.",
+      "IpProtocol": "tcp",
+      "FromPort": 443,
+      "ToPort": 443,
+      "CidrIp": "10.0.0.0/8"
+     }
+    ],
+    "SecurityGroupEgress": [
+     {
+      "Description": "Allow HTTPS egress toward the OCI backbone CIDR.",
+      "IpProtocol": "tcp",
+      "FromPort": 443,
+      "ToPort": 443,
+      "CidrIp": "10.54.0.0/16"
+     }
+    ],
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "stack-sg-backbone"
+     }
+    ]
+   },
+   "refs": [
+    "BackboneVpc"
+   ]
+  },
+  {
+   "id": "TransitGateway",
+   "cfg": "TransitGateway",
+   "type": "AWS::EC2::TransitGateway",
+   "values": {
+    "Description": "stack transit gateway for OCI backbone interconnect",
+    "DefaultRouteTableAssociation": "enable",
+    "DefaultRouteTablePropagation": "enable",
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "stack-tgw-backbone"
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "TransitGatewayAttachment",
+   "cfg": "TransitGatewayAttachment",
+   "type": "AWS::EC2::TransitGatewayAttachment",
+   "values": {
+    "TransitGatewayId": {
+     "ref": "TransitGateway"
+    },
+    "VpcId": {
+     "ref": "BackboneVpc"
+    },
+    "SubnetIds": [
+     {
+      "ref": "BackboneSubnet"
+     }
+    ],
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "stack-tgw-attach-backbone"
+     }
+    ]
+   },
+   "refs": [
+    "BackboneSubnet",
+    "BackboneVpc",
+    "TransitGateway"
+   ]
+  },
+  {
+   "id": "OciCustomerGateway",
+   "cfg": "OciCustomerGateway",
+   "type": "AWS::EC2::CustomerGateway",
+   "values": {
+    "Type": "ipsec.1",
+    "IpAddress": "198.51.100.10",
+    "BgpAsn": 31898,
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "stack-cgw-oci-primary"
+     }
+    ],
+    "__resource__": {
+     "Condition": "EnableSiteToSiteVpnCondition"
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "OciSiteToSiteVpnConnection",
+   "cfg": "OciSiteToSiteVpnConnection",
+   "type": "AWS::EC2::VPNConnection",
+   "values": {
+    "Type": "ipsec.1",
+    "TransitGatewayId": {
+     "ref": "TransitGateway"
+    },
+    "CustomerGatewayId": {
+     "ref": "OciCustomerGateway"
+    },
+    "StaticRoutesOnly": true,
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "stack-vpn-oci-primary"
+     }
+    ],
+    "__resource__": {
+     "Condition": "EnableSiteToSiteVpnCondition"
+    }
+   },
+   "refs": [
+    "OciCustomerGateway",
+    "TransitGateway"
+   ]
+  },
+  {
+   "id": "BackboneToOciTransitRoute",
+   "cfg": "BackboneToOciTransitRoute",
+   "type": "AWS::EC2::Route",
+   "values": {
+    "RouteTableId": {
+     "ref": "BackboneRouteTable"
+    },
+    "DestinationCidrBlock": "10.54.0.0/16",
+    "TransitGatewayId": {
+     "ref": "TransitGateway"
+    },
+    "__resource__": {
+     "Condition": "EnableSiteToSiteVpnCondition",
+     "DependsOn": [
+      "TransitGatewayAttachment",
+      "OciSiteToSiteVpnConnection"
+     ]
+    }
+   },
+   "refs": [
+    "BackboneRouteTable",
+    "TransitGateway"
+   ]
+  },
+  {
+   "id": "__parameter__.BackboneVpcCidr",
+   "cfg": "__parameter__.BackboneVpcCidr",
+   "type": "__parameter__",
+   "values": {
+    "name": "BackboneVpcCidr",
+    "type": "String",
+    "default": "10.94.0.0/16",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.BackboneSubnetCidr",
+   "cfg": "__parameter__.BackboneSubnetCidr",
+   "type": "__parameter__",
+   "values": {
+    "name": "BackboneSubnetCidr",
+    "type": "String",
+    "default": "10.94.10.0/24",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.AllowedIngressCidr",
+   "cfg": "__parameter__.AllowedIngressCidr",
+   "type": "__parameter__",
+   "values": {
+    "name": "AllowedIngressCidr",
+    "type": "String",
+    "default": "10.0.0.0/8",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.EnableSiteToSiteVpn",
+   "cfg": "__parameter__.EnableSiteToSiteVpn",
+   "type": "__parameter__",
+   "values": {
+    "name": "EnableSiteToSiteVpn",
+    "type": "String",
+    "default": "true",
+    "allowed_values": [
+     "true",
+     "false"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.OciCustomerGatewayPublicIp",
+   "cfg": "__parameter__.OciCustomerGatewayPublicIp",
+   "type": "__parameter__",
+   "values": {
+    "name": "OciCustomerGatewayPublicIp",
+    "type": "String",
+    "default": "198.51.100.10",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.OciBackboneCidr",
+   "cfg": "__parameter__.OciBackboneCidr",
+   "type": "__parameter__",
+   "values": {
+    "name": "OciBackboneCidr",
+    "type": "String",
+    "default": "10.54.0.0/16",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.OciBgpAsn",
+   "cfg": "__parameter__.OciBgpAsn",
+   "type": "__parameter__",
+   "values": {
+    "name": "OciBgpAsn",
+    "type": "Number",
+    "default": 31898,
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.AwsTransitGatewayId",
+   "cfg": "__output__.AwsTransitGatewayId",
+   "type": "__output__",
+   "values": {
+    "name": "AwsTransitGatewayId",
+    "value": {
+     "ref": "TransitGateway"
+    },
+    "description": "Transit Gateway ID for OCI DRG attachment contracts.",
+    "export": null
+   },
+   "refs": [
+    "TransitGateway"
+   ]
+  },
+  {
+   "id": "__output__.AwsTransitGatewayAttachmentId",
+   "cfg": "__output__.AwsTransitGatewayAttachmentId",
+   "type": "__output__",
+   "values": {
+    "name": "AwsTransitGatewayAttachmentId",
+    "value": {
+     "ref": "TransitGatewayAttachment"
+    },
+    "description": "Transit Gateway attachment ID.",
+    "export": null
+   },
+   "refs": [
+    "TransitGatewayAttachment"
+   ]
+  },
+  {
+   "id": "__output__.AwsBackboneVpcId",
+   "cfg": "__output__.AwsBackboneVpcId",
+   "type": "__output__",
+   "values": {
+    "name": "AwsBackboneVpcId",
+    "value": {
+     "ref": "BackboneVpc"
+    },
+    "description": "AWS backbone VPC ID.",
+    "export": null
+   },
+   "refs": [
+    "BackboneVpc"
+   ]
+  },
+  {
+   "id": "__output__.AwsBackboneSubnetId",
+   "cfg": "__output__.AwsBackboneSubnetId",
+   "type": "__output__",
+   "values": {
+    "name": "AwsBackboneSubnetId",
+    "value": {
+     "ref": "BackboneSubnet"
+    },
+    "description": "AWS backbone subnet ID.",
+    "export": null
+   },
+   "refs": [
+    "BackboneSubnet"
+   ]
+  },
+  {
+   "id": "__output__.AwsBackboneRouteTableId",
+   "cfg": "__output__.AwsBackboneRouteTableId",
+   "type": "__output__",
+   "values": {
+    "name": "AwsBackboneRouteTableId",
+    "value": {
+     "ref": "BackboneRouteTable"
+    },
+    "description": "AWS backbone route table ID.",
+    "export": null
+   },
+   "refs": [
+    "BackboneRouteTable"
+   ]
+  },
+  {
+   "id": "__output__.AwsBackboneSecurityGroupId",
+   "cfg": "__output__.AwsBackboneSecurityGroupId",
+   "type": "__output__",
+   "values": {
+    "name": "AwsBackboneSecurityGroupId",
+    "value": {
+     "ref": "BackboneSecurityGroup"
+    },
+    "description": "AWS backbone security group ID.",
+    "export": null
+   },
+   "refs": [
+    "BackboneSecurityGroup"
+   ]
+  },
+  {
+   "id": "__output__.AwsCustomerGatewayId",
+   "cfg": "__output__.AwsCustomerGatewayId",
+   "type": "__output__",
+   "values": {
+    "name": "AwsCustomerGatewayId",
+    "value": {
+     "ref": "OciCustomerGateway"
+    },
+    "description": "AWS Customer Gateway ID for OCI-primary Site-to-Site VPN.",
+    "export": null
+   },
+   "refs": [
+    "OciCustomerGateway"
+   ]
+  },
+  {
+   "id": "__output__.AwsVpnConnectionId",
+   "cfg": "__output__.AwsVpnConnectionId",
+   "type": "__output__",
+   "values": {
+    "name": "AwsVpnConnectionId",
+    "value": {
+     "ref": "OciSiteToSiteVpnConnection"
+    },
+    "description": "AWS VPN connection ID for OCI-primary Site-to-Site VPN.",
+    "export": null
+   },
+   "refs": [
+    "OciSiteToSiteVpnConnection"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPC.BackboneVpc",
+   "cfg": "BackboneVpc",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::VPC",
+    "name": "BackboneVpc",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "CidrBlock": "10.94.0.0/16",
+     "EnableDnsSupport": true,
+     "EnableDnsHostnames": true,
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "stack-vpc-backbone"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::KMS::Key.BackboneLogKey",
+   "cfg": "BackboneLogKey",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::KMS::Key",
+    "name": "BackboneLogKey",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Description": "stack VPC flow log encryption key",
+     "EnableKeyRotation": true,
+     "KeyPolicy": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Sid": "EnableAccountAdministration",
+        "Effect": "Allow",
+        "Principal": {
+         "AWS": [
+          "arn:aws:iam::123456789012:root"
+         ]
+        },
+        "Action": [
+         "kms:*"
+        ],
+        "Resource": [
+         "*"
+        ]
+       },
+       {
+        "Sid": "AllowCloudWatchLogsUse",
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "logs.us-east-1.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "kms:Decrypt",
+         "kms:DescribeKey",
+         "kms:Encrypt",
+         "kms:GenerateDataKey",
+         "kms:ReEncrypt*"
+        ],
+        "Resource": [
+         "*"
+        ]
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::LogGroup.BackboneFlowLogGroup",
+   "cfg": "BackboneFlowLogGroup",
+   "type": "__declared__",
+   "refs": [
+    "BackboneLogKey"
+   ],
+   "values": {
+    "type": "AWS::Logs::LogGroup",
+    "name": "BackboneFlowLogGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "KmsKeyId": {
+      "ref": "BackboneLogKey",
+      "attr": "Arn"
+     },
+     "RetentionInDays": 30
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.BackboneFlowLogRole",
+   "cfg": "BackboneFlowLogRole",
+   "type": "__declared__",
+   "refs": [
+    "BackboneFlowLogGroup"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "BackboneFlowLogRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "vpc-flow-logs.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Policies": [
+      {
+       "PolicyName": "write-vpc-flow-logs",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "logs:CreateLogStream",
+           "logs:DescribeLogGroups",
+           "logs:DescribeLogStreams",
+           "logs:PutLogEvents"
+          ],
+          "Resource": [
+           "${BackboneFlowLogGroup.Arn}:*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::FlowLog.BackboneVpcFlowLog",
+   "cfg": "BackboneVpcFlowLog",
+   "type": "__declared__",
+   "refs": [
+    "BackboneFlowLogGroup",
+    "BackboneFlowLogRole",
+    "BackboneVpc"
+   ],
+   "values": {
+    "type": "AWS::EC2::FlowLog",
+    "name": "BackboneVpcFlowLog",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "DeliverLogsPermissionArn": {
+      "ref": "BackboneFlowLogRole",
+      "attr": "Arn"
+     },
+     "LogDestinationType": "cloud-watch-logs",
+     "LogGroupName": {
+      "ref": "BackboneFlowLogGroup"
+     },
+     "ResourceId": {
+      "ref": "BackboneVpc"
+     },
+     "ResourceType": "VPC",
+     "TrafficType": "ALL"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::InternetGateway.InternetGateway",
+   "cfg": "InternetGateway",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::InternetGateway",
+    "name": "InternetGateway",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "stack-igw-backbone"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCGatewayAttachment.VpcIgwAttachment",
+   "cfg": "VpcIgwAttachment",
+   "type": "__declared__",
+   "refs": [
+    "BackboneVpc",
+    "InternetGateway"
+   ],
+   "values": {
+    "type": "AWS::EC2::VPCGatewayAttachment",
+    "name": "VpcIgwAttachment",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "BackboneVpc"
+     },
+     "InternetGatewayId": {
+      "ref": "InternetGateway"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::RouteTable.BackboneRouteTable",
+   "cfg": "BackboneRouteTable",
+   "type": "__declared__",
+   "refs": [
+    "BackboneVpc"
+   ],
+   "values": {
+    "type": "AWS::EC2::RouteTable",
+    "name": "BackboneRouteTable",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "BackboneVpc"
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "stack-rt-backbone"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Route.DefaultRoute",
+   "cfg": "DefaultRoute",
+   "type": "__declared__",
+   "refs": [
+    "BackboneRouteTable",
+    "InternetGateway"
+   ],
+   "values": {
+    "type": "AWS::EC2::Route",
+    "name": "DefaultRoute",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RouteTableId": {
+      "ref": "BackboneRouteTable"
+     },
+     "DestinationCidrBlock": "0.0.0.0/0",
+     "GatewayId": {
+      "ref": "InternetGateway"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.BackboneSubnet",
+   "cfg": "BackboneSubnet",
+   "type": "__declared__",
+   "refs": [
+    "BackboneVpc"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "BackboneSubnet",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "BackboneVpc"
+     },
+     "CidrBlock": "10.94.10.0/24",
+     "AvailabilityZone": "us-east-1a",
+     "MapPublicIpOnLaunch": false,
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "stack-sn-backbone"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetRouteTableAssociation.SubnetRouteAssociation",
+   "cfg": "SubnetRouteAssociation",
+   "type": "__declared__",
+   "refs": [
+    "BackboneRouteTable",
+    "BackboneSubnet"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetRouteTableAssociation",
+    "name": "SubnetRouteAssociation",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "SubnetId": {
+      "ref": "BackboneSubnet"
+     },
+     "RouteTableId": {
+      "ref": "BackboneRouteTable"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SecurityGroup.BackboneSecurityGroup",
+   "cfg": "BackboneSecurityGroup",
+   "type": "__declared__",
+   "refs": [
+    "BackboneVpc"
+   ],
+   "values": {
+    "type": "AWS::EC2::SecurityGroup",
+    "name": "BackboneSecurityGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "GroupDescription": "AWS backbone security group for OCI hybrid interconnect demos.",
+     "VpcId": {
+      "ref": "BackboneVpc"
+     },
+     "SecurityGroupIngress": [
+      {
+       "Description": "Allow approved HTTPS ingress to the backbone edge.",
+       "IpProtocol": "tcp",
+       "FromPort": 443,
+       "ToPort": 443,
+       "CidrIp": "10.0.0.0/8"
+      }
+     ],
+     "SecurityGroupEgress": [
+      {
+       "Description": "Allow HTTPS egress toward the OCI backbone CIDR.",
+       "IpProtocol": "tcp",
+       "FromPort": 443,
+       "ToPort": 443,
+       "CidrIp": "10.54.0.0/16"
+      }
+     ],
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "stack-sg-backbone"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::TransitGateway.TransitGateway",
+   "cfg": "TransitGateway",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::TransitGateway",
+    "name": "TransitGateway",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Description": "stack transit gateway for OCI backbone interconnect",
+     "DefaultRouteTableAssociation": "enable",
+     "DefaultRouteTablePropagation": "enable",
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "stack-tgw-backbone"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::TransitGatewayAttachment.TransitGatewayAttachment",
+   "cfg": "TransitGatewayAttachment",
+   "type": "__declared__",
+   "refs": [
+    "BackboneSubnet",
+    "BackboneVpc",
+    "TransitGateway"
+   ],
+   "values": {
+    "type": "AWS::EC2::TransitGatewayAttachment",
+    "name": "TransitGatewayAttachment",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "TransitGatewayId": {
+      "ref": "TransitGateway"
+     },
+     "VpcId": {
+      "ref": "BackboneVpc"
+     },
+     "SubnetIds": [
+      {
+       "ref": "BackboneSubnet"
+      }
+     ],
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "stack-tgw-attach-backbone"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::CustomerGateway.OciCustomerGateway",
+   "cfg": "OciCustomerGateway",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::CustomerGateway",
+    "name": "OciCustomerGateway",
+    "gated": true,
+    "gate": "EnableSiteToSiteVpnCondition",
+    "properties": {
+     "Type": "ipsec.1",
+     "IpAddress": "198.51.100.10",
+     "BgpAsn": 31898,
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "stack-cgw-oci-primary"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPNConnection.OciSiteToSiteVpnConnection",
+   "cfg": "OciSiteToSiteVpnConnection",
+   "type": "__declared__",
+   "refs": [
+    "OciCustomerGateway",
+    "TransitGateway"
+   ],
+   "values": {
+    "type": "AWS::EC2::VPNConnection",
+    "name": "OciSiteToSiteVpnConnection",
+    "gated": true,
+    "gate": "EnableSiteToSiteVpnCondition",
+    "properties": {
+     "Type": "ipsec.1",
+     "TransitGatewayId": {
+      "ref": "TransitGateway"
+     },
+     "CustomerGatewayId": {
+      "ref": "OciCustomerGateway"
+     },
+     "StaticRoutesOnly": true,
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "stack-vpn-oci-primary"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Route.BackboneToOciTransitRoute",
+   "cfg": "BackboneToOciTransitRoute",
+   "type": "__declared__",
+   "refs": [
+    "BackboneRouteTable",
+    "TransitGateway"
+   ],
+   "values": {
+    "type": "AWS::EC2::Route",
+    "name": "BackboneToOciTransitRoute",
+    "gated": true,
+    "gate": "EnableSiteToSiteVpnCondition",
+    "properties": {
+     "RouteTableId": {
+      "ref": "BackboneRouteTable"
+     },
+     "DestinationCidrBlock": "10.54.0.0/16",
+     "TransitGatewayId": {
+      "ref": "TransitGateway"
+     }
+    }
+   }
+  }
+ ]
+}

@@ -1,0 +1,359 @@
+# GENERATED from specs/cfn/row_171.json by intent_checks/build.py -- do not edit.
+package intent.cfn.row_171
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {
+  "mf": {
+   "types": [
+    "AWS::Logs::MetricFilter"
+   ],
+   "where": []
+  },
+  "db": {
+   "types": [
+    "AWS::CloudWatch::Dashboard"
+   ],
+   "where": []
+  }
+ },
+ "checks": [
+  {
+   "id": "log_group",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "AWS::Logs::LogGroup"
+    ],
+    "where": []
+   },
+   "tier": "core",
+   "quote": "create a CloudWatch Logs log group to receive CoWork events"
+  },
+  {
+   "id": "filters_on_log_group",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "along with a set of CloudWatch Logs metric filters that extract input tokens",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "mf",
+     "to": {
+      "types": [
+       "AWS::Logs::LogGroup"
+      ],
+      "where": []
+     }
+    },
+    {
+     "kind": "join",
+     "from": "mf",
+     "from_path": [
+      "LogGroupName"
+     ],
+     "to": {
+      "types": [
+       "AWS::Logs::LogGroup"
+      ],
+      "where": []
+     },
+     "to_path": [
+      "LogGroupName"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "filter_input_tokens",
+   "kind": "attr",
+   "select": "mf",
+   "cond": {
+    "path": [
+     "MetricTransformations"
+    ],
+    "op": "regex",
+    "value": "(?i)input[_ .]?tokens?"
+   },
+   "tier": "core",
+   "quote": "extract input tokens"
+  },
+  {
+   "id": "filter_output_tokens",
+   "kind": "attr",
+   "select": "mf",
+   "cond": {
+    "path": [
+     "MetricTransformations"
+    ],
+    "op": "regex",
+    "value": "(?i)output[_ .]?tokens?"
+   },
+   "tier": "core",
+   "quote": "output tokens"
+  },
+  {
+   "id": "filter_cache_read_tokens",
+   "kind": "attr",
+   "select": "mf",
+   "cond": {
+    "path": [
+     "MetricTransformations"
+    ],
+    "op": "regex",
+    "value": "(?i)cache[_ .]?read"
+   },
+   "tier": "core",
+   "quote": "cache read tokens"
+  },
+  {
+   "id": "filter_cache_creation_tokens",
+   "kind": "attr",
+   "select": "mf",
+   "cond": {
+    "path": [
+     "MetricTransformations"
+    ],
+    "op": "regex",
+    "value": "(?i)cache[_ .]?creat"
+   },
+   "tier": "core",
+   "quote": "cache creation tokens"
+  },
+  {
+   "id": "filter_cost",
+   "kind": "attr",
+   "select": "mf",
+   "cond": {
+    "path": [
+     "MetricTransformations"
+    ],
+    "op": "regex",
+    "value": "(?i)cost"
+   },
+   "tier": "core",
+   "quote": "estimated cost"
+  },
+  {
+   "id": "filter_session_turns",
+   "kind": "attr",
+   "select": "mf",
+   "cond": {
+    "path": [
+     "MetricTransformations"
+    ],
+    "op": "regex",
+    "value": "(?i)turn"
+   },
+   "tier": "detail",
+   "quote": "session turn counts"
+  },
+  {
+   "id": "filters_both_schemas",
+   "kind": "exists",
+   "select": "mf",
+   "min": 12,
+   "tier": "detail",
+   "quote": "filters should be created to capture metrics from both schemas into the same set of metric names",
+   "justify": "6 named metrics x 2 event schemas, each captured by its own filter"
+  },
+  {
+   "id": "filters_default_zero",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "with dimensions or default values so filters that omit user or model attribution still populate a value of zero when unmatched",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "mf",
+     "cond": {
+      "path": [
+       "MetricTransformations",
+       "*",
+       "DefaultValue"
+      ],
+      "op": "eq",
+      "value": 0
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "mf",
+     "quantifier": "all",
+     "cond": {
+      "path": [
+       "MetricTransformations",
+       "*",
+       "Dimensions"
+      ],
+      "op": "present"
+     }
+    }
+   ],
+   "justify": "prompt states a value of zero; the dimension alternative is stated too (\"dimensions or default values\")"
+  },
+  {
+   "id": "dashboard",
+   "kind": "exists",
+   "select": "db",
+   "tier": "core",
+   "quote": "create a CloudWatch dashboard"
+  },
+  {
+   "id": "dashboard_name_parameter",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": []
+   },
+   "cond": {
+    "path": [
+     "name"
+    ],
+    "op": "regex",
+    "value": "(?i)dashboard|name"
+   },
+   "tier": "detail",
+   "quote": "with a configurable name"
+  },
+  {
+   "id": "dashboard_trends",
+   "kind": "attr",
+   "select": "db",
+   "cond": {
+    "path": [
+     "DashboardBody"
+    ],
+    "op": "regex",
+    "value": "(?i)timeSeries|\"view\"\\s*:\\s*\"line\""
+   },
+   "tier": "detail",
+   "quote": "usage and cost trends over time"
+  },
+  {
+   "id": "dashboard_avg_cost_per_turn",
+   "kind": "attr",
+   "select": "db",
+   "cond": {
+    "path": [
+     "DashboardBody"
+    ],
+    "op": "regex",
+    "value": "(?i)cost(?s:.)*/(?s:.)*turn|\"expression\""
+   },
+   "tier": "detail",
+   "quote": "average cost per turn"
+  },
+  {
+   "id": "dashboard_per_user",
+   "kind": "attr",
+   "select": "db",
+   "cond": {
+    "path": [
+     "DashboardBody"
+    ],
+    "op": "regex",
+    "value": "(?i)user"
+   },
+   "tier": "detail",
+   "quote": "per user breakdowns of token usage cost and session activity"
+  },
+  {
+   "id": "dashboard_active_users",
+   "kind": "attr",
+   "select": "db",
+   "cond": {
+    "path": [
+     "DashboardBody"
+    ],
+    "op": "regex",
+    "value": "(?i)active|unique|distinct"
+   },
+   "tier": "detail",
+   "quote": "active user counts"
+  },
+  {
+   "id": "dashboard_raw_events_log_table",
+   "kind": "attr",
+   "select": "db",
+   "cond": {
+    "path": [
+     "DashboardBody"
+    ],
+    "op": "regex",
+    "value": "\"type\"\\s*:\\s*\"log"
+   },
+   "tier": "core",
+   "quote": "a recent raw events log table"
+  },
+  {
+   "id": "dashboard_region",
+   "kind": "attr",
+   "select": "db",
+   "cond": {
+    "path": [
+     "DashboardBody"
+    ],
+    "op": "regex",
+    "value": "\"region\"\\s*:\\s*\"us-east-1\""
+   },
+   "tier": "detail",
+   "quote": "all scoped to a configurable metrics region that defaults to us-east-1"
+  },
+  {
+   "id": "metrics_region_parameter",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": [
+       "name"
+      ],
+      "op": "regex",
+      "value": "(?i)region"
+     }
+    ]
+   },
+   "cond": {
+    "path": [
+     "default"
+    ],
+    "op": "eq",
+    "value": "us-east-1"
+   },
+   "tier": "detail",
+   "quote": "a configurable metrics region that defaults to us-east-1"
+  },
+  {
+   "id": "output_dashboard_url",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "__output__"
+    ],
+    "where": []
+   },
+   "cond": {
+    "path": [
+     "value"
+    ],
+    "op": "regex",
+    "value": "(?i)console\\.aws\\.amazon\\.com/cloudwatch(?s:.)*dashboard"
+   },
+   "tier": "core",
+   "quote": "Output the direct console URL to the created dashboard"
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

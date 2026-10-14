@@ -1,0 +1,580 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "be1b0aa95c73c8d5218e8f5959f7f77b94b46bc1e504335392c8fe785c0c5ef2",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "InstanceRole",
+   "cfg": "InstanceRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore",
+     "arn:aws:iam::aws:policy/EC2InstanceProfileForImageBuilder"
+    ],
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "ec2.amazonaws.com"
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "Path": "/executionServiceEC2Role/",
+    "__resource__": {
+     "Metadata": {
+      "Comment": "Role to be used by instance during image build."
+     }
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "InstanceProfile",
+   "cfg": "InstanceProfile",
+   "type": "AWS::IAM::InstanceProfile",
+   "values": {
+    "Path": "/executionServiceEC2Role/",
+    "Roles": [
+     {
+      "ref": "InstanceRole"
+     }
+    ]
+   },
+   "refs": [
+    "InstanceRole"
+   ]
+  },
+  {
+   "id": "ImageBuilderImagePipeline",
+   "cfg": "ImageBuilderImagePipeline",
+   "type": "AWS::ImageBuilder::ImagePipeline",
+   "values": {
+    "Name": "stack",
+    "Status": "ENABLED",
+    "Schedule": {
+     "ScheduleExpression": "rate(1 day)"
+    },
+    "InfrastructureConfigurationArn": {
+     "ref": "ImageInfrastructureConfiguration"
+    },
+    "ImageScanningConfiguration": {
+     "ImageScanningEnabled": true
+    },
+    "ImageRecipeArn": {
+     "ref": "Recipe"
+    },
+    "DistributionConfigurationArn": {
+     "ref": "ImageDistributionConfiguration"
+    },
+    "ImageTestsConfiguration": {
+     "TimeoutMinutes": 720,
+     "ImageTestsEnabled": true
+    }
+   },
+   "refs": [
+    "ImageDistributionConfiguration",
+    "ImageInfrastructureConfiguration",
+    "Recipe"
+   ]
+  },
+  {
+   "id": "Recipe",
+   "cfg": "Recipe",
+   "type": "AWS::ImageBuilder::ImageRecipe",
+   "values": {
+    "Name": "stack",
+    "Version": "0.0.0",
+    "ParentImage": "arn:aws:imagebuilder:us-east-1:aws:image/cis-hardened-image-level-1-on-amazon-linux-2023-arm-r5sqt5uxgygqi/x.x.x",
+    "Components": [
+     {
+      "ComponentArn": {
+       "ref": "CISforEBImageBuilderComponent"
+      }
+     }
+    ],
+    "WorkingDirectory": "/root",
+    "BlockDeviceMappings": [
+     {
+      "Ebs": {
+       "VolumeSize": 50,
+       "DeleteOnTermination": true
+      },
+      "DeviceName": "/dev/xvda"
+     }
+    ]
+   },
+   "refs": [
+    "CISforEBImageBuilderComponent"
+   ]
+  },
+  {
+   "id": "CISforEBImageBuilderComponent",
+   "cfg": "CISforEBImageBuilderComponent",
+   "type": "AWS::ImageBuilder::Component",
+   "values": {
+    "Name": "stack-CISforEBImageBuilderComponent",
+    "Version": "1.0.0",
+    "Description": "Modify CIS Level 1 image to work with Elastic Beanstalk",
+    "Platform": "Linux",
+    "Data": "name: cis-eb-fixes\ndescription: Updates to CIS hardened images to make it work with Elastic Beanstalk\nschemaVersion: 1.0\nphases:\n  - name: build\n    steps:\n      - name: xray-group\n        action: ExecuteBash\n        inputs:\n          commands:\n            - sudo /usr/sbin/useradd --user-group xray -s /sbin/nologin --no-create-home\n      - name: CIS-5_1_1_4\n        # Edit ... /etc/rsyslog.conf ... and set $FileCreateMode to 0640 or more restrictive: $FileCreateMode 0640\n        action: ExecuteBash\n        inputs:\n          commands:\n            - sudo echo \"\\\\$FileCreateMode 0640\" >> /etc/rsyslog.conf\n      - name: CIS-5_1_2_5\n        # Ensure journald is configured to send logs to rsyslog. Edit the /etc/systemd/journald.conf file and add the following line: ForwardToSyslog=yes\n        action: ExecuteBash\n        inputs:\n          commands:\n            - sudo sed -i \"s|#ForwardToSyslog=no|ForwardToSyslog=yes|g\" /etc/systemd/journald.conf\n      - name: CIS-4_2_20\n        # Ensure SSH Idle Timeout Interval is configured\n        action: ExecuteBash\n        inputs:\n          commands:\n            - sudo sed -i \"s|ClientAliveInterval 0|ClientAliveInterval 300|g\" /etc/ssh/sshd_config\n      - name: CIS-4_2_18\n        # Ensure SSH MaxSessions is set to 10 or less\n        action: ExecuteBash\n        inputs:\n          commands:\n            - sudo sed -i \"s|#MaxSessions 10|MaxSessions 10|g\" /etc/ssh/sshd_config\n      - name: CIS-4_2_6\n        # Ensure SSH PAM is enabled\n        action: ExecuteBash\n        inputs:\n          commands:\n            - sudo sed -i \"s|#UsePAM no|UsePAM yes|g\" /etc/ssh/sshd_config\n      - name: CIS-4_6_6\n        # Ensure root password is set\n        action: ExecuteBash\n        inputs:\n          commands:\n            - pw=`openssl rand -base64 12`\n            - echo \"root:$pw\" | sudo chpasswd\n      - name: CIS-4_6_1_\n        # 4.6.1.1 Ensure password expiration is 365 days or less\n        # 4.6.1.2 Ensure minimum days between password changes is configured\n        # 4.6.1.3 Ensure password expiration warning days is 7 or more (not set for root)\n        # 4.6.1.4 Ensure inactive password lock is 30 days or less\n        action: ExecuteBash\n        inputs:\n          commands:\n            - chage --warndays 7 root\n            - chage --mindays 1 root\n            - chage --maxdays 365 root\n            - chage --inactive 30 root\n      - name: CIS-6_1_12\n        # \"Ensure no unowned or ungrouped files or directories exist\"\n        # There is an empty directory, /var/lib/private/systemd/journal-upload,\n        # whose owner is a non-existent user.  Delete the empty directory.\n        action: ExecuteBash\n        inputs:\n          commands:\n            - rmdir /var/lib/private/systemd/journal-upload\n      - name: CIS_4_6_2\n        # Ensure system accounts are secured\n        # finds that the user 'webapp' does not have the 'nologin' option\n        # this user is created by Elastic Beanstalk:\n        # https://docs.aws.amazon.com/elasticbeanstalk/latest/relnotes/release-2022-02-03-linux.html\n        # and does not normally exist at the time this image is created\n        # so we will simply create the user with the specified ID and Group ID (900)\n        # in advance, setting the shell to /usr/sbin/nologin\n        action: ExecuteBash\n        inputs:\n          commands:\n            - groupadd -g 900 webapp\n            - useradd -u 900 webapp -g 900 --shell=/usr/sbin/nologin\n"
+   },
+   "refs": []
+  },
+  {
+   "id": "ImageInfrastructureConfiguration",
+   "cfg": "ImageInfrastructureConfiguration",
+   "type": "AWS::ImageBuilder::InfrastructureConfiguration",
+   "values": {
+    "Name": "stack-Configuration",
+    "InstanceProfileName": {
+     "ref": "InstanceProfile"
+    }
+   },
+   "refs": [
+    "InstanceProfile"
+   ]
+  },
+  {
+   "id": "ImageDistributionConfiguration",
+   "cfg": "ImageDistributionConfiguration",
+   "type": "AWS::ImageBuilder::DistributionConfiguration",
+   "values": {
+    "Name": "stack-Distributions",
+    "Distributions": [
+     {
+      "Region": "us-east-1",
+      "AmiDistributionConfiguration": {
+       "AmiTags": {
+        "Name": "stack"
+       },
+       "LaunchPermissionConfiguration": {
+        "OrganizationArns": [
+         "arn:aws:organizations::123456789012:organization/o-69lcdj4kro"
+        ],
+        "UserIds": [
+         449435941126,
+         325565585839
+        ]
+       }
+      }
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "ImageBuilderLifecyclePolicy",
+   "cfg": "ImageBuilderLifecyclePolicy",
+   "type": "AWS::ImageBuilder::LifecyclePolicy",
+   "values": {
+    "Name": "stack-ImageLifecyclePolicy",
+    "Description": "Deletes pipeline images after the specified time period",
+    "ExecutionRole": {
+     "ref": "ImageBuilderLifecycleExecutionRole"
+    },
+    "ResourceType": "AMI_IMAGE",
+    "Status": "ENABLED",
+    "PolicyDetails": [
+     {
+      "Action": {
+       "Type": "DELETE"
+      },
+      "Filter": {
+       "Type": "AGE",
+       "Unit": "MONTHS",
+       "Value": 6
+      }
+     }
+    ],
+    "ResourceSelection": {
+     "Recipes": [
+      {
+       "Name": {
+        "ref": "Recipe",
+        "attr": "Name"
+       },
+       "SemanticVersion": "0.0.0"
+      }
+     ]
+    }
+   },
+   "refs": [
+    "ImageBuilderLifecycleExecutionRole",
+    "Recipe"
+   ]
+  },
+  {
+   "id": "ImageBuilderLifecycleExecutionRole",
+   "cfg": "ImageBuilderLifecycleExecutionRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "imagebuilder.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/EC2ImageBuilderLifecycleExecutionPolicy"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.AwsOrganizationId",
+   "cfg": "__parameter__.AwsOrganizationId",
+   "type": "__parameter__",
+   "values": {
+    "name": "AwsOrganizationId",
+    "type": "String",
+    "default": "o-69lcdj4kro",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.ImageVersion",
+   "cfg": "__parameter__.ImageVersion",
+   "type": "__parameter__",
+   "values": {
+    "name": "ImageVersion",
+    "type": "String",
+    "default": "0.0.0",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.VolumeSize",
+   "cfg": "__parameter__.VolumeSize",
+   "type": "__parameter__",
+   "values": {
+    "name": "VolumeSize",
+    "type": "Number",
+    "default": 50,
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.ImageLifecycleMonths",
+   "cfg": "__parameter__.ImageLifecycleMonths",
+   "type": "__parameter__",
+   "values": {
+    "name": "ImageLifecycleMonths",
+    "type": "Number",
+    "default": 6,
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.InstanceRole",
+   "cfg": "InstanceRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "InstanceRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore",
+      "arn:aws:iam::aws:policy/EC2InstanceProfileForImageBuilder"
+     ],
+     "AssumeRolePolicyDocument": {
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "ec2.amazonaws.com"
+         ]
+        }
+       }
+      ],
+      "Version": "2012-10-17"
+     },
+     "Path": "/executionServiceEC2Role/"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::InstanceProfile.InstanceProfile",
+   "cfg": "InstanceProfile",
+   "type": "__declared__",
+   "refs": [
+    "InstanceRole"
+   ],
+   "values": {
+    "type": "AWS::IAM::InstanceProfile",
+    "name": "InstanceProfile",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Path": "/executionServiceEC2Role/",
+     "Roles": [
+      {
+       "ref": "InstanceRole"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ImageBuilder::ImagePipeline.ImageBuilderImagePipeline",
+   "cfg": "ImageBuilderImagePipeline",
+   "type": "__declared__",
+   "refs": [
+    "ImageDistributionConfiguration",
+    "ImageInfrastructureConfiguration",
+    "Recipe"
+   ],
+   "values": {
+    "type": "AWS::ImageBuilder::ImagePipeline",
+    "name": "ImageBuilderImagePipeline",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "stack",
+     "Status": "ENABLED",
+     "Schedule": {
+      "ScheduleExpression": "rate(1 day)"
+     },
+     "InfrastructureConfigurationArn": {
+      "ref": "ImageInfrastructureConfiguration"
+     },
+     "ImageScanningConfiguration": {
+      "ImageScanningEnabled": true
+     },
+     "ImageRecipeArn": {
+      "ref": "Recipe"
+     },
+     "DistributionConfigurationArn": {
+      "ref": "ImageDistributionConfiguration"
+     },
+     "ImageTestsConfiguration": {
+      "TimeoutMinutes": 720,
+      "ImageTestsEnabled": true
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ImageBuilder::ImageRecipe.Recipe",
+   "cfg": "Recipe",
+   "type": "__declared__",
+   "refs": [
+    "CISforEBImageBuilderComponent"
+   ],
+   "values": {
+    "type": "AWS::ImageBuilder::ImageRecipe",
+    "name": "Recipe",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "stack",
+     "Version": "0.0.0",
+     "ParentImage": "arn:aws:imagebuilder:us-east-1:aws:image/cis-hardened-image-level-1-on-amazon-linux-2023-arm-r5sqt5uxgygqi/x.x.x",
+     "Components": [
+      {
+       "ComponentArn": {
+        "ref": "CISforEBImageBuilderComponent"
+       }
+      }
+     ],
+     "WorkingDirectory": "/root",
+     "BlockDeviceMappings": [
+      {
+       "Ebs": {
+        "VolumeSize": 50,
+        "DeleteOnTermination": true
+       },
+       "DeviceName": "/dev/xvda"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ImageBuilder::Component.CISforEBImageBuilderComponent",
+   "cfg": "CISforEBImageBuilderComponent",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::ImageBuilder::Component",
+    "name": "CISforEBImageBuilderComponent",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "stack-CISforEBImageBuilderComponent",
+     "Version": "1.0.0",
+     "Description": "Modify CIS Level 1 image to work with Elastic Beanstalk",
+     "Platform": "Linux",
+     "Data": "name: cis-eb-fixes\ndescription: Updates to CIS hardened images to make it work with Elastic Beanstalk\nschemaVersion: 1.0\nphases:\n  - name: build\n    steps:\n      - name: xray-group\n        action: ExecuteBash\n        inputs:\n          commands:\n            - sudo /usr/sbin/useradd --user-group xray -s /sbin/nologin --no-create-home\n      - name: CIS-5_1_1_4\n        # Edit ... /etc/rsyslog.conf ... and set $FileCreateMode to 0640 or more restrictive: $FileCreateMode 0640\n        action: ExecuteBash\n        inputs:\n          commands:\n            - sudo echo \"\\\\$FileCreateMode 0640\" >> /etc/rsyslog.conf\n      - name: CIS-5_1_2_5\n        # Ensure journald is configured to send logs to rsyslog. Edit the /etc/systemd/journald.conf file and add the following line: ForwardToSyslog=yes\n        action: ExecuteBash\n        inputs:\n          commands:\n            - sudo sed -i \"s|#ForwardToSyslog=no|ForwardToSyslog=yes|g\" /etc/systemd/journald.conf\n      - name: CIS-4_2_20\n        # Ensure SSH Idle Timeout Interval is configured\n        action: ExecuteBash\n        inputs:\n          commands:\n            - sudo sed -i \"s|ClientAliveInterval 0|ClientAliveInterval 300|g\" /etc/ssh/sshd_config\n      - name: CIS-4_2_18\n        # Ensure SSH MaxSessions is set to 10 or less\n        action: ExecuteBash\n        inputs:\n          commands:\n            - sudo sed -i \"s|#MaxSessions 10|MaxSessions 10|g\" /etc/ssh/sshd_config\n      - name: CIS-4_2_6\n        # Ensure SSH PAM is enabled\n        action: ExecuteBash\n        inputs:\n          commands:\n            - sudo sed -i \"s|#UsePAM no|UsePAM yes|g\" /etc/ssh/sshd_config\n      - name: CIS-4_6_6\n        # Ensure root password is set\n        action: ExecuteBash\n        inputs:\n          commands:\n            - pw=`openssl rand -base64 12`\n            - echo \"root:$pw\" | sudo chpasswd\n      - name: CIS-4_6_1_\n        # 4.6.1.1 Ensure password expiration is 365 days or less\n        # 4.6.1.2 Ensure minimum days between password changes is configured\n        # 4.6.1.3 Ensure password expiration warning days is 7 or more (not set for root)\n        # 4.6.1.4 Ensure inactive password lock is 30 days or less\n        action: ExecuteBash\n        inputs:\n          commands:\n            - chage --warndays 7 root\n            - chage --mindays 1 root\n            - chage --maxdays 365 root\n            - chage --inactive 30 root\n      - name: CIS-6_1_12\n        # \"Ensure no unowned or ungrouped files or directories exist\"\n        # There is an empty directory, /var/lib/private/systemd/journal-upload,\n        # whose owner is a non-existent user.  Delete the empty directory.\n        action: ExecuteBash\n        inputs:\n          commands:\n            - rmdir /var/lib/private/systemd/journal-upload\n      - name: CIS_4_6_2\n        # Ensure system accounts are secured\n        # finds that the user 'webapp' does not have the 'nologin' option\n        # this user is created by Elastic Beanstalk:\n        # https://docs.aws.amazon.com/elasticbeanstalk/latest/relnotes/release-2022-02-03-linux.html\n        # and does not normally exist at the time this image is created\n        # so we will simply create the user with the specified ID and Group ID (900)\n        # in advance, setting the shell to /usr/sbin/nologin\n        action: ExecuteBash\n        inputs:\n          commands:\n            - groupadd -g 900 webapp\n            - useradd -u 900 webapp -g 900 --shell=/usr/sbin/nologin\n"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ImageBuilder::InfrastructureConfiguration.ImageInfrastructureConfiguration",
+   "cfg": "ImageInfrastructureConfiguration",
+   "type": "__declared__",
+   "refs": [
+    "InstanceProfile"
+   ],
+   "values": {
+    "type": "AWS::ImageBuilder::InfrastructureConfiguration",
+    "name": "ImageInfrastructureConfiguration",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "stack-Configuration",
+     "InstanceProfileName": {
+      "ref": "InstanceProfile"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ImageBuilder::DistributionConfiguration.ImageDistributionConfiguration",
+   "cfg": "ImageDistributionConfiguration",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::ImageBuilder::DistributionConfiguration",
+    "name": "ImageDistributionConfiguration",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "stack-Distributions",
+     "Distributions": [
+      {
+       "Region": "us-east-1",
+       "AmiDistributionConfiguration": {
+        "AmiTags": {
+         "Name": "stack"
+        },
+        "LaunchPermissionConfiguration": {
+         "OrganizationArns": [
+          "arn:aws:organizations::123456789012:organization/o-69lcdj4kro"
+         ],
+         "UserIds": [
+          449435941126,
+          325565585839
+         ]
+        }
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ImageBuilder::LifecyclePolicy.ImageBuilderLifecyclePolicy",
+   "cfg": "ImageBuilderLifecyclePolicy",
+   "type": "__declared__",
+   "refs": [
+    "ImageBuilderLifecycleExecutionRole",
+    "Recipe"
+   ],
+   "values": {
+    "type": "AWS::ImageBuilder::LifecyclePolicy",
+    "name": "ImageBuilderLifecyclePolicy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "stack-ImageLifecyclePolicy",
+     "Description": "Deletes pipeline images after the specified time period",
+     "ExecutionRole": {
+      "ref": "ImageBuilderLifecycleExecutionRole"
+     },
+     "ResourceType": "AMI_IMAGE",
+     "Status": "ENABLED",
+     "PolicyDetails": [
+      {
+       "Action": {
+        "Type": "DELETE"
+       },
+       "Filter": {
+        "Type": "AGE",
+        "Unit": "MONTHS",
+        "Value": 6
+       }
+      }
+     ],
+     "ResourceSelection": {
+      "Recipes": [
+       {
+        "Name": {
+         "ref": "Recipe",
+         "attr": "Name"
+        },
+        "SemanticVersion": "0.0.0"
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.ImageBuilderLifecycleExecutionRole",
+   "cfg": "ImageBuilderLifecycleExecutionRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "ImageBuilderLifecycleExecutionRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "imagebuilder.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/EC2ImageBuilderLifecycleExecutionPolicy"
+     ]
+    }
+   }
+  }
+ ]
+}

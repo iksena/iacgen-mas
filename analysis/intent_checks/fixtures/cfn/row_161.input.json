@@ -1,0 +1,2034 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "60691d6b5322c76dba384bd6ed368db897dc9636a20bf8493fda5addbcd5b3f5",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "HubVPC",
+   "cfg": "HubVPC",
+   "type": "AWS::EC2::VPC",
+   "values": {
+    "CidrBlock": "10.0.0.0/16",
+    "EnableDnsSupport": true,
+    "EnableDnsHostnames": true,
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "landing-zone-hub-vpc"
+     },
+     {
+      "Key": "Environment",
+      "Value": "landing-zone"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CloudFormation"
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "InternetGateway",
+   "cfg": "InternetGateway",
+   "type": "AWS::EC2::InternetGateway",
+   "values": {
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "landing-zone-igw"
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "InternetGatewayAttachment",
+   "cfg": "InternetGatewayAttachment",
+   "type": "AWS::EC2::VPCGatewayAttachment",
+   "values": {
+    "VpcId": {
+     "ref": "HubVPC"
+    },
+    "InternetGatewayId": {
+     "ref": "InternetGateway"
+    }
+   },
+   "refs": [
+    "HubVPC",
+    "InternetGateway"
+   ]
+  },
+  {
+   "id": "PublicSubnet1",
+   "cfg": "PublicSubnet1",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "VpcId": {
+     "ref": "HubVPC"
+    },
+    "CidrBlock": "10.0.1.0/24",
+    "AvailabilityZone": "us-east-1a",
+    "MapPublicIpOnLaunch": false,
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "landing-zone-public-subnet-az1"
+     },
+     {
+      "Key": "Tier",
+      "Value": "Public"
+     }
+    ]
+   },
+   "refs": [
+    "HubVPC"
+   ]
+  },
+  {
+   "id": "PublicSubnet2",
+   "cfg": "PublicSubnet2",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "VpcId": {
+     "ref": "HubVPC"
+    },
+    "CidrBlock": "10.0.2.0/24",
+    "AvailabilityZone": "us-east-1b",
+    "MapPublicIpOnLaunch": false,
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "landing-zone-public-subnet-az2"
+     },
+     {
+      "Key": "Tier",
+      "Value": "Public"
+     }
+    ]
+   },
+   "refs": [
+    "HubVPC"
+   ]
+  },
+  {
+   "id": "PrivateSubnet1",
+   "cfg": "PrivateSubnet1",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "VpcId": {
+     "ref": "HubVPC"
+    },
+    "CidrBlock": "10.0.10.0/24",
+    "AvailabilityZone": "us-east-1a",
+    "MapPublicIpOnLaunch": false,
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "landing-zone-private-subnet-az1"
+     },
+     {
+      "Key": "Tier",
+      "Value": "Private"
+     }
+    ]
+   },
+   "refs": [
+    "HubVPC"
+   ]
+  },
+  {
+   "id": "PrivateSubnet2",
+   "cfg": "PrivateSubnet2",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "VpcId": {
+     "ref": "HubVPC"
+    },
+    "CidrBlock": "10.0.11.0/24",
+    "AvailabilityZone": "us-east-1b",
+    "MapPublicIpOnLaunch": false,
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "landing-zone-private-subnet-az2"
+     },
+     {
+      "Key": "Tier",
+      "Value": "Private"
+     }
+    ]
+   },
+   "refs": [
+    "HubVPC"
+   ]
+  },
+  {
+   "id": "NatGateway1EIP",
+   "cfg": "NatGateway1EIP",
+   "type": "AWS::EC2::EIP",
+   "values": {
+    "Domain": "vpc",
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "landing-zone-nat-eip-az1"
+     }
+    ],
+    "__resource__": {
+     "DependsOn": [
+      "InternetGatewayAttachment"
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "NatGateway2EIP",
+   "cfg": "NatGateway2EIP",
+   "type": "AWS::EC2::EIP",
+   "values": {
+    "Domain": "vpc",
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "landing-zone-nat-eip-az2"
+     }
+    ],
+    "__resource__": {
+     "DependsOn": [
+      "InternetGatewayAttachment"
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "NatGateway1",
+   "cfg": "NatGateway1",
+   "type": "AWS::EC2::NatGateway",
+   "values": {
+    "AllocationId": {
+     "ref": "NatGateway1EIP",
+     "attr": "AllocationId"
+    },
+    "SubnetId": {
+     "ref": "PublicSubnet1"
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "landing-zone-nat-az1"
+     }
+    ]
+   },
+   "refs": [
+    "NatGateway1EIP",
+    "PublicSubnet1"
+   ]
+  },
+  {
+   "id": "NatGateway2",
+   "cfg": "NatGateway2",
+   "type": "AWS::EC2::NatGateway",
+   "values": {
+    "AllocationId": {
+     "ref": "NatGateway2EIP",
+     "attr": "AllocationId"
+    },
+    "SubnetId": {
+     "ref": "PublicSubnet2"
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "landing-zone-nat-az2"
+     }
+    ]
+   },
+   "refs": [
+    "NatGateway2EIP",
+    "PublicSubnet2"
+   ]
+  },
+  {
+   "id": "PublicRouteTable",
+   "cfg": "PublicRouteTable",
+   "type": "AWS::EC2::RouteTable",
+   "values": {
+    "VpcId": {
+     "ref": "HubVPC"
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "landing-zone-public-rtb"
+     }
+    ]
+   },
+   "refs": [
+    "HubVPC"
+   ]
+  },
+  {
+   "id": "PublicRoute",
+   "cfg": "PublicRoute",
+   "type": "AWS::EC2::Route",
+   "values": {
+    "RouteTableId": {
+     "ref": "PublicRouteTable"
+    },
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "GatewayId": {
+     "ref": "InternetGateway"
+    },
+    "__resource__": {
+     "DependsOn": [
+      "InternetGatewayAttachment"
+     ]
+    }
+   },
+   "refs": [
+    "InternetGateway",
+    "PublicRouteTable"
+   ]
+  },
+  {
+   "id": "PublicSubnet1RouteTableAssociation",
+   "cfg": "PublicSubnet1RouteTableAssociation",
+   "type": "AWS::EC2::SubnetRouteTableAssociation",
+   "values": {
+    "SubnetId": {
+     "ref": "PublicSubnet1"
+    },
+    "RouteTableId": {
+     "ref": "PublicRouteTable"
+    }
+   },
+   "refs": [
+    "PublicRouteTable",
+    "PublicSubnet1"
+   ]
+  },
+  {
+   "id": "PublicSubnet2RouteTableAssociation",
+   "cfg": "PublicSubnet2RouteTableAssociation",
+   "type": "AWS::EC2::SubnetRouteTableAssociation",
+   "values": {
+    "SubnetId": {
+     "ref": "PublicSubnet2"
+    },
+    "RouteTableId": {
+     "ref": "PublicRouteTable"
+    }
+   },
+   "refs": [
+    "PublicRouteTable",
+    "PublicSubnet2"
+   ]
+  },
+  {
+   "id": "PrivateRouteTable1",
+   "cfg": "PrivateRouteTable1",
+   "type": "AWS::EC2::RouteTable",
+   "values": {
+    "VpcId": {
+     "ref": "HubVPC"
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "landing-zone-private-rtb-az1"
+     }
+    ]
+   },
+   "refs": [
+    "HubVPC"
+   ]
+  },
+  {
+   "id": "PrivateRoute1",
+   "cfg": "PrivateRoute1",
+   "type": "AWS::EC2::Route",
+   "values": {
+    "RouteTableId": {
+     "ref": "PrivateRouteTable1"
+    },
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "NatGatewayId": {
+     "ref": "NatGateway1"
+    }
+   },
+   "refs": [
+    "NatGateway1",
+    "PrivateRouteTable1"
+   ]
+  },
+  {
+   "id": "PrivateSubnet1RouteTableAssociation",
+   "cfg": "PrivateSubnet1RouteTableAssociation",
+   "type": "AWS::EC2::SubnetRouteTableAssociation",
+   "values": {
+    "SubnetId": {
+     "ref": "PrivateSubnet1"
+    },
+    "RouteTableId": {
+     "ref": "PrivateRouteTable1"
+    }
+   },
+   "refs": [
+    "PrivateRouteTable1",
+    "PrivateSubnet1"
+   ]
+  },
+  {
+   "id": "PrivateRouteTable2",
+   "cfg": "PrivateRouteTable2",
+   "type": "AWS::EC2::RouteTable",
+   "values": {
+    "VpcId": {
+     "ref": "HubVPC"
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "landing-zone-private-rtb-az2"
+     }
+    ]
+   },
+   "refs": [
+    "HubVPC"
+   ]
+  },
+  {
+   "id": "PrivateRoute2",
+   "cfg": "PrivateRoute2",
+   "type": "AWS::EC2::Route",
+   "values": {
+    "RouteTableId": {
+     "ref": "PrivateRouteTable2"
+    },
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "NatGatewayId": {
+     "ref": "NatGateway2"
+    }
+   },
+   "refs": [
+    "NatGateway2",
+    "PrivateRouteTable2"
+   ]
+  },
+  {
+   "id": "PrivateSubnet2RouteTableAssociation",
+   "cfg": "PrivateSubnet2RouteTableAssociation",
+   "type": "AWS::EC2::SubnetRouteTableAssociation",
+   "values": {
+    "SubnetId": {
+     "ref": "PrivateSubnet2"
+    },
+    "RouteTableId": {
+     "ref": "PrivateRouteTable2"
+    }
+   },
+   "refs": [
+    "PrivateRouteTable2",
+    "PrivateSubnet2"
+   ]
+  },
+  {
+   "id": "TransitGateway",
+   "cfg": "TransitGateway",
+   "type": "AWS::EC2::TransitGateway",
+   "values": {
+    "Description": "Landing Zone Transit Gateway - landing-zone",
+    "AmazonSideAsn": 64512,
+    "AutoAcceptSharedAttachments": "disable",
+    "DefaultRouteTableAssociation": "enable",
+    "DefaultRouteTablePropagation": "enable",
+    "DnsSupport": "enable",
+    "VpnEcmpSupport": "enable",
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "landing-zone-tgw"
+     },
+     {
+      "Key": "Environment",
+      "Value": "landing-zone"
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "TransitGatewayVpcAttachment",
+   "cfg": "TransitGatewayVpcAttachment",
+   "type": "AWS::EC2::TransitGatewayAttachment",
+   "values": {
+    "TransitGatewayId": {
+     "ref": "TransitGateway"
+    },
+    "VpcId": {
+     "ref": "HubVPC"
+    },
+    "SubnetIds": [
+     {
+      "ref": "PrivateSubnet1"
+     },
+     {
+      "ref": "PrivateSubnet2"
+     }
+    ],
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "landing-zone-tgw-hub-attachment"
+     }
+    ]
+   },
+   "refs": [
+    "HubVPC",
+    "PrivateSubnet1",
+    "PrivateSubnet2",
+    "TransitGateway"
+   ]
+  },
+  {
+   "id": "PrivateTGWRoute1",
+   "cfg": "PrivateTGWRoute1",
+   "type": "AWS::EC2::Route",
+   "values": {
+    "RouteTableId": {
+     "ref": "PrivateRouteTable1"
+    },
+    "DestinationCidrBlock": "10.0.0.0/8",
+    "TransitGatewayId": {
+     "ref": "TransitGateway"
+    },
+    "__resource__": {
+     "DependsOn": [
+      "TransitGatewayVpcAttachment"
+     ]
+    }
+   },
+   "refs": [
+    "PrivateRouteTable1",
+    "TransitGateway"
+   ]
+  },
+  {
+   "id": "PrivateTGWRoute2",
+   "cfg": "PrivateTGWRoute2",
+   "type": "AWS::EC2::Route",
+   "values": {
+    "RouteTableId": {
+     "ref": "PrivateRouteTable2"
+    },
+    "DestinationCidrBlock": "10.0.0.0/8",
+    "TransitGatewayId": {
+     "ref": "TransitGateway"
+    },
+    "__resource__": {
+     "DependsOn": [
+      "TransitGatewayVpcAttachment"
+     ]
+    }
+   },
+   "refs": [
+    "PrivateRouteTable2",
+    "TransitGateway"
+   ]
+  },
+  {
+   "id": "FlowLogRole",
+   "cfg": "FlowLogRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "landing-zone-vpc-flow-log-role",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "vpc-flow-logs.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Policies": [
+     {
+      "PolicyName": "FlowLogPolicy",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents",
+          "logs:DescribeLogGroups",
+          "logs:DescribeLogStreams"
+         ],
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "FlowLogGroup",
+   "cfg": "FlowLogGroup",
+   "type": "AWS::Logs::LogGroup",
+   "values": {
+    "LogGroupName": "/aws/vpc/flow-logs/landing-zone",
+    "RetentionInDays": 90
+   },
+   "refs": []
+  },
+  {
+   "id": "VPCFlowLog",
+   "cfg": "VPCFlowLog",
+   "type": "AWS::EC2::FlowLog",
+   "values": {
+    "DeliverLogsPermissionArn": {
+     "ref": "FlowLogRole",
+     "attr": "Arn"
+    },
+    "LogDestination": {
+     "ref": "FlowLogGroup",
+     "attr": "Arn"
+    },
+    "LogDestinationType": "cloud-watch-logs",
+    "ResourceId": {
+     "ref": "HubVPC"
+    },
+    "ResourceType": "VPC",
+    "TrafficType": "ALL",
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "landing-zone-vpc-flow-log"
+     }
+    ]
+   },
+   "refs": [
+    "FlowLogGroup",
+    "FlowLogRole",
+    "HubVPC"
+   ]
+  },
+  {
+   "id": "EndpointSecurityGroup",
+   "cfg": "EndpointSecurityGroup",
+   "type": "AWS::EC2::SecurityGroup",
+   "values": {
+    "GroupDescription": "Allow HTTPS traffic for VPC Endpoints",
+    "VpcId": {
+     "ref": "HubVPC"
+    },
+    "SecurityGroupIngress": [
+     {
+      "IpProtocol": "tcp",
+      "FromPort": 443,
+      "ToPort": 443,
+      "CidrIp": "10.0.0.0/16"
+     }
+    ],
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "landing-zone-vpce-sg"
+     }
+    ]
+   },
+   "refs": [
+    "HubVPC"
+   ]
+  },
+  {
+   "id": "SSMEndpoint",
+   "cfg": "SSMEndpoint",
+   "type": "AWS::EC2::VPCEndpoint",
+   "values": {
+    "VpcId": {
+     "ref": "HubVPC"
+    },
+    "ServiceName": "com.amazonaws.us-east-1.ssm",
+    "VpcEndpointType": "Interface",
+    "PrivateDnsEnabled": true,
+    "SubnetIds": [
+     {
+      "ref": "PrivateSubnet1"
+     },
+     {
+      "ref": "PrivateSubnet2"
+     }
+    ],
+    "SecurityGroupIds": [
+     {
+      "ref": "EndpointSecurityGroup",
+      "attr": "GroupId"
+     }
+    ]
+   },
+   "refs": [
+    "EndpointSecurityGroup",
+    "HubVPC",
+    "PrivateSubnet1",
+    "PrivateSubnet2"
+   ]
+  },
+  {
+   "id": "EC2MessagesEndpoint",
+   "cfg": "EC2MessagesEndpoint",
+   "type": "AWS::EC2::VPCEndpoint",
+   "values": {
+    "VpcId": {
+     "ref": "HubVPC"
+    },
+    "ServiceName": "com.amazonaws.us-east-1.ec2messages",
+    "VpcEndpointType": "Interface",
+    "PrivateDnsEnabled": true,
+    "SubnetIds": [
+     {
+      "ref": "PrivateSubnet1"
+     },
+     {
+      "ref": "PrivateSubnet2"
+     }
+    ],
+    "SecurityGroupIds": [
+     {
+      "ref": "EndpointSecurityGroup",
+      "attr": "GroupId"
+     }
+    ]
+   },
+   "refs": [
+    "EndpointSecurityGroup",
+    "HubVPC",
+    "PrivateSubnet1",
+    "PrivateSubnet2"
+   ]
+  },
+  {
+   "id": "SSMMessagesEndpoint",
+   "cfg": "SSMMessagesEndpoint",
+   "type": "AWS::EC2::VPCEndpoint",
+   "values": {
+    "VpcId": {
+     "ref": "HubVPC"
+    },
+    "ServiceName": "com.amazonaws.us-east-1.ssmmessages",
+    "VpcEndpointType": "Interface",
+    "PrivateDnsEnabled": true,
+    "SubnetIds": [
+     {
+      "ref": "PrivateSubnet1"
+     },
+     {
+      "ref": "PrivateSubnet2"
+     }
+    ],
+    "SecurityGroupIds": [
+     {
+      "ref": "EndpointSecurityGroup",
+      "attr": "GroupId"
+     }
+    ]
+   },
+   "refs": [
+    "EndpointSecurityGroup",
+    "HubVPC",
+    "PrivateSubnet1",
+    "PrivateSubnet2"
+   ]
+  },
+  {
+   "id": "LogsEndpoint",
+   "cfg": "LogsEndpoint",
+   "type": "AWS::EC2::VPCEndpoint",
+   "values": {
+    "VpcId": {
+     "ref": "HubVPC"
+    },
+    "ServiceName": "com.amazonaws.us-east-1.logs",
+    "VpcEndpointType": "Interface",
+    "PrivateDnsEnabled": true,
+    "SubnetIds": [
+     {
+      "ref": "PrivateSubnet1"
+     },
+     {
+      "ref": "PrivateSubnet2"
+     }
+    ],
+    "SecurityGroupIds": [
+     {
+      "ref": "EndpointSecurityGroup",
+      "attr": "GroupId"
+     }
+    ]
+   },
+   "refs": [
+    "EndpointSecurityGroup",
+    "HubVPC",
+    "PrivateSubnet1",
+    "PrivateSubnet2"
+   ]
+  },
+  {
+   "id": "S3Endpoint",
+   "cfg": "S3Endpoint",
+   "type": "AWS::EC2::VPCEndpoint",
+   "values": {
+    "VpcId": {
+     "ref": "HubVPC"
+    },
+    "ServiceName": "com.amazonaws.us-east-1.s3",
+    "VpcEndpointType": "Gateway",
+    "RouteTableIds": [
+     {
+      "ref": "PrivateRouteTable1"
+     },
+     {
+      "ref": "PrivateRouteTable2"
+     }
+    ]
+   },
+   "refs": [
+    "HubVPC",
+    "PrivateRouteTable1",
+    "PrivateRouteTable2"
+   ]
+  },
+  {
+   "id": "__parameter__.EnvironmentName",
+   "cfg": "__parameter__.EnvironmentName",
+   "type": "__parameter__",
+   "values": {
+    "name": "EnvironmentName",
+    "type": "String",
+    "default": "landing-zone",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.VpcCIDR",
+   "cfg": "__parameter__.VpcCIDR",
+   "type": "__parameter__",
+   "values": {
+    "name": "VpcCIDR",
+    "type": "String",
+    "default": "10.0.0.0/16",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.PublicSubnet1CIDR",
+   "cfg": "__parameter__.PublicSubnet1CIDR",
+   "type": "__parameter__",
+   "values": {
+    "name": "PublicSubnet1CIDR",
+    "type": "String",
+    "default": "10.0.1.0/24",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.PublicSubnet2CIDR",
+   "cfg": "__parameter__.PublicSubnet2CIDR",
+   "type": "__parameter__",
+   "values": {
+    "name": "PublicSubnet2CIDR",
+    "type": "String",
+    "default": "10.0.2.0/24",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.PrivateSubnet1CIDR",
+   "cfg": "__parameter__.PrivateSubnet1CIDR",
+   "type": "__parameter__",
+   "values": {
+    "name": "PrivateSubnet1CIDR",
+    "type": "String",
+    "default": "10.0.10.0/24",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.PrivateSubnet2CIDR",
+   "cfg": "__parameter__.PrivateSubnet2CIDR",
+   "type": "__parameter__",
+   "values": {
+    "name": "PrivateSubnet2CIDR",
+    "type": "String",
+    "default": "10.0.11.0/24",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.TransitGatewayASN",
+   "cfg": "__parameter__.TransitGatewayASN",
+   "type": "__parameter__",
+   "values": {
+    "name": "TransitGatewayASN",
+    "type": "Number",
+    "default": 64512,
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.EnableDnsSupport",
+   "cfg": "__parameter__.EnableDnsSupport",
+   "type": "__parameter__",
+   "values": {
+    "name": "EnableDnsSupport",
+    "type": "String",
+    "default": "enable",
+    "allowed_values": [
+     "enable",
+     "disable"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.EnableVpnEcmpSupport",
+   "cfg": "__parameter__.EnableVpnEcmpSupport",
+   "type": "__parameter__",
+   "values": {
+    "name": "EnableVpnEcmpSupport",
+    "type": "String",
+    "default": "enable",
+    "allowed_values": [
+     "enable",
+     "disable"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.VpcId",
+   "cfg": "__output__.VpcId",
+   "type": "__output__",
+   "values": {
+    "name": "VpcId",
+    "value": {
+     "ref": "HubVPC"
+    },
+    "description": "Hub VPC ID",
+    "export": "landing-zone-VpcId"
+   },
+   "refs": [
+    "HubVPC"
+   ]
+  },
+  {
+   "id": "__output__.TransitGatewayId",
+   "cfg": "__output__.TransitGatewayId",
+   "type": "__output__",
+   "values": {
+    "name": "TransitGatewayId",
+    "value": {
+     "ref": "TransitGateway"
+    },
+    "description": "Transit Gateway ID (share with spoke accounts via RAM)",
+    "export": "landing-zone-TransitGatewayId"
+   },
+   "refs": [
+    "TransitGateway"
+   ]
+  },
+  {
+   "id": "__output__.PublicSubnet1Id",
+   "cfg": "__output__.PublicSubnet1Id",
+   "type": "__output__",
+   "values": {
+    "name": "PublicSubnet1Id",
+    "value": {
+     "ref": "PublicSubnet1"
+    },
+    "description": null,
+    "export": "landing-zone-PublicSubnet1Id"
+   },
+   "refs": [
+    "PublicSubnet1"
+   ]
+  },
+  {
+   "id": "__output__.PublicSubnet2Id",
+   "cfg": "__output__.PublicSubnet2Id",
+   "type": "__output__",
+   "values": {
+    "name": "PublicSubnet2Id",
+    "value": {
+     "ref": "PublicSubnet2"
+    },
+    "description": null,
+    "export": "landing-zone-PublicSubnet2Id"
+   },
+   "refs": [
+    "PublicSubnet2"
+   ]
+  },
+  {
+   "id": "__output__.PrivateSubnet1Id",
+   "cfg": "__output__.PrivateSubnet1Id",
+   "type": "__output__",
+   "values": {
+    "name": "PrivateSubnet1Id",
+    "value": {
+     "ref": "PrivateSubnet1"
+    },
+    "description": null,
+    "export": "landing-zone-PrivateSubnet1Id"
+   },
+   "refs": [
+    "PrivateSubnet1"
+   ]
+  },
+  {
+   "id": "__output__.PrivateSubnet2Id",
+   "cfg": "__output__.PrivateSubnet2Id",
+   "type": "__output__",
+   "values": {
+    "name": "PrivateSubnet2Id",
+    "value": {
+     "ref": "PrivateSubnet2"
+    },
+    "description": null,
+    "export": "landing-zone-PrivateSubnet2Id"
+   },
+   "refs": [
+    "PrivateSubnet2"
+   ]
+  },
+  {
+   "id": "__output__.VpcCIDR",
+   "cfg": "__output__.VpcCIDR",
+   "type": "__output__",
+   "values": {
+    "name": "VpcCIDR",
+    "value": "10.0.0.0/16",
+    "description": null,
+    "export": "landing-zone-VpcCIDR"
+   },
+   "refs": []
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPC.HubVPC",
+   "cfg": "HubVPC",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::VPC",
+    "name": "HubVPC",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "CidrBlock": "10.0.0.0/16",
+     "EnableDnsSupport": true,
+     "EnableDnsHostnames": true,
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "landing-zone-hub-vpc"
+      },
+      {
+       "Key": "Environment",
+       "Value": "landing-zone"
+      },
+      {
+       "Key": "ManagedBy",
+       "Value": "CloudFormation"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::InternetGateway.InternetGateway",
+   "cfg": "InternetGateway",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::InternetGateway",
+    "name": "InternetGateway",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "landing-zone-igw"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCGatewayAttachment.InternetGatewayAttachment",
+   "cfg": "InternetGatewayAttachment",
+   "type": "__declared__",
+   "refs": [
+    "HubVPC",
+    "InternetGateway"
+   ],
+   "values": {
+    "type": "AWS::EC2::VPCGatewayAttachment",
+    "name": "InternetGatewayAttachment",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "HubVPC"
+     },
+     "InternetGatewayId": {
+      "ref": "InternetGateway"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.PublicSubnet1",
+   "cfg": "PublicSubnet1",
+   "type": "__declared__",
+   "refs": [
+    "HubVPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "PublicSubnet1",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "HubVPC"
+     },
+     "CidrBlock": "10.0.1.0/24",
+     "AvailabilityZone": "us-east-1a",
+     "MapPublicIpOnLaunch": false,
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "landing-zone-public-subnet-az1"
+      },
+      {
+       "Key": "Tier",
+       "Value": "Public"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.PublicSubnet2",
+   "cfg": "PublicSubnet2",
+   "type": "__declared__",
+   "refs": [
+    "HubVPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "PublicSubnet2",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "HubVPC"
+     },
+     "CidrBlock": "10.0.2.0/24",
+     "AvailabilityZone": "us-east-1b",
+     "MapPublicIpOnLaunch": false,
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "landing-zone-public-subnet-az2"
+      },
+      {
+       "Key": "Tier",
+       "Value": "Public"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.PrivateSubnet1",
+   "cfg": "PrivateSubnet1",
+   "type": "__declared__",
+   "refs": [
+    "HubVPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "PrivateSubnet1",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "HubVPC"
+     },
+     "CidrBlock": "10.0.10.0/24",
+     "AvailabilityZone": "us-east-1a",
+     "MapPublicIpOnLaunch": false,
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "landing-zone-private-subnet-az1"
+      },
+      {
+       "Key": "Tier",
+       "Value": "Private"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.PrivateSubnet2",
+   "cfg": "PrivateSubnet2",
+   "type": "__declared__",
+   "refs": [
+    "HubVPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "PrivateSubnet2",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "HubVPC"
+     },
+     "CidrBlock": "10.0.11.0/24",
+     "AvailabilityZone": "us-east-1b",
+     "MapPublicIpOnLaunch": false,
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "landing-zone-private-subnet-az2"
+      },
+      {
+       "Key": "Tier",
+       "Value": "Private"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::EIP.NatGateway1EIP",
+   "cfg": "NatGateway1EIP",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::EIP",
+    "name": "NatGateway1EIP",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Domain": "vpc",
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "landing-zone-nat-eip-az1"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::EIP.NatGateway2EIP",
+   "cfg": "NatGateway2EIP",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::EIP",
+    "name": "NatGateway2EIP",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Domain": "vpc",
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "landing-zone-nat-eip-az2"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::NatGateway.NatGateway1",
+   "cfg": "NatGateway1",
+   "type": "__declared__",
+   "refs": [
+    "NatGateway1EIP",
+    "PublicSubnet1"
+   ],
+   "values": {
+    "type": "AWS::EC2::NatGateway",
+    "name": "NatGateway1",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AllocationId": {
+      "ref": "NatGateway1EIP",
+      "attr": "AllocationId"
+     },
+     "SubnetId": {
+      "ref": "PublicSubnet1"
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "landing-zone-nat-az1"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::NatGateway.NatGateway2",
+   "cfg": "NatGateway2",
+   "type": "__declared__",
+   "refs": [
+    "NatGateway2EIP",
+    "PublicSubnet2"
+   ],
+   "values": {
+    "type": "AWS::EC2::NatGateway",
+    "name": "NatGateway2",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AllocationId": {
+      "ref": "NatGateway2EIP",
+      "attr": "AllocationId"
+     },
+     "SubnetId": {
+      "ref": "PublicSubnet2"
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "landing-zone-nat-az2"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::RouteTable.PublicRouteTable",
+   "cfg": "PublicRouteTable",
+   "type": "__declared__",
+   "refs": [
+    "HubVPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::RouteTable",
+    "name": "PublicRouteTable",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "HubVPC"
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "landing-zone-public-rtb"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Route.PublicRoute",
+   "cfg": "PublicRoute",
+   "type": "__declared__",
+   "refs": [
+    "InternetGateway",
+    "PublicRouteTable"
+   ],
+   "values": {
+    "type": "AWS::EC2::Route",
+    "name": "PublicRoute",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RouteTableId": {
+      "ref": "PublicRouteTable"
+     },
+     "DestinationCidrBlock": "0.0.0.0/0",
+     "GatewayId": {
+      "ref": "InternetGateway"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetRouteTableAssociation.PublicSubnet1RouteTableAssociation",
+   "cfg": "PublicSubnet1RouteTableAssociation",
+   "type": "__declared__",
+   "refs": [
+    "PublicRouteTable",
+    "PublicSubnet1"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetRouteTableAssociation",
+    "name": "PublicSubnet1RouteTableAssociation",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "SubnetId": {
+      "ref": "PublicSubnet1"
+     },
+     "RouteTableId": {
+      "ref": "PublicRouteTable"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetRouteTableAssociation.PublicSubnet2RouteTableAssociation",
+   "cfg": "PublicSubnet2RouteTableAssociation",
+   "type": "__declared__",
+   "refs": [
+    "PublicRouteTable",
+    "PublicSubnet2"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetRouteTableAssociation",
+    "name": "PublicSubnet2RouteTableAssociation",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "SubnetId": {
+      "ref": "PublicSubnet2"
+     },
+     "RouteTableId": {
+      "ref": "PublicRouteTable"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::RouteTable.PrivateRouteTable1",
+   "cfg": "PrivateRouteTable1",
+   "type": "__declared__",
+   "refs": [
+    "HubVPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::RouteTable",
+    "name": "PrivateRouteTable1",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "HubVPC"
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "landing-zone-private-rtb-az1"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Route.PrivateRoute1",
+   "cfg": "PrivateRoute1",
+   "type": "__declared__",
+   "refs": [
+    "NatGateway1",
+    "PrivateRouteTable1"
+   ],
+   "values": {
+    "type": "AWS::EC2::Route",
+    "name": "PrivateRoute1",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RouteTableId": {
+      "ref": "PrivateRouteTable1"
+     },
+     "DestinationCidrBlock": "0.0.0.0/0",
+     "NatGatewayId": {
+      "ref": "NatGateway1"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetRouteTableAssociation.PrivateSubnet1RouteTableAssociation",
+   "cfg": "PrivateSubnet1RouteTableAssociation",
+   "type": "__declared__",
+   "refs": [
+    "PrivateRouteTable1",
+    "PrivateSubnet1"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetRouteTableAssociation",
+    "name": "PrivateSubnet1RouteTableAssociation",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "SubnetId": {
+      "ref": "PrivateSubnet1"
+     },
+     "RouteTableId": {
+      "ref": "PrivateRouteTable1"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::RouteTable.PrivateRouteTable2",
+   "cfg": "PrivateRouteTable2",
+   "type": "__declared__",
+   "refs": [
+    "HubVPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::RouteTable",
+    "name": "PrivateRouteTable2",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "HubVPC"
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "landing-zone-private-rtb-az2"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Route.PrivateRoute2",
+   "cfg": "PrivateRoute2",
+   "type": "__declared__",
+   "refs": [
+    "NatGateway2",
+    "PrivateRouteTable2"
+   ],
+   "values": {
+    "type": "AWS::EC2::Route",
+    "name": "PrivateRoute2",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RouteTableId": {
+      "ref": "PrivateRouteTable2"
+     },
+     "DestinationCidrBlock": "0.0.0.0/0",
+     "NatGatewayId": {
+      "ref": "NatGateway2"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetRouteTableAssociation.PrivateSubnet2RouteTableAssociation",
+   "cfg": "PrivateSubnet2RouteTableAssociation",
+   "type": "__declared__",
+   "refs": [
+    "PrivateRouteTable2",
+    "PrivateSubnet2"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetRouteTableAssociation",
+    "name": "PrivateSubnet2RouteTableAssociation",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "SubnetId": {
+      "ref": "PrivateSubnet2"
+     },
+     "RouteTableId": {
+      "ref": "PrivateRouteTable2"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::TransitGateway.TransitGateway",
+   "cfg": "TransitGateway",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::TransitGateway",
+    "name": "TransitGateway",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Description": "Landing Zone Transit Gateway - landing-zone",
+     "AmazonSideAsn": 64512,
+     "AutoAcceptSharedAttachments": "disable",
+     "DefaultRouteTableAssociation": "enable",
+     "DefaultRouteTablePropagation": "enable",
+     "DnsSupport": "enable",
+     "VpnEcmpSupport": "enable",
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "landing-zone-tgw"
+      },
+      {
+       "Key": "Environment",
+       "Value": "landing-zone"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::TransitGatewayAttachment.TransitGatewayVpcAttachment",
+   "cfg": "TransitGatewayVpcAttachment",
+   "type": "__declared__",
+   "refs": [
+    "HubVPC",
+    "PrivateSubnet1",
+    "PrivateSubnet2",
+    "TransitGateway"
+   ],
+   "values": {
+    "type": "AWS::EC2::TransitGatewayAttachment",
+    "name": "TransitGatewayVpcAttachment",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "TransitGatewayId": {
+      "ref": "TransitGateway"
+     },
+     "VpcId": {
+      "ref": "HubVPC"
+     },
+     "SubnetIds": [
+      {
+       "ref": "PrivateSubnet1"
+      },
+      {
+       "ref": "PrivateSubnet2"
+      }
+     ],
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "landing-zone-tgw-hub-attachment"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Route.PrivateTGWRoute1",
+   "cfg": "PrivateTGWRoute1",
+   "type": "__declared__",
+   "refs": [
+    "PrivateRouteTable1",
+    "TransitGateway"
+   ],
+   "values": {
+    "type": "AWS::EC2::Route",
+    "name": "PrivateTGWRoute1",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RouteTableId": {
+      "ref": "PrivateRouteTable1"
+     },
+     "DestinationCidrBlock": "10.0.0.0/8",
+     "TransitGatewayId": {
+      "ref": "TransitGateway"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Route.PrivateTGWRoute2",
+   "cfg": "PrivateTGWRoute2",
+   "type": "__declared__",
+   "refs": [
+    "PrivateRouteTable2",
+    "TransitGateway"
+   ],
+   "values": {
+    "type": "AWS::EC2::Route",
+    "name": "PrivateTGWRoute2",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RouteTableId": {
+      "ref": "PrivateRouteTable2"
+     },
+     "DestinationCidrBlock": "10.0.0.0/8",
+     "TransitGatewayId": {
+      "ref": "TransitGateway"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.FlowLogRole",
+   "cfg": "FlowLogRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "FlowLogRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "landing-zone-vpc-flow-log-role",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "vpc-flow-logs.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Policies": [
+      {
+       "PolicyName": "FlowLogPolicy",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "logs:CreateLogGroup",
+           "logs:CreateLogStream",
+           "logs:PutLogEvents",
+           "logs:DescribeLogGroups",
+           "logs:DescribeLogStreams"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::LogGroup.FlowLogGroup",
+   "cfg": "FlowLogGroup",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Logs::LogGroup",
+    "name": "FlowLogGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "LogGroupName": "/aws/vpc/flow-logs/landing-zone",
+     "RetentionInDays": 90
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::FlowLog.VPCFlowLog",
+   "cfg": "VPCFlowLog",
+   "type": "__declared__",
+   "refs": [
+    "FlowLogGroup",
+    "FlowLogRole",
+    "HubVPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::FlowLog",
+    "name": "VPCFlowLog",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "DeliverLogsPermissionArn": {
+      "ref": "FlowLogRole",
+      "attr": "Arn"
+     },
+     "LogDestination": {
+      "ref": "FlowLogGroup",
+      "attr": "Arn"
+     },
+     "LogDestinationType": "cloud-watch-logs",
+     "ResourceId": {
+      "ref": "HubVPC"
+     },
+     "ResourceType": "VPC",
+     "TrafficType": "ALL",
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "landing-zone-vpc-flow-log"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SecurityGroup.EndpointSecurityGroup",
+   "cfg": "EndpointSecurityGroup",
+   "type": "__declared__",
+   "refs": [
+    "HubVPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::SecurityGroup",
+    "name": "EndpointSecurityGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "GroupDescription": "Allow HTTPS traffic for VPC Endpoints",
+     "VpcId": {
+      "ref": "HubVPC"
+     },
+     "SecurityGroupIngress": [
+      {
+       "IpProtocol": "tcp",
+       "FromPort": 443,
+       "ToPort": 443,
+       "CidrIp": "10.0.0.0/16"
+      }
+     ],
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "landing-zone-vpce-sg"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCEndpoint.SSMEndpoint",
+   "cfg": "SSMEndpoint",
+   "type": "__declared__",
+   "refs": [
+    "EndpointSecurityGroup",
+    "HubVPC",
+    "PrivateSubnet1",
+    "PrivateSubnet2"
+   ],
+   "values": {
+    "type": "AWS::EC2::VPCEndpoint",
+    "name": "SSMEndpoint",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "HubVPC"
+     },
+     "ServiceName": "com.amazonaws.us-east-1.ssm",
+     "VpcEndpointType": "Interface",
+     "PrivateDnsEnabled": true,
+     "SubnetIds": [
+      {
+       "ref": "PrivateSubnet1"
+      },
+      {
+       "ref": "PrivateSubnet2"
+      }
+     ],
+     "SecurityGroupIds": [
+      {
+       "ref": "EndpointSecurityGroup",
+       "attr": "GroupId"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCEndpoint.EC2MessagesEndpoint",
+   "cfg": "EC2MessagesEndpoint",
+   "type": "__declared__",
+   "refs": [
+    "EndpointSecurityGroup",
+    "HubVPC",
+    "PrivateSubnet1",
+    "PrivateSubnet2"
+   ],
+   "values": {
+    "type": "AWS::EC2::VPCEndpoint",
+    "name": "EC2MessagesEndpoint",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "HubVPC"
+     },
+     "ServiceName": "com.amazonaws.us-east-1.ec2messages",
+     "VpcEndpointType": "Interface",
+     "PrivateDnsEnabled": true,
+     "SubnetIds": [
+      {
+       "ref": "PrivateSubnet1"
+      },
+      {
+       "ref": "PrivateSubnet2"
+      }
+     ],
+     "SecurityGroupIds": [
+      {
+       "ref": "EndpointSecurityGroup",
+       "attr": "GroupId"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCEndpoint.SSMMessagesEndpoint",
+   "cfg": "SSMMessagesEndpoint",
+   "type": "__declared__",
+   "refs": [
+    "EndpointSecurityGroup",
+    "HubVPC",
+    "PrivateSubnet1",
+    "PrivateSubnet2"
+   ],
+   "values": {
+    "type": "AWS::EC2::VPCEndpoint",
+    "name": "SSMMessagesEndpoint",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "HubVPC"
+     },
+     "ServiceName": "com.amazonaws.us-east-1.ssmmessages",
+     "VpcEndpointType": "Interface",
+     "PrivateDnsEnabled": true,
+     "SubnetIds": [
+      {
+       "ref": "PrivateSubnet1"
+      },
+      {
+       "ref": "PrivateSubnet2"
+      }
+     ],
+     "SecurityGroupIds": [
+      {
+       "ref": "EndpointSecurityGroup",
+       "attr": "GroupId"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCEndpoint.LogsEndpoint",
+   "cfg": "LogsEndpoint",
+   "type": "__declared__",
+   "refs": [
+    "EndpointSecurityGroup",
+    "HubVPC",
+    "PrivateSubnet1",
+    "PrivateSubnet2"
+   ],
+   "values": {
+    "type": "AWS::EC2::VPCEndpoint",
+    "name": "LogsEndpoint",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "HubVPC"
+     },
+     "ServiceName": "com.amazonaws.us-east-1.logs",
+     "VpcEndpointType": "Interface",
+     "PrivateDnsEnabled": true,
+     "SubnetIds": [
+      {
+       "ref": "PrivateSubnet1"
+      },
+      {
+       "ref": "PrivateSubnet2"
+      }
+     ],
+     "SecurityGroupIds": [
+      {
+       "ref": "EndpointSecurityGroup",
+       "attr": "GroupId"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCEndpoint.S3Endpoint",
+   "cfg": "S3Endpoint",
+   "type": "__declared__",
+   "refs": [
+    "HubVPC",
+    "PrivateRouteTable1",
+    "PrivateRouteTable2"
+   ],
+   "values": {
+    "type": "AWS::EC2::VPCEndpoint",
+    "name": "S3Endpoint",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "HubVPC"
+     },
+     "ServiceName": "com.amazonaws.us-east-1.s3",
+     "VpcEndpointType": "Gateway",
+     "RouteTableIds": [
+      {
+       "ref": "PrivateRouteTable1"
+      },
+      {
+       "ref": "PrivateRouteTable2"
+      }
+     ]
+    }
+   }
+  }
+ ]
+}

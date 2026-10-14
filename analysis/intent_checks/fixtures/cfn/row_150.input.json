@@ -1,0 +1,2253 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "4532ced8cfda438bd76e53da6c636fac961d680422cfac3741299b591aeb60b0",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "MultiRegionScenario",
+   "cfg": "MultiRegionScenario",
+   "type": "AWS::FIS::ExperimentTemplate",
+   "values": {
+    "Description": "Block application network traffic from experiment Region to target Region and pause cross-Region replication",
+    "RoleArn": {
+     "ref": "ExperimentRole",
+     "attr": "Arn"
+    },
+    "Targets": {
+     "TransitGateway": {
+      "ResourceType": "aws:ec2:transit-gateway",
+      "ResourceTags": {
+       "ChaosAllowed": true
+      },
+      "SelectionMode": "ALL"
+     },
+     "Subnet": {
+      "ResourceType": "aws:ec2:subnet",
+      "ResourceTags": {
+       "ChaosAllowed": true
+      },
+      "SelectionMode": "ALL"
+     },
+     "S3Bucket": {
+      "ResourceType": "aws:s3:bucket",
+      "ResourceTags": {
+       "ChaosAllowed": true
+      },
+      "SelectionMode": "ALL"
+     },
+     "DynamoDBGlobalTable": {
+      "ResourceType": "aws:dynamodb:global-table",
+      "ResourceTags": {
+       "ChaosAllowed": true
+      },
+      "SelectionMode": "ALL"
+     }
+    },
+    "Actions": {
+     "DisruptTransitGatewayConnectivity": {
+      "ActionId": "aws:network:transit-gateway-disrupt-cross-region-connectivity",
+      "Parameters": {
+       "duration": "PT20M",
+       "region": "us-west-2"
+      },
+      "Targets": {
+       "TransitGateways": "TransitGateway"
+      }
+     },
+     "DisruptSubnetConnectivity": {
+      "ActionId": "aws:network:route-table-disrupt-cross-region-connectivity",
+      "Parameters": {
+       "duration": "PT20M",
+       "region": "us-west-2"
+      },
+      "Targets": {
+       "Subnets": "Subnet"
+      }
+     },
+     "PauseS3Replication": {
+      "ActionId": "aws:s3:bucket-pause-replication",
+      "Parameters": {
+       "duration": "PT20M",
+       "region": "us-west-2"
+      },
+      "Targets": {
+       "Buckets": "S3Bucket"
+      }
+     },
+     "PauseDynamoDBReplication": {
+      "ActionId": "aws:dynamodb:global-table-pause-replication",
+      "Parameters": {
+       "duration": "PT20M"
+      },
+      "Targets": {
+       "Tables": "DynamoDBGlobalTable"
+      }
+     }
+    },
+    "StopConditions": [
+     {
+      "Source": "none"
+     }
+    ],
+    "LogConfiguration": {
+     "LogSchemaVersion": 2,
+     "CloudWatchLogsConfiguration": {
+      "LogGroupArn": {
+       "ref": "FISExperimentLogGroup",
+       "attr": "Arn"
+      }
+     }
+    },
+    "Tags": {
+     "Name": "Cross-Region: Connectivity to us-west-2",
+     "Env": ""
+    },
+    "ExperimentOptions": {
+     "AccountTargeting": "single-account",
+     "EmptyTargetResolutionMode": "skip"
+    }
+   },
+   "refs": [
+    "ExperimentRole",
+    "FISExperimentLogGroup"
+   ]
+  },
+  {
+   "id": "ExperimentRole",
+   "cfg": "ExperimentRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "fis.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     {
+      "ref": "CrossRegionRTManagedPolicy"
+     },
+     {
+      "ref": "CrossRegionTGS3ManagedPolicy"
+     },
+     {
+      "ref": "FISExperimentManagedPolicy"
+     },
+     {
+      "ref": "AZDisruptionManagedPolicy"
+     }
+    ]
+   },
+   "refs": [
+    "AZDisruptionManagedPolicy",
+    "CrossRegionRTManagedPolicy",
+    "CrossRegionTGS3ManagedPolicy",
+    "FISExperimentManagedPolicy"
+   ]
+  },
+  {
+   "id": "CrossRegionRTManagedPolicy",
+   "cfg": "CrossRegionRTManagedPolicy",
+   "type": "AWS::IAM::ManagedPolicy",
+   "values": {
+    "PolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Sid": "RouteTableDisruptConnectivity1",
+       "Effect": "Allow",
+       "Action": [
+        "ec2:CreateRouteTable"
+       ],
+       "Resource": [
+        "arn:aws:ec2:*:*:route-table/*"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "aws:RequestTag/managedByFIS": "true",
+         "aws:ResourceAccount": "123456789012"
+        }
+       }
+      },
+      {
+       "Sid": "RouteTableDisruptConnectivity2",
+       "Effect": "Allow",
+       "Action": [
+        "ec2:CreateRouteTable"
+       ],
+       "Resource": [
+        "arn:aws:ec2:*:*:vpc/*"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "aws:ResourceAccount": "123456789012"
+        }
+       }
+      },
+      {
+       "Sid": "RouteTableDisruptConnectivity21",
+       "Effect": "Allow",
+       "Action": [
+        "ec2:CreateTags"
+       ],
+       "Resource": [
+        "arn:aws:ec2:*:*:route-table/*"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "ec2:CreateAction": "CreateRouteTable",
+         "aws:RequestTag/managedByFIS": "true",
+         "aws:ResourceAccount": "123456789012"
+        }
+       }
+      },
+      {
+       "Sid": "RouteTableDisruptConnectivity3",
+       "Effect": "Allow",
+       "Action": [
+        "ec2:CreateTags"
+       ],
+       "Resource": [
+        "arn:aws:ec2:*:*:network-interface/*"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "ec2:CreateAction": "CreateNetworkInterface",
+         "aws:RequestTag/managedByFIS": "true",
+         "aws:ResourceAccount": "123456789012"
+        }
+       }
+      },
+      {
+       "Sid": "RouteTableDisruptConnectivity4",
+       "Effect": "Allow",
+       "Action": [
+        "ec2:CreateTags"
+       ],
+       "Resource": [
+        "arn:aws:ec2:*:*:prefix-list/*"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "ec2:CreateAction": "CreateManagedPrefixList",
+         "aws:RequestTag/managedByFIS": "true",
+         "aws:ResourceAccount": "123456789012"
+        }
+       }
+      },
+      {
+       "Sid": "RouteTableDisruptConnectivity5",
+       "Effect": "Allow",
+       "Action": [
+        "ec2:DeleteRouteTable"
+       ],
+       "Resource": [
+        "arn:aws:ec2:*:*:route-table/*",
+        "arn:aws:ec2:*:*:vpc/*"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "ec2:ResourceTag/managedByFIS": "true",
+         "aws:ResourceAccount": "123456789012"
+        }
+       }
+      },
+      {
+       "Sid": "RouteTableDisruptConnectivity6",
+       "Effect": "Allow",
+       "Action": [
+        "ec2:CreateRoute"
+       ],
+       "Resource": [
+        "arn:aws:ec2:*:*:route-table/*"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "ec2:ResourceTag/managedByFIS": "true",
+         "aws:ResourceAccount": "123456789012"
+        }
+       }
+      },
+      {
+       "Sid": "RouteTableDisruptConnectivity7",
+       "Effect": "Allow",
+       "Action": [
+        "ec2:CreateNetworkInterface"
+       ],
+       "Resource": [
+        "arn:aws:ec2:*:*:network-interface/*"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "aws:RequestTag/managedByFIS": "true",
+         "aws:ResourceAccount": "123456789012"
+        }
+       }
+      },
+      {
+       "Sid": "RouteTableDisruptConnectivity8",
+       "Effect": "Allow",
+       "Action": [
+        "ec2:CreateNetworkInterface"
+       ],
+       "Resource": [
+        "arn:aws:ec2:*:*:subnet/*",
+        "arn:aws:ec2:*:*:security-group/*"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "aws:ResourceAccount": "123456789012"
+        }
+       }
+      },
+      {
+       "Sid": "RouteTableDisruptConnectivity9",
+       "Effect": "Allow",
+       "Action": [
+        "ec2:DeleteNetworkInterface"
+       ],
+       "Resource": [
+        "arn:aws:ec2:*:*:network-interface/*"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "ec2:ResourceTag/managedByFIS": "true",
+         "aws:ResourceAccount": "123456789012"
+        }
+       }
+      },
+      {
+       "Sid": "RouteTableDisruptConnectivity10",
+       "Effect": "Allow",
+       "Action": [
+        "ec2:CreateManagedPrefixList"
+       ],
+       "Resource": [
+        "arn:aws:ec2:*:*:prefix-list/*"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "aws:RequestTag/managedByFIS": "true",
+         "aws:ResourceAccount": "123456789012"
+        }
+       }
+      },
+      {
+       "Sid": "RouteTableDisruptConnectivity11",
+       "Effect": "Allow",
+       "Action": [
+        "ec2:DeleteManagedPrefixList"
+       ],
+       "Resource": [
+        "arn:aws:ec2:*:*:prefix-list/*"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "ec2:ResourceTag/managedByFIS": "true",
+         "aws:ResourceAccount": "123456789012"
+        }
+       }
+      },
+      {
+       "Sid": "RouteTableDisruptConnectivity12",
+       "Effect": "Allow",
+       "Action": [
+        "ec2:ModifyManagedPrefixList"
+       ],
+       "Resource": [
+        "arn:aws:ec2:*:*:prefix-list/*"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "ec2:ResourceTag/managedByFIS": "true",
+         "aws:ResourceAccount": "123456789012"
+        }
+       }
+      },
+      {
+       "Sid": "RouteTableDisruptConnectivity13",
+       "Effect": "Allow",
+       "Action": [
+        "ec2:DescribeNetworkInterfaces",
+        "ec2:DescribeVpcs",
+        "ec2:DescribeVpcPeeringConnections",
+        "ec2:DescribeManagedPrefixLists",
+        "ec2:DescribeSubnets",
+        "ec2:DescribeRouteTables",
+        "ec2:DescribeVpcEndpoints"
+       ],
+       "Resource": [
+        "*"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "aws:ResourceAccount": "123456789012"
+        }
+       }
+      },
+      {
+       "Sid": "RouteTableDisruptConnectivity14",
+       "Effect": "Allow",
+       "Action": [
+        "ec2:ReplaceRouteTableAssociation"
+       ],
+       "Resource": [
+        "arn:aws:ec2:*:*:subnet/*",
+        "arn:aws:ec2:*:*:route-table/*"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "aws:ResourceAccount": "123456789012"
+        }
+       }
+      },
+      {
+       "Sid": "RouteTableDisruptConnectivity15",
+       "Effect": "Allow",
+       "Action": [
+        "ec2:GetManagedPrefixListEntries"
+       ],
+       "Resource": [
+        "arn:aws:ec2:*:*:prefix-list/*"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "aws:ResourceAccount": "123456789012"
+        }
+       }
+      },
+      {
+       "Sid": "RouteTableDisruptConnectivity16",
+       "Effect": "Allow",
+       "Action": [
+        "ec2:AssociateRouteTable"
+       ],
+       "Resource": [
+        "arn:aws:ec2:*:*:subnet/*",
+        "arn:aws:ec2:*:*:route-table/*"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "aws:ResourceAccount": "123456789012"
+        }
+       }
+      },
+      {
+       "Sid": "RouteTableDisruptConnectivity17",
+       "Effect": "Allow",
+       "Action": [
+        "ec2:DisassociateRouteTable"
+       ],
+       "Resource": [
+        "arn:aws:ec2:*:*:route-table/*"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "ec2:ResourceTag/managedByFIS": "true",
+         "aws:ResourceAccount": "123456789012"
+        }
+       }
+      },
+      {
+       "Sid": "RouteTableDisruptConnectivity18",
+       "Effect": "Allow",
+       "Action": [
+        "ec2:DisassociateRouteTable"
+       ],
+       "Resource": [
+        "arn:aws:ec2:*:*:subnet/*"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "aws:ResourceAccount": "123456789012"
+        }
+       }
+      },
+      {
+       "Sid": "RouteTableDisruptConnectivity19",
+       "Effect": "Allow",
+       "Action": [
+        "ec2:ModifyVpcEndpoint"
+       ],
+       "Resource": [
+        "arn:aws:ec2:*:*:route-table/*"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "ec2:ResourceTag/managedByFIS": "true",
+         "aws:ResourceAccount": "123456789012"
+        }
+       }
+      },
+      {
+       "Sid": "RouteTableDisruptConnectivity20",
+       "Effect": "Allow",
+       "Action": [
+        "ec2:ModifyVpcEndpoint"
+       ],
+       "Resource": [
+        "arn:aws:ec2:*:*:vpc-endpoint/*"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "aws:ResourceAccount": "123456789012"
+        }
+       }
+      }
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "CrossRegionTGS3ManagedPolicy",
+   "cfg": "CrossRegionTGS3ManagedPolicy",
+   "type": "AWS::IAM::ManagedPolicy",
+   "values": {
+    "PolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Sid": "TransitGatewayDisruptConnectivity1",
+       "Effect": "Allow",
+       "Action": [
+        "ec2:DisassociateTransitGatewayRouteTable",
+        "ec2:AssociateTransitGatewayRouteTable"
+       ],
+       "Resource": [
+        "arn:aws:ec2:*:*:transit-gateway-route-table/*",
+        "arn:aws:ec2:*:*:transit-gateway-attachment/*"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "aws:ResourceAccount": "123456789012"
+        }
+       }
+      },
+      {
+       "Sid": "TransitGatewayDisruptConnectivity2",
+       "Effect": "Allow",
+       "Action": [
+        "ec2:DescribeTransitGatewayPeeringAttachments",
+        "ec2:DescribeTransitGatewayAttachments",
+        "ec2:DescribeTransitGateways"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "aws:ResourceAccount": "123456789012"
+        }
+       },
+       "Resource": [
+        "*"
+       ]
+      },
+      {
+       "Sid": "S3CrossRegion1",
+       "Effect": "Allow",
+       "Action": [
+        "s3:ListAllMyBuckets"
+       ],
+       "Resource": [
+        "*"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "aws:ResourceAccount": "123456789012"
+        }
+       }
+      },
+      {
+       "Sid": "S3CrossRegion2",
+       "Effect": "Allow",
+       "Action": [
+        "tag:GetResources"
+       ],
+       "Resource": [
+        "*"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "aws:ResourceAccount": "123456789012"
+        }
+       }
+      },
+      {
+       "Sid": "S3CrossRegion3",
+       "Effect": "Allow",
+       "Action": [
+        "s3:PauseReplication"
+       ],
+       "Resource": [
+        "arn:aws:s3:::*"
+       ],
+       "Condition": {
+        "StringLike": {
+         "s3:DestinationRegion": "*",
+         "aws:ResourceAccount": "123456789012"
+        }
+       }
+      },
+      {
+       "Sid": "S3CrossRegion4",
+       "Effect": "Allow",
+       "Action": [
+        "s3:GetReplicationConfiguration",
+        "s3:PutReplicationConfiguration"
+       ],
+       "Resource": [
+        "arn:aws:s3:::*"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "aws:ResourceAccount": "123456789012"
+        },
+        "BoolIfExists": {
+         "s3:isReplicationPauseRequest": "true"
+        }
+       }
+      },
+      {
+       "Sid": "DdbCrossRegion1",
+       "Effect": "Allow",
+       "Action": [
+        "tag:GetResources"
+       ],
+       "Resource": [
+        "*"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "aws:ResourceAccount": "123456789012"
+        }
+       }
+      },
+      {
+       "Sid": "DdbCrossRegion2",
+       "Effect": "Allow",
+       "Action": [
+        "dynamodb:DescribeTable",
+        "dynamodb:DescribeGlobalTable"
+       ],
+       "Resource": [
+        "arn:aws:dynamodb:*:*:table/*",
+        "arn:aws:dynamodb:*:*:global-table/*"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "aws:ResourceAccount": "123456789012"
+        }
+       }
+      },
+      {
+       "Sid": "DdbCrossRegion3",
+       "Effect": "Allow",
+       "Action": [
+        "kms:DescribeKey",
+        "kms:GetKeyPolicy",
+        "kms:PutKeyPolicy"
+       ],
+       "Resource": [
+        "arn:aws:kms:*:*:key/*"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "aws:ResourceAccount": "123456789012"
+        }
+       }
+      }
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "FISExperimentManagedPolicy",
+   "cfg": "FISExperimentManagedPolicy",
+   "type": "AWS::IAM::ManagedPolicy",
+   "values": {
+    "PolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Action": [
+        "ec2:*",
+        "s3:*",
+        "dynamodb:*"
+       ],
+       "Resource": [
+        "*"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "aws:PrincipalAccount": "123456789012",
+         "aws:ResourceAccount": "123456789012"
+        }
+       }
+      }
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "AZDisruptionManagedPolicy",
+   "cfg": "AZDisruptionManagedPolicy",
+   "type": "AWS::IAM::ManagedPolicy",
+   "values": {
+    "PolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Sid": "AllowRouteTableDisruptions",
+       "Effect": "Allow",
+       "Action": [
+        "ec2:DescribeRouteTables",
+        "ec2:ReplaceRoute",
+        "ec2:CreateRoute",
+        "ec2:DeleteRoute",
+        "ec2:DescribeRouteTables"
+       ],
+       "Resource": [
+        "*"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "aws:PrincipalAccount": "123456789012",
+         "aws:ResourceAccount": "123456789012"
+        }
+       }
+      },
+      {
+       "Sid": "AllowFISExperimentLoggingActionsCloudwatch",
+       "Effect": "Allow",
+       "Action": [
+        "logs:CreateLogDelivery",
+        "logs:PutResourcePolicy",
+        "logs:DescribeResourcePolicies",
+        "logs:DescribeLogGroups"
+       ],
+       "Resource": [
+        "*"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "aws:PrincipalAccount": "123456789012",
+         "aws:ResourceAccount": "123456789012"
+        }
+       }
+      },
+      {
+       "Effect": "Allow",
+       "Action": [
+        "ec2:CreateTags"
+       ],
+       "Resource": [
+        "arn:aws:ec2:*:*:network-acl/*"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "ec2:CreateAction": "CreateNetworkAcl",
+         "aws:RequestTag/managedByFIS": "true"
+        }
+       }
+      },
+      {
+       "Effect": "Allow",
+       "Action": [
+        "ec2:CreateNetworkAcl"
+       ],
+       "Resource": [
+        "arn:aws:ec2:*:*:network-acl/*"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "aws:RequestTag/managedByFIS": "true"
+        }
+       }
+      },
+      {
+       "Effect": "Allow",
+       "Action": [
+        "ec2:CreateNetworkAclEntry",
+        "ec2:DeleteNetworkAcl"
+       ],
+       "Resource": [
+        "arn:aws:ec2:*:*:network-acl/*",
+        "arn:aws:ec2:*:*:vpc/*"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "ec2:ResourceTag/managedByFIS": "true"
+        }
+       }
+      },
+      {
+       "Effect": "Allow",
+       "Action": [
+        "ec2:CreateNetworkAcl"
+       ],
+       "Resource": [
+        "arn:aws:ec2:*:*:vpc/*"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "aws:PrincipalAccount": "123456789012",
+         "aws:ResourceAccount": "123456789012"
+        }
+       }
+      },
+      {
+       "Effect": "Allow",
+       "Action": [
+        "ec2:DescribeVpcs",
+        "ec2:DescribeManagedPrefixLists",
+        "ec2:DescribeSubnets",
+        "ec2:DescribeNetworkAcls"
+       ],
+       "Resource": [
+        "*"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "aws:PrincipalAccount": "123456789012",
+         "aws:ResourceAccount": "123456789012"
+        }
+       }
+      },
+      {
+       "Effect": "Allow",
+       "Action": [
+        "ec2:ReplaceNetworkAclAssociation"
+       ],
+       "Resource": [
+        "arn:aws:ec2:*:*:subnet/*",
+        "arn:aws:ec2:*:*:network-acl/*"
+       ]
+      },
+      {
+       "Effect": "Allow",
+       "Action": [
+        "rds:FailoverDBCluster"
+       ],
+       "Resource": [
+        "arn:aws:rds:*:*:cluster:*"
+       ]
+      },
+      {
+       "Effect": "Allow",
+       "Action": [
+        "rds:RebootDBInstance"
+       ],
+       "Resource": [
+        "arn:aws:rds:*:*:db:*"
+       ]
+      },
+      {
+       "Effect": "Allow",
+       "Action": [
+        "elasticache:DescribeReplicationGroups",
+        "elasticache:InterruptClusterAzPower"
+       ],
+       "Resource": [
+        "arn:aws:elasticache:*:*:replicationgroup:*"
+       ]
+      },
+      {
+       "Sid": "TargetResolutionByTags",
+       "Effect": "Allow",
+       "Action": [
+        "tag:GetResources"
+       ],
+       "Resource": [
+        "*"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "aws:PrincipalAccount": "123456789012",
+         "aws:ResourceAccount": "123456789012"
+        }
+       }
+      },
+      {
+       "Effect": "Allow",
+       "Action": [
+        "ec2:StartInstances",
+        "ec2:StopInstances"
+       ],
+       "Resource": [
+        "arn:aws:ec2:*:*:instance/*"
+       ]
+      },
+      {
+       "Effect": "Allow",
+       "Action": [
+        "ec2:DescribeInstances"
+       ],
+       "Resource": [
+        "*"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "aws:PrincipalAccount": "123456789012",
+         "aws:ResourceAccount": "123456789012"
+        }
+       }
+      },
+      {
+       "Effect": "Allow",
+       "Action": [
+        "kms:CreateGrant"
+       ],
+       "Resource": [
+        "arn:aws:kms:*:*:key/*"
+       ],
+       "Condition": {
+        "StringLike": {
+         "kms:ViaService": "ec2.*.amazonaws.com"
+        },
+        "Bool": {
+         "kms:GrantIsForAWSResource": "true"
+        }
+       }
+      },
+      {
+       "Effect": "Allow",
+       "Action": [
+        "ec2:DescribeVolumes"
+       ],
+       "Resource": [
+        "*"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "aws:PrincipalAccount": "123456789012",
+         "aws:ResourceAccount": "123456789012"
+        }
+       }
+      },
+      {
+       "Effect": "Allow",
+       "Action": [
+        "ec2:PauseVolumeIO"
+       ],
+       "Resource": [
+        "arn:aws:ec2:*:*:volume/*"
+       ]
+      },
+      {
+       "Sid": "AllowInjectAPI",
+       "Effect": "Allow",
+       "Action": [
+        "ec2:InjectApiError"
+       ],
+       "Resource": [
+        "*"
+       ],
+       "Condition": {
+        "ForAnyValue:StringEquals": {
+         "ec2:FisActionId": [
+          "aws:ec2:api-insufficient-instance-capacity-error",
+          "aws:ec2:asg-insufficient-instance-capacity-error"
+         ]
+        }
+       }
+      },
+      {
+       "Sid": "DescribeAsg",
+       "Effect": "Allow",
+       "Action": [
+        "autoscaling:DescribeAutoScalingGroups"
+       ],
+       "Resource": [
+        "*"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "aws:PrincipalAccount": "123456789012",
+         "aws:ResourceAccount": "123456789012"
+        }
+       }
+      }
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "FISLogGroupKey",
+   "cfg": "FISLogGroupKey",
+   "type": "AWS::KMS::Key",
+   "values": {
+    "Enabled": true,
+    "EnableKeyRotation": true,
+    "KeyPolicy": {
+     "Version": "2012-10-17",
+     "Id": "key-loggroup",
+     "Statement": [
+      {
+       "Sid": "Enable IAM User Permissions",
+       "Effect": "Allow",
+       "Principal": {
+        "AWS": [
+         "arn:aws:iam::123456789012:root"
+        ]
+       },
+       "Action": [
+        "kms:*"
+       ],
+       "Resource": [
+        "*"
+       ]
+      },
+      {
+       "Sid": "Enable Cloudwatch access",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "logs.us-east-1.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "kms:Encrypt*",
+        "kms:Decrypt*",
+        "kms:ReEncrypt*",
+        "kms:GenerateDataKey*",
+        "kms:Describe*"
+       ],
+       "Resource": [
+        "*"
+       ]
+      }
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "FISExperimentLogGroup",
+   "cfg": "FISExperimentLogGroup",
+   "type": "AWS::Logs::LogGroup",
+   "values": {
+    "KmsKeyId": {
+     "ref": "FISLogGroupKey",
+     "attr": "Arn"
+    },
+    "LogGroupName": "chaos-experiment-logs",
+    "RetentionInDays": 7
+   },
+   "refs": [
+    "FISLogGroupKey"
+   ]
+  },
+  {
+   "id": "__parameter__.Env",
+   "cfg": "__parameter__.Env",
+   "type": "__parameter__",
+   "values": {
+    "name": "Env",
+    "type": "String",
+    "default": "",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.Duration",
+   "cfg": "__parameter__.Duration",
+   "type": "__parameter__",
+   "values": {
+    "name": "Duration",
+    "type": "String",
+    "default": "PT20M",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.Region",
+   "cfg": "__parameter__.Region",
+   "type": "__parameter__",
+   "values": {
+    "name": "Region",
+    "type": "String",
+    "default": "us-west-2",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.TransitGatewayTagValue",
+   "cfg": "__parameter__.TransitGatewayTagValue",
+   "type": "__parameter__",
+   "values": {
+    "name": "TransitGatewayTagValue",
+    "type": "String",
+    "default": true,
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.SubnetTagValue",
+   "cfg": "__parameter__.SubnetTagValue",
+   "type": "__parameter__",
+   "values": {
+    "name": "SubnetTagValue",
+    "type": "String",
+    "default": true,
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.S3BucketTagValue",
+   "cfg": "__parameter__.S3BucketTagValue",
+   "type": "__parameter__",
+   "values": {
+    "name": "S3BucketTagValue",
+    "type": "String",
+    "default": true,
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.DynamoDBTagValue",
+   "cfg": "__parameter__.DynamoDBTagValue",
+   "type": "__parameter__",
+   "values": {
+    "name": "DynamoDBTagValue",
+    "type": "String",
+    "default": true,
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.ExperimentTemplateId",
+   "cfg": "__output__.ExperimentTemplateId",
+   "type": "__output__",
+   "values": {
+    "name": "ExperimentTemplateId",
+    "value": {
+     "ref": "MultiRegionScenario"
+    },
+    "description": "The ID of the created FIS experiment template",
+    "export": null
+   },
+   "refs": [
+    "MultiRegionScenario"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::FIS::ExperimentTemplate.MultiRegionScenario",
+   "cfg": "MultiRegionScenario",
+   "type": "__declared__",
+   "refs": [
+    "ExperimentRole",
+    "FISExperimentLogGroup"
+   ],
+   "values": {
+    "type": "AWS::FIS::ExperimentTemplate",
+    "name": "MultiRegionScenario",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Description": "Block application network traffic from experiment Region to target Region and pause cross-Region replication",
+     "RoleArn": {
+      "ref": "ExperimentRole",
+      "attr": "Arn"
+     },
+     "Targets": {
+      "TransitGateway": {
+       "ResourceType": "aws:ec2:transit-gateway",
+       "ResourceTags": {
+        "ChaosAllowed": true
+       },
+       "SelectionMode": "ALL"
+      },
+      "Subnet": {
+       "ResourceType": "aws:ec2:subnet",
+       "ResourceTags": {
+        "ChaosAllowed": true
+       },
+       "SelectionMode": "ALL"
+      },
+      "S3Bucket": {
+       "ResourceType": "aws:s3:bucket",
+       "ResourceTags": {
+        "ChaosAllowed": true
+       },
+       "SelectionMode": "ALL"
+      },
+      "DynamoDBGlobalTable": {
+       "ResourceType": "aws:dynamodb:global-table",
+       "ResourceTags": {
+        "ChaosAllowed": true
+       },
+       "SelectionMode": "ALL"
+      }
+     },
+     "Actions": {
+      "DisruptTransitGatewayConnectivity": {
+       "ActionId": "aws:network:transit-gateway-disrupt-cross-region-connectivity",
+       "Parameters": {
+        "duration": "PT20M",
+        "region": "us-west-2"
+       },
+       "Targets": {
+        "TransitGateways": "TransitGateway"
+       }
+      },
+      "DisruptSubnetConnectivity": {
+       "ActionId": "aws:network:route-table-disrupt-cross-region-connectivity",
+       "Parameters": {
+        "duration": "PT20M",
+        "region": "us-west-2"
+       },
+       "Targets": {
+        "Subnets": "Subnet"
+       }
+      },
+      "PauseS3Replication": {
+       "ActionId": "aws:s3:bucket-pause-replication",
+       "Parameters": {
+        "duration": "PT20M",
+        "region": "us-west-2"
+       },
+       "Targets": {
+        "Buckets": "S3Bucket"
+       }
+      },
+      "PauseDynamoDBReplication": {
+       "ActionId": "aws:dynamodb:global-table-pause-replication",
+       "Parameters": {
+        "duration": "PT20M"
+       },
+       "Targets": {
+        "Tables": "DynamoDBGlobalTable"
+       }
+      }
+     },
+     "StopConditions": [
+      {
+       "Source": "none"
+      }
+     ],
+     "LogConfiguration": {
+      "LogSchemaVersion": 2,
+      "CloudWatchLogsConfiguration": {
+       "LogGroupArn": {
+        "ref": "FISExperimentLogGroup",
+        "attr": "Arn"
+       }
+      }
+     },
+     "Tags": {
+      "Name": "Cross-Region: Connectivity to us-west-2",
+      "Env": ""
+     },
+     "ExperimentOptions": {
+      "AccountTargeting": "single-account",
+      "EmptyTargetResolutionMode": "skip"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.ExperimentRole",
+   "cfg": "ExperimentRole",
+   "type": "__declared__",
+   "refs": [
+    "AZDisruptionManagedPolicy",
+    "CrossRegionRTManagedPolicy",
+    "CrossRegionTGS3ManagedPolicy",
+    "FISExperimentManagedPolicy"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "ExperimentRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "fis.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "ManagedPolicyArns": [
+      {
+       "ref": "CrossRegionRTManagedPolicy"
+      },
+      {
+       "ref": "CrossRegionTGS3ManagedPolicy"
+      },
+      {
+       "ref": "FISExperimentManagedPolicy"
+      },
+      {
+       "ref": "AZDisruptionManagedPolicy"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::ManagedPolicy.CrossRegionRTManagedPolicy",
+   "cfg": "CrossRegionRTManagedPolicy",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::ManagedPolicy",
+    "name": "CrossRegionRTManagedPolicy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Sid": "RouteTableDisruptConnectivity1",
+        "Effect": "Allow",
+        "Action": [
+         "ec2:CreateRouteTable"
+        ],
+        "Resource": [
+         "arn:aws:ec2:*:*:route-table/*"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "aws:RequestTag/managedByFIS": "true",
+          "aws:ResourceAccount": "123456789012"
+         }
+        }
+       },
+       {
+        "Sid": "RouteTableDisruptConnectivity2",
+        "Effect": "Allow",
+        "Action": [
+         "ec2:CreateRouteTable"
+        ],
+        "Resource": [
+         "arn:aws:ec2:*:*:vpc/*"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "aws:ResourceAccount": "123456789012"
+         }
+        }
+       },
+       {
+        "Sid": "RouteTableDisruptConnectivity21",
+        "Effect": "Allow",
+        "Action": [
+         "ec2:CreateTags"
+        ],
+        "Resource": [
+         "arn:aws:ec2:*:*:route-table/*"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "ec2:CreateAction": "CreateRouteTable",
+          "aws:RequestTag/managedByFIS": "true",
+          "aws:ResourceAccount": "123456789012"
+         }
+        }
+       },
+       {
+        "Sid": "RouteTableDisruptConnectivity3",
+        "Effect": "Allow",
+        "Action": [
+         "ec2:CreateTags"
+        ],
+        "Resource": [
+         "arn:aws:ec2:*:*:network-interface/*"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "ec2:CreateAction": "CreateNetworkInterface",
+          "aws:RequestTag/managedByFIS": "true",
+          "aws:ResourceAccount": "123456789012"
+         }
+        }
+       },
+       {
+        "Sid": "RouteTableDisruptConnectivity4",
+        "Effect": "Allow",
+        "Action": [
+         "ec2:CreateTags"
+        ],
+        "Resource": [
+         "arn:aws:ec2:*:*:prefix-list/*"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "ec2:CreateAction": "CreateManagedPrefixList",
+          "aws:RequestTag/managedByFIS": "true",
+          "aws:ResourceAccount": "123456789012"
+         }
+        }
+       },
+       {
+        "Sid": "RouteTableDisruptConnectivity5",
+        "Effect": "Allow",
+        "Action": [
+         "ec2:DeleteRouteTable"
+        ],
+        "Resource": [
+         "arn:aws:ec2:*:*:route-table/*",
+         "arn:aws:ec2:*:*:vpc/*"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "ec2:ResourceTag/managedByFIS": "true",
+          "aws:ResourceAccount": "123456789012"
+         }
+        }
+       },
+       {
+        "Sid": "RouteTableDisruptConnectivity6",
+        "Effect": "Allow",
+        "Action": [
+         "ec2:CreateRoute"
+        ],
+        "Resource": [
+         "arn:aws:ec2:*:*:route-table/*"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "ec2:ResourceTag/managedByFIS": "true",
+          "aws:ResourceAccount": "123456789012"
+         }
+        }
+       },
+       {
+        "Sid": "RouteTableDisruptConnectivity7",
+        "Effect": "Allow",
+        "Action": [
+         "ec2:CreateNetworkInterface"
+        ],
+        "Resource": [
+         "arn:aws:ec2:*:*:network-interface/*"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "aws:RequestTag/managedByFIS": "true",
+          "aws:ResourceAccount": "123456789012"
+         }
+        }
+       },
+       {
+        "Sid": "RouteTableDisruptConnectivity8",
+        "Effect": "Allow",
+        "Action": [
+         "ec2:CreateNetworkInterface"
+        ],
+        "Resource": [
+         "arn:aws:ec2:*:*:subnet/*",
+         "arn:aws:ec2:*:*:security-group/*"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "aws:ResourceAccount": "123456789012"
+         }
+        }
+       },
+       {
+        "Sid": "RouteTableDisruptConnectivity9",
+        "Effect": "Allow",
+        "Action": [
+         "ec2:DeleteNetworkInterface"
+        ],
+        "Resource": [
+         "arn:aws:ec2:*:*:network-interface/*"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "ec2:ResourceTag/managedByFIS": "true",
+          "aws:ResourceAccount": "123456789012"
+         }
+        }
+       },
+       {
+        "Sid": "RouteTableDisruptConnectivity10",
+        "Effect": "Allow",
+        "Action": [
+         "ec2:CreateManagedPrefixList"
+        ],
+        "Resource": [
+         "arn:aws:ec2:*:*:prefix-list/*"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "aws:RequestTag/managedByFIS": "true",
+          "aws:ResourceAccount": "123456789012"
+         }
+        }
+       },
+       {
+        "Sid": "RouteTableDisruptConnectivity11",
+        "Effect": "Allow",
+        "Action": [
+         "ec2:DeleteManagedPrefixList"
+        ],
+        "Resource": [
+         "arn:aws:ec2:*:*:prefix-list/*"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "ec2:ResourceTag/managedByFIS": "true",
+          "aws:ResourceAccount": "123456789012"
+         }
+        }
+       },
+       {
+        "Sid": "RouteTableDisruptConnectivity12",
+        "Effect": "Allow",
+        "Action": [
+         "ec2:ModifyManagedPrefixList"
+        ],
+        "Resource": [
+         "arn:aws:ec2:*:*:prefix-list/*"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "ec2:ResourceTag/managedByFIS": "true",
+          "aws:ResourceAccount": "123456789012"
+         }
+        }
+       },
+       {
+        "Sid": "RouteTableDisruptConnectivity13",
+        "Effect": "Allow",
+        "Action": [
+         "ec2:DescribeNetworkInterfaces",
+         "ec2:DescribeVpcs",
+         "ec2:DescribeVpcPeeringConnections",
+         "ec2:DescribeManagedPrefixLists",
+         "ec2:DescribeSubnets",
+         "ec2:DescribeRouteTables",
+         "ec2:DescribeVpcEndpoints"
+        ],
+        "Resource": [
+         "*"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "aws:ResourceAccount": "123456789012"
+         }
+        }
+       },
+       {
+        "Sid": "RouteTableDisruptConnectivity14",
+        "Effect": "Allow",
+        "Action": [
+         "ec2:ReplaceRouteTableAssociation"
+        ],
+        "Resource": [
+         "arn:aws:ec2:*:*:subnet/*",
+         "arn:aws:ec2:*:*:route-table/*"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "aws:ResourceAccount": "123456789012"
+         }
+        }
+       },
+       {
+        "Sid": "RouteTableDisruptConnectivity15",
+        "Effect": "Allow",
+        "Action": [
+         "ec2:GetManagedPrefixListEntries"
+        ],
+        "Resource": [
+         "arn:aws:ec2:*:*:prefix-list/*"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "aws:ResourceAccount": "123456789012"
+         }
+        }
+       },
+       {
+        "Sid": "RouteTableDisruptConnectivity16",
+        "Effect": "Allow",
+        "Action": [
+         "ec2:AssociateRouteTable"
+        ],
+        "Resource": [
+         "arn:aws:ec2:*:*:subnet/*",
+         "arn:aws:ec2:*:*:route-table/*"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "aws:ResourceAccount": "123456789012"
+         }
+        }
+       },
+       {
+        "Sid": "RouteTableDisruptConnectivity17",
+        "Effect": "Allow",
+        "Action": [
+         "ec2:DisassociateRouteTable"
+        ],
+        "Resource": [
+         "arn:aws:ec2:*:*:route-table/*"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "ec2:ResourceTag/managedByFIS": "true",
+          "aws:ResourceAccount": "123456789012"
+         }
+        }
+       },
+       {
+        "Sid": "RouteTableDisruptConnectivity18",
+        "Effect": "Allow",
+        "Action": [
+         "ec2:DisassociateRouteTable"
+        ],
+        "Resource": [
+         "arn:aws:ec2:*:*:subnet/*"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "aws:ResourceAccount": "123456789012"
+         }
+        }
+       },
+       {
+        "Sid": "RouteTableDisruptConnectivity19",
+        "Effect": "Allow",
+        "Action": [
+         "ec2:ModifyVpcEndpoint"
+        ],
+        "Resource": [
+         "arn:aws:ec2:*:*:route-table/*"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "ec2:ResourceTag/managedByFIS": "true",
+          "aws:ResourceAccount": "123456789012"
+         }
+        }
+       },
+       {
+        "Sid": "RouteTableDisruptConnectivity20",
+        "Effect": "Allow",
+        "Action": [
+         "ec2:ModifyVpcEndpoint"
+        ],
+        "Resource": [
+         "arn:aws:ec2:*:*:vpc-endpoint/*"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "aws:ResourceAccount": "123456789012"
+         }
+        }
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::ManagedPolicy.CrossRegionTGS3ManagedPolicy",
+   "cfg": "CrossRegionTGS3ManagedPolicy",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::ManagedPolicy",
+    "name": "CrossRegionTGS3ManagedPolicy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Sid": "TransitGatewayDisruptConnectivity1",
+        "Effect": "Allow",
+        "Action": [
+         "ec2:DisassociateTransitGatewayRouteTable",
+         "ec2:AssociateTransitGatewayRouteTable"
+        ],
+        "Resource": [
+         "arn:aws:ec2:*:*:transit-gateway-route-table/*",
+         "arn:aws:ec2:*:*:transit-gateway-attachment/*"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "aws:ResourceAccount": "123456789012"
+         }
+        }
+       },
+       {
+        "Sid": "TransitGatewayDisruptConnectivity2",
+        "Effect": "Allow",
+        "Action": [
+         "ec2:DescribeTransitGatewayPeeringAttachments",
+         "ec2:DescribeTransitGatewayAttachments",
+         "ec2:DescribeTransitGateways"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "aws:ResourceAccount": "123456789012"
+         }
+        },
+        "Resource": [
+         "*"
+        ]
+       },
+       {
+        "Sid": "S3CrossRegion1",
+        "Effect": "Allow",
+        "Action": [
+         "s3:ListAllMyBuckets"
+        ],
+        "Resource": [
+         "*"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "aws:ResourceAccount": "123456789012"
+         }
+        }
+       },
+       {
+        "Sid": "S3CrossRegion2",
+        "Effect": "Allow",
+        "Action": [
+         "tag:GetResources"
+        ],
+        "Resource": [
+         "*"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "aws:ResourceAccount": "123456789012"
+         }
+        }
+       },
+       {
+        "Sid": "S3CrossRegion3",
+        "Effect": "Allow",
+        "Action": [
+         "s3:PauseReplication"
+        ],
+        "Resource": [
+         "arn:aws:s3:::*"
+        ],
+        "Condition": {
+         "StringLike": {
+          "s3:DestinationRegion": "*",
+          "aws:ResourceAccount": "123456789012"
+         }
+        }
+       },
+       {
+        "Sid": "S3CrossRegion4",
+        "Effect": "Allow",
+        "Action": [
+         "s3:GetReplicationConfiguration",
+         "s3:PutReplicationConfiguration"
+        ],
+        "Resource": [
+         "arn:aws:s3:::*"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "aws:ResourceAccount": "123456789012"
+         },
+         "BoolIfExists": {
+          "s3:isReplicationPauseRequest": "true"
+         }
+        }
+       },
+       {
+        "Sid": "DdbCrossRegion1",
+        "Effect": "Allow",
+        "Action": [
+         "tag:GetResources"
+        ],
+        "Resource": [
+         "*"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "aws:ResourceAccount": "123456789012"
+         }
+        }
+       },
+       {
+        "Sid": "DdbCrossRegion2",
+        "Effect": "Allow",
+        "Action": [
+         "dynamodb:DescribeTable",
+         "dynamodb:DescribeGlobalTable"
+        ],
+        "Resource": [
+         "arn:aws:dynamodb:*:*:table/*",
+         "arn:aws:dynamodb:*:*:global-table/*"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "aws:ResourceAccount": "123456789012"
+         }
+        }
+       },
+       {
+        "Sid": "DdbCrossRegion3",
+        "Effect": "Allow",
+        "Action": [
+         "kms:DescribeKey",
+         "kms:GetKeyPolicy",
+         "kms:PutKeyPolicy"
+        ],
+        "Resource": [
+         "arn:aws:kms:*:*:key/*"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "aws:ResourceAccount": "123456789012"
+         }
+        }
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::ManagedPolicy.FISExperimentManagedPolicy",
+   "cfg": "FISExperimentManagedPolicy",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::ManagedPolicy",
+    "name": "FISExperimentManagedPolicy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Action": [
+         "ec2:*",
+         "s3:*",
+         "dynamodb:*"
+        ],
+        "Resource": [
+         "*"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "aws:PrincipalAccount": "123456789012",
+          "aws:ResourceAccount": "123456789012"
+         }
+        }
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::ManagedPolicy.AZDisruptionManagedPolicy",
+   "cfg": "AZDisruptionManagedPolicy",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::ManagedPolicy",
+    "name": "AZDisruptionManagedPolicy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Sid": "AllowRouteTableDisruptions",
+        "Effect": "Allow",
+        "Action": [
+         "ec2:DescribeRouteTables",
+         "ec2:ReplaceRoute",
+         "ec2:CreateRoute",
+         "ec2:DeleteRoute",
+         "ec2:DescribeRouteTables"
+        ],
+        "Resource": [
+         "*"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "aws:PrincipalAccount": "123456789012",
+          "aws:ResourceAccount": "123456789012"
+         }
+        }
+       },
+       {
+        "Sid": "AllowFISExperimentLoggingActionsCloudwatch",
+        "Effect": "Allow",
+        "Action": [
+         "logs:CreateLogDelivery",
+         "logs:PutResourcePolicy",
+         "logs:DescribeResourcePolicies",
+         "logs:DescribeLogGroups"
+        ],
+        "Resource": [
+         "*"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "aws:PrincipalAccount": "123456789012",
+          "aws:ResourceAccount": "123456789012"
+         }
+        }
+       },
+       {
+        "Effect": "Allow",
+        "Action": [
+         "ec2:CreateTags"
+        ],
+        "Resource": [
+         "arn:aws:ec2:*:*:network-acl/*"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "ec2:CreateAction": "CreateNetworkAcl",
+          "aws:RequestTag/managedByFIS": "true"
+         }
+        }
+       },
+       {
+        "Effect": "Allow",
+        "Action": [
+         "ec2:CreateNetworkAcl"
+        ],
+        "Resource": [
+         "arn:aws:ec2:*:*:network-acl/*"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "aws:RequestTag/managedByFIS": "true"
+         }
+        }
+       },
+       {
+        "Effect": "Allow",
+        "Action": [
+         "ec2:CreateNetworkAclEntry",
+         "ec2:DeleteNetworkAcl"
+        ],
+        "Resource": [
+         "arn:aws:ec2:*:*:network-acl/*",
+         "arn:aws:ec2:*:*:vpc/*"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "ec2:ResourceTag/managedByFIS": "true"
+         }
+        }
+       },
+       {
+        "Effect": "Allow",
+        "Action": [
+         "ec2:CreateNetworkAcl"
+        ],
+        "Resource": [
+         "arn:aws:ec2:*:*:vpc/*"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "aws:PrincipalAccount": "123456789012",
+          "aws:ResourceAccount": "123456789012"
+         }
+        }
+       },
+       {
+        "Effect": "Allow",
+        "Action": [
+         "ec2:DescribeVpcs",
+         "ec2:DescribeManagedPrefixLists",
+         "ec2:DescribeSubnets",
+         "ec2:DescribeNetworkAcls"
+        ],
+        "Resource": [
+         "*"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "aws:PrincipalAccount": "123456789012",
+          "aws:ResourceAccount": "123456789012"
+         }
+        }
+       },
+       {
+        "Effect": "Allow",
+        "Action": [
+         "ec2:ReplaceNetworkAclAssociation"
+        ],
+        "Resource": [
+         "arn:aws:ec2:*:*:subnet/*",
+         "arn:aws:ec2:*:*:network-acl/*"
+        ]
+       },
+       {
+        "Effect": "Allow",
+        "Action": [
+         "rds:FailoverDBCluster"
+        ],
+        "Resource": [
+         "arn:aws:rds:*:*:cluster:*"
+        ]
+       },
+       {
+        "Effect": "Allow",
+        "Action": [
+         "rds:RebootDBInstance"
+        ],
+        "Resource": [
+         "arn:aws:rds:*:*:db:*"
+        ]
+       },
+       {
+        "Effect": "Allow",
+        "Action": [
+         "elasticache:DescribeReplicationGroups",
+         "elasticache:InterruptClusterAzPower"
+        ],
+        "Resource": [
+         "arn:aws:elasticache:*:*:replicationgroup:*"
+        ]
+       },
+       {
+        "Sid": "TargetResolutionByTags",
+        "Effect": "Allow",
+        "Action": [
+         "tag:GetResources"
+        ],
+        "Resource": [
+         "*"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "aws:PrincipalAccount": "123456789012",
+          "aws:ResourceAccount": "123456789012"
+         }
+        }
+       },
+       {
+        "Effect": "Allow",
+        "Action": [
+         "ec2:StartInstances",
+         "ec2:StopInstances"
+        ],
+        "Resource": [
+         "arn:aws:ec2:*:*:instance/*"
+        ]
+       },
+       {
+        "Effect": "Allow",
+        "Action": [
+         "ec2:DescribeInstances"
+        ],
+        "Resource": [
+         "*"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "aws:PrincipalAccount": "123456789012",
+          "aws:ResourceAccount": "123456789012"
+         }
+        }
+       },
+       {
+        "Effect": "Allow",
+        "Action": [
+         "kms:CreateGrant"
+        ],
+        "Resource": [
+         "arn:aws:kms:*:*:key/*"
+        ],
+        "Condition": {
+         "StringLike": {
+          "kms:ViaService": "ec2.*.amazonaws.com"
+         },
+         "Bool": {
+          "kms:GrantIsForAWSResource": "true"
+         }
+        }
+       },
+       {
+        "Effect": "Allow",
+        "Action": [
+         "ec2:DescribeVolumes"
+        ],
+        "Resource": [
+         "*"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "aws:PrincipalAccount": "123456789012",
+          "aws:ResourceAccount": "123456789012"
+         }
+        }
+       },
+       {
+        "Effect": "Allow",
+        "Action": [
+         "ec2:PauseVolumeIO"
+        ],
+        "Resource": [
+         "arn:aws:ec2:*:*:volume/*"
+        ]
+       },
+       {
+        "Sid": "AllowInjectAPI",
+        "Effect": "Allow",
+        "Action": [
+         "ec2:InjectApiError"
+        ],
+        "Resource": [
+         "*"
+        ],
+        "Condition": {
+         "ForAnyValue:StringEquals": {
+          "ec2:FisActionId": [
+           "aws:ec2:api-insufficient-instance-capacity-error",
+           "aws:ec2:asg-insufficient-instance-capacity-error"
+          ]
+         }
+        }
+       },
+       {
+        "Sid": "DescribeAsg",
+        "Effect": "Allow",
+        "Action": [
+         "autoscaling:DescribeAutoScalingGroups"
+        ],
+        "Resource": [
+         "*"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "aws:PrincipalAccount": "123456789012",
+          "aws:ResourceAccount": "123456789012"
+         }
+        }
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::KMS::Key.FISLogGroupKey",
+   "cfg": "FISLogGroupKey",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::KMS::Key",
+    "name": "FISLogGroupKey",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Enabled": true,
+     "EnableKeyRotation": true,
+     "KeyPolicy": {
+      "Version": "2012-10-17",
+      "Id": "key-loggroup",
+      "Statement": [
+       {
+        "Sid": "Enable IAM User Permissions",
+        "Effect": "Allow",
+        "Principal": {
+         "AWS": [
+          "arn:aws:iam::123456789012:root"
+         ]
+        },
+        "Action": [
+         "kms:*"
+        ],
+        "Resource": [
+         "*"
+        ]
+       },
+       {
+        "Sid": "Enable Cloudwatch access",
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "logs.us-east-1.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "kms:Encrypt*",
+         "kms:Decrypt*",
+         "kms:ReEncrypt*",
+         "kms:GenerateDataKey*",
+         "kms:Describe*"
+        ],
+        "Resource": [
+         "*"
+        ]
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::LogGroup.FISExperimentLogGroup",
+   "cfg": "FISExperimentLogGroup",
+   "type": "__declared__",
+   "refs": [
+    "FISLogGroupKey"
+   ],
+   "values": {
+    "type": "AWS::Logs::LogGroup",
+    "name": "FISExperimentLogGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "KmsKeyId": {
+      "ref": "FISLogGroupKey",
+      "attr": "Arn"
+     },
+     "LogGroupName": "chaos-experiment-logs",
+     "RetentionInDays": 7
+    }
+   }
+  }
+ ]
+}

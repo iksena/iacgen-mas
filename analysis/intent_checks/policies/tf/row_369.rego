@@ -1,0 +1,1073 @@
+# GENERATED from specs/tf/row_369.json by intent_checks/build.py -- do not edit.
+package intent.tf.row_369
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {
+  "src": {
+   "types": [
+    "aws_s3_bucket"
+   ],
+   "where": [
+    {
+     "path": [
+      "bucket"
+     ],
+     "op": "regex",
+     "value": "^log[12][ab]\\.veerum-\\d{12}$"
+    }
+   ]
+  },
+  "rep": {
+   "types": [
+    "aws_s3_bucket"
+   ],
+   "where": [
+    {
+     "path": [
+      "bucket"
+     ],
+     "op": "regex",
+     "value": "^log[12][ab]\\.veerum-(\\d{12}-)?replica[12]-\\d{12}$"
+    }
+   ]
+  },
+  "bucket": {
+   "types": [
+    "aws_s3_bucket"
+   ],
+   "where": []
+  },
+  "role": {
+   "types": [
+    "aws_iam_role"
+   ],
+   "where": [
+    {
+     "path": [
+      "assume_role_policy"
+     ],
+     "op": "contains",
+     "value": "s3.amazonaws.com"
+    }
+   ]
+  },
+  "repl_cfg": {
+   "types": [
+    "aws_s3_bucket_replication_configuration"
+   ],
+   "where": []
+  },
+  "policy": {
+   "types": [
+    "aws_iam_policy"
+   ],
+   "where": []
+  }
+ },
+ "checks": [
+  {
+   "id": "primary_source_buckets",
+   "kind": "all_of",
+   "tier": "core",
+   "quote": "create two source buckets named \"log1a.veerum\" and \"log1b.veerum\"",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_s3_bucket"
+      ],
+      "where": [
+       {
+        "path": [
+         "bucket"
+        ],
+        "op": "regex",
+        "value": "^log1a\\.veerum-\\d{12}$"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_s3_bucket"
+      ],
+      "where": [
+       {
+        "path": [
+         "bucket"
+        ],
+        "op": "regex",
+        "value": "^log1b\\.veerum-\\d{12}$"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "secondary_source_buckets",
+   "kind": "all_of",
+   "tier": "core",
+   "quote": "two source buckets named \"log2a.veerum\" and \"log2b.veerum\", each followed by a hyphen and the current AWS account ID",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_s3_bucket"
+      ],
+      "where": [
+       {
+        "path": [
+         "bucket"
+        ],
+        "op": "regex",
+        "value": "^log2a\\.veerum-\\d{12}$"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_s3_bucket"
+      ],
+      "where": [
+       {
+        "path": [
+         "bucket"
+        ],
+        "op": "regex",
+        "value": "^log2b\\.veerum-\\d{12}$"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "primary_region_us_east_1",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "the first being us-east-1",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_s3_bucket"
+      ],
+      "where": [
+       {
+        "path": [
+         "bucket"
+        ],
+        "op": "regex",
+        "value": "^log1[ab]\\.veerum-\\d{12}$"
+       }
+      ]
+     },
+     "quantifier": "all",
+     "cond": {
+      "path": [
+       "region"
+      ],
+      "op": "eq",
+      "value": "us-east-1"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_s3_bucket"
+      ],
+      "where": [
+       {
+        "path": [
+         "bucket"
+        ],
+        "op": "regex",
+        "value": "^log1[ab]\\.veerum-\\d{12}$"
+       }
+      ]
+     },
+     "quantifier": "all",
+     "cond": {
+      "path": [
+       "region"
+      ],
+      "op": "absent"
+     }
+    }
+   ],
+   "justify": "us-east-1 is stated; the per-resource region attribute exists only on AWS provider >=6, so buckets planned without it (provider<6) are not penalised"
+  },
+  {
+   "id": "replica1_buckets",
+   "kind": "exists",
+   "tier": "core",
+   "min": 4,
+   "max": 4,
+   "select": {
+    "types": [
+     "aws_s3_bucket"
+    ],
+    "where": [
+     {
+      "path": [
+       "bucket"
+      ],
+      "op": "regex",
+      "value": "^log[12][ab]\\.veerum-replica1-\\d{12}$"
+     }
+    ]
+   },
+   "quote": "In each replica region, create four replica buckets, one per source bucket, named after the source bucket with a \"-replica1\" or \"-replica2\" suffix"
+  },
+  {
+   "id": "replica2_buckets",
+   "kind": "exists",
+   "tier": "core",
+   "min": 4,
+   "max": 4,
+   "select": {
+    "types": [
+     "aws_s3_bucket"
+    ],
+    "where": [
+     {
+      "path": [
+       "bucket"
+      ],
+      "op": "regex",
+      "value": "^log[12][ab]\\.veerum-replica2-\\d{12}$"
+     }
+    ]
+   },
+   "quote": "In each replica region, create four replica buckets, one per source bucket, named after the source bucket with a \"-replica1\" or \"-replica2\" suffix"
+  },
+  {
+   "id": "buckets_tagged_env_dev",
+   "kind": "attr",
+   "tier": "detail",
+   "quantifier": "all",
+   "select": "bucket",
+   "cond": {
+    "path": [
+     "tags_all",
+     "Env"
+    ],
+    "op": "eq",
+    "value": "dev"
+   },
+   "quote": "log buckets tagged with Env \"dev\""
+  },
+  {
+   "id": "versioning_all_buckets",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "Every bucket must be private with versioning enabled",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "bucket",
+     "quantifier": "all",
+     "cond": {
+      "path": [
+       "versioning",
+       "*",
+       "enabled"
+      ],
+      "op": "truthy"
+     }
+    },
+    {
+     "kind": "exists",
+     "min": 12,
+     "select": {
+      "types": [
+       "aws_s3_bucket_versioning"
+      ],
+      "where": [
+       {
+        "path": [
+         "versioning_configuration",
+         "*",
+         "status"
+        ],
+        "op": "eq",
+        "value": "Enabled"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "public_access_blocked",
+   "kind": "exists",
+   "tier": "core",
+   "min": 12,
+   "select": {
+    "types": [
+     "aws_s3_bucket_public_access_block"
+    ],
+    "where": [
+     {
+      "path": [
+       "block_public_acls"
+      ],
+      "op": "truthy"
+     },
+     {
+      "path": [
+       "block_public_policy"
+      ],
+      "op": "truthy"
+     },
+     {
+      "path": [
+       "ignore_public_acls"
+      ],
+      "op": "truthy"
+     },
+     {
+      "path": [
+       "restrict_public_buckets"
+      ],
+      "op": "truthy"
+     }
+    ]
+   },
+   "quote": "block all public access"
+  },
+  {
+   "id": "sse_kms_all_buckets",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "use default SSE-KMS encryption",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "bucket",
+     "quantifier": "all",
+     "cond": {
+      "path": [
+       "server_side_encryption_configuration",
+       "*",
+       "rule",
+       "*",
+       "apply_server_side_encryption_by_default",
+       "*",
+       "sse_algorithm"
+      ],
+      "op": "eq",
+      "value": "aws:kms"
+     }
+    },
+    {
+     "kind": "exists",
+     "min": 12,
+     "select": {
+      "types": [
+       "aws_s3_bucket_server_side_encryption_configuration"
+      ],
+      "where": [
+       {
+        "path": [
+         "rule",
+         "*",
+         "apply_server_side_encryption_by_default",
+         "*",
+         "sse_algorithm"
+        ],
+        "op": "eq",
+        "value": "aws:kms"
+       }
+      ]
+     }
+    }
+   ],
+   "justify": "4 source buckets + 4 replica buckets in each of 2 replica regions = 12 buckets, all stated"
+  },
+  {
+   "id": "cmk_keys",
+   "kind": "exists",
+   "tier": "core",
+   "min": 4,
+   "select": {
+    "types": [
+     "aws_kms_key"
+    ],
+    "where": []
+   },
+   "quote": "a customer-managed KMS key created in its own region",
+   "justify": "four stated aliases, one customer-managed key per region (keys are regional) -> 4 keys"
+  },
+  {
+   "id": "bucket_encryption_uses_cmk",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "use default SSE-KMS encryption with a customer-managed KMS key",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "rep",
+     "to": {
+      "types": [
+       "aws_kms_key"
+      ],
+      "where": []
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_s3_bucket_server_side_encryption_configuration"
+      ],
+      "where": []
+     },
+     "to": {
+      "types": [
+       "aws_kms_key"
+      ],
+      "where": []
+     }
+    }
+   ]
+  },
+  {
+   "id": "kms_aliases",
+   "kind": "all_of",
+   "tier": "detail",
+   "quote": "aliased \"alias/sourcekey1\", \"alias/sourcekey2\", \"alias/replicakey1\", and \"alias/replicakey2\"",
+   "checks": [
+    {
+     "kind": "ref",
+     "to": {
+      "types": [
+       "aws_kms_key"
+      ],
+      "where": []
+     },
+     "from": {
+      "types": [
+       "aws_kms_alias"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "eq",
+        "value": "alias/sourcekey1"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "to": {
+      "types": [
+       "aws_kms_key"
+      ],
+      "where": []
+     },
+     "from": {
+      "types": [
+       "aws_kms_alias"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "eq",
+        "value": "alias/sourcekey2"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "to": {
+      "types": [
+       "aws_kms_key"
+      ],
+      "where": []
+     },
+     "from": {
+      "types": [
+       "aws_kms_alias"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "eq",
+        "value": "alias/replicakey1"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "to": {
+      "types": [
+       "aws_kms_key"
+      ],
+      "where": []
+     },
+     "from": {
+      "types": [
+       "aws_kms_alias"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "eq",
+        "value": "alias/replicakey2"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "two_enabled_rules_per_source",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "Each source bucket needs two enabled replication rules",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "src",
+     "quantifier": "all",
+     "cond": {
+      "path": [
+       "replication_configuration",
+       "*",
+       "rules"
+      ],
+      "op": "len_eq",
+      "value": 2
+     }
+    },
+    {
+     "kind": "exists",
+     "min": 4,
+     "select": {
+      "types": [
+       "aws_s3_bucket_replication_configuration"
+      ],
+      "where": [
+       {
+        "path": [
+         "rule"
+        ],
+        "op": "len_eq",
+        "value": 2
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "rules_enabled",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "two enabled replication rules",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "src",
+     "quantifier": "all",
+     "cond": {
+      "path": [
+       "replication_configuration",
+       "*",
+       "rules",
+       "*",
+       "status"
+      ],
+      "op": "eq",
+      "value": "Enabled",
+      "every": true
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "repl_cfg",
+     "quantifier": "all",
+     "cond": {
+      "path": [
+       "rule",
+       "*",
+       "status"
+      ],
+      "op": "eq",
+      "value": "Enabled",
+      "every": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "replicate_sse_kms_objects",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "including SSE-KMS encrypted objects",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "src",
+     "quantifier": "all",
+     "cond": {
+      "path": [
+       "replication_configuration",
+       "*",
+       "rules",
+       "*",
+       "source_selection_criteria",
+       "*",
+       "sse_kms_encrypted_objects",
+       "*",
+       "enabled"
+      ],
+      "op": "truthy",
+      "every": true
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "repl_cfg",
+     "quantifier": "all",
+     "cond": {
+      "path": [
+       "rule",
+       "*",
+       "source_selection_criteria",
+       "*",
+       "sse_kms_encrypted_objects",
+       "*",
+       "status"
+      ],
+      "op": "eq",
+      "value": "Enabled",
+      "every": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "standard_storage_class",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "copy them in the STANDARD storage class",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "src",
+     "quantifier": "all",
+     "cond": {
+      "path": [
+       "replication_configuration",
+       "*",
+       "rules",
+       "*",
+       "destination",
+       "*",
+       "storage_class"
+      ],
+      "op": "eq",
+      "value": "STANDARD",
+      "every": true
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "repl_cfg",
+     "quantifier": "all",
+     "cond": {
+      "path": [
+       "rule",
+       "*",
+       "destination",
+       "*",
+       "storage_class"
+      ],
+      "op": "eq",
+      "value": "STANDARD",
+      "every": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "replicates_to_replica_buckets",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "to its matching replica bucket in each replica region",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "src",
+     "to": "rep"
+    },
+    {
+     "kind": "ref",
+     "from": "repl_cfg",
+     "to": "rep"
+    }
+   ]
+  },
+  {
+   "id": "replica_reencryption_key",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "re-encrypting with that region's replica key",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "src",
+     "to": {
+      "types": [
+       "aws_kms_key"
+      ],
+      "where": []
+     }
+    },
+    {
+     "kind": "ref",
+     "from": "repl_cfg",
+     "to": {
+      "types": [
+       "aws_kms_key"
+      ],
+      "where": []
+     }
+    }
+   ]
+  },
+  {
+   "id": "replication_role_s3_trust",
+   "kind": "exists",
+   "select": "role",
+   "tier": "core",
+   "quote": "an IAM role that S3 can assume"
+  },
+  {
+   "id": "replication_uses_role",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "Replication should run under an IAM role",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "src",
+     "to": "role"
+    },
+    {
+     "kind": "ref",
+     "from": "repl_cfg",
+     "to": "role"
+    }
+   ]
+  },
+  {
+   "id": "customer_managed_policy_attached",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "with a customer-managed policy",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_policy_attachment",
+       "aws_iam_role_policy_attachment"
+      ],
+      "where": []
+     },
+     "to": "policy"
+    },
+    {
+     "kind": "ref",
+     "from": "role",
+     "to": "policy"
+    }
+   ]
+  },
+  {
+   "id": "policy_scoped_to_buckets_and_keys",
+   "kind": "all_of",
+   "tier": "detail",
+   "quote": "allowing it to read the source buckets and object versions, replicate objects and deletes into the replica buckets, decrypt with the source keys, and encrypt with the replica keys",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_policy",
+       "aws_iam_role_policy",
+       "data.aws_iam_policy_document"
+      ],
+      "where": []
+     },
+     "to": "src"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_policy",
+       "aws_iam_role_policy",
+       "data.aws_iam_policy_document"
+      ],
+      "where": []
+     },
+     "to": "rep"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_policy",
+       "aws_iam_role_policy",
+       "data.aws_iam_policy_document"
+      ],
+      "where": []
+     },
+     "to": {
+      "types": [
+       "aws_kms_key"
+      ],
+      "where": []
+     }
+    }
+   ]
+  },
+  {
+   "id": "policy_reads_object_versions",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "allowing it to read the source buckets and object versions",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "in",
+        "value": [
+         "aws_iam_policy",
+         "aws_iam_role_policy"
+        ]
+       },
+       {
+        "path": [
+         "properties",
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?i)s3:(\\*|Get\\*|GetObjectVersion\\*?|GetObjectVersionForReplication)\\b"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "data.aws_iam_policy_document"
+      ],
+      "where": [
+       {
+        "path": [
+         "statement",
+         "*",
+         "actions",
+         "*"
+        ],
+        "op": "glob_covers",
+        "value": "s3:GetObjectVersionForReplication"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "policy_replicates_objects_and_deletes",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "replicate objects and deletes into the replica buckets",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "in",
+        "value": [
+         "aws_iam_policy",
+         "aws_iam_role_policy"
+        ]
+       },
+       {
+        "path": [
+         "properties",
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?i)s3:(\\*|Replicate\\*|ReplicateObject)\\b"
+       },
+       {
+        "path": [
+         "properties",
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?i)s3:(\\*|Replicate\\*|ReplicateDelete)\\b"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "data.aws_iam_policy_document"
+      ],
+      "where": [
+       {
+        "path": [
+         "statement",
+         "*",
+         "actions",
+         "*"
+        ],
+        "op": "glob_covers",
+        "value": "s3:ReplicateObject"
+       },
+       {
+        "path": [
+         "statement",
+         "*",
+         "actions",
+         "*"
+        ],
+        "op": "glob_covers",
+        "value": "s3:ReplicateDelete"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "policy_kms_decrypt_encrypt",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "decrypt with the source keys, and encrypt with the replica keys",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "in",
+        "value": [
+         "aws_iam_policy",
+         "aws_iam_role_policy"
+        ]
+       },
+       {
+        "path": [
+         "properties",
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?i)kms:(\\*|Decrypt)\\b"
+       },
+       {
+        "path": [
+         "properties",
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?i)kms:(\\*|Encrypt)\\b"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "data.aws_iam_policy_document"
+      ],
+      "where": [
+       {
+        "path": [
+         "statement",
+         "*",
+         "actions",
+         "*"
+        ],
+        "op": "glob_covers",
+        "value": "kms:Decrypt"
+       },
+       {
+        "path": [
+         "statement",
+         "*",
+         "actions",
+         "*"
+        ],
+        "op": "glob_covers",
+        "value": "kms:Encrypt"
+       }
+      ]
+     }
+    }
+   ]
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

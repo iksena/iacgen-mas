@@ -1,0 +1,1825 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "53e17e0c36d0657b26a4f2be98b224d73d3ade3be3104e6dc9a72815d124b99e",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "CloudTrailLogGroup",
+   "cfg": "CloudTrailLogGroup",
+   "type": "AWS::Logs::LogGroup",
+   "values": {
+    "LogGroupName": "PCI-Org-DefaultLogGroup-us-east-1",
+    "RetentionInDays": 1827
+   },
+   "refs": []
+  },
+  {
+   "id": "AutomationAssumeRole",
+   "cfg": "AutomationAssumeRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "PCI-Org-automationassumerole-us-east-1",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "ssm.amazonaws.com",
+         "events.amazonaws.com",
+         "ec2.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Path": "/",
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/IAMFullAccess",
+     "arn:aws:iam::aws:policy/AdministratorAccess"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "CloudWatchRole",
+   "cfg": "CloudWatchRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "PCI-Org-CloudTrail_CloudWatchLogs_Role-us-east-1",
+    "Policies": [
+     {
+      "PolicyName": "CloudWatchLogsRolePolicy",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "cloudwatch:PutMetricData"
+         ],
+         "Resource": [
+          "*"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "ssm:StartAutomationExecution",
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents",
+          "logs:DescribeLogGroups",
+          "logs:DescribeLogStreams",
+          "iam:PassRole",
+          "ec2:*"
+         ],
+         "Resource": [
+          "*"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "cloudtrail:UpdateTrail",
+          "securityhub:UpdateFindings"
+         ],
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     }
+    ],
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "cloudtrail.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "KmsKeyId",
+   "cfg": "KmsKeyId",
+   "type": "AWS::KMS::Key",
+   "values": {
+    "EnableKeyRotation": true,
+    "Enabled": true,
+    "KeyUsage": "ENCRYPT_DECRYPT",
+    "KeyPolicy": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Sid": "Enable IAM User Permissions",
+       "Effect": "Allow",
+       "Principal": {
+        "AWS": [
+         "arn:aws:iam::123456789012:root"
+        ]
+       },
+       "Action": [
+        "kms:*"
+       ],
+       "Resource": [
+        "*"
+       ]
+      }
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "CustomCloudTrailEncryptionAutomationCF",
+   "cfg": "CustomCloudTrailEncryptionAutomationCF",
+   "type": "AWS::SSM::Document",
+   "values": {
+    "DocumentType": "Automation",
+    "Name": "PCI-Org-Custom-CloudTrailEncryptionCF",
+    "Content": {
+     "schemaVersion": "0.3",
+     "assumeRole": {
+      "Fn::Join": [
+       "",
+       [
+        "arn:aws:iam::",
+        "123456789012",
+        ":role/",
+        {
+         "ref": "AutomationAssumeRole"
+        }
+       ]
+      ]
+     },
+     "parameters": {
+      "AutomationAssumeRole": {
+       "type": "String",
+       "default": {
+        "Fn::Join": [
+         "",
+         [
+          "arn:aws:iam::",
+          "123456789012",
+          ":role/",
+          {
+           "ref": "AutomationAssumeRole"
+          }
+         ]
+        ]
+       }
+      },
+      "CloudTrailLogGroupArn": {
+       "type": "String",
+       "default": "arn:aws:logs:us-east-1:123456789012:log-group:${CloudTrailLogGroup}:*"
+      },
+      "CloudWatchRoleArn": {
+       "type": "String",
+       "default": {
+        "Fn::Join": [
+         "",
+         [
+          "arn:aws:iam::",
+          "123456789012",
+          ":role/",
+          {
+           "ref": "CloudWatchRole"
+          }
+         ]
+        ]
+       }
+      },
+      "TrailName": {
+       "type": "String"
+      },
+      "KMSKeyArn": {
+       "type": "String",
+       "default": {
+        "Fn::Join": [
+         "",
+         [
+          "arn:aws:kms:",
+          "us-east-1",
+          ":",
+          "123456789012",
+          ":key/",
+          {
+           "ref": "KmsKeyId"
+          }
+         ]
+        ]
+       }
+      }
+     },
+     "mainSteps": [
+      {
+       "name": "EncryptCloudTrail",
+       "action": "aws:executeScript",
+       "inputs": {
+        "Runtime": "python3.6",
+        "Handler": "encrypttrail_handler",
+        "Script": "def encrypttrail_handler(events, context):\r\n  import boto3\r\n  cloudtrail = boto3.client('cloudtrail')\r\n\r\n  CloudTrailLogGroupArn = events['CloudTrailLogGroupArn']\r\n  CloudWatchRoleArn = events['CloudWatchRoleArn']\r\n  TrailName = events['TrailName']\r\n  KMSKeyArn = events['KMSKeyArn']\r\n\r\n  response = cloudtrail.update_trail(\r\n    Name=TrailName,\r\n    IncludeGlobalServiceEvents=True,\r\n    IsMultiRegionTrail=True,\r\n    EnableLogFileValidation=True,\r\n    CloudWatchLogsLogGroupArn=CloudTrailLogGroupArn,\r\n    CloudWatchLogsRoleArn=CloudWatchRoleArn,\r\n    KmsKeyId=KMSKeyArn\r\n  )   ",
+        "InputPayload": {
+         "AutomationAssumeRole": "{{AutomationAssumeRole}}",
+         "CloudTrailLogGroupArn": "{{CloudTrailLogGroupArn}}",
+         "CloudWatchRoleArn": "{{CloudWatchRoleArn}}",
+         "TrailName": "{{TrailName}}",
+         "KMSKeyArn": "{{KMSKeyArn}}"
+        }
+       }
+      }
+     ]
+    }
+   },
+   "refs": [
+    "AutomationAssumeRole",
+    "CloudTrailLogGroup",
+    "CloudWatchRole",
+    "KmsKeyId"
+   ]
+  },
+  {
+   "id": "CustomCMKBackingKeyRotationCF",
+   "cfg": "CustomCMKBackingKeyRotationCF",
+   "type": "AWS::SSM::Document",
+   "values": {
+    "DocumentType": "Automation",
+    "Name": "PCI-Org-Custom-CMKBackingKeyRotationCF",
+    "Content": {
+     "schemaVersion": "0.3",
+     "assumeRole": {
+      "Fn::Join": [
+       "",
+       [
+        "arn:aws:iam::",
+        "123456789012",
+        ":role/",
+        {
+         "ref": "AutomationAssumeRole"
+        }
+       ]
+      ]
+     },
+     "parameters": {
+      "KMSKeyArn": {
+       "type": "String"
+      },
+      "AutomationAssumeRole": {
+       "type": "String",
+       "default": {
+        "Fn::Join": [
+         "",
+         [
+          "arn:aws:iam::",
+          "123456789012",
+          ":role/",
+          {
+           "ref": "AutomationAssumeRole"
+          }
+         ]
+        ]
+       }
+      }
+     },
+     "mainSteps": [
+      {
+       "name": "rotatebackingkey",
+       "action": "aws:executeScript",
+       "inputs": {
+        "Runtime": "python3.6",
+        "Handler": "rotatebackingkey_handler",
+        "Script": "def rotatebackingkey_handler(events, context):\r\n  import boto3\r\n  client = boto3.client('kms')\r\n\r\n  KMSKeyArn = events['KMSKeyArn']\r\n\r\n  response = client.enable_key_rotation(\r\n    KeyId=KMSKeyArn\r\n  )",
+        "InputPayload": {
+         "AutomationAssumeRole": "{{AutomationAssumeRole}}",
+         "KMSKeyArn": "{{KMSKeyArn}}"
+        }
+       }
+      }
+     ]
+    }
+   },
+   "refs": [
+    "AutomationAssumeRole"
+   ]
+  },
+  {
+   "id": "CustomCloudTrailUpdateCF",
+   "cfg": "CustomCloudTrailUpdateCF",
+   "type": "AWS::SSM::Document",
+   "values": {
+    "DocumentType": "Automation",
+    "Name": "PCI-Org-Custom-CloudTrailUpdateCF",
+    "Content": {
+     "description": "CIS 2.4 \u2013 Ensure CloudTrail trails are integrated with Amazon CloudWatch Logs",
+     "schemaVersion": "0.3",
+     "assumeRole": {
+      "Fn::Join": [
+       "",
+       [
+        "arn:aws:iam::",
+        "123456789012",
+        ":role/",
+        {
+         "ref": "AutomationAssumeRole"
+        }
+       ]
+      ]
+     },
+     "parameters": {
+      "AutomationAssumeRole": {
+       "type": "String",
+       "default": {
+        "Fn::Join": [
+         "",
+         [
+          "arn:aws:iam::",
+          "123456789012",
+          ":role/",
+          {
+           "ref": "AutomationAssumeRole"
+          }
+         ]
+        ]
+       }
+      },
+      "CloudTrailLogGroupArn": {
+       "type": "String",
+       "default": "arn:aws:logs:us-east-1:123456789012:log-group:${CloudTrailLogGroup}:*"
+      },
+      "CloudWatchRoleArn": {
+       "type": "String",
+       "default": {
+        "Fn::Join": [
+         "",
+         [
+          "arn:aws:iam::",
+          "123456789012",
+          ":role/",
+          {
+           "ref": "CloudWatchRole"
+          }
+         ]
+        ]
+       }
+      },
+      "TrailName": {
+       "type": "String"
+      }
+     },
+     "mainSteps": [
+      {
+       "name": "UpdateCloudTrail",
+       "action": "aws:executeScript",
+       "inputs": {
+        "Runtime": "python3.6",
+        "Handler": "updatetrail_handler",
+        "Script": "def updatetrail_handler(events, context):\r\n  import boto3\r\n  cloudtrail = boto3.client('cloudtrail')\r\n\r\n  CloudTrailLogGroupArn = events['CloudTrailLogGroupArn']\r\n  CloudWatchRoleArn = events['CloudWatchRoleArn']\r\n  TrailName = events['TrailName']\r\n\r\n  response = cloudtrail.update_trail(\r\n    Name=TrailName,\r\n    IncludeGlobalServiceEvents=True,\r\n    IsMultiRegionTrail=True,\r\n    EnableLogFileValidation=True,\r\n    CloudWatchLogsLogGroupArn=CloudTrailLogGroupArn,\r\n    CloudWatchLogsRoleArn=CloudWatchRoleArn\r\n  )\r\n",
+        "InputPayload": {
+         "AutomationAssumeRole": "{{AutomationAssumeRole}}",
+         "CloudTrailLogGroupArn": "{{CloudTrailLogGroupArn}}",
+         "CloudWatchRoleArn": "{{CloudWatchRoleArn}}",
+         "TrailName": "{{TrailName}}"
+        }
+       }
+      }
+     ]
+    }
+   },
+   "refs": [
+    "AutomationAssumeRole",
+    "CloudTrailLogGroup",
+    "CloudWatchRole"
+   ]
+  },
+  {
+   "id": "CustomIAMPasswordUpdateCF",
+   "cfg": "CustomIAMPasswordUpdateCF",
+   "type": "AWS::SSM::Document",
+   "values": {
+    "DocumentType": "Automation",
+    "Name": "PCI-Org-Custom-IAMPasswordUpdateCF",
+    "Content": {
+     "schemaVersion": "0.3",
+     "assumeRole": {
+      "Fn::Join": [
+       "",
+       [
+        "arn:aws:iam::",
+        "123456789012",
+        ":role/",
+        {
+         "ref": "AutomationAssumeRole"
+        }
+       ]
+      ]
+     },
+     "parameters": {
+      "AutomationAssumeRole": {
+       "type": "String",
+       "default": {
+        "Fn::Join": [
+         "",
+         [
+          "arn:aws:iam::",
+          "123456789012",
+          ":role/",
+          {
+           "ref": "AutomationAssumeRole"
+          }
+         ]
+        ]
+       }
+      }
+     },
+     "mainSteps": [
+      {
+       "name": "updatepasswordpolicy",
+       "action": "aws:executeScript",
+       "inputs": {
+        "Runtime": "python3.6",
+        "Handler": "updateiampolicy_handler",
+        "Script": "def updateiampolicy_handler(events, context):\n  import boto3\n  iam = boto3.client('iam')\n\n  response = iam.update_account_password_policy(\n                AllowUsersToChangePassword=True,\n                HardExpiry=True,\n                MaxPasswordAge=90 ,\n                MinimumPasswordLength=14,\n                PasswordReusePrevention=24,\n                RequireLowercaseCharacters=True,\n                RequireNumbers=True,\n                RequireSymbols=True,\n                RequireUppercaseCharacters=True)\n",
+        "InputPayload": {
+         "AutomationAssumeRole": "{{AutomationAssumeRole}}"
+        }
+       }
+      }
+     ]
+    }
+   },
+   "refs": [
+    "AutomationAssumeRole"
+   ]
+  },
+  {
+   "id": "CustomLogFileValidationCF",
+   "cfg": "CustomLogFileValidationCF",
+   "type": "AWS::SSM::Document",
+   "values": {
+    "DocumentType": "Automation",
+    "Name": "PCI-Org-Custom-LogFileValidationCF",
+    "Content": {
+     "schemaVersion": "0.3",
+     "assumeRole": {
+      "Fn::Join": [
+       "",
+       [
+        "arn:aws:iam::",
+        "123456789012",
+        ":role/",
+        {
+         "ref": "AutomationAssumeRole"
+        }
+       ]
+      ]
+     },
+     "parameters": {
+      "AutomationAssumeRole": {
+       "type": "String",
+       "default": {
+        "Fn::Join": [
+         "",
+         [
+          "arn:aws:iam::",
+          "123456789012",
+          ":role/",
+          {
+           "ref": "AutomationAssumeRole"
+          }
+         ]
+        ]
+       }
+      },
+      "CloudTrailLogGroupArn": {
+       "type": "String",
+       "default": "arn:aws:logs:us-east-1:123456789012:log-group:${CloudTrailLogGroup}:*"
+      },
+      "CloudWatchRoleArn": {
+       "type": "String",
+       "default": {
+        "Fn::Join": [
+         "",
+         [
+          "arn:aws:iam::",
+          "123456789012",
+          ":role/",
+          {
+           "ref": "CloudWatchRole"
+          }
+         ]
+        ]
+       }
+      },
+      "TrailName": {
+       "type": "String"
+      }
+     },
+     "mainSteps": [
+      {
+       "name": "EnableLogFileValidation",
+       "action": "aws:executeScript",
+       "inputs": {
+        "Runtime": "python3.6",
+        "Handler": "updatetrail_handler",
+        "Script": "def updatetrail_handler(events, context):\r\n  import boto3\r\n  cloudtrail = boto3.client('cloudtrail')\r\n\r\n  CloudTrailLogGroupArn = events['CloudTrailLogGroupArn']\r\n  CloudWatchRoleArn = events['CloudWatchRoleArn']\r\n  TrailName = events['TrailName']\r\n\r\n  response = cloudtrail.update_trail(\r\n    Name=TrailName,\r\n    IncludeGlobalServiceEvents=True,\r\n    IsMultiRegionTrail=True,\r\n    EnableLogFileValidation=True,\r\n    CloudWatchLogsLogGroupArn=CloudTrailLogGroupArn,\r\n    CloudWatchLogsRoleArn=CloudWatchRoleArn\r\n  )   ",
+        "InputPayload": {
+         "AutomationAssumeRole": "{{AutomationAssumeRole}}",
+         "CloudTrailLogGroupArn": "{{CloudTrailLogGroupArn}}",
+         "CloudWatchRoleArn": "{{CloudWatchRoleArn}}",
+         "TrailName": "{{TrailName}}"
+        }
+       }
+      }
+     ]
+    }
+   },
+   "refs": [
+    "AutomationAssumeRole",
+    "CloudTrailLogGroup",
+    "CloudWatchRole"
+   ]
+  },
+  {
+   "id": "RestrictSecurityGroupPublicAccess",
+   "cfg": "RestrictSecurityGroupPublicAccess",
+   "type": "AWS::SSM::Document",
+   "values": {
+    "DocumentType": "Automation",
+    "Name": "PCI-Org-Custom-RestrictSecurityGroup",
+    "Content": {
+     "schemaVersion": "0.3",
+     "assumeRole": {
+      "Fn::Join": [
+       "",
+       [
+        "arn:aws:iam::",
+        "123456789012",
+        ":role/",
+        {
+         "ref": "AutomationAssumeRole"
+        }
+       ]
+      ]
+     },
+     "parameters": {
+      "groupId": {
+       "type": "String"
+      },
+      "IpAddressToBlock": {
+       "type": "String",
+       "default": "0.0.0.0/0"
+      },
+      "AutomationAssumeRole": {
+       "type": "String",
+       "default": {
+        "Fn::Join": [
+         "",
+         [
+          "arn:aws:iam::",
+          "123456789012",
+          ":role/",
+          {
+           "ref": "AutomationAssumeRole"
+          }
+         ]
+        ]
+       }
+      }
+     },
+     "mainSteps": [
+      {
+       "name": "RestrictSecurityGroup",
+       "action": "aws:executeScript",
+       "inputs": {
+        "Runtime": "python3.6",
+        "Handler": "restrict_sg",
+        "Script": "def restrict_sg(events, context):\r\n  import boto3\r\n  import json\r\n  import os\r\n  ec2 = boto3.resource('ec2')\r\n  defaultSecGroupId = events['groupId']\r\n  try:\r\n      defaultSG = ec2.SecurityGroup(defaultSecGroupId)\r\n      defaultIngress = defaultSG.ip_permissions\r\n      defaultEgress = defaultSG.ip_permissions_egress\r\n      revokeIngress = defaultSG.revoke_ingress(IpPermissions=defaultIngress)\r\n      revokeEgress = defaultSG.revoke_egress(IpPermissions=defaultEgress)\r\n  except Exception as e:\r\n      print(e)",
+        "InputPayload": {
+         "AutomationAssumeRole": "{{AutomationAssumeRole}}",
+         "groupId": "{{groupId}}",
+         "IpAddressToBlock": "{{IpAddressToBlock}}"
+        }
+       }
+      }
+     ]
+    }
+   },
+   "refs": [
+    "AutomationAssumeRole"
+   ]
+  },
+  {
+   "id": "RemoveSecurityGroup",
+   "cfg": "RemoveSecurityGroup",
+   "type": "AWS::SSM::Document",
+   "values": {
+    "DocumentType": "Automation",
+    "Name": "PCI-Org-Custom-RemoveSecurityGroup",
+    "Content": {
+     "schemaVersion": "0.3",
+     "assumeRole": {
+      "Fn::Join": [
+       "",
+       [
+        "arn:aws:iam::",
+        "123456789012",
+        ":role/",
+        {
+         "ref": "AutomationAssumeRole"
+        }
+       ]
+      ]
+     },
+     "parameters": {
+      "groupId": {
+       "type": "String"
+      },
+      "AutomationAssumeRole": {
+       "type": "String",
+       "default": {
+        "Fn::Join": [
+         "",
+         [
+          "arn:aws:iam::",
+          "123456789012",
+          ":role/",
+          {
+           "ref": "AutomationAssumeRole"
+          }
+         ]
+        ]
+       }
+      }
+     },
+     "mainSteps": [
+      {
+       "name": "RemoveSecurityGroup",
+       "action": "aws:executeScript",
+       "inputs": {
+        "Runtime": "python3.6",
+        "Handler": "script_handler",
+        "Script": "def script_handler(events, context):\r\n  import boto3\r\n  ec2 = boto3.client('ec2')\r\n\r\n  groupId = events['groupId']\r\n  \r\n  response = ec2.delete_security_group(\r\n    GroupId= groupId\r\n  )\r\n ",
+        "InputPayload": {
+         "AutomationAssumeRole": "{{AutomationAssumeRole}}",
+         "groupId": "{{groupId}}"
+        }
+       }
+      }
+     ]
+    }
+   },
+   "refs": [
+    "AutomationAssumeRole"
+   ]
+  },
+  {
+   "id": "ReleaseEIP",
+   "cfg": "ReleaseEIP",
+   "type": "AWS::SSM::Document",
+   "values": {
+    "DocumentType": "Automation",
+    "Name": "PCI-Org-Custom-ReleaseEIP",
+    "Content": {
+     "schemaVersion": "0.3",
+     "assumeRole": {
+      "Fn::Join": [
+       "",
+       [
+        "arn:aws:iam::",
+        "123456789012",
+        ":role/",
+        {
+         "ref": "AutomationAssumeRole"
+        }
+       ]
+      ]
+     },
+     "parameters": {
+      "AutomationAssumeRole": {
+       "type": "String",
+       "default": {
+        "Fn::Join": [
+         "",
+         [
+          "arn:aws:iam::",
+          "123456789012",
+          ":role/",
+          {
+           "ref": "AutomationAssumeRole"
+          }
+         ]
+        ]
+       }
+      },
+      "allocationId": {
+       "type": "String"
+      }
+     },
+     "mainSteps": [
+      {
+       "name": "ReleaseEIP",
+       "action": "aws:executeScript",
+       "inputs": {
+        "Runtime": "python3.6",
+        "Handler": "script_handler",
+        "Script": "def script_handler(events, context):\r\n  import boto3\r\n  client = boto3.client('ec2')\r\n\r\n  allocationId = events['allocationId']\r\n\r\n  response = client.release_address(\r\n    AllocationId= allocationId\r\n  )",
+        "InputPayload": {
+         "AutomationAssumeRole": "{{AutomationAssumeRole}}",
+         "allocationId": "{{allocationId}}"
+        }
+       }
+      }
+     ]
+    }
+   },
+   "refs": [
+    "AutomationAssumeRole"
+   ]
+  },
+  {
+   "id": "CodeBuildUpdateProject",
+   "cfg": "CodeBuildUpdateProject",
+   "type": "AWS::SSM::Document",
+   "values": {
+    "DocumentType": "Automation",
+    "Name": "PCI-Org-Custom-CodeBuildUpdateProject",
+    "Content": {
+     "schemaVersion": "0.3",
+     "assumeRole": {
+      "Fn::Join": [
+       "",
+       [
+        "arn:aws:iam::",
+        "123456789012",
+        ":role/",
+        {
+         "ref": "AutomationAssumeRole"
+        }
+       ]
+      ]
+     },
+     "parameters": {
+      "AutomationAssumeRole": {
+       "type": "String",
+       "default": {
+        "Fn::Join": [
+         "",
+         [
+          "arn:aws:iam::",
+          "123456789012",
+          ":role/",
+          {
+           "ref": "AutomationAssumeRole"
+          }
+         ]
+        ]
+       }
+      },
+      "projectName": {
+       "type": "String"
+      }
+     },
+     "mainSteps": [
+      {
+       "name": "CodeBuildUpdateProject",
+       "action": "aws:executeScript",
+       "inputs": {
+        "Runtime": "python3.6",
+        "Handler": "script_handler",
+        "Script": "def script_handler(events, context):\r\n  import boto3\r\n  client = boto3.client('codebuild')\r\n  projectName = events['projectName']\r\n\r\n  response = client.batch_get_projects(\r\n      names=[\r\n       projectName\r\n      ]\r\n  )\r\n    \r\n  projectenv = response['projects'][0]['environment']\r\n  projectenv1_type = \"projectenv type: \" + projectenv['type']\r\n  projectenvvars = projectenv['environmentVariables']\r\n    \r\n  for i in range(len(projectenvvars)):\r\n      if  projectenvvars[i]['name'] == 'AWS_ACCESS_KEY_ID':\r\n          del (projectenvvars[i])\r\n          break\r\n    \r\n  for i in range(len(projectenvvars)):\r\n      if  projectenvvars[i]['name'] == 'AWS_SECRET_ACCESS_KEY':\r\n          del (projectenvvars[i])\r\n          break\r\n        \r\n  response['projects'][0]['environment']['environmentVariables'] = projectenvvars\r\n  response1 = client.update_project(name=projectName, environment=response['projects'][0]['environment'])\r\n",
+        "InputPayload": {
+         "AutomationAssumeRole": "{{AutomationAssumeRole}}",
+         "projectName": "{{projectName}}"
+        }
+       }
+      }
+     ]
+    }
+   },
+   "refs": [
+    "AutomationAssumeRole"
+   ]
+  },
+  {
+   "id": "__output__.AutomationAssumeRoleArn",
+   "cfg": "__output__.AutomationAssumeRoleArn",
+   "type": "__output__",
+   "values": {
+    "name": "AutomationAssumeRoleArn",
+    "value": {
+     "Fn::Join": [
+      "",
+      [
+       "arn:aws:iam::",
+       "123456789012",
+       ":role/",
+       {
+        "ref": "AutomationAssumeRole"
+       }
+      ]
+     ]
+    },
+    "description": "Arn for AutomationAssumeRole",
+    "export": "AutomationAssumeRoleArn"
+   },
+   "refs": [
+    "AutomationAssumeRole"
+   ]
+  },
+  {
+   "id": "__output__.CloudTrailLogGroupArn",
+   "cfg": "__output__.CloudTrailLogGroupArn",
+   "type": "__output__",
+   "values": {
+    "name": "CloudTrailLogGroupArn",
+    "value": "arn:aws:logs:us-east-1:123456789012:log-group:${CloudTrailLogGroup}:*",
+    "description": "Arn for CloudTrail CloudWatch Logs",
+    "export": "PCI-Org-CloudTrailLogGroupArn"
+   },
+   "refs": [
+    "CloudTrailLogGroup"
+   ]
+  },
+  {
+   "id": "__output__.CloudTrailLogGroup",
+   "cfg": "__output__.CloudTrailLogGroup",
+   "type": "__output__",
+   "values": {
+    "name": "CloudTrailLogGroup",
+    "value": {
+     "ref": "CloudTrailLogGroup"
+    },
+    "description": "CIS CloudTrail CloudWatch Log Group",
+    "export": "PCI-Org-CloudTrailLogGroup"
+   },
+   "refs": [
+    "CloudTrailLogGroup"
+   ]
+  },
+  {
+   "id": "__output__.CloudWatchRoleArn",
+   "cfg": "__output__.CloudWatchRoleArn",
+   "type": "__output__",
+   "values": {
+    "name": "CloudWatchRoleArn",
+    "value": {
+     "Fn::Join": [
+      "",
+      [
+       "arn:aws:iam::",
+       "123456789012",
+       ":role/",
+       {
+        "ref": "CloudWatchRole"
+       }
+      ]
+     ]
+    },
+    "description": "Arn for CloudTrail CloudWatch IAM Role",
+    "export": "PCI-Org-CloudWatchRoleArn"
+   },
+   "refs": [
+    "CloudWatchRole"
+   ]
+  },
+  {
+   "id": "__output__.KMSKeyArn",
+   "cfg": "__output__.KMSKeyArn",
+   "type": "__output__",
+   "values": {
+    "name": "KMSKeyArn",
+    "value": {
+     "Fn::Join": [
+      "",
+      [
+       "arn:aws:kms:",
+       "us-east-1",
+       ":",
+       "123456789012",
+       ":key/",
+       {
+        "ref": "KmsKeyId"
+       }
+      ]
+     ]
+    },
+    "description": "Arn for KMS CMK",
+    "export": "PCI-Org-KMSKeyArn"
+   },
+   "refs": [
+    "KmsKeyId"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::Logs::LogGroup.CloudTrailLogGroup",
+   "cfg": "CloudTrailLogGroup",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Logs::LogGroup",
+    "name": "CloudTrailLogGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "LogGroupName": "PCI-Org-DefaultLogGroup-us-east-1",
+     "RetentionInDays": 1827
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.AutomationAssumeRole",
+   "cfg": "AutomationAssumeRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "AutomationAssumeRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "PCI-Org-automationassumerole-us-east-1",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "ssm.amazonaws.com",
+          "events.amazonaws.com",
+          "ec2.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Path": "/",
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/IAMFullAccess",
+      "arn:aws:iam::aws:policy/AdministratorAccess"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.CloudWatchRole",
+   "cfg": "CloudWatchRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "CloudWatchRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "PCI-Org-CloudTrail_CloudWatchLogs_Role-us-east-1",
+     "Policies": [
+      {
+       "PolicyName": "CloudWatchLogsRolePolicy",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "cloudwatch:PutMetricData"
+          ],
+          "Resource": [
+           "*"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "ssm:StartAutomationExecution",
+           "logs:CreateLogGroup",
+           "logs:CreateLogStream",
+           "logs:PutLogEvents",
+           "logs:DescribeLogGroups",
+           "logs:DescribeLogStreams",
+           "iam:PassRole",
+           "ec2:*"
+          ],
+          "Resource": [
+           "*"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "cloudtrail:UpdateTrail",
+           "securityhub:UpdateFindings"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      }
+     ],
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "cloudtrail.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::KMS::Key.KmsKeyId",
+   "cfg": "KmsKeyId",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::KMS::Key",
+    "name": "KmsKeyId",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "EnableKeyRotation": true,
+     "Enabled": true,
+     "KeyUsage": "ENCRYPT_DECRYPT",
+     "KeyPolicy": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Sid": "Enable IAM User Permissions",
+        "Effect": "Allow",
+        "Principal": {
+         "AWS": [
+          "arn:aws:iam::123456789012:root"
+         ]
+        },
+        "Action": [
+         "kms:*"
+        ],
+        "Resource": [
+         "*"
+        ]
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SSM::Document.CustomCloudTrailEncryptionAutomationCF",
+   "cfg": "CustomCloudTrailEncryptionAutomationCF",
+   "type": "__declared__",
+   "refs": [
+    "AutomationAssumeRole",
+    "CloudTrailLogGroup",
+    "CloudWatchRole",
+    "KmsKeyId"
+   ],
+   "values": {
+    "type": "AWS::SSM::Document",
+    "name": "CustomCloudTrailEncryptionAutomationCF",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "DocumentType": "Automation",
+     "Name": "PCI-Org-Custom-CloudTrailEncryptionCF",
+     "Content": {
+      "schemaVersion": "0.3",
+      "assumeRole": {
+       "Fn::Join": [
+        "",
+        [
+         "arn:aws:iam::",
+         "123456789012",
+         ":role/",
+         {
+          "ref": "AutomationAssumeRole"
+         }
+        ]
+       ]
+      },
+      "parameters": {
+       "AutomationAssumeRole": {
+        "type": "String",
+        "default": {
+         "Fn::Join": [
+          "",
+          [
+           "arn:aws:iam::",
+           "123456789012",
+           ":role/",
+           {
+            "ref": "AutomationAssumeRole"
+           }
+          ]
+         ]
+        }
+       },
+       "CloudTrailLogGroupArn": {
+        "type": "String",
+        "default": "arn:aws:logs:us-east-1:123456789012:log-group:${CloudTrailLogGroup}:*"
+       },
+       "CloudWatchRoleArn": {
+        "type": "String",
+        "default": {
+         "Fn::Join": [
+          "",
+          [
+           "arn:aws:iam::",
+           "123456789012",
+           ":role/",
+           {
+            "ref": "CloudWatchRole"
+           }
+          ]
+         ]
+        }
+       },
+       "TrailName": {
+        "type": "String"
+       },
+       "KMSKeyArn": {
+        "type": "String",
+        "default": {
+         "Fn::Join": [
+          "",
+          [
+           "arn:aws:kms:",
+           "us-east-1",
+           ":",
+           "123456789012",
+           ":key/",
+           {
+            "ref": "KmsKeyId"
+           }
+          ]
+         ]
+        }
+       }
+      },
+      "mainSteps": [
+       {
+        "name": "EncryptCloudTrail",
+        "action": "aws:executeScript",
+        "inputs": {
+         "Runtime": "python3.6",
+         "Handler": "encrypttrail_handler",
+         "Script": "def encrypttrail_handler(events, context):\r\n  import boto3\r\n  cloudtrail = boto3.client('cloudtrail')\r\n\r\n  CloudTrailLogGroupArn = events['CloudTrailLogGroupArn']\r\n  CloudWatchRoleArn = events['CloudWatchRoleArn']\r\n  TrailName = events['TrailName']\r\n  KMSKeyArn = events['KMSKeyArn']\r\n\r\n  response = cloudtrail.update_trail(\r\n    Name=TrailName,\r\n    IncludeGlobalServiceEvents=True,\r\n    IsMultiRegionTrail=True,\r\n    EnableLogFileValidation=True,\r\n    CloudWatchLogsLogGroupArn=CloudTrailLogGroupArn,\r\n    CloudWatchLogsRoleArn=CloudWatchRoleArn,\r\n    KmsKeyId=KMSKeyArn\r\n  )   ",
+         "InputPayload": {
+          "AutomationAssumeRole": "{{AutomationAssumeRole}}",
+          "CloudTrailLogGroupArn": "{{CloudTrailLogGroupArn}}",
+          "CloudWatchRoleArn": "{{CloudWatchRoleArn}}",
+          "TrailName": "{{TrailName}}",
+          "KMSKeyArn": "{{KMSKeyArn}}"
+         }
+        }
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SSM::Document.CustomCMKBackingKeyRotationCF",
+   "cfg": "CustomCMKBackingKeyRotationCF",
+   "type": "__declared__",
+   "refs": [
+    "AutomationAssumeRole"
+   ],
+   "values": {
+    "type": "AWS::SSM::Document",
+    "name": "CustomCMKBackingKeyRotationCF",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "DocumentType": "Automation",
+     "Name": "PCI-Org-Custom-CMKBackingKeyRotationCF",
+     "Content": {
+      "schemaVersion": "0.3",
+      "assumeRole": {
+       "Fn::Join": [
+        "",
+        [
+         "arn:aws:iam::",
+         "123456789012",
+         ":role/",
+         {
+          "ref": "AutomationAssumeRole"
+         }
+        ]
+       ]
+      },
+      "parameters": {
+       "KMSKeyArn": {
+        "type": "String"
+       },
+       "AutomationAssumeRole": {
+        "type": "String",
+        "default": {
+         "Fn::Join": [
+          "",
+          [
+           "arn:aws:iam::",
+           "123456789012",
+           ":role/",
+           {
+            "ref": "AutomationAssumeRole"
+           }
+          ]
+         ]
+        }
+       }
+      },
+      "mainSteps": [
+       {
+        "name": "rotatebackingkey",
+        "action": "aws:executeScript",
+        "inputs": {
+         "Runtime": "python3.6",
+         "Handler": "rotatebackingkey_handler",
+         "Script": "def rotatebackingkey_handler(events, context):\r\n  import boto3\r\n  client = boto3.client('kms')\r\n\r\n  KMSKeyArn = events['KMSKeyArn']\r\n\r\n  response = client.enable_key_rotation(\r\n    KeyId=KMSKeyArn\r\n  )",
+         "InputPayload": {
+          "AutomationAssumeRole": "{{AutomationAssumeRole}}",
+          "KMSKeyArn": "{{KMSKeyArn}}"
+         }
+        }
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SSM::Document.CustomCloudTrailUpdateCF",
+   "cfg": "CustomCloudTrailUpdateCF",
+   "type": "__declared__",
+   "refs": [
+    "AutomationAssumeRole",
+    "CloudTrailLogGroup",
+    "CloudWatchRole"
+   ],
+   "values": {
+    "type": "AWS::SSM::Document",
+    "name": "CustomCloudTrailUpdateCF",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "DocumentType": "Automation",
+     "Name": "PCI-Org-Custom-CloudTrailUpdateCF",
+     "Content": {
+      "description": "CIS 2.4 \u2013 Ensure CloudTrail trails are integrated with Amazon CloudWatch Logs",
+      "schemaVersion": "0.3",
+      "assumeRole": {
+       "Fn::Join": [
+        "",
+        [
+         "arn:aws:iam::",
+         "123456789012",
+         ":role/",
+         {
+          "ref": "AutomationAssumeRole"
+         }
+        ]
+       ]
+      },
+      "parameters": {
+       "AutomationAssumeRole": {
+        "type": "String",
+        "default": {
+         "Fn::Join": [
+          "",
+          [
+           "arn:aws:iam::",
+           "123456789012",
+           ":role/",
+           {
+            "ref": "AutomationAssumeRole"
+           }
+          ]
+         ]
+        }
+       },
+       "CloudTrailLogGroupArn": {
+        "type": "String",
+        "default": "arn:aws:logs:us-east-1:123456789012:log-group:${CloudTrailLogGroup}:*"
+       },
+       "CloudWatchRoleArn": {
+        "type": "String",
+        "default": {
+         "Fn::Join": [
+          "",
+          [
+           "arn:aws:iam::",
+           "123456789012",
+           ":role/",
+           {
+            "ref": "CloudWatchRole"
+           }
+          ]
+         ]
+        }
+       },
+       "TrailName": {
+        "type": "String"
+       }
+      },
+      "mainSteps": [
+       {
+        "name": "UpdateCloudTrail",
+        "action": "aws:executeScript",
+        "inputs": {
+         "Runtime": "python3.6",
+         "Handler": "updatetrail_handler",
+         "Script": "def updatetrail_handler(events, context):\r\n  import boto3\r\n  cloudtrail = boto3.client('cloudtrail')\r\n\r\n  CloudTrailLogGroupArn = events['CloudTrailLogGroupArn']\r\n  CloudWatchRoleArn = events['CloudWatchRoleArn']\r\n  TrailName = events['TrailName']\r\n\r\n  response = cloudtrail.update_trail(\r\n    Name=TrailName,\r\n    IncludeGlobalServiceEvents=True,\r\n    IsMultiRegionTrail=True,\r\n    EnableLogFileValidation=True,\r\n    CloudWatchLogsLogGroupArn=CloudTrailLogGroupArn,\r\n    CloudWatchLogsRoleArn=CloudWatchRoleArn\r\n  )\r\n",
+         "InputPayload": {
+          "AutomationAssumeRole": "{{AutomationAssumeRole}}",
+          "CloudTrailLogGroupArn": "{{CloudTrailLogGroupArn}}",
+          "CloudWatchRoleArn": "{{CloudWatchRoleArn}}",
+          "TrailName": "{{TrailName}}"
+         }
+        }
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SSM::Document.CustomIAMPasswordUpdateCF",
+   "cfg": "CustomIAMPasswordUpdateCF",
+   "type": "__declared__",
+   "refs": [
+    "AutomationAssumeRole"
+   ],
+   "values": {
+    "type": "AWS::SSM::Document",
+    "name": "CustomIAMPasswordUpdateCF",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "DocumentType": "Automation",
+     "Name": "PCI-Org-Custom-IAMPasswordUpdateCF",
+     "Content": {
+      "schemaVersion": "0.3",
+      "assumeRole": {
+       "Fn::Join": [
+        "",
+        [
+         "arn:aws:iam::",
+         "123456789012",
+         ":role/",
+         {
+          "ref": "AutomationAssumeRole"
+         }
+        ]
+       ]
+      },
+      "parameters": {
+       "AutomationAssumeRole": {
+        "type": "String",
+        "default": {
+         "Fn::Join": [
+          "",
+          [
+           "arn:aws:iam::",
+           "123456789012",
+           ":role/",
+           {
+            "ref": "AutomationAssumeRole"
+           }
+          ]
+         ]
+        }
+       }
+      },
+      "mainSteps": [
+       {
+        "name": "updatepasswordpolicy",
+        "action": "aws:executeScript",
+        "inputs": {
+         "Runtime": "python3.6",
+         "Handler": "updateiampolicy_handler",
+         "Script": "def updateiampolicy_handler(events, context):\n  import boto3\n  iam = boto3.client('iam')\n\n  response = iam.update_account_password_policy(\n                AllowUsersToChangePassword=True,\n                HardExpiry=True,\n                MaxPasswordAge=90 ,\n                MinimumPasswordLength=14,\n                PasswordReusePrevention=24,\n                RequireLowercaseCharacters=True,\n                RequireNumbers=True,\n                RequireSymbols=True,\n                RequireUppercaseCharacters=True)\n",
+         "InputPayload": {
+          "AutomationAssumeRole": "{{AutomationAssumeRole}}"
+         }
+        }
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SSM::Document.CustomLogFileValidationCF",
+   "cfg": "CustomLogFileValidationCF",
+   "type": "__declared__",
+   "refs": [
+    "AutomationAssumeRole",
+    "CloudTrailLogGroup",
+    "CloudWatchRole"
+   ],
+   "values": {
+    "type": "AWS::SSM::Document",
+    "name": "CustomLogFileValidationCF",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "DocumentType": "Automation",
+     "Name": "PCI-Org-Custom-LogFileValidationCF",
+     "Content": {
+      "schemaVersion": "0.3",
+      "assumeRole": {
+       "Fn::Join": [
+        "",
+        [
+         "arn:aws:iam::",
+         "123456789012",
+         ":role/",
+         {
+          "ref": "AutomationAssumeRole"
+         }
+        ]
+       ]
+      },
+      "parameters": {
+       "AutomationAssumeRole": {
+        "type": "String",
+        "default": {
+         "Fn::Join": [
+          "",
+          [
+           "arn:aws:iam::",
+           "123456789012",
+           ":role/",
+           {
+            "ref": "AutomationAssumeRole"
+           }
+          ]
+         ]
+        }
+       },
+       "CloudTrailLogGroupArn": {
+        "type": "String",
+        "default": "arn:aws:logs:us-east-1:123456789012:log-group:${CloudTrailLogGroup}:*"
+       },
+       "CloudWatchRoleArn": {
+        "type": "String",
+        "default": {
+         "Fn::Join": [
+          "",
+          [
+           "arn:aws:iam::",
+           "123456789012",
+           ":role/",
+           {
+            "ref": "CloudWatchRole"
+           }
+          ]
+         ]
+        }
+       },
+       "TrailName": {
+        "type": "String"
+       }
+      },
+      "mainSteps": [
+       {
+        "name": "EnableLogFileValidation",
+        "action": "aws:executeScript",
+        "inputs": {
+         "Runtime": "python3.6",
+         "Handler": "updatetrail_handler",
+         "Script": "def updatetrail_handler(events, context):\r\n  import boto3\r\n  cloudtrail = boto3.client('cloudtrail')\r\n\r\n  CloudTrailLogGroupArn = events['CloudTrailLogGroupArn']\r\n  CloudWatchRoleArn = events['CloudWatchRoleArn']\r\n  TrailName = events['TrailName']\r\n\r\n  response = cloudtrail.update_trail(\r\n    Name=TrailName,\r\n    IncludeGlobalServiceEvents=True,\r\n    IsMultiRegionTrail=True,\r\n    EnableLogFileValidation=True,\r\n    CloudWatchLogsLogGroupArn=CloudTrailLogGroupArn,\r\n    CloudWatchLogsRoleArn=CloudWatchRoleArn\r\n  )   ",
+         "InputPayload": {
+          "AutomationAssumeRole": "{{AutomationAssumeRole}}",
+          "CloudTrailLogGroupArn": "{{CloudTrailLogGroupArn}}",
+          "CloudWatchRoleArn": "{{CloudWatchRoleArn}}",
+          "TrailName": "{{TrailName}}"
+         }
+        }
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SSM::Document.RestrictSecurityGroupPublicAccess",
+   "cfg": "RestrictSecurityGroupPublicAccess",
+   "type": "__declared__",
+   "refs": [
+    "AutomationAssumeRole"
+   ],
+   "values": {
+    "type": "AWS::SSM::Document",
+    "name": "RestrictSecurityGroupPublicAccess",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "DocumentType": "Automation",
+     "Name": "PCI-Org-Custom-RestrictSecurityGroup",
+     "Content": {
+      "schemaVersion": "0.3",
+      "assumeRole": {
+       "Fn::Join": [
+        "",
+        [
+         "arn:aws:iam::",
+         "123456789012",
+         ":role/",
+         {
+          "ref": "AutomationAssumeRole"
+         }
+        ]
+       ]
+      },
+      "parameters": {
+       "groupId": {
+        "type": "String"
+       },
+       "IpAddressToBlock": {
+        "type": "String",
+        "default": "0.0.0.0/0"
+       },
+       "AutomationAssumeRole": {
+        "type": "String",
+        "default": {
+         "Fn::Join": [
+          "",
+          [
+           "arn:aws:iam::",
+           "123456789012",
+           ":role/",
+           {
+            "ref": "AutomationAssumeRole"
+           }
+          ]
+         ]
+        }
+       }
+      },
+      "mainSteps": [
+       {
+        "name": "RestrictSecurityGroup",
+        "action": "aws:executeScript",
+        "inputs": {
+         "Runtime": "python3.6",
+         "Handler": "restrict_sg",
+         "Script": "def restrict_sg(events, context):\r\n  import boto3\r\n  import json\r\n  import os\r\n  ec2 = boto3.resource('ec2')\r\n  defaultSecGroupId = events['groupId']\r\n  try:\r\n      defaultSG = ec2.SecurityGroup(defaultSecGroupId)\r\n      defaultIngress = defaultSG.ip_permissions\r\n      defaultEgress = defaultSG.ip_permissions_egress\r\n      revokeIngress = defaultSG.revoke_ingress(IpPermissions=defaultIngress)\r\n      revokeEgress = defaultSG.revoke_egress(IpPermissions=defaultEgress)\r\n  except Exception as e:\r\n      print(e)",
+         "InputPayload": {
+          "AutomationAssumeRole": "{{AutomationAssumeRole}}",
+          "groupId": "{{groupId}}",
+          "IpAddressToBlock": "{{IpAddressToBlock}}"
+         }
+        }
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SSM::Document.RemoveSecurityGroup",
+   "cfg": "RemoveSecurityGroup",
+   "type": "__declared__",
+   "refs": [
+    "AutomationAssumeRole"
+   ],
+   "values": {
+    "type": "AWS::SSM::Document",
+    "name": "RemoveSecurityGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "DocumentType": "Automation",
+     "Name": "PCI-Org-Custom-RemoveSecurityGroup",
+     "Content": {
+      "schemaVersion": "0.3",
+      "assumeRole": {
+       "Fn::Join": [
+        "",
+        [
+         "arn:aws:iam::",
+         "123456789012",
+         ":role/",
+         {
+          "ref": "AutomationAssumeRole"
+         }
+        ]
+       ]
+      },
+      "parameters": {
+       "groupId": {
+        "type": "String"
+       },
+       "AutomationAssumeRole": {
+        "type": "String",
+        "default": {
+         "Fn::Join": [
+          "",
+          [
+           "arn:aws:iam::",
+           "123456789012",
+           ":role/",
+           {
+            "ref": "AutomationAssumeRole"
+           }
+          ]
+         ]
+        }
+       }
+      },
+      "mainSteps": [
+       {
+        "name": "RemoveSecurityGroup",
+        "action": "aws:executeScript",
+        "inputs": {
+         "Runtime": "python3.6",
+         "Handler": "script_handler",
+         "Script": "def script_handler(events, context):\r\n  import boto3\r\n  ec2 = boto3.client('ec2')\r\n\r\n  groupId = events['groupId']\r\n  \r\n  response = ec2.delete_security_group(\r\n    GroupId= groupId\r\n  )\r\n ",
+         "InputPayload": {
+          "AutomationAssumeRole": "{{AutomationAssumeRole}}",
+          "groupId": "{{groupId}}"
+         }
+        }
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SSM::Document.ReleaseEIP",
+   "cfg": "ReleaseEIP",
+   "type": "__declared__",
+   "refs": [
+    "AutomationAssumeRole"
+   ],
+   "values": {
+    "type": "AWS::SSM::Document",
+    "name": "ReleaseEIP",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "DocumentType": "Automation",
+     "Name": "PCI-Org-Custom-ReleaseEIP",
+     "Content": {
+      "schemaVersion": "0.3",
+      "assumeRole": {
+       "Fn::Join": [
+        "",
+        [
+         "arn:aws:iam::",
+         "123456789012",
+         ":role/",
+         {
+          "ref": "AutomationAssumeRole"
+         }
+        ]
+       ]
+      },
+      "parameters": {
+       "AutomationAssumeRole": {
+        "type": "String",
+        "default": {
+         "Fn::Join": [
+          "",
+          [
+           "arn:aws:iam::",
+           "123456789012",
+           ":role/",
+           {
+            "ref": "AutomationAssumeRole"
+           }
+          ]
+         ]
+        }
+       },
+       "allocationId": {
+        "type": "String"
+       }
+      },
+      "mainSteps": [
+       {
+        "name": "ReleaseEIP",
+        "action": "aws:executeScript",
+        "inputs": {
+         "Runtime": "python3.6",
+         "Handler": "script_handler",
+         "Script": "def script_handler(events, context):\r\n  import boto3\r\n  client = boto3.client('ec2')\r\n\r\n  allocationId = events['allocationId']\r\n\r\n  response = client.release_address(\r\n    AllocationId= allocationId\r\n  )",
+         "InputPayload": {
+          "AutomationAssumeRole": "{{AutomationAssumeRole}}",
+          "allocationId": "{{allocationId}}"
+         }
+        }
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SSM::Document.CodeBuildUpdateProject",
+   "cfg": "CodeBuildUpdateProject",
+   "type": "__declared__",
+   "refs": [
+    "AutomationAssumeRole"
+   ],
+   "values": {
+    "type": "AWS::SSM::Document",
+    "name": "CodeBuildUpdateProject",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "DocumentType": "Automation",
+     "Name": "PCI-Org-Custom-CodeBuildUpdateProject",
+     "Content": {
+      "schemaVersion": "0.3",
+      "assumeRole": {
+       "Fn::Join": [
+        "",
+        [
+         "arn:aws:iam::",
+         "123456789012",
+         ":role/",
+         {
+          "ref": "AutomationAssumeRole"
+         }
+        ]
+       ]
+      },
+      "parameters": {
+       "AutomationAssumeRole": {
+        "type": "String",
+        "default": {
+         "Fn::Join": [
+          "",
+          [
+           "arn:aws:iam::",
+           "123456789012",
+           ":role/",
+           {
+            "ref": "AutomationAssumeRole"
+           }
+          ]
+         ]
+        }
+       },
+       "projectName": {
+        "type": "String"
+       }
+      },
+      "mainSteps": [
+       {
+        "name": "CodeBuildUpdateProject",
+        "action": "aws:executeScript",
+        "inputs": {
+         "Runtime": "python3.6",
+         "Handler": "script_handler",
+         "Script": "def script_handler(events, context):\r\n  import boto3\r\n  client = boto3.client('codebuild')\r\n  projectName = events['projectName']\r\n\r\n  response = client.batch_get_projects(\r\n      names=[\r\n       projectName\r\n      ]\r\n  )\r\n    \r\n  projectenv = response['projects'][0]['environment']\r\n  projectenv1_type = \"projectenv type: \" + projectenv['type']\r\n  projectenvvars = projectenv['environmentVariables']\r\n    \r\n  for i in range(len(projectenvvars)):\r\n      if  projectenvvars[i]['name'] == 'AWS_ACCESS_KEY_ID':\r\n          del (projectenvvars[i])\r\n          break\r\n    \r\n  for i in range(len(projectenvvars)):\r\n      if  projectenvvars[i]['name'] == 'AWS_SECRET_ACCESS_KEY':\r\n          del (projectenvvars[i])\r\n          break\r\n        \r\n  response['projects'][0]['environment']['environmentVariables'] = projectenvvars\r\n  response1 = client.update_project(name=projectName, environment=response['projects'][0]['environment'])\r\n",
+         "InputPayload": {
+          "AutomationAssumeRole": "{{AutomationAssumeRole}}",
+          "projectName": "{{projectName}}"
+         }
+        }
+       }
+      ]
+     }
+    }
+   }
+  }
+ ]
+}
