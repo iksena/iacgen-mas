@@ -63,6 +63,7 @@ The agents are nodes of a LangGraph state machine (`graph.py`) that share one `G
 │   │   ├── terraform/    Terraform knowledge-base ingestion (01–05)
 │   │   └── security/     Security knowledge-base ingestion (00, 01, 04)
 │   └── nuke_vpc_dependencies.py   AWS account cleanup helpers used by the deploy stage
+├── benchmark/            Multi-DPIaC-Eval: scenarios and reference templates
 ├── data/                 Benchmark datasets and security-ingestion inputs
 ├── results/              Experiment results reported in the thesis
 ├── analysis/             Benchmark construction, audits, and analysis notebooks (see analysis/README.md)
@@ -227,7 +228,25 @@ Both delete real resources. Use them only in a dedicated test account.
 | `data/iac_with_difficulty_levels.csv` | DPIaC-Eval (CloudFormation) | 153 |
 | `data/iac_eval_benchmark.csv` | IaC-Eval (Terraform) | 458 |
 
-Columns: `row_number`, `ground_truth_path`, `prompt`, and a difficulty level. `ground_truth_path` points into the benchmark's reference templates, which are not part of this repository and are not needed to run the system.
+Columns: `row_number`, `ground_truth_path`, `prompt`, and a difficulty level. The system needs only the prompt; the reference templates are used by the analysis.
+
+## Benchmark
+
+`benchmark/` holds Multi-DPIaC-Eval, the 250 CloudFormation and 250 Terraform scenarios whose reference templates all deploy to a fresh AWS account, pass the linter, and have no critical or high Trivy finding.
+
+```text
+benchmark/
+├── cloudformation/
+│   ├── cfn_eval_benchmark_real_aws.csv            row_number, ground_truth_path, prompt, difficulty
+│   ├── final_benchmark_real_aws_with_prompts.csv  source repository, licence, size, resource types, check results
+│   └── ground_truth/                              one reference template per scenario
+└── terraform/
+    ├── tf_eval_benchmark_real_aws.csv
+    ├── final_benchmark_real_aws_with_prompts.csv  source, size, check results, reference code
+    └── ground_truth/                              one folder of .tf files per scenario
+```
+
+Paths in these CSVs are relative to the language folder, e.g. `benchmark/cloudformation/ground_truth/cfn_templates/...`. The CSVs in `data/` hold the same scenarios and prompts with the paths used during the experiments: `cfn_templates/...` maps to `benchmark/cloudformation/ground_truth/cfn_templates/...` and `iac_benchmark/scenarios.../` to `benchmark/terraform/ground_truth/scenarios.../`. The ablation subsets in `data/` are subsets of these scenarios. `cfn_templates_greenfield/` and `scenarios_greenfield/` hold references that were minimally fixed to deploy into an empty account.
 
 ## Results
 
@@ -273,6 +292,10 @@ Some bundled data comes from third parties and keeps its original license:
 | Rego policy source in `data/trivy_enriched.csv`, `data/trivy_cfn_policy_map.csv`, `data/security_checks.json`, `analysis/Data/trivy_enriched.csv` | [aquasecurity/trivy-checks](https://github.com/aquasecurity/trivy-checks) | MIT |
 | Check descriptions in `data/avd_scraped.json` and the files above | [Aqua Vulnerability Database](https://avd.aquasec.com/misconfig/aws/) | Aqua Security's terms |
 | `data/cfn_spec.json` | AWS CloudFormation resource specification | AWS's terms |
-| `analysis/intent_checks/fixtures/` | Normalised reference templates of the ablation scenarios, from the scenario sources below | License of each source |
+| `benchmark/*/ground_truth/`, `analysis/intent_checks/fixtures/` | Reference templates of the benchmark scenarios (and normalised copies of the ablation subset), from the sources below | License of each source |
 
-The Multi-DPIaC-Eval prompts in `data/cfn_eval_benchmark_real_aws.csv` and `data/tf_eval_benchmark_real_aws.csv` were written for this benchmark. The reference templates behind them come from GitHub repositories under permissive or copyleft licenses (Apache-2.0, MIT-0, MIT, GPL-3.0, CC0-1.0, BSD-3-Clause), from [TerraDS](https://zenodo.org/records/14217386) (CC BY 4.0), and from DPIaC-Eval (Apache-2.0). They are not redistributed here, except as the normalised fixtures above. `analysis/intent_checks/fixtures/cfn/row_176.input.json` is derived from [manpaz/aws](https://github.com/manpaz/aws) and is licensed under GPL-3.0.
+The Multi-DPIaC-Eval prompts were written for this benchmark and are MIT-licensed with the rest of the repository. Each reference template keeps the license of the repository it came from:
+
+- **CloudFormation**: the source repository, URL, and SPDX licence of every scenario are in `benchmark/cloudformation/final_benchmark_real_aws_with_prompts.csv` (`source_slug`, `github_url`, `licence_spdx`): Apache-2.0 (114), MIT-0 (68), MIT (61), GPL-3.0 (4), CC0-1.0 (2), BSD-3-Clause (1). The four GPL-3.0 templates are rows 176 ([manpaz/aws](https://github.com/manpaz/aws)), 201 ([kameshsampath/ansible-collection-xks](https://github.com/kameshsampath/ansible-collection-xks)), 253 ([alanwill/aws-tailor](https://github.com/alanwill/aws-tailor)), and 258 ([MederD/AWS_playground](https://github.com/MederD/AWS_playground)); they and `analysis/intent_checks/fixtures/cfn/row_176.input.json` are licensed under GPL-3.0.
+- **Terraform**: the source of every scenario is in `benchmark/terraform/final_benchmark_real_aws_with_prompts.csv` (`source`): [TerraDS](https://zenodo.org/records/14217386) (221, CC BY 4.0), [Tianyi2/IRIS](https://github.com/Tianyi2/IRIS) (21, Apache-2.0), [y-miyazaki/terraform-aws-base](https://github.com/y-miyazaki/terraform-aws-base) (2, Apache-2.0), [aws-ia/terraform-aws-guardduty](https://github.com/aws-ia/terraform-aws-guardduty) (Apache-2.0), [clouddrove/terraform-aws-security-group](https://github.com/clouddrove/terraform-aws-security-group) (Apache-2.0), [ValeriiVasianovych/terraform-iac](https://github.com/ValeriiVasianovych/terraform-iac) (MIT), [gabrielPav/aws-security-foundation](https://github.com/gabrielPav/aws-security-foundation) (MIT), [GovWifi/govwifi-terraform](https://github.com/GovWifi/govwifi-terraform) (MIT), and [terraform-module/terraform-aws-enforce-mfa](https://github.com/terraform-module/terraform-aws-enforce-mfa) (MIT).
+- Templates in the `*_greenfield/` folders are minimally modified versions of the originals and keep the same licenses.

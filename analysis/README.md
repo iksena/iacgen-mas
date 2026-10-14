@@ -8,6 +8,8 @@ Notebooks and scripts used to build the Multi-DPIaC-Eval benchmark, select the a
 pip install -r requirements.txt
 ```
 
+`cfn_benchmark` and `iac_benchmark` are symlinks to `../benchmark/cloudformation/ground_truth` and `../benchmark/terraform/ground_truth`, so the `ground_truth_path` values in `../data/` resolve from this folder.
+
 The audits also call `trivy`, `cfn-lint`, `tflint`, `terraform`, and `opa` (intent checks). Rebuilding the per-iteration tables needs the raw run folders under `../runs/`, which are not part of this repository; the parsed copies are in `../results/_analysis_cache/`. After cloning, run `touch ../results/_analysis_cache/*` so the cache is newer than the results and is reused.
 
 ## Benchmark construction
@@ -21,7 +23,7 @@ The audits also call `trivy`, `cfn-lint`, `tflint`, `terraform`, and `opa` (inte
 | `DPIaCEval_Security_Audit.ipynb` | cfn-lint and security check of the DPIaC-Eval references. |
 | `Ablation_Benchmark_Selector.ipynb` | Selection of the 50 + 50 ablation scenarios (`ablation_selection/`). |
 
-The pipelines read the cloned source repositories and external datasets, which are not included; the resulting benchmark files are in `../data/`.
+The pipelines read the cloned source repositories and external datasets, which are not included; the resulting benchmark is in `../benchmark/` and `../data/`.
 
 ## Result audits and analysis
 
