@@ -259,3 +259,20 @@ Top-level files:
 | `_analysis_cache/` | Per-iteration tables parsed from the raw runs, used by the analysis notebooks. |
 | `opencode_workspace_audit_*.csv` | Audit of OpenCode runs that read or wrote outside their workspace. |
 | `proxy_tool_use_*.csv` | Audit of tool use in the Claude-Opus-5.5 runs. |
+
+## License
+
+The code, prompts, notebooks, intent-check specifications, and experiment results are released under the [MIT License](LICENSE).
+
+Some bundled data comes from third parties and keeps its original license:
+
+| Data | Source | License |
+|---|---|---|
+| `data/iac_eval_benchmark.csv` | [IaC-Eval](https://huggingface.co/datasets/autoiac-project/iac-eval) | CC BY 4.0 |
+| `data/iac_with_difficulty_levels.csv` | DPIaC-Eval, from [IaCGen](https://github.com/Tianyi2/IaCGen) | Apache-2.0 |
+| Rego policy source in `data/trivy_enriched.csv`, `data/trivy_cfn_policy_map.csv`, `data/security_checks.json`, `analysis/Data/trivy_enriched.csv` | [aquasecurity/trivy-checks](https://github.com/aquasecurity/trivy-checks) | MIT |
+| Check descriptions in `data/avd_scraped.json` and the files above | [Aqua Vulnerability Database](https://avd.aquasec.com/misconfig/aws/) | Aqua Security's terms |
+| `data/cfn_spec.json` | AWS CloudFormation resource specification | AWS's terms |
+| `analysis/intent_checks/fixtures/` | Normalised reference templates of the ablation scenarios, from the scenario sources below | License of each source |
+
+The Multi-DPIaC-Eval prompts in `data/cfn_eval_benchmark_real_aws.csv` and `data/tf_eval_benchmark_real_aws.csv` were written for this benchmark. The reference templates behind them come from GitHub repositories under permissive or copyleft licenses (Apache-2.0, MIT-0, MIT, GPL-3.0, CC0-1.0, BSD-3-Clause), from [TerraDS](https://zenodo.org/records/14217386) (CC BY 4.0), and from DPIaC-Eval (Apache-2.0). They are not redistributed here, except as the normalised fixtures above. `analysis/intent_checks/fixtures/cfn/row_176.input.json` is derived from [manpaz/aws](https://github.com/manpaz/aws) and is licensed under GPL-3.0.
