@@ -80,7 +80,7 @@ The agents are nodes of a LangGraph state machine (`graph.py`) that share one `G
 
 ### 1. Python
 
-Python 3.12+ is recommended.
+Python 3.12 or newer (tested with 3.13).
 
 ```bash
 python -m venv .venv && source .venv/bin/activate
@@ -102,7 +102,7 @@ These must be on `PATH`:
 | `ollama` | Embeddings (`mxbai-embed-large`) | — |
 | Docker | Neo4j, ChromaDB, LocalStack | — |
 
-`cfn-lint` (1.48) and `checkov` are installed by `requirements.txt`.
+`cfn-lint` (1.48), `checkov`, and `tflocal` (Terraform on LocalStack) are installed by `requirements.txt`.
 
 ```bash
 ollama pull mxbai-embed-large
@@ -130,9 +130,9 @@ Start Neo4j and ChromaDB:
 docker compose up -d
 ```
 
-Run every ingestion script from the repository root.
+Run every ingestion script from the repository root, in the order below. `04_import_cfn_to_neo4j.py` clears the whole Neo4j database before importing, so if you rerun it, rerun the Terraform and security imports afterwards. A full build takes about two hours on an Apple-silicon laptop, mostly the documentation scrape (about 35 minutes) and the embedding steps (about 25 minutes for CloudFormation and 40 for Terraform).
 
-**CloudFormation** (downloads the resource specification, scrapes the AWS documentation, merges both, and loads Neo4j and ChromaDB):
+**CloudFormation** (downloads the resource specification, scrapes the AWS documentation, merges both, and loads Neo4j and ChromaDB). The specification is AWS's current one, so a new build covers more resource types than the thesis build did:
 
 ```bash
 python scripts/graphrag/01_download_cfn_spec.py
@@ -142,7 +142,7 @@ python scripts/graphrag/04_import_cfn_to_neo4j.py
 python scripts/graphrag/05_build_chromadb.py
 ```
 
-**Terraform** (downloads the AWS provider schema and Terraform Registry documentation, merges both, and loads Neo4j and ChromaDB):
+**Terraform** (downloads the AWS provider schema and Terraform Registry documentation, merges both, and loads Neo4j and ChromaDB). The provider is pinned to 6.47.0, the version used in the thesis:
 
 ```bash
 python scripts/graphrag/terraform/01_download_tf_schema.py
@@ -152,12 +152,17 @@ python scripts/graphrag/terraform/04_import_tf_to_neo4j.py
 python scripts/graphrag/terraform/05_build_tf_chromadb.py
 ```
 
-**Security** (Aqua AVD checks and Trivy Rego policies into Neo4j). `data/avd_scraped.json` and `data/security_checks.json` are included, so the first two steps can be skipped:
+**Security** (Aqua AVD checks and Trivy Rego policies into Neo4j). `data/security_checks.json` holds the checks used in the thesis, so importing it is enough:
+
+```bash
+python scripts/graphrag/security/04_import_security_to_neo4j.py
+```
+
+To refresh the checks from the live AVD first, run the two preparation steps before the import. They overwrite `data/avd_scraped.json`, `data/trivy_enriched.csv`, and `data/security_checks.json`:
 
 ```bash
 python scripts/graphrag/security/00_scrape_avd_docs.py
 python scripts/graphrag/security/01_load_trivy_csv.py
-python scripts/graphrag/security/04_import_security_to_neo4j.py
 ```
 
 The intermediate files these pipelines produce (`cfn_resource_spec.json`, `scraped_html/`, `cfn_knowledge_graph.json`, `tf_schema_raw.json`, `tf_registry_docs.json`, `tf_knowledge_graph.json`) are written to the repository root and ignored by git.
@@ -167,6 +172,8 @@ The intermediate files these pipelines produce (`cfn_resource_spec.json`, `scrap
 ```bash
 docker compose -f localstack-docker-compose.yml up -d
 ```
+
+The deploy stage resets all LocalStack state before every deployment, so give IaCGen-MAS a LocalStack instance of its own.
 
 ## Usage
 
