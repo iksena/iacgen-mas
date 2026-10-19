@@ -1,0 +1,26 @@
+Agent: planner
+Run ID: 20260924_122125_d07b61aa
+Updated: 2026-09-24T02:25:55.885685+00:00
+
+Turn 1
+[user]
+User Request:
+We need a Terraform template that creates a self-contained IAM governance stack for AWS Service Catalog testing, including a service-catalog-assumable IAM role named test_role with a scoped launch-constraint policy, plus an IAM group and a console-enabled user added as a member of that group.
+
+Generate the Terraform objectives for this infrastructure request.
+
+[assistant]
+1. Declare a terraform block with required_providers pinning hashicorp/aws to ~> 5.0 and an aws provider block with region = "us-east-1"; do NOT declare a backend block since backend config is managed externally.
+2. Create a data "aws_iam_policy_document" (or aws_iam_role assume-role policy data source) defining the trust policy for Service Catalog, with a sts:AssumeRole action whose Principal is the service principal servicecatalog.amazonaws.com, and scope the trust with a sts:ExternalId condition if an external id is used.
+3. Create resource "aws_iam_role" "test_role" (name = "test_role") using the Service-Catalog assume-role policy document above, so the role can be attached as a launch constraint to a Service Catalog product/portfolio.
+4. Create a scoped launch-constraint IAM policy as a resource "aws_iam_policy" (or aws_iam_role_policy) granting only the actions the provisioned products need — e.g. cloudformation:CreateStack/DescribeStacks/DeleteStack, s3:GetObject/PutObject, and iam:PassRole — with Resources restricted to the specific role ARN (aws_iam_role.test_role.arn) and any bucket ARNs created in this configuration; never pair Action = "*" with Resource = "*" in the same statement.
+5. Attach the launch-constraint policy to test_role with resource "aws_iam_role_policy_attachment" (never aws_iam_policy_attachment, which is destructive).
+6. Create resource "aws_iam_group" for the governance/console group, and attach a scoped group policy that allows members to sts:AssumeRole only the test_role ARN (aws_iam_role.test_role.arn), using aws_iam_group_policy or aws_iam_policy + aws_iam_group_policy_attachment.
+7. Create resource "aws_iam_user" for the console-enabled governance user, and enable console login with resource "aws_iam_user_login_profile" — the password must come from a resource "random_password" value (marked sensitive, never a plaintext literal or variable default in the configuration).
+8. Add the console user to the governance group with resource "aws_iam_group_membership" referencing aws_iam_user.<user>.name and aws_iam_group.<group>.name, so group-level policy inheritance applies.
+9. Do NOT use deprecated aws_iam_policy_attachment, do NOT define aws_s3_bucket_acl, and do NOT mix count and for_each on any IAM resource in this configuration.
+10. Never hardcode AWS account IDs, ARNs, or resource IDs — derive the account via data "aws_caller_identity" "current" and build any needed ARNs from aws_iam_role.test_role.arn / aws_iam_group.<group>.arn / aws_iam_user.<user>.arn or with format() against data.aws_caller_identity.current.account_id.
+11. Use snake_case resource labels, keep every resource type+label pair unique, and use only Terraform references (e.g. aws_iam_role.test_role.arn) instead of literal values where a resource attribute is available.
+12. Define a variables/locals block (with defaults) only for non-infrastructure values such as environment name and tag map (e.g. Project, Environment, ManagedBy = "terraform"), and apply those tags consistently to every taggable IAM resource.
+13. Expose outputs for integration with Service Catalog and downstream testing: role name, role ARN (aws_iam_role.test_role.arn), group name, user name, user ARN, and the generated console password marked sensitive = true so `terraform apply` can run unattended without leaking secrets to logs.
+14. Ensure the configuration is fully self-contained for the greenfield account: no data sources that look up pre-existing VPCs, subnets, security groups, key pairs, S3 buckets, secrets, or SSM parameters, and no hardcoded ami-*, vpc-*, subnet-*, sg-*, or externally-owned ARN values.

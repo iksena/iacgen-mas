@@ -11,6 +11,7 @@
 | TF_RealAWS_DSV4F                   |        250 |     250 |          246 |            4 |         0 |         0 | True        |                    0.984  |
 | TF_RealAWS_GLM53F                  |        250 |     250 |          246 |            4 |         0 |         0 | True        |                    0.984  |
 | TF_RealAWS_Gemini38F               |        250 |     249 |          249 |            0 |         1 |         0 | False       |                    0.996  |
+| TF_RealAWS_Gemini38F_FirstAttempt  |        250 |      69 |           47 |           22 |         0 |       181 | False       |                    0.188  |
 | TF_RealAWS_OpenCode_DSV4F          |        250 |     246 |          242 |            4 |         4 |         0 | False       |                    0.968  |
 | TF_RealAWS_Opus55                  |        250 |     250 |          250 |            0 |         0 |         0 | True        |                    1      |
 | TF_IaCEval_DSV4F_LintOnly          |        372 |     367 |          367 |            0 |         5 |         0 | False       |                    0.9866 |

@@ -776,8 +776,7 @@ def compile_spec(spec: dict) -> dict:
 def generate_policy(lang: str, row: int) -> Path:
     spec = json.loads(spec_path(lang, row).read_text())
     compiled = compile_spec(spec)
-    body = (f'# GENERATED from specs/{tag(lang, row)}.json by intent_checks/build.py -- do not edit.\n'
-            f'package {package_name(lang, row)}\n\nimport rego.v1\n\nimport data.intent.lib\n\n'
+    body = (f'package {package_name(lang, row)}\n\nimport rego.v1\n\nimport data.intent.lib\n\n'
             f'spec := {json.dumps(compiled, indent=1, ensure_ascii=True)}\n\n'
             f'results := lib.evaluate(spec)\n\ntargets := lib.targets(spec)\n')
     p = policy_path(lang, row)

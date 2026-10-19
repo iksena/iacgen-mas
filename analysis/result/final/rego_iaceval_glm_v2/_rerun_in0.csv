@@ -1,0 +1,4953 @@
+row_number,final_template
+324,"terraform {
+  required_version = "">= 1.5.0""
+
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.0""
+    }
+    random = {
+      source  = ""hashicorp/random""
+      version = ""~> 3.6""
+    }
+  }
+}
+
+provider ""aws"" {
+  region = ""us-east-1""
+}
+
+locals {
+  db_username = ""dbadmin""
+
+  common_tags = {
+    ManagedBy = ""terraform""
+    Component = ""rds-postgres""
+  }
+}
+
+data ""aws_availability_zones"" ""available"" {
+  state = ""available""
+}
+
+# Generated unique suffix for the database identifier
+resource ""random_id"" ""db"" {
+  byte_length = 8
+}
+
+# Generated master password (never hardcoded, never output)
+resource ""random_password"" ""master"" {
+  length           = 24
+  special          = true
+  override_special = ""!#$%&*()-_=+[]{}<>:?""
+  numeric          = true
+  upper            = true
+  lower            = true
+
+  min_special = 1
+  min_numeric = 1
+  min_upper   = 1
+  min_lower   = 1
+}
+
+resource ""aws_vpc"" ""main"" {
+  cidr_block           = ""10.0.0.0/16""
+  enable_dns_support   = true
+  enable_dns_hostnames = true
+
+  tags = merge(
+    local.common_tags,
+    { Name = ""rds-vpc"" },
+  )
+}
+
+resource ""aws_subnet"" ""db"" {
+  count             = 2
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = cidrsubnet(aws_vpc.main.cidr_block, 8, count.index + 1)
+  availability_zone = data.aws_availability_zones.available.names[count.index]
+
+  tags = merge(
+    local.common_tags,
+    { Name = ""rds-subnet-${count.index + 1}"" },
+  )
+}
+
+resource ""aws_db_subnet_group"" ""db"" {
+  name       = ""rds-db-subnet-group""
+  subnet_ids = aws_subnet.db[*].id
+
+  tags = local.common_tags
+}
+
+resource ""aws_security_group"" ""db"" {
+  name        = ""rds-db-sg""
+  description = ""Allow PostgreSQL access from within the VPC only""
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    description = ""PostgreSQL from VPC CIDR only""
+    from_port   = 5432
+    to_port     = 5432
+    protocol    = ""tcp""
+    cidr_blocks = [aws_vpc.main.cidr_block]
+  }
+
+  tags = merge(
+    local.common_tags,
+    { Name = ""rds-db-sg"" },
+  )
+}
+
+resource ""aws_secretsmanager_secret"" ""db"" {
+  name        = ""rds/master-${random_id.db.hex}""
+  description = ""Master credentials for the rds-${random_id.db.hex} PostgreSQL instance""
+
+  tags = local.common_tags
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource ""aws_secretsmanager_secret_version"" ""db"" {
+  secret_id = aws_secretsmanager_secret.db.id
+  secret_string = jsonencode({
+    username = local.db_username
+    password = random_password.master.result
+  })
+}
+
+resource ""aws_db_instance"" ""db"" {
+  identifier     = ""rds-${random_id.db.hex}""
+  engine         = ""postgres""
+  engine_version = ""16.4""
+  instance_class = ""db.t3.micro""
+
+  allocated_storage = 20
+  storage_encrypted = true
+
+  db_name  = ""appdb""
+  username = local.db_username
+  password = random_password.master.result
+  port     = 5432
+
+  db_subnet_group_name   = aws_db_subnet_group.db.name
+  vpc_security_group_ids = [aws_security_group.db.id]
+  publicly_accessible    = false
+  multi_az               = false
+
+  backup_retention_period = 7
+  copy_tags_to_snapshot   = true
+  deletion_protection     = true
+
+  skip_final_snapshot       = false
+  final_snapshot_identifier = ""rds-${random_id.db.hex}-final""
+
+  tags = merge(
+    local.common_tags,
+    { Name = ""rds-${random_id.db.hex}"" },
+  )
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+output ""rds_endpoint_address"" {
+  description = ""Connection address of the RDS PostgreSQL instance""
+  value       = aws_db_instance.db.address
+}
+
+output ""secrets_manager_secret_arn"" {
+  description = ""ARN of the Secrets Manager secret containing the master credentials""
+  value       = aws_secretsmanager_secret.db.arn
+}"
+326,"terraform {
+  required_version = "">= 1.5.0""
+
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.0""
+    }
+    random = {
+      source  = ""hashicorp/random""
+      version = ""~> 3.0""
+    }
+  }
+}
+
+provider ""aws"" {
+  region = ""us-east-1""
+}
+
+variable ""project_name"" {
+  description = ""Name used to label and tag every resource created by this configuration.""
+  type        = string
+  default     = ""greenfield""
+
+  validation {
+    condition     = can(regex(""^[a-z][a-z0-9-]{2,30}$"", var.project_name))
+    error_message = ""project_name must be 3-31 lowercase alphanumeric characters or hyphens and must start with a letter.""
+  }
+}
+
+locals {
+  environment = ""production""
+  db_username = ""dbadmin""
+
+  common_tags = {
+    Project     = var.project_name
+    Environment = local.environment
+  }
+}
+
+data ""aws_availability_zones"" ""available"" {
+  state = ""available""
+}
+
+resource ""aws_vpc"" ""main"" {
+  cidr_block           = ""10.0.0.0/16""
+  enable_dns_support   = true
+  enable_dns_hostnames = true
+
+  tags = merge(local.common_tags, {
+    Name = ""${var.project_name}-vpc""
+  })
+}
+
+resource ""aws_internet_gateway"" ""main"" {
+  vpc_id = aws_vpc.main.id
+
+  tags = merge(local.common_tags, {
+    Name = ""${var.project_name}-igw""
+  })
+}
+
+resource ""aws_subnet"" ""public_a"" {
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = ""10.0.1.0/24""
+  availability_zone       = data.aws_availability_zones.available.names[0]
+  map_public_ip_on_launch = true
+
+  tags = merge(local.common_tags, {
+    Name = ""${var.project_name}-public-a""
+    Tier = ""public""
+  })
+}
+
+resource ""aws_subnet"" ""public_b"" {
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = ""10.0.2.0/24""
+  availability_zone       = data.aws_availability_zones.available.names[1]
+  map_public_ip_on_launch = true
+
+  tags = merge(local.common_tags, {
+    Name = ""${var.project_name}-public-b""
+    Tier = ""public""
+  })
+}
+
+resource ""aws_route_table"" ""public"" {
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block = ""0.0.0.0/0""
+    gateway_id = aws_internet_gateway.main.id
+  }
+
+  tags = merge(local.common_tags, {
+    Name = ""${var.project_name}-public-rt""
+  })
+}
+
+resource ""aws_route_table_association"" ""public_a"" {
+  subnet_id      = aws_subnet.public_a.id
+  route_table_id = aws_route_table.public.id
+}
+
+resource ""aws_route_table_association"" ""public_b"" {
+  subnet_id      = aws_subnet.public_b.id
+  route_table_id = aws_route_table.public.id
+}
+
+resource ""aws_security_group"" ""db"" {
+  name        = ""${var.project_name}-db-sg""
+  description = ""Restricts inbound PostgreSQL (TCP 5432) to the VPC with controlled egress""
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    description = ""PostgreSQL access from within the VPC only""
+    from_port   = 5432
+    to_port     = 5432
+    protocol    = ""tcp""
+    cidr_blocks = [aws_vpc.main.cidr_block]
+  }
+
+  egress {
+    description = ""Outbound access limited to the VPC""
+    from_port   = 0
+    to_port     = 0
+    protocol    = ""-1""
+    cidr_blocks = [aws_vpc.main.cidr_block]
+  }
+
+  tags = merge(local.common_tags, {
+    Name = ""${var.project_name}-db-sg""
+  })
+}
+
+resource ""aws_db_subnet_group"" ""main"" {
+  name        = ""${var.project_name}-db-subnet-group""
+  description = ""Subnet group spanning two AZs for the PostgreSQL instance""
+  subnet_ids  = [aws_subnet.public_a.id, aws_subnet.public_b.id]
+
+  tags = merge(local.common_tags, {
+    Name = ""${var.project_name}-db-subnet-group""
+  })
+}
+
+resource ""random_password"" ""db_master"" {
+  length           = 20
+  special          = true
+  override_special = ""!#$%&*()-_=+[]{}<>:?""
+}
+
+resource ""aws_secretsmanager_secret"" ""db"" {
+  name        = ""${var.project_name}/db/master-credentials""
+  description = ""Master credentials for the ${var.project_name} PostgreSQL instance""
+
+  tags = merge(local.common_tags, {
+    Name = ""${var.project_name}-db-master-credentials""
+  })
+}
+
+resource ""aws_secretsmanager_secret_version"" ""db"" {
+  secret_id = aws_secretsmanager_secret.db.id
+  secret_string = jsonencode({
+    username = local.db_username
+    password = random_password.db_master.result
+  })
+}
+
+resource ""aws_db_instance"" ""postgres"" {
+  identifier     = ""${var.project_name}-postgres""
+  engine         = ""postgres""
+  engine_version = ""16""
+  instance_class = ""db.t4g.micro""
+
+  allocated_storage = 20
+  storage_type      = ""gp3""
+  db_name           = ""maindb""
+  username          = local.db_username
+  password          = random_password.db_master.result
+  port              = 5432
+
+  db_subnet_group_name   = aws_db_subnet_group.main.name
+  vpc_security_group_ids = [aws_security_group.db.id]
+
+  publicly_accessible        = false
+  storage_encrypted          = true
+  deletion_protection        = true
+  backup_retention_period    = 7
+  auto_minor_version_upgrade = true
+  apply_immediately          = false
+  copy_tags_to_snapshot      = true
+  skip_final_snapshot        = false
+  final_snapshot_identifier  = ""${var.project_name}-postgres-final""
+
+  lifecycle {
+    prevent_destroy = true
+  }
+
+  tags = merge(local.common_tags, {
+    Name = ""${var.project_name}-postgres""
+  })
+}"
+398,"terraform {
+  required_version = "">= 1.5.0""
+
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.0""
+    }
+    random = {
+      source  = ""hashicorp/random""
+      version = ""~> 3.5""
+    }
+  }
+}
+
+provider ""aws"" {
+  region = ""us-east-1""
+
+  default_tags {
+    tags = {
+      Environment = var.environment
+      ManagedBy   = ""terraform""
+    }
+  }
+}
+
+# -----------------------------------------------------------------------------
+# Variables
+# -----------------------------------------------------------------------------
+
+variable ""environment"" {
+  description = ""Environment name used only for resource naming and tagging, never for infrastructure attributes.""
+  type        = string
+  default     = ""dev""
+
+  validation {
+    condition     = can(regex(""^[a-z]([a-z0-9-]{0,14}[a-z0-9])?$"", var.environment))
+    error_message = ""environment must be 1-16 lowercase alphanumeric characters or hyphens, start with a letter, and not end with a hyphen.""
+  }
+}
+
+variable ""certificate_arn"" {
+  description = ""Optional ACM certificate ARN. When non-empty, an HTTPS listener with the identical authenticate-cognito -> forward action pair is created, the port-80 listener becomes a 301 redirect to HTTPS, and TCP 443 ingress is opened on the ALB security group. Leave empty (default) so apply runs unattended with only the HTTP listener.""
+  type        = string
+  default     = """"
+
+  validation {
+    condition     = var.certificate_arn == """" || startswith(var.certificate_arn, ""arn:"")
+    error_message = ""certificate_arn must be an ACM certificate ARN (arn:...) or an empty string.""
+  }
+}
+
+# -----------------------------------------------------------------------------
+# Locals
+# -----------------------------------------------------------------------------
+
+locals {
+  name_prefix          = ""cognito-alb-${var.environment}""
+  tls_enabled          = var.certificate_arn != """"
+  alb_log_prefix       = ""alb-logs""
+  alb_logs_bucket_name = lower(""alb-logs-${var.environment}-${random_string.log_suffix.result}"")
+}
+
+# -----------------------------------------------------------------------------
+# Data sources (static / well-known lookups only, no pre-existing infrastructure)
+# -----------------------------------------------------------------------------
+
+data ""aws_availability_zones"" ""available"" {
+  state = ""available""
+}
+
+data ""aws_ami"" ""al2023"" {
+  most_recent = true
+  owners      = [""amazon""]
+
+  filter {
+    name   = ""name""
+    values = [""al2023-ami-2023.*-x86_64""]
+  }
+
+  filter {
+    name   = ""virtualization-type""
+    values = [""hvm""]
+  }
+
+  filter {
+    name   = ""root-device-type""
+    values = [""ebs""]
+  }
+}
+
+data ""aws_region"" ""current"" {}
+
+data ""aws_elb_service_account"" ""main"" {}
+
+# -----------------------------------------------------------------------------
+# Random identifiers
+# -----------------------------------------------------------------------------
+
+resource ""random_string"" ""cognito_prefix"" {
+  length    = 12
+  upper     = false
+  lower     = true
+  numeric   = false
+  special   = false
+  min_lower = 12
+}
+
+resource ""random_string"" ""log_suffix"" {
+  length    = 8
+  upper     = false
+  lower     = true
+  numeric   = false
+  special   = false
+  min_lower = 1
+}
+
+# -----------------------------------------------------------------------------
+# Networking
+# -----------------------------------------------------------------------------
+
+resource ""aws_vpc"" ""main"" {
+  cidr_block           = ""10.0.0.0/16""
+  enable_dns_support   = true
+  enable_dns_hostnames = true
+
+  tags = {
+    Name = ""${local.name_prefix}-vpc""
+  }
+}
+
+resource ""aws_internet_gateway"" ""main"" {
+  vpc_id = aws_vpc.main.id
+
+  tags = {
+    Name = ""${local.name_prefix}-igw""
+  }
+}
+
+resource ""aws_subnet"" ""public_a"" {
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = ""10.0.1.0/24""
+  availability_zone       = data.aws_availability_zones.available.names[0]
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name = ""${local.name_prefix}-public-a""
+  }
+}
+
+resource ""aws_subnet"" ""public_b"" {
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = ""10.0.2.0/24""
+  availability_zone       = data.aws_availability_zones.available.names[1]
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name = ""${local.name_prefix}-public-b""
+  }
+}
+
+resource ""aws_route_table"" ""public"" {
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block = ""0.0.0.0/0""
+    gateway_id = aws_internet_gateway.main.id
+  }
+
+  tags = {
+    Name = ""${local.name_prefix}-public-rt""
+  }
+}
+
+resource ""aws_route_table_association"" ""public_a"" {
+  subnet_id      = aws_subnet.public_a.id
+  route_table_id = aws_route_table.public.id
+}
+
+resource ""aws_route_table_association"" ""public_b"" {
+  subnet_id      = aws_subnet.public_b.id
+  route_table_id = aws_route_table.public.id
+}
+
+# -----------------------------------------------------------------------------
+# Security groups (standalone rules so the conditional TLS rule can be added
+# without mixing inline and aws_security_group_rule resources)
+# -----------------------------------------------------------------------------
+
+resource ""aws_security_group"" ""alb"" {
+  name        = ""${local.name_prefix}-alb-sg""
+  description = ""ALB: inbound HTTP(S) from the internet, egress to backend on TCP 80 only""
+  vpc_id      = aws_vpc.main.id
+
+  tags = {
+    Name = ""${local.name_prefix}-alb-sg""
+  }
+}
+
+resource ""aws_security_group"" ""backend"" {
+  name        = ""${local.name_prefix}-backend-sg""
+  description = ""Backend: inbound TCP 80 from the ALB only, egress for package retrieval""
+  vpc_id      = aws_vpc.main.id
+
+  tags = {
+    Name = ""${local.name_prefix}-backend-sg""
+  }
+}
+
+resource ""aws_security_group_rule"" ""alb_ingress_http"" {
+  type              = ""ingress""
+  from_port         = 80
+  to_port           = 80
+  protocol          = ""tcp""
+  cidr_blocks       = [""0.0.0.0/0""]
+  security_group_id = aws_security_group.alb.id
+}
+
+resource ""aws_security_group_rule"" ""alb_ingress_https"" {
+  count = local.tls_enabled ? 1 : 0
+
+  type              = ""ingress""
+  from_port         = 443
+  to_port           = 443
+  protocol          = ""tcp""
+  cidr_blocks       = [""0.0.0.0/0""]
+  security_group_id = aws_security_group.alb.id
+}
+
+resource ""aws_security_group_rule"" ""alb_egress_http_to_backend"" {
+  type                     = ""egress""
+  from_port                = 80
+  to_port                  = 80
+  protocol                 = ""tcp""
+  security_group_id        = aws_security_group.alb.id
+  source_security_group_id = aws_security_group.backend.id
+}
+
+resource ""aws_security_group_rule"" ""backend_ingress_http_from_alb"" {
+  type                     = ""ingress""
+  from_port                = 80
+  to_port                  = 80
+  protocol                 = ""tcp""
+  security_group_id        = aws_security_group.backend.id
+  source_security_group_id = aws_security_group.alb.id
+}
+
+resource ""aws_security_group_rule"" ""backend_egress_https_packages"" {
+  type              = ""egress""
+  from_port         = 443
+  to_port           = 443
+  protocol          = ""tcp""
+  cidr_blocks       = [""0.0.0.0/0""]
+  security_group_id = aws_security_group.backend.id
+}
+
+resource ""aws_security_group_rule"" ""backend_egress_http_packages"" {
+  type              = ""egress""
+  from_port         = 80
+  to_port           = 80
+  protocol          = ""tcp""
+  cidr_blocks       = [""0.0.0.0/0""]
+  security_group_id = aws_security_group.backend.id
+}
+
+# -----------------------------------------------------------------------------
+# Cognito user pool, ALB app client, and hosted UI domain
+# -----------------------------------------------------------------------------
+
+resource ""aws_cognito_user_pool"" ""main"" {
+  name = ""${local.name_prefix}-users""
+
+  username_attributes      = [""email""]
+  auto_verified_attributes = [""email""]
+
+  mfa_configuration = ""OFF""
+
+  password_policy {
+    minimum_length                   = 12
+    require_lowercase                = true
+    require_uppercase                = true
+    require_numbers                  = true
+    require_symbols                  = true
+    temporary_password_validity_days = 7
+  }
+
+  # allow_admin_create_user_only = false keeps self sign-up enabled
+  admin_create_user_config {
+    allow_admin_create_user_only = false
+  }
+
+  verification_message_template {
+    default_email_option = ""CONFIRM_WITH_CODE""
+  }
+
+  email_configuration {
+    email_sending_account = ""COGNITO_DEFAULT""
+  }
+
+  deletion_protection = ""ACTIVE""
+
+  tags = {
+    Name = ""${local.name_prefix}-users""
+  }
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource ""aws_cognito_user_pool_client"" ""alb"" {
+  name         = ""${local.name_prefix}-alb-client""
+  user_pool_id = aws_cognito_user_pool.main.id
+
+  # Client secret is required for ALB ""authenticate-cognito"" federation.
+  # It is retrieved by the ALB service itself and is never output here.
+  generate_secret = true
+
+  explicit_auth_flows = [
+    ""ALLOW_REFRESH_TOKEN_AUTH"",
+    ""ALLOW_USER_SRP_AUTH"",
+  ]
+
+  allowed_oauth_flows_user_pool_client = true
+  allowed_oauth_flows                  = [""code""]
+  allowed_oauth_scopes                 = [""openid"", ""email"", ""profile""]
+  supported_identity_providers         = [""COGNITO""]
+
+  callback_urls = [""https://${aws_lb.main.dns_name}/oauth2/idpresponse""]
+  logout_urls   = [""https://${aws_lb.main.dns_name}""]
+
+  token_validity_units {
+    access_token  = ""hours""
+    id_token      = ""hours""
+    refresh_token = ""days""
+  }
+
+  access_token_validity  = 1
+  id_token_validity      = 1
+  refresh_token_validity = 30
+}
+
+resource ""aws_cognito_user_pool_domain"" ""main"" {
+  domain       = random_string.cognito_prefix.result
+  user_pool_id = aws_cognito_user_pool.main.id
+}
+
+# -----------------------------------------------------------------------------
+# Backend compute
+# -----------------------------------------------------------------------------
+
+resource ""aws_instance"" ""backend"" {
+  ami                         = data.aws_ami.al2023.id
+  instance_type               = ""t3.micro""
+  subnet_id                   = aws_subnet.public_a.id
+  vpc_security_group_ids      = [aws_security_group.backend.id]
+  associate_public_ip_address = true
+
+  metadata_options {
+    http_endpoint = ""enabled""
+    http_tokens   = ""required""
+  }
+
+  root_block_device {
+    volume_size           = 8
+    volume_type           = ""gp3""
+    encrypted             = true
+    delete_on_termination = true
+  }
+
+  user_data = <<-EOT
+    #!/bin/bash
+    set -euxo pipefail
+    dnf install -y nginx
+    systemctl enable --now nginx
+    echo '<h1>Backend OK - served through the Cognito-authenticated ALB</h1>' > /usr/share/nginx/html/index.html
+  EOT
+
+  depends_on = [aws_route_table_association.public_a]
+
+  tags = {
+    Name = ""${local.name_prefix}-backend""
+  }
+}
+
+# -----------------------------------------------------------------------------
+# Target group
+# -----------------------------------------------------------------------------
+
+resource ""aws_lb_target_group"" ""app"" {
+  name        = ""${local.name_prefix}-tg""
+  port        = 80
+  protocol    = ""HTTP""
+  target_type = ""instance""
+  vpc_id      = aws_vpc.main.id
+
+  health_check {
+    enabled             = true
+    path                = ""/""
+    protocol            = ""HTTP""
+    matcher             = ""200""
+    interval            = 30
+    timeout             = 5
+    healthy_threshold   = 2
+    unhealthy_threshold = 3
+  }
+
+  tags = {
+    Name = ""${local.name_prefix}-tg""
+  }
+}
+
+resource ""aws_lb_target_group_attachment"" ""backend"" {
+  target_group_arn = aws_lb_target_group.app.arn
+  target_id        = aws_instance.backend.id
+  port             = 80
+}
+
+# -----------------------------------------------------------------------------
+# ALB access log bucket
+# -----------------------------------------------------------------------------
+
+resource ""aws_s3_bucket"" ""alb_logs"" {
+  bucket = local.alb_logs_bucket_name
+
+  tags = {
+    Name = local.alb_logs_bucket_name
+  }
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource ""aws_s3_bucket_public_access_block"" ""alb_logs"" {
+  bucket                  = aws_s3_bucket.alb_logs.id
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource ""aws_s3_bucket_server_side_encryption_configuration"" ""alb_logs"" {
+  bucket = aws_s3_bucket.alb_logs.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = ""AES256""
+    }
+  }
+}
+
+resource ""aws_s3_bucket_versioning"" ""alb_logs"" {
+  bucket = aws_s3_bucket.alb_logs.id
+
+  versioning_configuration {
+    status = ""Enabled""
+  }
+}
+
+resource ""aws_s3_bucket_lifecycle_configuration"" ""alb_logs"" {
+  bucket = aws_s3_bucket.alb_logs.id
+
+  rule {
+    id     = ""expire-alb-access-logs""
+    status = ""Enabled""
+
+    filter {
+      prefix = ""${local.alb_log_prefix}/""
+    }
+
+    expiration {
+      days = 90
+    }
+
+    noncurrent_version_expiration {
+      noncurrent_days = 30
+    }
+
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 7
+    }
+  }
+}
+
+resource ""aws_s3_bucket_ownership_controls"" ""alb_logs"" {
+  bucket = aws_s3_bucket.alb_logs.id
+
+  rule {
+    object_ownership = ""BucketOwnerEnforced""
+  }
+}
+
+resource ""aws_s3_bucket_policy"" ""alb_logs"" {
+  bucket = aws_s3_bucket.alb_logs.id
+
+  policy = jsonencode({
+    Version = ""2012-10-17""
+    Statement = [
+      {
+        Sid       = ""AllowELBLogDeliveryPutObject""
+        Effect    = ""Allow""
+        Principal = {
+          AWS = data.aws_elb_service_account.main.arn
+        }
+        Action   = ""s3:PutObject""
+        Resource = ""${aws_s3_bucket.alb_logs.arn}/${local.alb_log_prefix}/*""
+      }
+    ]
+  })
+
+  depends_on = [aws_s3_bucket_public_access_block.alb_logs]
+}
+
+# -----------------------------------------------------------------------------
+# Application Load Balancer
+# -----------------------------------------------------------------------------
+
+resource ""aws_lb"" ""main"" {
+  name               = local.name_prefix
+  load_balancer_type = ""application""
+  internal           = false
+  ip_address_type    = ""ipv4""
+
+  security_groups = [aws_security_group.alb.id]
+  subnets         = [aws_subnet.public_a.id, aws_subnet.public_b.id]
+
+  drop_invalid_header_fields = true
+
+  access_logs {
+    bucket  = aws_s3_bucket.alb_logs.id
+    prefix  = local.alb_log_prefix
+    enabled = true
+  }
+
+  depends_on = [
+    aws_route_table_association.public_a,
+    aws_route_table_association.public_b,
+    aws_s3_bucket_policy.alb_logs,
+  ]
+
+  tags = {
+    Name = local.name_prefix
+  }
+}
+
+# -----------------------------------------------------------------------------
+# Listeners
+# -----------------------------------------------------------------------------
+
+resource ""aws_lb_listener"" ""http"" {
+  load_balancer_arn = aws_lb.main.arn
+  port              = 80
+  protocol          = ""HTTP""
+
+  # When TLS is enabled the port-80 listener becomes a permanent 301 redirect.
+  dynamic ""default_action"" {
+    for_each = local.tls_enabled ? [1] : []
+    content {
+      type  = ""redirect""
+      order = 1
+
+      redirect {
+        port        = ""443""
+        protocol    = ""HTTPS""
+        status_code = ""HTTP_301""
+      }
+    }
+  }
+
+  # When TLS is disabled the port-80 listener fronts the Cognito auth flow:
+  # authenticate-cognito (order 1) followed by forward (order 2), so the
+  # authenticate-cognito action is never the terminal action.
+  dynamic ""default_action"" {
+    for_each = local.tls_enabled ? [] : [1]
+    content {
+      type  = ""authenticate-cognito""
+      order = 1
+
+      authenticate_cognito {
+        user_pool_arn              = aws_cognito_user_pool.main.arn
+        user_pool_client_id        = aws_cognito_user_pool_client.alb.id
+        user_pool_domain           = aws_cognito_user_pool_domain.main.domain
+        on_unauthenticated_request = ""authenticate""
+        session_cookie_name        = ""AWSELBAuthSessionCookie-1""
+        session_timeout            = 3600
+      }
+    }
+  }
+
+  dynamic ""default_action"" {
+    for_each = local.tls_enabled ? [] : [1]
+    content {
+      type             = ""forward""
+      order            = 2
+      target_group_arn = aws_lb_target_group.app.arn
+    }
+  }
+}
+
+resource ""aws_lb_listener"" ""https"" {
+  count = local.tls_enabled ? 1 : 0
+
+  load_balancer_arn = aws_lb.main.arn
+  port              = 443
+  protocol          = ""HTTPS""
+  certificate_arn   = var.certificate_arn
+  ssl_policy        = ""ELBSecurityPolicy-TLS13-1-2-2021-06""
+
+  default_action {
+    type  = ""authenticate-cognito""
+    order = 1
+
+    authenticate_cognito {
+      user_pool_arn              = aws_cognito_user_pool.main.arn
+      user_pool_client_id        = aws_cognito_user_pool_client.alb.id
+      user_pool_domain           = aws_cognito_user_pool_domain.main.domain
+      on_unauthenticated_request = ""authenticate""
+      session_cookie_name        = ""AWSELBAuthSessionCookie-1""
+      session_timeout            = 3600
+    }
+  }
+
+  default_action {
+    type             = ""forward""
+    order            = 2
+    target_group_arn = aws_lb_target_group.app.arn
+  }
+}
+
+# -----------------------------------------------------------------------------
+# Outputs
+# -----------------------------------------------------------------------------
+
+output ""alb_dns_name"" {
+  description = ""Public DNS name of the Application Load Balancer.""
+  value       = aws_lb.main.dns_name
+}
+
+output ""cognito_hosted_ui_sign_in_url"" {
+  description = ""Cognito hosted UI sign-in URL used by the ALB authenticate-cognito action.""
+  value       = ""https://${aws_cognito_user_pool_domain.main.domain}.auth.${data.aws_region.current.name}.amazoncognito.com/login""
+}
+
+output ""target_group_arn"" {
+  description = ""ARN of the target group backing the authenticated listener.""
+  value       = aws_lb_target_group.app.arn
+}"
+400,"terraform {
+  required_version = "">= 1.5.0""
+
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.0""
+    }
+  }
+}
+
+provider ""aws"" {
+  region = ""us-east-1""
+}
+
+variable ""environment"" {
+  description = ""Environment name applied to all resources for consistent tagging.""
+  type        = string
+  default     = ""dev""
+
+  validation {
+    condition     = can(regex(""^[a-zA-Z0-9][a-zA-Z0-9-]{0,19}$"", var.environment))
+    error_message = ""Environment must be 1-20 alphanumeric characters or hyphens.""
+  }
+}
+
+# --- Static/well-known data lookups only (no pre-existing infrastructure) ---
+
+data ""aws_availability_zones"" ""available"" {
+  state = ""available""
+}
+
+data ""aws_caller_identity"" ""current"" {}
+
+data ""aws_partition"" ""current"" {}
+
+data ""aws_region"" ""current"" {}
+
+data ""aws_ami"" ""amazon_linux_2023"" {
+  most_recent = true
+  owners      = [""amazon""]
+
+  filter {
+    name   = ""name""
+    values = [""al2023-ami-2023.*-x86_64""]
+  }
+
+  filter {
+    name   = ""virtualization-type""
+    values = [""hvm""]
+  }
+
+  filter {
+    name   = ""root-device-type""
+    values = [""ebs""]
+  }
+}
+
+locals {
+  vpc_cidr = ""10.0.0.0/16""
+
+  az_count           = 2
+  availability_zones = slice(data.aws_availability_zones.available.names, 0, local.az_count)
+
+  subnet_az_map = {
+    for idx, az in local.availability_zones :
+    az => cidrsubnet(local.vpc_cidr, 8, idx + 1)
+  }
+
+  account_root_arn = ""arn:${data.aws_partition.current.partition}:iam::${data.aws_caller_identity.current.account_id}:root""
+
+  common_tags = {
+    Environment = var.environment
+    ManagedBy   = ""terraform""
+  }
+}
+
+# --- Inspection VPC networking ---
+
+resource ""aws_vpc"" ""main"" {
+  cidr_block           = local.vpc_cidr
+  enable_dns_hostnames = true
+  enable_dns_support   = true
+
+  tags = merge(local.common_tags, {
+    Name = ""gwlb-inspection-vpc""
+  })
+}
+
+resource ""aws_internet_gateway"" ""main"" {
+  vpc_id = aws_vpc.main.id
+
+  tags = merge(local.common_tags, {
+    Name = ""gwlb-inspection-igw""
+  })
+}
+
+resource ""aws_route_table"" ""public"" {
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block = ""0.0.0.0/0""
+    gateway_id = aws_internet_gateway.main.id
+  }
+
+  tags = merge(local.common_tags, {
+    Name = ""gwlb-inspection-public-rt""
+  })
+}
+
+resource ""aws_subnet"" ""appliance"" {
+  for_each = local.subnet_az_map
+
+  vpc_id                  = aws_vpc.main.id
+  availability_zone       = each.key
+  cidr_block              = each.value
+  map_public_ip_on_launch = false
+
+  tags = merge(local.common_tags, {
+    Name = ""gwlb-inspection-public-${each.key}""
+  })
+}
+
+resource ""aws_route_table_association"" ""public"" {
+  for_each = aws_subnet.appliance
+
+  subnet_id      = each.value.id
+  route_table_id = aws_route_table.public.id
+}
+
+# --- Security groups ---
+
+resource ""aws_security_group"" ""appliance_sg"" {
+  name        = ""gwlb-appliance-sg""
+  description = ""Permit inbound GENEVE (UDP/6081) traffic from within the inspection VPC only""
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    description = ""GENEVE-encapsulated traffic from the inspection VPC""
+    from_port   = 6081
+    to_port     = 6081
+    protocol    = ""udp""
+    cidr_blocks = [aws_vpc.main.cidr_block]
+  }
+
+  egress {
+    description = ""Allow all outbound traffic""
+    from_port   = 0
+    to_port     = 0
+    protocol    = ""-1""
+    cidr_blocks = [""0.0.0.0/0""]
+  }
+
+  tags = merge(local.common_tags, {
+    Name = ""gwlb-appliance-sg""
+  })
+}
+
+resource ""aws_security_group"" ""ssm_endpoints"" {
+  name        = ""gwlb-ssm-endpoints-sg""
+  description = ""Permit HTTPS from within the inspection VPC to the SSM interface endpoints""
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    description = ""HTTPS from the inspection VPC""
+    from_port   = 443
+    to_port     = 443
+    protocol    = ""tcp""
+    cidr_blocks = [aws_vpc.main.cidr_block]
+  }
+
+  egress {
+    description = ""Allow all outbound traffic""
+    from_port   = 0
+    to_port     = 0
+    protocol    = ""-1""
+    cidr_blocks = [""0.0.0.0/0""]
+  }
+
+  tags = merge(local.common_tags, {
+    Name = ""gwlb-ssm-endpoints-sg""
+  })
+}
+
+# Interface endpoints so the keyless (no public IP, no SSH) appliances can
+# reach AWS Systems Manager for management access.
+resource ""aws_vpc_endpoint"" ""ssm"" {
+  for_each = toset([""ssm"", ""ssmmessages"", ""ec2messages""])
+
+  vpc_id              = aws_vpc.main.id
+  service_name        = ""com.amazonaws.${data.aws_region.current.name}.${each.key}""
+  vpc_endpoint_type   = ""Interface""
+  subnet_ids          = [for subnet in aws_subnet.appliance : subnet.id]
+  security_group_ids  = [aws_security_group.ssm_endpoints.id]
+  private_dns_enabled = true
+
+  tags = merge(local.common_tags, {
+    Name = ""gwlb-inspection-${each.key}-endpoint""
+  })
+}
+
+# --- Appliance IAM (keyless management via SSM) ---
+
+resource ""aws_iam_role"" ""appliance_ssm"" {
+  name = ""gwlb-appliance-ssm-role""
+
+  assume_role_policy = jsonencode({
+    Version = ""2012-10-17""
+    Statement = [
+      {
+        Sid    = ""AllowEC2AssumeRole""
+        Effect = ""Allow""
+        Principal = {
+          Service = ""ec2.amazonaws.com""
+        }
+        Action = ""sts:AssumeRole""
+      }
+    ]
+  })
+
+  tags = merge(local.common_tags, {
+    Name = ""gwlb-appliance-ssm-role""
+  })
+}
+
+resource ""aws_iam_role_policy_attachment"" ""appliance_ssm_core"" {
+  role       = aws_iam_role.appliance_ssm.name
+  policy_arn = ""arn:${data.aws_partition.current.partition}:iam::aws:policy/AmazonSSMManagedInstanceCore""
+}
+
+resource ""aws_iam_instance_profile"" ""appliance"" {
+  name = ""gwlb-appliance-instance-profile""
+  role = aws_iam_role.appliance_ssm.name
+
+  tags = merge(local.common_tags, {
+    Name = ""gwlb-appliance-instance-profile""
+  })
+}
+
+# --- Appliance instances ---
+
+resource ""aws_instance"" ""appliance"" {
+  for_each = aws_subnet.appliance
+
+  ami                         = data.aws_ami.amazon_linux_2023.id
+  instance_type               = ""t3.micro""
+  subnet_id                   = each.value.id
+  vpc_security_group_ids      = [aws_security_group.appliance_sg.id]
+  associate_public_ip_address = false
+  iam_instance_profile        = aws_iam_instance_profile.appliance.name
+
+  metadata_options {
+    http_endpoint               = ""enabled""
+    http_tokens                 = ""required""
+    http_put_response_hop_limit = 2
+  }
+
+  root_block_device {
+    volume_size = 8
+    volume_type = ""gp3""
+    encrypted   = true
+  }
+
+  tags = merge(local.common_tags, {
+    Name = ""gwlb-appliance-${each.key}""
+  })
+}
+
+# --- Gateway Load Balancer ---
+
+resource ""aws_lb_target_group"" ""gwlb_targets"" {
+  name        = ""gwlb-targets""
+  target_type = ""instance""
+  protocol    = ""GENEVE""
+  port        = 6081
+  vpc_id      = aws_vpc.main.id
+
+  health_check {
+    protocol            = ""TCP""
+    port                = ""traffic-port""
+    interval            = 10
+    timeout             = 5
+    healthy_threshold   = 3
+    unhealthy_threshold = 3
+  }
+
+  tags = merge(local.common_tags, {
+    Name = ""gwlb-targets""
+  })
+}
+
+resource ""aws_lb"" ""gwlb"" {
+  name               = ""gwlb-inspection""
+  load_balancer_type = ""gateway""
+
+  subnets = [for subnet in aws_subnet.appliance : subnet.id]
+
+  tags = merge(local.common_tags, {
+    Name = ""gwlb-inspection""
+  })
+}
+
+resource ""aws_lb_listener"" ""gwlb"" {
+  load_balancer_arn = aws_lb.gwlb.arn
+  protocol          = ""GENEVE""
+  port              = 6081
+
+  default_action {
+    type             = ""forward""
+    target_group_arn = aws_lb_target_group.gwlb_targets.arn
+  }
+
+  tags = merge(local.common_tags, {
+    Name = ""gwlb-inspection-listener""
+  })
+}
+
+resource ""aws_lb_target_group_attachment"" ""appliance"" {
+  for_each = aws_instance.appliance
+
+  target_group_arn = aws_lb_target_group.gwlb_targets.arn
+  target_id        = each.value.id
+  port             = 6081
+}
+
+resource ""aws_vpc_endpoint_service"" ""gwlb"" {
+  acceptance_required        = false
+  gateway_load_balancer_arns = [aws_lb.gwlb.arn]
+  allowed_principals         = [local.account_root_arn]
+
+  tags = merge(local.common_tags, {
+    Name = ""gwlb-endpoint-service""
+  })
+}
+
+# --- Outputs for downstream consumer VPCs ---
+
+output ""gateway_load_balancer_arn"" {
+  description = ""ARN of the Gateway Load Balancer.""
+  value       = aws_lb.gwlb.arn
+}
+
+output ""gateway_load_balancer_arn_suffix"" {
+  description = ""ARN suffix of the Gateway Load Balancer (useful for CloudWatch metrics and alarms).""
+  value       = aws_lb.gwlb.arn_suffix
+}
+
+output ""gateway_load_balancer_endpoint_service_name"" {
+  description = ""Service name that downstream consumer VPCs use to create Gateway Load Balancer endpoints.""
+  value       = aws_vpc_endpoint_service.gwlb.service_name
+}"
+402,"terraform {
+  required_version = "">= 1.5.0""
+
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.0""
+    }
+  }
+}
+
+provider ""aws"" {
+  region = ""us-east-1""
+}
+
+variable ""project_name"" {
+  description = ""Project name used to derive Name tags for all resources""
+  type        = string
+  default     = ""alb-ip-tg""
+}
+
+data ""aws_availability_zones"" ""available"" {
+  state = ""available""
+}
+
+locals {
+  name = var.project_name
+}
+
+resource ""aws_vpc"" ""main"" {
+  cidr_block           = ""10.0.0.0/16""
+  enable_dns_support   = true
+  enable_dns_hostnames = true
+
+  tags = {
+    Name = ""${local.name}-vpc""
+  }
+}
+
+resource ""aws_internet_gateway"" ""main"" {
+  vpc_id = aws_vpc.main.id
+
+  tags = {
+    Name = ""${local.name}-igw""
+  }
+}
+
+resource ""aws_subnet"" ""public_a"" {
+  vpc_id                  = aws_vpc.main.id
+  availability_zone       = data.aws_availability_zones.available.names[0]
+  cidr_block              = ""10.0.1.0/24""
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name = ""${local.name}-public-a""
+  }
+}
+
+resource ""aws_subnet"" ""public_b"" {
+  vpc_id                  = aws_vpc.main.id
+  availability_zone       = data.aws_availability_zones.available.names[1]
+  cidr_block              = ""10.0.2.0/24""
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name = ""${local.name}-public-b""
+  }
+}
+
+resource ""aws_route_table"" ""public"" {
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block = ""0.0.0.0/0""
+    gateway_id = aws_internet_gateway.main.id
+  }
+
+  tags = {
+    Name = ""${local.name}-public-rt""
+  }
+}
+
+resource ""aws_route_table_association"" ""public_a"" {
+  subnet_id      = aws_subnet.public_a.id
+  route_table_id = aws_route_table.public.id
+}
+
+resource ""aws_route_table_association"" ""public_b"" {
+  subnet_id      = aws_subnet.public_b.id
+  route_table_id = aws_route_table.public.id
+}
+
+resource ""aws_security_group"" ""alb"" {
+  name        = ""${local.name}-alb-sg""
+  description = ""Allows inbound HTTP and HTTPS traffic to the load balancer""
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    description = ""HTTP from anywhere""
+    from_port   = 80
+    to_port     = 80
+    protocol    = ""tcp""
+    cidr_blocks = [""0.0.0.0/0""]
+  }
+
+  ingress {
+    description = ""HTTPS from anywhere""
+    from_port   = 443
+    to_port     = 443
+    protocol    = ""tcp""
+    cidr_blocks = [""0.0.0.0/0""]
+  }
+
+  egress {
+    description = ""Allow all outbound traffic""
+    from_port   = 0
+    to_port     = 0
+    protocol    = ""-1""
+    cidr_blocks = [""0.0.0.0/0""]
+  }
+
+  tags = {
+    Name = ""${local.name}-alb-sg""
+  }
+}
+
+resource ""aws_lb"" ""main"" {
+  name                       = ""${local.name}-alb""
+  internal                   = false
+  load_balancer_type         = ""application""
+  security_groups            = [aws_security_group.alb.id]
+  subnets                    = [aws_subnet.public_a.id, aws_subnet.public_b.id]
+  drop_invalid_header_fields = true
+  enable_deletion_protection = true
+
+  tags = {
+    Name = ""${local.name}-alb""
+  }
+}
+
+resource ""aws_lb_target_group"" ""main"" {
+  name                 = ""${local.name}-tg""
+  port                 = 80
+  protocol             = ""HTTP""
+  vpc_id               = aws_vpc.main.id
+  target_type          = ""ip""
+  deregistration_delay = 30
+
+  health_check {
+    enabled             = true
+    path                = ""/""
+    protocol            = ""HTTP""
+    matcher             = ""200""
+    interval            = 30
+    timeout             = 5
+    healthy_threshold   = 2
+    unhealthy_threshold = 3
+  }
+
+  tags = {
+    Name = ""${local.name}-tg""
+  }
+}
+
+resource ""aws_lb_listener"" ""http"" {
+  load_balancer_arn = aws_lb.main.arn
+  port              = 80
+  protocol          = ""HTTP""
+
+  default_action {
+    type             = ""forward""
+    target_group_arn = aws_lb_target_group.main.arn
+  }
+}"
+404,"terraform {
+  required_version = "">= 1.5.0""
+
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.0""
+    }
+  }
+}
+
+provider ""aws"" {
+  region = ""us-east-1""
+}
+
+data ""aws_availability_zones"" ""available"" {
+  state = ""available""
+}
+
+data ""aws_partition"" ""current"" {}
+
+data ""aws_caller_identity"" ""current"" {}
+
+data ""aws_ami"" ""amazon_linux_2023"" {
+  most_recent = true
+  owners      = [""amazon""]
+
+  filter {
+    name   = ""name""
+    values = [""al2023-ami-2023.*-x86_64""]
+  }
+
+  filter {
+    name   = ""virtualization-type""
+    values = [""hvm""]
+  }
+}
+
+locals {
+  name_prefix = ""alb-demo""
+  environment = ""dev""
+  log_prefix  = ""alb-access-logs""
+
+  common_tags = {
+    Environment = local.environment
+  }
+}
+
+# ---------------------------------------------------------------------------
+# Network foundation
+# ---------------------------------------------------------------------------
+
+resource ""aws_vpc"" ""main"" {
+  cidr_block           = ""10.0.0.0/16""
+  enable_dns_support   = true
+  enable_dns_hostnames = true
+
+  tags = merge(local.common_tags, {
+    Name = ""${local.name_prefix}-vpc""
+  })
+}
+
+resource ""aws_subnet"" ""public"" {
+  count = 2
+
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = cidrsubnet(aws_vpc.main.cidr_block, 8, count.index)
+  availability_zone       = data.aws_availability_zones.available.names[count.index]
+  map_public_ip_on_launch = true
+
+  tags = merge(local.common_tags, {
+    Name = ""${local.name_prefix}-public-subnet-${count.index + 1}""
+  })
+}
+
+resource ""aws_internet_gateway"" ""main"" {
+  vpc_id = aws_vpc.main.id
+
+  tags = merge(local.common_tags, {
+    Name = ""${local.name_prefix}-igw""
+  })
+}
+
+resource ""aws_route_table"" ""public"" {
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block = ""0.0.0.0/0""
+    gateway_id = aws_internet_gateway.main.id
+  }
+
+  tags = merge(local.common_tags, {
+    Name = ""${local.name_prefix}-public-rt""
+  })
+}
+
+resource ""aws_route_table_association"" ""public"" {
+  count = 2
+
+  subnet_id      = aws_subnet.public[count.index].id
+  route_table_id = aws_route_table.public.id
+}
+
+# ---------------------------------------------------------------------------
+# Security groups
+# ---------------------------------------------------------------------------
+
+resource ""aws_security_group"" ""alb"" {
+  name        = ""${local.name_prefix}-alb-sg""
+  description = ""Ingress for the public Application Load Balancer""
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    description = ""HTTP from anywhere""
+    from_port   = 80
+    to_port     = 80
+    protocol    = ""tcp""
+    cidr_blocks = [""0.0.0.0/0""]
+  }
+
+  ingress {
+    description = ""HTTPS from anywhere""
+    from_port   = 443
+    to_port     = 443
+    protocol    = ""tcp""
+    cidr_blocks = [""0.0.0.0/0""]
+  }
+
+  egress {
+    description = ""Allow all outbound""
+    from_port   = 0
+    to_port     = 0
+    protocol    = ""-1""
+    cidr_blocks = [""0.0.0.0/0""]
+  }
+
+  tags = merge(local.common_tags, {
+    Name = ""${local.name_prefix}-alb-sg""
+  })
+}
+
+resource ""aws_security_group"" ""targets"" {
+  name        = ""${local.name_prefix}-targets-sg""
+  description = ""Ingress for ALB backend instances""
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    description     = ""HTTP from the ALB security group only""
+    from_port       = 80
+    to_port         = 80
+    protocol        = ""tcp""
+    security_groups = [aws_security_group.alb.id]
+  }
+
+  egress {
+    description = ""Allow all outbound""
+    from_port   = 0
+    to_port     = 0
+    protocol    = ""-1""
+    cidr_blocks = [""0.0.0.0/0""]
+  }
+
+  tags = merge(local.common_tags, {
+    Name = ""${local.name_prefix}-targets-sg""
+  })
+}
+
+# ---------------------------------------------------------------------------
+# Target group, load balancer, listener
+# ---------------------------------------------------------------------------
+
+resource ""aws_lb_target_group"" ""app"" {
+  name        = ""${local.name_prefix}-tg""
+  vpc_id      = aws_vpc.main.id
+  port        = 80
+  protocol    = ""HTTP""
+  target_type = ""instance""
+
+  deregistration_delay = 30
+
+  health_check {
+    enabled             = true
+    protocol            = ""HTTP""
+    path                = ""/""
+    matcher             = ""200""
+    interval            = 30
+    timeout             = 5
+    healthy_threshold   = 2
+    unhealthy_threshold = 2
+  }
+
+  lifecycle {
+    prevent_destroy = true
+  }
+
+  tags = merge(local.common_tags, {
+    Name = ""${local.name_prefix}-tg""
+  })
+}
+
+resource ""aws_lb"" ""main"" {
+  name               = ""${local.name_prefix}-alb""
+  load_balancer_type = ""application""
+  internal           = false
+
+  security_groups = [aws_security_group.alb.id]
+  subnets         = aws_subnet.public[*].id
+
+  drop_invalid_header_fields = true
+
+  access_logs {
+    bucket  = aws_s3_bucket.alb_logs.id
+    prefix  = local.log_prefix
+    enabled = true
+  }
+
+  depends_on = [aws_s3_bucket_policy.alb_logs]
+
+  lifecycle {
+    prevent_destroy = true
+  }
+
+  tags = merge(local.common_tags, {
+    Name = ""${local.name_prefix}-alb""
+  })
+}
+
+resource ""aws_lb_listener"" ""http"" {
+  load_balancer_arn = aws_lb.main.arn
+  port              = 80
+  protocol          = ""HTTP""
+
+  default_action {
+    type             = ""forward""
+    target_group_arn = aws_lb_target_group.app.arn
+  }
+
+  tags = merge(local.common_tags, {
+    Name = ""${local.name_prefix}-http-listener""
+  })
+}
+
+# ---------------------------------------------------------------------------
+# Backend instances
+# ---------------------------------------------------------------------------
+
+resource ""aws_instance"" ""app"" {
+  count = 2
+
+  ami                         = data.aws_ami.amazon_linux_2023.id
+  instance_type               = ""t3.micro""
+  subnet_id                   = aws_subnet.public[count.index].id
+  associate_public_ip_address = true
+  vpc_security_group_ids      = [aws_security_group.targets.id]
+
+  user_data = <<-EOF
+    #!/bin/bash
+    dnf install -y httpd
+    echo ""<h1>Hello from $(hostname -f)</h1>"" > /var/www/html/index.html
+    systemctl enable --now httpd
+  EOF
+
+  user_data_replace_on_change = true
+
+  metadata_options {
+    http_endpoint               = ""enabled""
+    http_tokens                 = ""required""
+    http_put_response_hop_limit = 1
+    instance_metadata_tags      = ""disabled""
+  }
+
+  root_block_device {
+    volume_size = 8
+    volume_type = ""gp3""
+    encrypted   = true
+  }
+
+  depends_on = [aws_route_table_association.public]
+
+  tags = merge(local.common_tags, {
+    Name = ""${local.name_prefix}-app-${count.index + 1}""
+  })
+}
+
+resource ""aws_lb_target_group_attachment"" ""app"" {
+  count = 2
+
+  target_group_arn = aws_lb_target_group.app.arn
+  target_id        = aws_instance.app[count.index].id
+  port             = 80
+}
+
+# ---------------------------------------------------------------------------
+# ALB access log bucket
+# ---------------------------------------------------------------------------
+
+resource ""aws_s3_bucket"" ""alb_logs"" {
+  bucket = ""${local.name_prefix}-alb-logs-${data.aws_caller_identity.current.account_id}""
+
+  lifecycle {
+    prevent_destroy = true
+  }
+
+  tags = merge(local.common_tags, {
+    Name = ""${local.name_prefix}-alb-logs""
+  })
+}
+
+resource ""aws_s3_bucket_public_access_block"" ""alb_logs"" {
+  bucket = aws_s3_bucket.alb_logs.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource ""aws_s3_bucket_server_side_encryption_configuration"" ""alb_logs"" {
+  bucket = aws_s3_bucket.alb_logs.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = ""AES256""
+    }
+  }
+}
+
+resource ""aws_s3_bucket_versioning"" ""alb_logs"" {
+  bucket = aws_s3_bucket.alb_logs.id
+
+  versioning_configuration {
+    status = ""Enabled""
+  }
+}
+
+data ""aws_iam_policy_document"" ""alb_logs"" {
+  statement {
+    sid    = ""AllowELBLogDelivery""
+    effect = ""Allow""
+
+    principals {
+      type        = ""Service""
+      identifiers = [""logdelivery.elasticloadbalancing.amazonaws.com""]
+    }
+
+    actions = [""s3:PutObject""]
+
+    resources = [
+      ""arn:${data.aws_partition.current.partition}:s3:::${aws_s3_bucket.alb_logs.id}/${local.log_prefix}/AWSLogs/${data.aws_caller_identity.current.account_id}/*""
+    ]
+
+    condition {
+      test     = ""StringEquals""
+      variable = ""aws:SourceAccount""
+      values   = [data.aws_caller_identity.current.account_id]
+    }
+  }
+}
+
+resource ""aws_s3_bucket_policy"" ""alb_logs"" {
+  bucket = aws_s3_bucket.alb_logs.id
+  policy = data.aws_iam_policy_document.alb_logs.json
+
+  depends_on = [aws_s3_bucket_public_access_block.alb_logs]
+}
+
+# ---------------------------------------------------------------------------
+# Outputs
+# ---------------------------------------------------------------------------
+
+output ""alb_dns_name"" {
+  description = ""Public DNS name of the Application Load Balancer""
+  value       = aws_lb.main.dns_name
+}
+
+output ""alb_target_group_arn"" {
+  description = ""ARN of the ALB target group""
+  value       = aws_lb_target_group.app.arn
+}"
+406,"terraform {
+  required_version = "">= 1.5.0""
+
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.0""
+    }
+    random = {
+      source  = ""hashicorp/random""
+      version = ""~> 3.5""
+    }
+  }
+}
+
+provider ""aws"" {
+  region = ""us-east-1""
+}
+
+# -----------------------------------------------------------------------------
+# Variables (non-secret, user-tunable, all with defaults)
+# -----------------------------------------------------------------------------
+
+variable ""environment"" {
+  description = ""Environment name used only for resource tagging.""
+  type        = string
+  default     = ""dev""
+}
+
+variable ""db_name"" {
+  description = ""Initial database name created on the PostgreSQL instance.""
+  type        = string
+  default     = ""appdb""
+}
+
+variable ""master_username"" {
+  description = ""Master username for the RDS instance (non-secret).""
+  type        = string
+  default     = ""dbadmin""
+}
+
+# -----------------------------------------------------------------------------
+# Locals
+# -----------------------------------------------------------------------------
+
+locals {
+  name_prefix = ""greenfield-rds""
+
+  common_tags = {
+    Name        = local.name_prefix
+    Environment = var.environment
+    ManagedBy   = ""terraform""
+  }
+}
+
+# -----------------------------------------------------------------------------
+# Networking: VPC, isolated database subnets, local-only route tables
+# -----------------------------------------------------------------------------
+
+data ""aws_availability_zones"" ""available"" {
+  state = ""available""
+}
+
+resource ""aws_vpc"" ""main"" {
+  cidr_block           = ""10.0.0.0/16""
+  enable_dns_support   = true
+  enable_dns_hostnames = true
+
+  tags = local.common_tags
+}
+
+resource ""aws_subnet"" ""private"" {
+  count = 2
+
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = cidrsubnet(aws_vpc.main.cidr_block, 4, count.index)
+  availability_zone       = data.aws_availability_zones.available.names[count.index]
+  map_public_ip_on_launch = false
+
+  tags = merge(
+    local.common_tags,
+    {
+      Name = ""${local.name_prefix}-private-${count.index}""
+      Tier = ""database""
+    }
+  )
+}
+
+# Local-only route table: no internet gateway route, DB tier is fully isolated.
+resource ""aws_route_table"" ""private"" {
+  count = 2
+
+  vpc_id = aws_vpc.main.id
+
+  tags = merge(
+    local.common_tags,
+    {
+      Name = ""${local.name_prefix}-private-rt-${count.index}""
+      Tier = ""database""
+    }
+  )
+}
+
+resource ""aws_route_table_association"" ""private"" {
+  count = 2
+
+  subnet_id      = aws_subnet.private[count.index].id
+  route_table_id = aws_route_table.private[count.index].id
+}
+
+resource ""aws_db_subnet_group"" ""main"" {
+  name       = ""${local.name_prefix}-db-subnet-group""
+  subnet_ids = aws_subnet.private[*].id
+
+  tags = local.common_tags
+}
+
+# -----------------------------------------------------------------------------
+# Security group: PostgreSQL access restricted to the VPC CIDR only
+# -----------------------------------------------------------------------------
+
+resource ""aws_security_group"" ""rds"" {
+  name_prefix = ""${local.name_prefix}-rds-""
+  description = ""Allow PostgreSQL (5432) access only from within the VPC""
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    description = ""PostgreSQL from within the VPC""
+    from_port   = 5432
+    to_port     = 5432
+    protocol    = ""tcp""
+    cidr_blocks = [aws_vpc.main.cidr_block]
+  }
+
+  egress {
+    description = ""Egress restricted to the VPC""
+    from_port   = 0
+    to_port     = 0
+    protocol    = ""-1""
+    cidr_blocks = [aws_vpc.main.cidr_block]
+  }
+
+  tags = local.common_tags
+}
+
+# -----------------------------------------------------------------------------
+# Encryption: customer-managed KMS key for RDS storage and the credential secret
+# -----------------------------------------------------------------------------
+
+resource ""aws_kms_key"" ""rds"" {
+  description             = ""KMS key for RDS storage encryption and master credential secret""
+  deletion_window_in_days = 30
+  enable_key_rotation     = true
+
+  tags = local.common_tags
+}
+
+resource ""aws_kms_alias"" ""rds"" {
+  name          = ""alias/${local.name_prefix}-rds""
+  target_key_id = aws_kms_key.rds.key_id
+}
+
+# -----------------------------------------------------------------------------
+# Master credentials: generated password, stored encrypted in Secrets Manager
+# -----------------------------------------------------------------------------
+
+resource ""random_password"" ""db_master"" {
+  length           = 24
+  special          = true
+  override_special = ""!#$%&*()-_=+[]{}:?""
+  min_upper        = 1
+  min_lower        = 1
+  min_numeric      = 1
+  min_special      = 1
+}
+
+resource ""aws_secretsmanager_secret"" ""main"" {
+  name        = ""${local.name_prefix}/postgres/master-credentials""
+  description = ""Master credentials for ${local.name_prefix} PostgreSQL instance""
+  kms_key_id  = aws_kms_key.rds.arn
+
+  tags = local.common_tags
+}
+
+resource ""aws_secretsmanager_secret_version"" ""main"" {
+  secret_id = aws_secretsmanager_secret.main.id
+  secret_string = jsonencode({
+    engine   = aws_db_instance.main.engine
+    host     = aws_db_instance.main.address
+    port     = aws_db_instance.main.port
+    dbname   = aws_db_instance.main.db_name
+    username = aws_db_instance.main.username
+    password = random_password.db_master.result
+  })
+}
+
+# -----------------------------------------------------------------------------
+# RDS PostgreSQL instance
+# -----------------------------------------------------------------------------
+
+resource ""aws_db_instance"" ""main"" {
+  identifier = ""${local.name_prefix}-postgres""
+
+  engine         = ""postgres""
+  engine_version = ""16.4""
+  instance_class = ""db.t3.micro""
+
+  allocated_storage     = 20
+  max_allocated_storage = 100
+  storage_type          = ""gp3""
+
+  db_name = var.db_name
+  username = var.master_username
+  password = random_password.db_master.result
+  port     = 5432
+
+  db_subnet_group_name   = aws_db_subnet_group.main.name
+  vpc_security_group_ids = [aws_security_group.rds.id]
+
+  storage_encrypted          = true
+  kms_key_id                 = aws_kms_key.rds.arn
+  publicly_accessible        = false
+  multi_az                   = false
+  deletion_protection        = true
+  auto_minor_version_upgrade = true
+  copy_tags_to_snapshot      = true
+
+  backup_retention_period = 7
+  backup_window           = ""03:00-04:00""
+  backup_target           = ""region""
+  maintenance_window      = ""sun:04:30-sun:05:30""
+
+  skip_final_snapshot       = false
+  final_snapshot_identifier = ""${local.name_prefix}-postgres-final-snapshot""
+
+  tags = local.common_tags
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+# -----------------------------------------------------------------------------
+# Outputs: non-sensitive connection metadata only
+# -----------------------------------------------------------------------------
+
+output ""db_instance_address"" {
+  description = ""Connection address (hostname) of the RDS PostgreSQL instance.""
+  value       = aws_db_instance.main.address
+}
+
+output ""db_instance_endpoint"" {
+  description = ""Full connection endpoint (host:port) of the RDS PostgreSQL instance.""
+  value       = aws_db_instance.main.endpoint
+}
+
+output ""db_credentials_secret_arn"" {
+  description = ""ARN of the Secrets Manager secret holding the master credentials.""
+  value       = aws_secretsmanager_secret.main.arn
+}"
+408,"terraform {
+  required_version = "">= 1.5.0""
+
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.0""
+    }
+
+    random = {
+      source  = ""hashicorp/random""
+      version = ""~> 3.5""
+    }
+  }
+}
+
+provider ""aws"" {
+  region = ""us-east-1""
+}
+
+variable ""environment"" {
+  description = ""Environment name used for resource naming and tagging.""
+  type        = string
+  default     = ""prod""
+}
+
+variable ""common_tags"" {
+  description = ""Common tags applied consistently to all resources.""
+  type        = map(string)
+  default = {
+    Project   = ""greenfield-data-platform""
+    Owner     = ""platform-team""
+    ManagedBy = ""terraform""
+  }
+}
+
+locals {
+  name          = ""${var.environment}-postgres""
+  db_identifier = ""${local.name}-db""
+  common_tags   = merge(var.common_tags, { Environment = var.environment })
+}
+
+data ""aws_availability_zones"" ""available"" {
+  state = ""available""
+}
+
+resource ""aws_vpc"" ""main"" {
+  cidr_block           = ""10.0.0.0/16""
+  enable_dns_support   = true
+  enable_dns_hostnames = true
+
+  tags = merge(local.common_tags, {
+    Name = ""${local.name}-vpc""
+  })
+}
+
+resource ""aws_subnet"" ""private"" {
+  count = 2
+
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = cidrsubnet(aws_vpc.main.cidr_block, 8, count.index)
+  availability_zone = data.aws_availability_zones.available.names[count.index]
+
+  tags = merge(local.common_tags, {
+    Name = ""${local.name}-private-${count.index + 1}""
+    Tier = ""database""
+  })
+}
+
+resource ""aws_db_subnet_group"" ""main"" {
+  name        = ""${local.db_identifier}-subnets""
+  description = ""Private subnets spanning multiple AZs for the ${local.name} database tier""
+  subnet_ids  = aws_subnet.private[*].id
+
+  tags = merge(local.common_tags, {
+    Name = ""${local.db_identifier}-subnets""
+  })
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+resource ""aws_security_group"" ""postgres"" {
+  name        = ""${local.db_identifier}-sg""
+  description = ""Restrict ingress to PostgreSQL (TCP 5432) from within the VPC only""
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    description = ""PostgreSQL access from VPC CIDR only""
+    from_port   = 5432
+    to_port     = 5432
+    protocol    = ""tcp""
+    cidr_blocks = [aws_vpc.main.cidr_block]
+  }
+
+  egress {
+    description = ""Outbound restricted to VPC CIDR""
+    from_port   = 0
+    to_port     = 0
+    protocol    = ""-1""
+    cidr_blocks = [aws_vpc.main.cidr_block]
+  }
+
+  tags = merge(local.common_tags, {
+    Name = ""${local.db_identifier}-sg""
+  })
+}
+
+resource ""aws_kms_key"" ""rds"" {
+  description             = ""Customer managed key for ${local.name} storage encryption and Performance Insights""
+  deletion_window_in_days = 30
+  enable_key_rotation     = true
+
+  tags = merge(local.common_tags, {
+    Name = ""${local.name}-rds-key""
+  })
+}
+
+resource ""aws_kms_alias"" ""rds"" {
+  name          = ""alias/${local.name}-rds""
+  target_key_id = aws_kms_key.rds.key_id
+}
+
+resource ""aws_db_parameter_group"" ""main"" {
+  name        = ""${local.db_identifier}-params""
+  family      = ""postgres16""
+  description = ""Custom PostgreSQL 16 parameters for ${local.db_identifier}""
+
+  parameter {
+    name  = ""max_connections""
+    value = ""200""
+  }
+
+  parameter {
+    name  = ""shared_preload_libraries""
+    value = ""pg_stat_statements""
+  }
+
+  parameter {
+    name         = ""log_min_duration_statement""
+    value        = ""1000""
+    apply_method = ""immediate""
+  }
+
+  parameter {
+    name         = ""log_connections""
+    value        = ""1""
+    apply_method = ""immediate""
+  }
+
+  tags = merge(local.common_tags, {
+    Name = ""${local.db_identifier}-params""
+  })
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+resource ""random_id"" ""final_snapshot_suffix"" {
+  byte_length = 4
+}
+
+resource ""aws_db_instance"" ""main"" {
+  identifier     = local.db_identifier
+  engine         = ""postgresql""
+  engine_version = ""16.4""
+  instance_class = ""db.t4g.large""
+
+  allocated_storage     = 50
+  max_allocated_storage = 500
+  storage_type          = ""gp3""
+  storage_encrypted     = true
+  kms_key_id            = aws_kms_key.rds.arn
+
+  db_name                     = ""appdb""
+  username                    = ""dbadmin""
+  manage_master_user_password = true
+
+  db_subnet_group_name   = aws_db_subnet_group.main.name
+  vpc_security_group_ids = [aws_security_group.postgres.id]
+  parameter_group_name   = aws_db_parameter_group.main.name
+  multi_az               = true
+  publicly_accessible    = false
+  port                   = 5432
+
+  performance_insights_enabled          = true
+  performance_insights_retention_period = 7
+  performance_insights_kms_key_id       = aws_kms_key.rds.arn
+
+  backup_retention_period = 7
+  backup_window           = ""03:00-04:00""
+  maintenance_window      = ""sun:04:30-sun:05:30""
+
+  copy_tags_to_snapshot      = true
+  auto_minor_version_upgrade = true
+
+  deletion_protection       = true
+  skip_final_snapshot       = false
+  final_snapshot_identifier = ""${local.db_identifier}-final-${random_id.final_snapshot_suffix.hex}""
+
+  tags = merge(local.common_tags, {
+    Name = local.db_identifier
+  })
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+output ""db_instance_endpoint"" {
+  description = ""Connection endpoint (host:port) of the PostgreSQL instance.""
+  value       = aws_db_instance.main.endpoint
+}
+
+output ""db_instance_address"" {
+  description = ""DNS address of the PostgreSQL instance.""
+  value       = aws_db_instance.main.address
+}
+
+output ""db_instance_port"" {
+  description = ""Port the PostgreSQL instance listens on.""
+  value       = aws_db_instance.main.port
+}
+
+output ""db_master_user_secret_arn"" {
+  description = ""ARN of the Secrets Manager secret holding the RDS master credentials (secret value is never exposed).""
+  value       = aws_db_instance.main.master_user_secret[0].secret_arn
+}"
+410,"terraform {
+  required_version = "">= 1.5.0""
+
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.0""
+    }
+    random = {
+      source  = ""hashicorp/random""
+      version = ""~> 3.6""
+    }
+  }
+}
+
+provider ""aws"" {
+  region = ""us-east-1""
+}
+
+variable ""project_name"" {
+  description = ""Prefix used for resource names and the Name tag.""
+  type        = string
+  default     = ""myapp""
+}
+
+variable ""environment"" {
+  description = ""Environment name applied to all resources via the Environment tag.""
+  type        = string
+  default     = ""production""
+}
+
+locals {
+  name_prefix     = var.project_name
+  db_identifier   = ""mysql-db-instance""
+  db_name         = ""appdb""
+  master_username = ""dbadmin""
+
+  common_tags = {
+    Environment = var.environment
+    ManagedBy   = ""terraform""
+  }
+}
+
+data ""aws_availability_zones"" ""available"" {
+  state = ""available""
+}
+
+resource ""aws_vpc"" ""main"" {
+  cidr_block           = ""10.0.0.0/16""
+  enable_dns_hostnames = true
+  enable_dns_support   = true
+
+  tags = merge(local.common_tags, {
+    Name = ""${local.name_prefix}-vpc""
+  })
+}
+
+resource ""aws_subnet"" ""private_a"" {
+  vpc_id                  = aws_vpc.main.id
+  availability_zone       = data.aws_availability_zones.available.names[0]
+  cidr_block              = cidrsubnet(aws_vpc.main.cidr_block, 8, 10)
+  map_public_ip_on_launch = false
+
+  tags = merge(local.common_tags, {
+    Name = ""${local.name_prefix}-private-a""
+  })
+}
+
+resource ""aws_subnet"" ""private_b"" {
+  vpc_id                  = aws_vpc.main.id
+  availability_zone       = data.aws_availability_zones.available.names[1]
+  cidr_block              = cidrsubnet(aws_vpc.main.cidr_block, 8, 11)
+  map_public_ip_on_launch = false
+
+  tags = merge(local.common_tags, {
+    Name = ""${local.name_prefix}-private-b""
+  })
+}
+
+resource ""aws_route_table"" ""private"" {
+  vpc_id = aws_vpc.main.id
+
+  tags = merge(local.common_tags, {
+    Name = ""${local.name_prefix}-private-rt""
+  })
+}
+
+resource ""aws_route_table_association"" ""private_a"" {
+  subnet_id      = aws_subnet.private_a.id
+  route_table_id = aws_route_table.private.id
+}
+
+resource ""aws_route_table_association"" ""private_b"" {
+  subnet_id      = aws_subnet.private_b.id
+  route_table_id = aws_route_table.private.id
+}
+
+resource ""aws_db_subnet_group"" ""mysql"" {
+  name        = ""${local.name_prefix}-db-subnet-group""
+  description = ""Multi-AZ private subnet group for the ${local.db_identifier} MySQL instance.""
+
+  subnet_ids = [
+    aws_subnet.private_a.id,
+    aws_subnet.private_b.id,
+  ]
+
+  tags = merge(local.common_tags, {
+    Name = ""${local.name_prefix}-db-subnet-group""
+  })
+}
+
+resource ""aws_security_group"" ""mysql"" {
+  name        = ""${local.name_prefix}-mysql-sg""
+  description = ""Allow MySQL (3306) only from within the VPC.""
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    description = ""MySQL from within the VPC only.""
+    from_port   = 3306
+    to_port     = 3306
+    protocol    = ""tcp""
+    cidr_blocks = [aws_vpc.main.cidr_block]
+  }
+
+  egress {
+    description = ""Outbound traffic restricted to the VPC.""
+    from_port   = 0
+    to_port     = 0
+    protocol    = ""-1""
+    cidr_blocks = [aws_vpc.main.cidr_block]
+  }
+
+  tags = merge(local.common_tags, {
+    Name = ""${local.name_prefix}-mysql-sg""
+  })
+}
+
+resource ""random_password"" ""db_master_password"" {
+  length           = 24
+  special          = true
+  override_special = ""!#$%&*()-_=+[]{}<>:?""
+  min_lower        = 2
+  min_upper        = 2
+  min_numeric      = 2
+  min_special      = 2
+}
+
+resource ""aws_secretsmanager_secret"" ""db_master"" {
+  name                    = ""${var.project_name}/${var.environment}/db-master-password""
+  description             = ""Master credentials for the ${local.db_identifier} MySQL instance.""
+  recovery_window_in_days = 7
+
+  tags = merge(local.common_tags, {
+    Name = ""${local.name_prefix}-db-master-secret""
+  })
+}
+
+resource ""aws_secretsmanager_secret_version"" ""db_master"" {
+  secret_id = aws_secretsmanager_secret.db_master.id
+  secret_string = jsonencode({
+    engine   = ""mysql""
+    host     = aws_db_instance.mysql.address
+    port     = aws_db_instance.mysql.port
+    dbname   = aws_db_instance.mysql.db_name
+    username = local.master_username
+    password = random_password.db_master_password.result
+  })
+}
+
+resource ""aws_db_instance"" ""mysql"" {
+  identifier     = local.db_identifier
+  engine         = ""mysql""
+  engine_version = ""8.0""
+  instance_class = ""db.t3.medium""
+
+  allocated_storage     = 25
+  max_allocated_storage = 100
+  storage_type          = ""gp3""
+  storage_encrypted     = true
+
+  db_name         = local.db_name
+  username        = local.master_username
+  password        = random_password.db_master_password.result
+  port            = 3306
+
+  db_subnet_group_name   = aws_db_subnet_group.mysql.name
+  vpc_security_group_ids = [aws_security_group.mysql.id]
+  publicly_accessible    = false
+
+  apply_immediately          = true
+  auto_minor_version_upgrade = true
+  deletion_protection        = true
+  copy_tags_to_snapshot      = true
+
+  backup_retention_period = 7
+  backup_window           = ""01:00-02:00""
+  maintenance_window      = ""sun:04:00-sun:05:00""
+
+  skip_final_snapshot       = false
+  final_snapshot_identifier = ""${local.db_identifier}-final""
+
+  lifecycle {
+    prevent_destroy = true
+  }
+
+  tags = merge(local.common_tags, {
+    Name = local.db_identifier
+  })
+}
+
+output ""db_master_credentials_secret_arn"" {
+  description = ""ARN of the Secrets Manager secret holding the MySQL master credentials. Retrieve the password by reading this secret; the plaintext password is never exposed in configuration or outputs.""
+  value       = aws_secretsmanager_secret.db_master.arn
+}"
+412,"terraform {
+  required_version = "">= 1.5.0""
+
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.0""
+    }
+    random = {
+      source  = ""hashicorp/random""
+      version = ""~> 3.6""
+    }
+  }
+}
+
+provider ""aws"" {
+  region = ""us-east-1""
+}
+
+# Static provider metadata: AZs available in the current region
+data ""aws_availability_zones"" ""available"" {
+  state = ""available""
+}
+
+variable ""project_name"" {
+  description = ""Project name used for resource naming and the Project tag.""
+  type        = string
+  default     = ""myapp""
+}
+
+variable ""environment"" {
+  description = ""Environment name used for resource naming and the Environment tag.""
+  type        = string
+  default     = ""production""
+}
+
+locals {
+  name_prefix     = ""${var.project_name}-${var.environment}""
+  master_username = ""dbadmin""
+  db_name         = ""appdb""
+  db_port         = 3306
+
+  common_tags = {
+    Environment = var.environment
+    Project     = var.project_name
+    ManagedBy   = ""terraform""
+  }
+}
+
+# --- Network foundation (greenfield: everything is created here) ---
+
+resource ""aws_vpc"" ""main"" {
+  cidr_block           = ""10.0.0.0/16""
+  enable_dns_support   = true
+  enable_dns_hostnames = true
+
+  tags = merge(local.common_tags, {
+    Name = ""${local.name_prefix}-vpc""
+  })
+}
+
+resource ""aws_subnet"" ""private_a"" {
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = ""10.0.1.0/24""
+  availability_zone       = data.aws_availability_zones.available.names[0]
+  map_public_ip_on_launch = false
+
+  tags = merge(local.common_tags, {
+    Name = ""${local.name_prefix}-private-a""
+  })
+}
+
+resource ""aws_subnet"" ""private_b"" {
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = ""10.0.2.0/24""
+  availability_zone       = data.aws_availability_zones.available.names[1]
+  map_public_ip_on_launch = false
+
+  tags = merge(local.common_tags, {
+    Name = ""${local.name_prefix}-private-b""
+  })
+}
+
+resource ""aws_db_subnet_group"" ""main"" {
+  name        = ""${local.name_prefix}-db-subnet-group""
+  description = ""Subnet group spanning two AZs for ${local.name_prefix} RDS instances""
+  subnet_ids  = [aws_subnet.private_a.id, aws_subnet.private_b.id]
+
+  tags = merge(local.common_tags, {
+    Name = ""${local.name_prefix}-db-subnet-group""
+  })
+}
+
+# --- Network access control: MySQL reachable only from inside the VPC ---
+
+resource ""aws_security_group"" ""rds"" {
+  name        = ""${local.name_prefix}-rds-sg""
+  description = ""Allow MySQL traffic only from within the ${local.name_prefix} VPC""
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    description = ""MySQL from the VPC CIDR only""
+    from_port   = local.db_port
+    to_port     = local.db_port
+    protocol    = ""tcp""
+    cidr_blocks = [aws_vpc.main.cidr_block]
+  }
+
+  tags = merge(local.common_tags, {
+    Name = ""${local.name_prefix}-rds-sg""
+  })
+}
+
+# --- Master credentials: generated securely, stored in Secrets Manager ---
+
+resource ""random_password"" ""db_master_password"" {
+  length           = 24
+  special          = true
+  override_special = ""!#%*()-_=+[]{}<>:?""
+}
+
+resource ""aws_secretsmanager_secret"" ""db_credentials"" {
+  name        = ""${local.name_prefix}-db-master-credentials""
+  description = ""Master credentials for the ${local.name_prefix} primary MySQL instance""
+
+  lifecycle {
+    prevent_destroy = true
+  }
+
+  tags = merge(local.common_tags, {
+    Name = ""${local.name_prefix}-db-master-credentials""
+  })
+}
+
+resource ""aws_secretsmanager_secret_version"" ""db_credentials"" {
+  secret_id = aws_secretsmanager_secret.db_credentials.id
+  secret_string = jsonencode({
+    username             = local.master_username
+    password             = random_password.db_master_password.result
+    engine               = ""mysql""
+    host                 = aws_db_instance.primary.address
+    port                 = local.db_port
+    dbname               = local.db_name
+    dbInstanceIdentifier = aws_db_instance.primary.identifier
+  })
+}
+
+# --- Shared parameter group (family matches the pinned engine version) ---
+
+resource ""aws_db_parameter_group"" ""mysql"" {
+  name        = ""${local.name_prefix}-mysql-params""
+  family      = ""mysql8.0""
+  description = ""Shared parameter group for ${local.name_prefix} primary and replica""
+
+  parameter {
+    name  = ""character_set_server""
+    value = ""utf8mb4""
+  }
+
+  parameter {
+    name  = ""character_set_client""
+    value = ""utf8mb4""
+  }
+
+  tags = merge(local.common_tags, {
+    Name = ""${local.name_prefix}-mysql-params""
+  })
+}
+
+# --- Primary MySQL instance ---
+
+resource ""aws_db_instance"" ""primary"" {
+  identifier     = ""${local.name_prefix}-primary""
+  engine         = ""mysql""
+  engine_version = ""8.0.36""
+  instance_class = ""db.t3.medium""
+
+  allocated_storage     = 20
+  max_allocated_storage = 100
+  storage_type          = ""gp3""
+
+  db_name  = local.db_name
+  username = local.master_username
+  password = random_password.db_master_password.result
+
+  db_subnet_group_name   = aws_db_subnet_group.main.name
+  parameter_group_name   = aws_db_parameter_group.mysql.name
+  vpc_security_group_ids = [aws_security_group.rds.id]
+
+  port                = local.db_port
+  publicly_accessible = false
+  multi_az            = false
+
+  storage_encrypted       = true
+  backup_retention_period = 7
+  copy_tags_to_snapshot   = true
+  deletion_protection     = true
+
+  auto_minor_version_upgrade = true
+
+  skip_final_snapshot       = false
+  final_snapshot_identifier = ""${local.name_prefix}-primary-final""
+
+  lifecycle {
+    prevent_destroy = true
+  }
+
+  tags = merge(local.common_tags, {
+    Name = ""${local.name_prefix}-primary""
+  })
+}
+
+# --- Read replica (native replication, same network, sizing, and encryption) ---
+
+resource ""aws_db_instance"" ""replica"" {
+  identifier          = ""${local.name_prefix}-replica""
+  replicate_source_db = aws_db_instance.primary.arn
+  instance_class      = ""db.t3.medium""
+
+  db_subnet_group_name   = aws_db_subnet_group.main.name
+  parameter_group_name   = aws_db_parameter_group.mysql.name
+  vpc_security_group_ids = [aws_security_group.rds.id]
+
+  publicly_accessible = false
+  storage_encrypted   = true
+
+  copy_tags_to_snapshot      = true
+  deletion_protection        = true
+  auto_minor_version_upgrade = true
+
+  skip_final_snapshot = true
+
+  lifecycle {
+    prevent_destroy = true
+  }
+
+  tags = merge(local.common_tags, {
+    Name = ""${local.name_prefix}-replica""
+  })
+}
+
+# --- Outputs ---
+
+output ""primary_db_endpoint"" {
+  description = ""Connection endpoint (hostname) of the primary MySQL instance.""
+  value       = aws_db_instance.primary.address
+}
+
+output ""replica_db_endpoint"" {
+  description = ""Connection endpoint (hostname) of the MySQL read replica.""
+  value       = aws_db_instance.replica.address
+}
+
+output ""db_credentials_secret_arn"" {
+  description = ""ARN of the Secrets Manager secret holding the database master credentials (the secret value itself is never exposed).""
+  value       = aws_secretsmanager_secret.db_credentials.arn
+}"
+414,"terraform {
+  required_version = "">= 1.5.0""
+
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.0""
+    }
+
+    random = {
+      source  = ""hashicorp/random""
+      version = "">= 3.5.0""
+    }
+  }
+}
+
+provider ""aws"" {
+  region = ""us-east-1""
+
+  default_tags {
+    tags = local.common_tags
+  }
+}
+
+variable ""tags"" {
+  description = ""Consistent tags applied across every resource in this configuration.""
+  type        = map(string)
+
+  default = {
+    Project     = ""rds-postgres-baseline""
+    Environment = ""dev""
+    ManagedBy   = ""terraform""
+  }
+}
+
+locals {
+  common_tags   = var.tags
+  db_identifier = ""rds-postgres-baseline""
+  db_name       = ""appdb""
+  db_username   = ""appadmin""
+  db_port       = 5432
+}
+
+# Static provider metadata lookup (AZ availability), no account-state dependency.
+data ""aws_availability_zones"" ""available"" {
+  state = ""available""
+}
+
+###############################################################################
+# Networking
+###############################################################################
+
+resource ""aws_vpc"" ""main"" {
+  cidr_block           = ""10.0.0.0/16""
+  enable_dns_support   = true
+  enable_dns_hostnames = true
+
+  tags = merge(local.common_tags, { Name = ""${local.db_identifier}-vpc"" })
+}
+
+resource ""aws_subnet"" ""rds_a"" {
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = ""10.0.1.0/24""
+  availability_zone = data.aws_availability_zones.available.names[0]
+
+  tags = merge(local.common_tags, { Name = ""${local.db_identifier}-subnet-a"" })
+}
+
+resource ""aws_subnet"" ""rds_b"" {
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = ""10.0.2.0/24""
+  availability_zone = data.aws_availability_zones.available.names[1]
+
+  tags = merge(local.common_tags, { Name = ""${local.db_identifier}-subnet-b"" })
+}
+
+resource ""aws_db_subnet_group"" ""rds"" {
+  name        = ""${local.db_identifier}-subnet-group""
+  description = ""Subnet group for the ${local.db_identifier} RDS PostgreSQL instance.""
+  subnet_ids  = [aws_subnet.rds_a.id, aws_subnet.rds_b.id]
+
+  tags = merge(local.common_tags, { Name = ""${local.db_identifier}-db-subnet-group"" })
+}
+
+resource ""aws_security_group"" ""rds"" {
+  name        = ""${local.db_identifier}-sg""
+  description = ""Allow PostgreSQL (5432) only from inside the VPC.""
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    description = ""PostgreSQL from within the VPC only""
+    from_port   = local.db_port
+    to_port     = local.db_port
+    protocol    = ""tcp""
+    cidr_blocks = [aws_vpc.main.cidr_block]
+  }
+
+  egress {
+    description = ""Outbound responses and maintenance traffic""
+    from_port   = 0
+    to_port     = 0
+    protocol    = ""-1""
+    cidr_blocks = [""0.0.0.0/0""]
+  }
+
+  tags = merge(local.common_tags, { Name = ""${local.db_identifier}-sg"" })
+}
+
+###############################################################################
+# Master credentials (generated at apply time, stored in Secrets Manager)
+###############################################################################
+
+resource ""random_password"" ""db_master"" {
+  length           = 32
+  special          = true
+  override_special = ""!#$%&*()-_=+[]{}<>:?""
+}
+
+resource ""aws_secretsmanager_secret"" ""db_master"" {
+  name        = ""${local.db_identifier}/master-credentials""
+  description = ""Master credentials for the ${local.db_identifier} RDS PostgreSQL instance.""
+
+  tags = merge(local.common_tags, { Name = ""${local.db_identifier}-master-secret"" })
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+###############################################################################
+# Database
+###############################################################################
+
+resource ""aws_db_parameter_group"" ""rds"" {
+  name   = ""${local.db_identifier}-params""
+  family = ""postgres16""
+
+  parameter {
+    name  = ""log_min_duration_statement""
+    value = ""5000""
+  }
+
+  tags = merge(local.common_tags, { Name = ""${local.db_identifier}-parameter-group"" })
+}
+
+resource ""aws_db_instance"" ""rds"" {
+  identifier     = local.db_identifier
+  engine         = ""postgres""
+  engine_version = ""16.4""
+  instance_class = ""db.t3.micro""
+
+  allocated_storage     = 20
+  max_allocated_storage = 100
+  storage_type          = ""gp3""
+  iops                  = 3000
+  storage_throughput    = 125
+
+  db_name  = local.db_name
+  username = local.db_username
+  password = random_password.db_master.result
+  port     = local.db_port
+
+  db_subnet_group_name   = aws_db_subnet_group.rds.name
+  vpc_security_group_ids = [aws_security_group.rds.id]
+  parameter_group_name   = aws_db_parameter_group.rds.name
+
+  multi_az                   = false
+  publicly_accessible        = false
+  storage_encrypted          = true
+  copy_tags_to_snapshot      = true
+  auto_minor_version_upgrade = true
+
+  backup_retention_period = 7
+  backup_window           = ""03:00-04:00""
+  maintenance_window      = ""sun:04:30-sun:05:30""
+
+  deletion_protection       = true
+  skip_final_snapshot       = false
+  final_snapshot_identifier = ""${local.db_identifier}-final-snapshot""
+
+  tags = merge(local.common_tags, { Name = local.db_identifier })
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource ""aws_secretsmanager_secret_version"" ""db_master"" {
+  secret_id = aws_secretsmanager_secret.db_master.arn
+  secret_string = jsonencode({
+    engine   = ""postgres""
+    host     = aws_db_instance.rds.address
+    port     = aws_db_instance.rds.port
+    dbname   = local.db_name
+    username = local.db_username
+    password = random_password.db_master.result
+  })
+}
+
+###############################################################################
+# Outputs
+###############################################################################
+
+output ""db_instance_endpoint"" {
+  description = ""Connection endpoint (host:port) for the RDS PostgreSQL instance.""
+  value       = aws_db_instance.rds.endpoint
+}
+
+output ""db_master_secret_arn"" {
+  description = ""ARN of the Secrets Manager secret holding the master credentials.""
+  value       = aws_secretsmanager_secret.db_master.arn
+}"
+416,"terraform {
+  required_version = "">= 1.5.0""
+
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.0""
+    }
+    random = {
+      source  = ""hashicorp/random""
+      version = ""~> 3.0""
+    }
+  }
+}
+
+provider ""aws"" {
+  region = ""us-east-1""
+}
+
+variable ""environment"" {
+  description = ""Environment name used for naming and tagging (e.g. dev, staging, prod).""
+  type        = string
+  default     = ""dev""
+}
+
+data ""aws_availability_zones"" ""available"" {
+  state = ""available""
+}
+
+data ""aws_caller_identity"" ""current"" {}
+
+locals {
+  env         = lower(var.environment)
+  name_prefix = ""db-restore-${local.env}""
+
+  vpc_cidr             = ""10.0.0.0/16""
+  public_subnet_cidrs  = [""10.0.0.0/24"", ""10.0.1.0/24""]
+  private_subnet_cidrs = [""10.0.10.0/24"", ""10.0.11.0/24""]
+
+  # Master username stored in Secrets Manager; password is generated by random_password.
+  db_username   = ""dbadmin""
+  backup_prefix = ""backups/mysql-xtrabackup/""
+
+  tags = {
+    Environment = var.environment
+    ManagedBy   = ""terraform""
+  }
+}
+
+resource ""random_id"" ""suffix"" {
+  byte_length = 4
+}
+
+resource ""random_password"" ""db_master"" {
+  length           = 32
+  special          = true
+  override_special = ""!#$%&*()-_=+[]{}:?""
+}
+
+#-------------------------------------------------------------------------------
+# Network foundation
+#-------------------------------------------------------------------------------
+
+resource ""aws_vpc"" ""main"" {
+  cidr_block           = local.vpc_cidr
+  enable_dns_support   = true
+  enable_dns_hostnames = true
+
+  tags = merge(local.tags, {
+    Name = ""${local.name_prefix}-vpc""
+  })
+}
+
+resource ""aws_internet_gateway"" ""main"" {
+  vpc_id = aws_vpc.main.id
+
+  tags = merge(local.tags, {
+    Name = ""${local.name_prefix}-igw""
+  })
+}
+
+resource ""aws_subnet"" ""public"" {
+  count = 2
+
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = local.public_subnet_cidrs[count.index]
+  availability_zone       = data.aws_availability_zones.available.names[count.index]
+  map_public_ip_on_launch = true
+
+  tags = merge(local.tags, {
+    Name = ""${local.name_prefix}-public-${count.index + 1}""
+  })
+}
+
+resource ""aws_subnet"" ""private"" {
+  count = 2
+
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = local.private_subnet_cidrs[count.index]
+  availability_zone = data.aws_availability_zones.available.names[count.index]
+
+  tags = merge(local.tags, {
+    Name = ""${local.name_prefix}-private-${count.index + 1}""
+  })
+}
+
+resource ""aws_route_table"" ""public"" {
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block = ""0.0.0.0/0""
+    gateway_id = aws_internet_gateway.main.id
+  }
+
+  tags = merge(local.tags, {
+    Name = ""${local.name_prefix}-public-rt""
+  })
+}
+
+resource ""aws_route_table_association"" ""public"" {
+  count = 2
+
+  subnet_id      = aws_subnet.public[count.index].id
+  route_table_id = aws_route_table.public.id
+}
+
+resource ""aws_eip"" ""nat"" {
+  domain = ""vpc""
+
+  tags = merge(local.tags, {
+    Name = ""${local.name_prefix}-nat-eip""
+  })
+}
+
+resource ""aws_nat_gateway"" ""main"" {
+  allocation_id = aws_eip.nat.id
+  subnet_id     = aws_subnet.public[0].id
+
+  depends_on = [aws_internet_gateway.main]
+
+  tags = merge(local.tags, {
+    Name = ""${local.name_prefix}-nat""
+  })
+}
+
+resource ""aws_route_table"" ""private"" {
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block     = ""0.0.0.0/0""
+    nat_gateway_id = aws_nat_gateway.main.id
+  }
+
+  tags = merge(local.tags, {
+    Name = ""${local.name_prefix}-private-rt""
+  })
+}
+
+resource ""aws_route_table_association"" ""private"" {
+  count = 2
+
+  subnet_id      = aws_subnet.private[count.index].id
+  route_table_id = aws_route_table.private.id
+}
+
+resource ""aws_db_subnet_group"" ""main"" {
+  name       = ""${local.name_prefix}-db-subnet-group""
+  subnet_ids = aws_subnet.private[*].id
+
+  tags = merge(local.tags, {
+    Name = ""${local.name_prefix}-db-subnet-group""
+  })
+}
+
+#-------------------------------------------------------------------------------
+# Database security group
+#-------------------------------------------------------------------------------
+
+resource ""aws_security_group"" ""rds"" {
+  name        = ""${local.name_prefix}-rds-sg""
+  description = ""Allow MySQL (3306) only from within the VPC""
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    description = ""MySQL from within the VPC CIDR""
+    from_port   = 3306
+    to_port     = 3306
+    protocol    = ""tcp""
+    cidr_blocks = [aws_vpc.main.cidr_block]
+  }
+
+  # No egress rules declared: the database requires no outbound access, and
+  # Terraform removes the default allow-all egress rule when none is specified.
+
+  tags = merge(local.tags, {
+    Name = ""${local.name_prefix}-rds-sg""
+  })
+}
+
+#-------------------------------------------------------------------------------
+# Customer-managed KMS key (RDS storage encryption + S3 backup SSE-KMS)
+#-------------------------------------------------------------------------------
+
+resource ""aws_kms_key"" ""rds"" {
+  description             = ""Customer managed key for RDS storage encryption and S3 backup bucket SSE-KMS""
+  deletion_window_in_days = 30
+  enable_key_rotation     = true
+
+  tags = merge(local.tags, {
+    Name = ""${local.name_prefix}-kms""
+  })
+}
+
+resource ""aws_kms_alias"" ""rds"" {
+  name          = ""alias/${local.name_prefix}""
+  target_key_id = aws_kms_key.rds.key_id
+}
+
+#-------------------------------------------------------------------------------
+# Backup source bucket (Percona XtraBackup files for MySQL S3 import)
+#-------------------------------------------------------------------------------
+
+resource ""aws_s3_bucket"" ""db_backup"" {
+  bucket        = ""${local.name_prefix}-backup-${random_id.suffix.hex}""
+  force_destroy = false
+
+  tags = merge(local.tags, {
+    Name = ""${local.name_prefix}-backup-${random_id.suffix.hex}""
+  })
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource ""aws_s3_bucket_ownership_controls"" ""db_backup"" {
+  bucket = aws_s3_bucket.db_backup.id
+
+  rule {
+    object_ownership = ""BucketOwnerEnforced""
+  }
+}
+
+resource ""aws_s3_bucket_public_access_block"" ""db_backup"" {
+  bucket = aws_s3_bucket.db_backup.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource ""aws_s3_bucket_server_side_encryption_configuration"" ""db_backup"" {
+  bucket = aws_s3_bucket.db_backup.id
+
+  rule {
+    bucket_key_enabled = true
+
+    apply_server_side_encryption_by_default {
+      sse_algorithm     = ""aws:kms""
+      kms_master_key_id = aws_kms_key.rds.arn
+    }
+  }
+}
+
+resource ""aws_s3_bucket_versioning"" ""db_backup"" {
+  bucket = aws_s3_bucket.db_backup.id
+
+  versioning_configuration {
+    status = ""Enabled""
+  }
+}
+
+resource ""aws_s3_bucket_policy"" ""db_backup"" {
+  bucket = aws_s3_bucket.db_backup.id
+
+  policy = jsonencode({
+    Version = ""2012-10-17""
+    Statement = [
+      {
+        Sid       = ""DenyInsecureTransport""
+        Effect    = ""Deny""
+        Principal = ""*""
+        Action    = ""s3:*""
+        Resource = [
+          aws_s3_bucket.db_backup.arn,
+          ""${aws_s3_bucket.db_backup.arn}/*""
+        ]
+        Condition = {
+          Bool = {
+            ""aws:SecureTransport"" = ""false""
+          }
+        }
+      }
+    ]
+  })
+}
+
+#-------------------------------------------------------------------------------
+# RDS-to-S3 import IAM role
+#-------------------------------------------------------------------------------
+
+resource ""aws_iam_role"" ""rds_s3_import"" {
+  name = ""${local.name_prefix}-rds-s3-import""
+
+  assume_role_policy = jsonencode({
+    Version = ""2012-10-17""
+    Statement = [
+      {
+        Sid       = ""AllowRdsAssumeRole""
+        Effect    = ""Allow""
+        Principal = {
+          Service = ""rds.amazonaws.com""
+        }
+        Action = ""sts:AssumeRole""
+        Condition = {
+          StringEquals = {
+            ""aws:SourceAccount"" = data.aws_caller_identity.current.account_id
+          }
+        }
+      }
+    ]
+  })
+
+  tags = merge(local.tags, {
+    Name = ""${local.name_prefix}-rds-s3-import""
+  })
+}
+
+resource ""aws_iam_role_policy"" ""rds_s3_import"" {
+  name = ""${local.name_prefix}-s3-import-access""
+  role = aws_iam_role.rds_s3_import.id
+
+  policy = jsonencode({
+    Version = ""2012-10-17""
+    Statement = [
+      {
+        Sid      = ""ListBackupBucket""
+        Effect   = ""Allow""
+        Action   = ""s3:ListBucket""
+        Resource = aws_s3_bucket.db_backup.arn
+      },
+      {
+        Sid      = ""ReadBackupObjects""
+        Effect   = ""Allow""
+        Action   = [""s3:GetObject"", ""s3:GetObjectVersion""]
+        Resource = ""${aws_s3_bucket.db_backup.arn}/*""
+      }
+    ]
+  })
+}
+
+# The ingestion role must be able to decrypt the SSE-KMS protected backup objects.
+resource ""aws_iam_policy"" ""rds_kms_decrypt"" {
+  name        = ""${local.name_prefix}-rds-kms-decrypt""
+  description = ""Allow the RDS S3 ingestion role to decrypt backup objects protected by the customer managed KMS key""
+
+  policy = jsonencode({
+    Version = ""2012-10-17""
+    Statement = [
+      {
+        Sid      = ""DecryptBackupObjects""
+        Effect   = ""Allow""
+        Action   = [""kms:Decrypt"", ""kms:DescribeKey""]
+        Resource = aws_kms_key.rds.arn
+      }
+    ]
+  })
+
+  tags = merge(local.tags, {
+    Name = ""${local.name_prefix}-rds-kms-decrypt""
+  })
+}
+
+resource ""aws_iam_role_policy_attachment"" ""rds_kms_decrypt"" {
+  role       = aws_iam_role.rds_s3_import.name
+  policy_arn = aws_iam_policy.rds_kms_decrypt.arn
+}
+
+#-------------------------------------------------------------------------------
+# Master credentials in Secrets Manager
+#-------------------------------------------------------------------------------
+
+resource ""aws_secretsmanager_secret"" ""db_master"" {
+  name        = ""${local.name_prefix}/db-master-credentials""
+  description = ""Master credentials for the ${local.name_prefix}-restored-db MySQL instance""
+
+  tags = merge(local.tags, {
+    Name = ""${local.name_prefix}-db-master-credentials""
+  })
+}
+
+resource ""aws_secretsmanager_secret_version"" ""db_master"" {
+  secret_id = aws_secretsmanager_secret.db_master.id
+
+  secret_string = jsonencode({
+    username = local.db_username
+    password = random_password.db_master.result
+  })
+}
+
+#-------------------------------------------------------------------------------
+# MySQL database restored from S3 (Percona XtraBackup import)
+#-------------------------------------------------------------------------------
+
+resource ""aws_db_instance"" ""restored_db"" {
+  identifier     = ""${local.name_prefix}-restored-db""
+  engine         = ""mysql""
+  engine_version = ""8.0""
+  instance_class = ""db.t3.medium""
+
+  allocated_storage     = 50
+  max_allocated_storage = 200
+  storage_type          = ""gp3""
+  storage_encrypted     = true
+  kms_key_id            = aws_kms_key.rds.arn
+
+  db_name = ""appdb""
+  username = jsondecode(aws_secretsmanager_secret_version.db_master.secret_string)[""username""]
+  password = jsondecode(aws_secretsmanager_secret_version.db_master.secret_string)[""password""]
+
+  db_subnet_group_name   = aws_db_subnet_group.main.name
+  vpc_security_group_ids = [aws_security_group.rds.id]
+  port                   = 3306
+  publicly_accessible    = false
+  multi_az               = true
+
+  backup_retention_period    = 7
+  auto_minor_version_upgrade = true
+  copy_tags_to_snapshot      = true
+
+  deletion_protection       = true
+  skip_final_snapshot       = false
+  final_snapshot_identifier = ""${local.name_prefix}-final-${random_id.suffix.hex}""
+
+  # Backup files (Percona XtraBackup format) must be uploaded to
+  # s3://<bucket>/backups/mysql-xtrabackup/ before this instance can be created.
+  # The bucket and instance are both provisioned in the provider region (us-east-1).
+  s3_import {
+    source_engine         = ""mysql""
+    source_engine_version = ""8.0""
+    bucket_name           = aws_s3_bucket.db_backup.bucket
+    bucket_prefix         = local.backup_prefix
+    ingestion_role        = aws_iam_role.rds_s3_import.arn
+  }
+
+  tags = merge(local.tags, {
+    Name = ""${local.name_prefix}-restored-db""
+  })
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+#-------------------------------------------------------------------------------
+# Outputs
+#-------------------------------------------------------------------------------
+
+output ""rds_endpoint_address"" {
+  description = ""Connection endpoint (hostname) of the restored MySQL DB instance.""
+  value       = aws_db_instance.restored_db.address
+}
+
+output ""db_master_secret_arn"" {
+  description = ""ARN of the Secrets Manager secret holding the DB master credentials (secret value is never exposed; retrieve it via secretsmanager:GetSecretValue).""
+  value       = aws_secretsmanager_secret.db_master.arn
+}"
+418,"terraform {
+  required_version = "">= 1.5.0""
+
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.0""
+    }
+    random = {
+      source  = ""hashicorp/random""
+      version = ""~> 3.0""
+    }
+  }
+}
+
+provider ""aws"" {
+  region = ""us-east-1""
+}
+
+variable ""project_name"" {
+  description = ""Project name used as the prefix for all resource names.""
+  type        = string
+  default     = ""app""
+}
+
+variable ""environment"" {
+  description = ""Environment name applied as a tag to every resource.""
+  type        = string
+  default     = ""production""
+}
+
+data ""aws_availability_zones"" ""available"" {
+  state = ""available""
+}
+
+locals {
+  name_prefix = ""${var.project_name}-${var.environment}""
+
+  common_tags = {
+    Name        = local.name_prefix
+    Environment = var.environment
+    ManagedBy   = ""terraform""
+  }
+}
+
+resource ""aws_vpc"" ""main"" {
+  cidr_block           = ""10.0.0.0/16""
+  enable_dns_support   = true
+  enable_dns_hostnames = true
+
+  tags = merge(local.common_tags, {
+    Name = ""${local.name_prefix}-vpc""
+  })
+}
+
+resource ""aws_subnet"" ""private"" {
+  count             = 2
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = cidrsubnet(aws_vpc.main.cidr_block, 8, count.index)
+  availability_zone = data.aws_availability_zones.available.names[count.index]
+
+  tags = merge(local.common_tags, {
+    Name = ""${local.name_prefix}-private-${count.index + 1}""
+  })
+}
+
+resource ""aws_security_group"" ""db"" {
+  name        = ""${local.name_prefix}-db-sg""
+  description = ""Allow inbound PostgreSQL traffic only from within the VPC""
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    description = ""PostgreSQL from VPC CIDR only""
+    from_port   = 5432
+    to_port     = 5432
+    protocol    = ""tcp""
+    cidr_blocks = [aws_vpc.main.cidr_block]
+  }
+
+  tags = merge(local.common_tags, {
+    Name = ""${local.name_prefix}-db-sg""
+  })
+}
+
+resource ""aws_db_subnet_group"" ""main"" {
+  name        = ""${local.name_prefix}-db-subnet-group""
+  description = ""Multi-AZ subnet group for the managed PostgreSQL instance""
+  subnet_ids  = aws_subnet.private[*].id
+
+  tags = local.common_tags
+}
+
+resource ""random_id"" ""final_snapshot_suffix"" {
+  byte_length = 4
+}
+
+resource ""aws_db_instance"" ""main"" {
+  identifier     = ""${local.name_prefix}-db""
+  engine         = ""postgres""
+  engine_version = ""15.8""
+  instance_class = ""db.t3.medium""
+
+  allocated_storage     = 50
+  max_allocated_storage = 100
+  storage_type          = ""gp3""
+  storage_encrypted     = true
+
+  db_name                     = ""appdb""
+  username                    = ""dbadmin""
+  manage_master_user_password = true
+  port                        = 5432
+
+  db_subnet_group_name   = aws_db_subnet_group.main.name
+  vpc_security_group_ids = [aws_security_group.db.id]
+
+  publicly_accessible = false
+  multi_az            = true
+
+  backup_retention_period = 14
+  backup_window           = ""02:00-03:00""
+  maintenance_window      = ""sun:04:00-sun:05:00""
+
+  auto_minor_version_upgrade = true
+  copy_tags_to_snapshot      = true
+  deletion_protection        = true
+
+  skip_final_snapshot       = false
+  final_snapshot_identifier = ""${local.name_prefix}-db-final-snapshot-${random_id.final_snapshot_suffix.hex}""
+
+  enabled_cloudwatch_logs_exports       = [""postgresql"", ""upgrade""]
+  performance_insights_enabled          = true
+  performance_insights_retention_period = 7
+
+  tags = merge(local.common_tags, {
+    Name = ""${local.name_prefix}-db""
+  })
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}"
+420,"terraform {
+  required_version = "">= 1.5.0""
+
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.0""
+    }
+    random = {
+      source  = ""hashicorp/random""
+      version = ""~> 3.5""
+    }
+  }
+}
+
+provider ""aws"" {
+  region = ""us-east-1""
+}
+
+data ""aws_availability_zones"" ""available"" {
+  state = ""available""
+}
+
+variable ""tags"" {
+  description = ""Additional tags applied consistently to all resources.""
+  type        = map(string)
+  default     = {}
+}
+
+locals {
+  db_identifier               = ""myapp-mysql""
+  db_name                     = ""myappdb""
+  db_username                 = ""dbadmin""
+  vpc_name                    = ""myapp-vpc""
+  subnet_group_name           = ""myapp-rds-subnet-group""
+  security_group_name         = ""myapp-rds-mysql-sg""
+  secret_name                 = ""myapp/mysql/master""
+  final_snapshot_identifier   = ""myapp-mysql-final-snapshot""
+  initial_snapshot_identifier = ""myapp-mysql-initial-snapshot""
+
+  common_tags = merge(var.tags)
+}
+
+resource ""aws_vpc"" ""main"" {
+  cidr_block           = ""10.0.0.0/16""
+  enable_dns_support   = true
+  enable_dns_hostnames = true
+
+  tags = merge(local.common_tags, {
+    Name = local.vpc_name
+  })
+}
+
+resource ""aws_subnet"" ""rds_az0"" {
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = ""10.0.1.0/24""
+  availability_zone = data.aws_availability_zones.available.names[0]
+
+  tags = merge(local.common_tags, {
+    Name = ""${local.vpc_name}-rds-az0""
+  })
+}
+
+resource ""aws_subnet"" ""rds_az1"" {
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = ""10.0.2.0/24""
+  availability_zone = data.aws_availability_zones.available.names[1]
+
+  tags = merge(local.common_tags, {
+    Name = ""${local.vpc_name}-rds-az1""
+  })
+}
+
+resource ""aws_db_subnet_group"" ""rds"" {
+  name       = local.subnet_group_name
+  subnet_ids = [aws_subnet.rds_az0.id, aws_subnet.rds_az1.id]
+
+  tags = merge(local.common_tags, {
+    Name = local.subnet_group_name
+  })
+}
+
+resource ""aws_security_group"" ""rds"" {
+  name        = local.security_group_name
+  description = ""Allow MySQL access only from within the VPC""
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    description = ""MySQL from the VPC CIDR only""
+    from_port   = 3306
+    to_port     = 3306
+    protocol    = ""tcp""
+    cidr_blocks = [aws_vpc.main.cidr_block]
+  }
+
+  egress {
+    description = ""MySQL traffic restricted to the VPC CIDR""
+    from_port   = 3306
+    to_port     = 3306
+    protocol    = ""tcp""
+    cidr_blocks = [aws_vpc.main.cidr_block]
+  }
+
+  tags = merge(local.common_tags, {
+    Name = local.security_group_name
+  })
+}
+
+resource ""random_password"" ""db_master"" {
+  length           = 24
+  special          = true
+  override_special = ""!#$%*()-_=+[]{}:?""
+  min_upper        = 1
+  min_lower        = 1
+  min_numeric      = 1
+  min_special      = 1
+}
+
+resource ""aws_secretsmanager_secret"" ""db_master"" {
+  name        = local.secret_name
+  description = ""Master credentials for the ${local.db_identifier} MySQL instance""
+
+  tags = merge(local.common_tags, {
+    Name = local.secret_name
+  })
+}
+
+resource ""aws_secretsmanager_secret_version"" ""db_master"" {
+  secret_id = aws_secretsmanager_secret.db_master.id
+  secret_string = jsonencode({
+    username = local.db_username
+    password = random_password.db_master.result
+    engine   = ""mysql""
+    port     = 3306
+    host     = aws_db_instance.mysql.address
+    dbname   = aws_db_instance.mysql.db_name
+  })
+}
+
+resource ""aws_db_instance"" ""mysql"" {
+  identifier     = local.db_identifier
+  engine         = ""mysql""
+  engine_version = ""8.0""
+  instance_class = ""db.t3.micro""
+
+  allocated_storage = 20
+  storage_type      = ""gp3""
+  storage_encrypted = true
+
+  db_name  = local.db_name
+  username = local.db_username
+  password = random_password.db_master.result
+
+  db_subnet_group_name   = aws_db_subnet_group.rds.name
+  vpc_security_group_ids = [aws_security_group.rds.id]
+
+  publicly_accessible = false
+  multi_az            = false
+
+  backup_retention_period    = 7
+  auto_minor_version_upgrade = true
+  copy_tags_to_snapshot      = true
+  deletion_protection        = true
+
+  skip_final_snapshot       = false
+  final_snapshot_identifier = local.final_snapshot_identifier
+
+  timeouts {
+    create = ""40m""
+    update = ""80m""
+    delete = ""60m""
+  }
+
+  tags = merge(local.common_tags, {
+    Name = local.db_identifier
+  })
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource ""aws_db_snapshot"" ""mysql_snapshot"" {
+  db_instance_identifier = aws_db_instance.mysql.identifier
+  db_snapshot_identifier = local.initial_snapshot_identifier
+
+  tags = merge(local.common_tags, {
+    Name = local.initial_snapshot_identifier
+  })
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+output ""db_instance_endpoint"" {
+  description = ""Connection endpoint of the MySQL instance.""
+  value       = aws_db_instance.mysql.endpoint
+}
+
+output ""db_instance_identifier"" {
+  description = ""Identifier of the MySQL instance.""
+  value       = aws_db_instance.mysql.identifier
+}
+
+output ""db_master_secret_arn"" {
+  description = ""ARN of the Secrets Manager secret holding the master credentials.""
+  value       = aws_secretsmanager_secret.db_master.arn
+}
+
+output ""db_snapshot_identifier"" {
+  description = ""Identifier of the manual MySQL snapshot.""
+  value       = aws_db_snapshot.mysql_snapshot.db_snapshot_identifier
+}"
+422,"terraform {
+  required_version = "">= 1.5.0""
+
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.0""
+    }
+  }
+}
+
+provider ""aws"" {
+  region = ""us-east-1""
+}
+
+variable ""tags"" {
+  description = ""Consistent tags (Name, Environment, ManagedBy) applied to every taggable resource in this configuration.""
+  type        = map(string)
+
+  default = {
+    Name        = ""efs-shared-storage""
+    Environment = ""production""
+    ManagedBy   = ""terraform""
+  }
+}
+
+data ""aws_availability_zones"" ""available"" {
+  state = ""available""
+}
+
+data ""aws_caller_identity"" ""current"" {}
+
+data ""aws_partition"" ""current"" {}
+
+data ""aws_region"" ""current"" {}
+
+locals {
+  az_count   = 2
+  az_names   = slice(data.aws_availability_zones.available.names, 0, local.az_count)
+  account_id = data.aws_caller_identity.current.account_id
+
+  private_subnets = {
+    for idx, az in local.az_names :
+    az => cidrsubnet(aws_vpc.main.cidr_block, 8, idx + 10)
+  }
+}
+
+resource ""aws_vpc"" ""main"" {
+  cidr_block           = ""10.0.0.0/16""
+  enable_dns_hostnames = true
+  enable_dns_support   = true
+
+  tags = merge(var.tags, {
+    Name = ""efs-vpc""
+  })
+}
+
+resource ""aws_subnet"" ""private"" {
+  for_each          = local.private_subnets
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = each.value
+  availability_zone = each.key
+
+  tags = merge(var.tags, {
+    Name = ""efs-private-${each.key}""
+  })
+}
+
+resource ""aws_security_group"" ""efs_mount_targets"" {
+  name        = ""efs-mount-target-sg""
+  description = ""Permit NFS (TCP 2049) access to EFS mount targets from within the VPC only""
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    description = ""NFS from within the VPC CIDR only""
+    from_port   = 2049
+    to_port     = 2049
+    protocol    = ""tcp""
+    cidr_blocks = [aws_vpc.main.cidr_block]
+  }
+
+  egress {
+    description = ""Outbound traffic scoped to the VPC CIDR""
+    from_port   = 0
+    to_port     = 0
+    protocol    = ""-1""
+    cidr_blocks = [aws_vpc.main.cidr_block]
+  }
+
+  tags = merge(var.tags, {
+    Name = ""efs-mount-target-sg""
+  })
+}
+
+resource ""aws_kms_key"" ""efs"" {
+  description             = ""Customer managed CMK used to encrypt the EFS file system at rest""
+  deletion_window_in_days = 30
+  enable_key_rotation     = true
+
+  policy = jsonencode({
+    Version = ""2012-10-17""
+    Statement = [
+      {
+        Sid    = ""EnableIAMDelegationForAccountRoot""
+        Effect = ""Allow""
+        Principal = {
+          AWS = ""arn:${data.aws_partition.current.partition}:iam::${local.account_id}:root""
+        }
+        Action = [
+          ""kms:Create*"",
+          ""kms:Describe*"",
+          ""kms:Enable*"",
+          ""kms:Get*"",
+          ""kms:List*"",
+          ""kms:Put*"",
+          ""kms:Update*"",
+          ""kms:Revoke*"",
+          ""kms:Disable*"",
+          ""kms:Delete*"",
+          ""kms:TagResource"",
+          ""kms:UntagResource"",
+          ""kms:ScheduleKeyDeletion"",
+          ""kms:CancelKeyDeletion"",
+          ""kms:Encrypt"",
+          ""kms:Decrypt"",
+          ""kms:ReEncrypt*"",
+          ""kms:GenerateDataKey*"",
+          ""kms:DescribeKey""
+        ]
+        Resource = ""*""
+      },
+      {
+        Sid    = ""AllowEFSServiceToUseKeyForThisAccountOnly""
+        Effect = ""Allow""
+        Principal = {
+          Service = ""elasticfilesystem.amazonaws.com""
+        }
+        Action = [
+          ""kms:Encrypt"",
+          ""kms:Decrypt"",
+          ""kms:ReEncrypt*"",
+          ""kms:GenerateDataKey*"",
+          ""kms:DescribeKey""
+        ]
+        Resource = ""*""
+        Condition = {
+          StringEquals = {
+            ""kms:CallerAccount"" = local.account_id
+            ""kms:ViaService""    = ""elasticfilesystem.${data.aws_region.current.name}.amazonaws.com""
+          }
+        }
+      }
+    ]
+  })
+
+  lifecycle {
+    prevent_destroy = true
+  }
+
+  tags = merge(var.tags, {
+    Name = ""efs-encryption-key""
+  })
+}
+
+resource ""aws_kms_alias"" ""efs"" {
+  name          = ""alias/efs-shared-storage""
+  target_key_id = aws_kms_key.efs.key_id
+}
+
+resource ""aws_efs_file_system"" ""main"" {
+  creation_token   = ""efs-shared-storage-main""
+  performance_mode = ""generalPurpose""
+  throughput_mode  = ""elastic""
+  encrypted        = true
+  kms_key_id       = aws_kms_key.efs.arn
+
+  lifecycle_policy {
+    transition_to_ia = ""AFTER_30_DAYS""
+  }
+
+  lifecycle_policy {
+    transition_to_archive = ""AFTER_90_DAYS""
+  }
+
+  lifecycle {
+    prevent_destroy = true
+  }
+
+  tags = merge(var.tags, {
+    Name = ""efs-shared-storage""
+  })
+}
+
+resource ""aws_efs_mount_target"" ""main"" {
+  for_each        = aws_subnet.private
+  file_system_id  = aws_efs_file_system.main.id
+  subnet_id       = each.value.id
+  security_groups = [aws_security_group.efs_mount_targets.id]
+}
+
+resource ""aws_efs_access_point"" ""app"" {
+  file_system_id = aws_efs_file_system.main.id
+
+  posix_user {
+    uid = 1000
+    gid = 1000
+  }
+
+  root_directory {
+    path = ""/app""
+
+    creation_info {
+      owner_uid   = 1000
+      owner_gid   = 1000
+      permissions = ""750""
+    }
+  }
+
+  tags = merge(var.tags, {
+    Name = ""efs-access-point-app""
+  })
+}
+
+resource ""aws_efs_backup_policy"" ""main"" {
+  file_system_id = aws_efs_file_system.main.id
+
+  backup_policy {
+    status = ""ENABLED""
+  }
+}
+
+output ""efs_file_system_id"" {
+  description = ""ID of the EFS file system.""
+  value       = aws_efs_file_system.main.id
+}
+
+output ""efs_dns_name"" {
+  description = ""DNS name of the EFS file system used by clients to mount the share.""
+  value       = aws_efs_file_system.main.dns_name
+}
+
+output ""efs_security_group_id"" {
+  description = ""ID of the security group attached to the EFS mount targets.""
+  value       = aws_security_group.efs_mount_targets.id
+}"
+424,"terraform {
+  required_version = "">= 1.5.0""
+
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.0""
+    }
+  }
+}
+
+provider ""aws"" {
+  region = ""us-east-1""
+}
+
+variable ""environment_name"" {
+  description = ""Environment name used for resource naming and tagging.""
+  type        = string
+  default     = ""dev""
+}
+
+variable ""project_name"" {
+  description = ""Project name used for resource naming and tagging.""
+  type        = string
+  default     = ""efs-backup""
+}
+
+locals {
+  name_prefix = ""${var.project_name}-${var.environment_name}""
+
+  common_tags = {
+    Name        = local.name_prefix
+    Environment = var.environment_name
+    Project     = var.project_name
+    ManagedBy   = ""terraform""
+  }
+}
+
+data ""aws_availability_zones"" ""available"" {
+  state = ""available""
+}
+
+resource ""aws_vpc"" ""main"" {
+  cidr_block           = ""10.0.0.0/16""
+  enable_dns_support   = true
+  enable_dns_hostnames = true
+
+  tags = merge(local.common_tags, {
+    Name = ""${local.name_prefix}-vpc""
+  })
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource ""aws_subnet"" ""private"" {
+  count             = 2
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = cidrsubnet(aws_vpc.main.cidr_block, 8, count.index)
+  availability_zone = data.aws_availability_zones.available.names[count.index]
+
+  tags = merge(local.common_tags, {
+    Name = ""${local.name_prefix}-private-${count.index + 1}""
+  })
+}
+
+resource ""aws_security_group"" ""efs"" {
+  name        = ""${local.name_prefix}-efs-mount-target-sg""
+  description = ""Permits NFS (TCP 2049) ingress only from within the VPC""
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    description = ""NFS from within the VPC only""
+    from_port   = 2049
+    to_port     = 2049
+    protocol    = ""tcp""
+    cidr_blocks = [aws_vpc.main.cidr_block]
+  }
+
+  tags = merge(local.common_tags, {
+    Name = ""${local.name_prefix}-efs-mount-target-sg""
+  })
+}
+
+resource ""aws_kms_key"" ""efs"" {
+  description             = ""Customer-managed KMS key used to encrypt the EFS file system at rest""
+  deletion_window_in_days = 30
+  enable_key_rotation     = true
+
+  tags = merge(local.common_tags, {
+    Name = ""${local.name_prefix}-efs-kms-key""
+  })
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource ""aws_kms_alias"" ""efs"" {
+  name          = ""alias/${local.name_prefix}-efs""
+  target_key_id = aws_kms_key.efs.key_id
+}
+
+resource ""aws_efs_file_system"" ""efs"" {
+  creation_token   = ""${local.name_prefix}-efs""
+  performance_mode = ""generalPurpose""
+  throughput_mode  = ""elastic""
+  encrypted        = true
+  kms_key_id       = aws_kms_key.efs.arn
+
+  tags = merge(local.common_tags, {
+    Name = ""${local.name_prefix}-efs""
+  })
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource ""aws_efs_backup_policy"" ""efs"" {
+  file_system_id = aws_efs_file_system.efs.id
+
+  backup_policy {
+    status = ""ENABLED""
+  }
+}
+
+resource ""aws_efs_file_system_policy"" ""efs"" {
+  file_system_id = aws_efs_file_system.efs.id
+
+  policy = jsonencode({
+    Version = ""2012-10-17""
+    Statement = [
+      {
+        Sid       = ""EnforceEncryptionInTransit""
+        Effect    = ""Deny""
+        Principal = { AWS = ""*"" }
+        Action = [
+          ""elasticfilesystem:ClientMount"",
+          ""elasticfilesystem:ClientWrite"",
+          ""elasticfilesystem:ClientRootAccess""
+        ]
+        Resource = aws_efs_file_system.efs.arn
+        Condition = {
+          BoolIfExists = {
+            ""aws:SecureTransport"" = ""false""
+          }
+        }
+      }
+    ]
+  })
+}
+
+resource ""aws_efs_mount_target"" ""efs"" {
+  for_each = {
+    for idx, subnet_id in aws_subnet.private[*].id : tostring(idx) => subnet_id
+  }
+
+  file_system_id  = aws_efs_file_system.efs.id
+  subnet_id       = each.value
+  security_groups = [aws_security_group.efs.id]
+}
+
+output ""efs_file_system_id"" {
+  description = ""The ID of the EFS file system.""
+  value       = aws_efs_file_system.efs.id
+}
+
+output ""efs_dns_name"" {
+  description = ""The DNS name of the EFS file system (mount point).""
+  value       = aws_efs_file_system.efs.dns_name
+}
+
+output ""efs_backup_policy_status"" {
+  description = ""The status of the EFS automatic backup policy.""
+  value       = aws_efs_backup_policy.efs.backup_policy[0].status
+}"
+426,"terraform {
+  required_version = "">= 1.3.0""
+
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.0""
+    }
+  }
+}
+
+provider ""aws"" {
+  region = ""us-east-1""
+}
+
+data ""aws_availability_zones"" ""available"" {
+  state = ""available""
+}
+
+resource ""aws_vpc"" ""main"" {
+  cidr_block           = ""10.0.0.0/16""
+  enable_dns_support   = true
+  enable_dns_hostnames = true
+
+  tags = {
+    Name = ""main-vpc""
+  }
+}
+
+resource ""aws_internet_gateway"" ""main"" {
+  vpc_id = aws_vpc.main.id
+
+  tags = {
+    Name = ""main-igw""
+  }
+}
+
+resource ""aws_subnet"" ""public_1"" {
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = ""10.0.1.0/24""
+  availability_zone       = data.aws_availability_zones.available.names[0]
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name = ""public-subnet-1""
+  }
+}
+
+resource ""aws_subnet"" ""public_2"" {
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = ""10.0.2.0/24""
+  availability_zone       = data.aws_availability_zones.available.names[1]
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name = ""public-subnet-2""
+  }
+}
+
+resource ""aws_subnet"" ""public_3"" {
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = ""10.0.3.0/24""
+  availability_zone       = data.aws_availability_zones.available.names[2]
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name = ""public-subnet-3""
+  }
+}
+
+resource ""aws_route_table"" ""public"" {
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block = ""0.0.0.0/0""
+    gateway_id = aws_internet_gateway.main.id
+  }
+
+  tags = {
+    Name = ""public-rt""
+  }
+}
+
+resource ""aws_route_table_association"" ""public_1_assoc"" {
+  subnet_id      = aws_subnet.public_1.id
+  route_table_id = aws_route_table.public.id
+}
+
+resource ""aws_route_table_association"" ""public_2_assoc"" {
+  subnet_id      = aws_subnet.public_2.id
+  route_table_id = aws_route_table.public.id
+}
+
+resource ""aws_route_table_association"" ""public_3_assoc"" {
+  subnet_id      = aws_subnet.public_3.id
+  route_table_id = aws_route_table.public.id
+}
+
+output ""vpc_id"" {
+  description = ""ID of the main VPC""
+  value       = aws_vpc.main.id
+}
+
+output ""internet_gateway_id"" {
+  description = ""ID of the internet gateway attached to the VPC""
+  value       = aws_internet_gateway.main.id
+}
+
+output ""public_route_table_id"" {
+  description = ""ID of the public route table""
+  value       = aws_route_table.public.id
+}
+
+output ""public_subnet_ids"" {
+  description = ""List of public subnet IDs""
+  value = [
+    aws_subnet.public_1.id,
+    aws_subnet.public_2.id,
+    aws_subnet.public_3.id,
+  ]
+}"
+428,"terraform {
+  required_version = "">= 1.5.0""
+
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.0""
+    }
+  }
+}
+
+provider ""aws"" {
+  region = ""us-east-1""
+}
+
+variable ""environment"" {
+  description = ""Environment name applied as a tag to all resources""
+  type        = string
+  default     = ""dev""
+}
+
+data ""aws_availability_zones"" ""available"" {
+  state = ""available""
+}
+
+locals {
+  public_subnet_cidrs = [""10.0.1.0/24"", ""10.0.2.0/24"", ""10.0.3.0/24""]
+
+  common_tags = {
+    Environment = var.environment
+    ManagedBy   = ""terraform""
+  }
+}
+
+resource ""aws_vpc"" ""main"" {
+  cidr_block           = ""10.0.0.0/16""
+  enable_dns_support   = true
+  enable_dns_hostnames = true
+
+  tags = merge(local.common_tags, {
+    Name = ""main-vpc""
+  })
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource ""aws_internet_gateway"" ""igw"" {
+  vpc_id = aws_vpc.main.id
+
+  tags = merge(local.common_tags, {
+    Name = ""main-igw""
+  })
+}
+
+resource ""aws_subnet"" ""public"" {
+  for_each = {
+    for idx, az in slice(data.aws_availability_zones.available.names, 0, length(local.public_subnet_cidrs)) :
+    az => local.public_subnet_cidrs[idx]
+  }
+
+  vpc_id                  = aws_vpc.main.id
+  availability_zone       = each.key
+  cidr_block              = each.value
+  map_public_ip_on_launch = true
+
+  tags = merge(local.common_tags, {
+    Name = ""main-public-subnet-${each.key}""
+  })
+}
+
+resource ""aws_route_table"" ""public"" {
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block = ""0.0.0.0/0""
+    gateway_id = aws_internet_gateway.igw.id
+  }
+
+  tags = merge(local.common_tags, {
+    Name = ""main-public-rt""
+  })
+}
+
+resource ""aws_route_table_association"" ""public"" {
+  for_each = aws_subnet.public
+
+  subnet_id      = each.value.id
+  route_table_id = aws_route_table.public.id
+}"
+430,"terraform {
+  required_version = "">= 1.5.0""
+
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.0""
+    }
+  }
+}
+
+provider ""aws"" {
+  region = ""us-east-1""
+}
+
+variable ""name"" {
+  description = ""Name used to tag all network resources.""
+  type        = string
+  default     = ""greenfield-network""
+
+  validation {
+    condition     = length(trimspace(var.name)) > 0
+    error_message = ""The name must be a non-empty string.""
+  }
+}
+
+locals {
+  public_route_table_name = ""${var.name}-public-rt""
+}
+
+resource ""aws_vpc"" ""main"" {
+  cidr_block           = ""10.0.0.0/16""
+  instance_tenancy     = ""dedicated""
+  enable_dns_support   = true
+  enable_dns_hostnames = true
+
+  tags = {
+    Name = var.name
+  }
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource ""aws_internet_gateway"" ""main"" {
+  vpc_id = aws_vpc.main.id
+
+  tags = {
+    Name = var.name
+  }
+}
+
+resource ""aws_route_table"" ""public"" {
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block = ""0.0.0.0/0""
+    gateway_id = aws_internet_gateway.main.id
+  }
+
+  tags = {
+    Name = local.public_route_table_name
+  }
+}
+
+output ""vpc_id"" {
+  description = ""ID of the dedicated-tenancy VPC.""
+  value       = aws_vpc.main.id
+}
+
+output ""internet_gateway_id"" {
+  description = ""ID of the internet gateway attached to the VPC.""
+  value       = aws_internet_gateway.main.id
+}
+
+output ""public_route_table_id"" {
+  description = ""ID of the public route table with outbound internet access.""
+  value       = aws_route_table.public.id
+}"
+436,"terraform {
+  required_version = "">= 1.3.0""
+
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.0""
+    }
+  }
+}
+
+provider ""aws"" {
+  region = ""us-east-2""
+}
+
+variable ""vpc_cidr"" {
+  description = ""CIDR block for the VPC.""
+  type        = string
+  default     = ""10.0.0.0/16""
+}
+
+locals {
+  environment = ""production""
+  managed_by  = ""terraform""
+
+  common_tags = {
+    Environment = local.environment
+    ManagedBy   = local.managed_by
+  }
+}
+
+resource ""aws_vpc"" ""vpc"" {
+  cidr_block           = var.vpc_cidr
+  enable_dns_support   = true
+  enable_dns_hostnames = true
+
+  tags = merge(
+    local.common_tags,
+    {
+      Name = ""vpc""
+    },
+  )
+}
+
+resource ""aws_internet_gateway"" ""ig"" {
+  vpc_id = aws_vpc.vpc.id
+
+  tags = merge(
+    local.common_tags,
+    {
+      Name = ""ig""
+    },
+  )
+}
+
+output ""vpc_id"" {
+  description = ""The ID of the VPC.""
+  value       = aws_vpc.vpc.id
+}
+
+output ""internet_gateway_id"" {
+  description = ""The ID of the internet gateway.""
+  value       = aws_internet_gateway.ig.id
+}"
+438,"terraform {
+  required_version = "">= 1.5.0""
+
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.0""
+    }
+  }
+}
+
+provider ""aws"" {
+  region = ""us-east-1""
+}
+
+locals {
+  name_prefix = ""main""
+}
+
+data ""aws_availability_zones"" ""available"" {
+  state = ""available""
+}
+
+resource ""aws_vpc"" ""main"" {
+  cidr_block           = ""10.0.0.0/16""
+  enable_dns_support   = true
+  enable_dns_hostnames = true
+
+  tags = {
+    Name = ""main_vpc""
+  }
+}
+
+resource ""aws_subnet"" ""db_a"" {
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = ""10.0.1.0/24""
+  availability_zone       = data.aws_availability_zones.available.names[0]
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name = ""db_subnet_a""
+  }
+}
+
+resource ""aws_subnet"" ""db_b"" {
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = ""10.0.2.0/24""
+  availability_zone       = data.aws_availability_zones.available.names[1]
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name = ""db_subnet_b""
+  }
+}
+
+resource ""aws_internet_gateway"" ""main"" {
+  vpc_id = aws_vpc.main.id
+
+  tags = {
+    Name = ""main_internet_gateway""
+  }
+}
+
+resource ""aws_route_table"" ""public"" {
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block = ""0.0.0.0/0""
+    gateway_id = aws_internet_gateway.main.id
+  }
+
+  tags = {
+    Name = ""public_route_table""
+  }
+}
+
+resource ""aws_route_table_association"" ""db_a"" {
+  subnet_id      = aws_subnet.db_a.id
+  route_table_id = aws_route_table.public.id
+}
+
+resource ""aws_route_table_association"" ""db_b"" {
+  subnet_id      = aws_subnet.db_b.id
+  route_table_id = aws_route_table.public.id
+}
+
+# SECURITY NOTE (explicit user-requested exception to least-privilege):
+# Ingress on TCP 3306 (MySQL) and TCP 5432 (PostgreSQL) is intentionally
+# open to 0.0.0.0/0 because the databases must be reachable from any IP
+# address. This is the ONLY traffic allowed in from 0.0.0.0/0 besides the
+# standard allow-all egress rule; no other ingress ports are opened.
+resource ""aws_security_group"" ""database"" {
+  name        = ""database_sg""
+  description = ""Allow MySQL (3306) and PostgreSQL (5432) from any IP - explicit user-requested exception; all other ingress denied""
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    description = ""MySQL from anywhere (explicit user-requested exception)""
+    from_port   = 3306
+    to_port     = 3306
+    protocol    = ""tcp""
+    cidr_blocks = [""0.0.0.0/0""]
+  }
+
+  ingress {
+    description = ""PostgreSQL from anywhere (explicit user-requested exception)""
+    from_port   = 5432
+    to_port     = 5432
+    protocol    = ""tcp""
+    cidr_blocks = [""0.0.0.0/0""]
+  }
+
+  egress {
+    description = ""Allow all outbound traffic""
+    from_port   = 0
+    to_port     = 0
+    protocol    = ""-1""
+    cidr_blocks = [""0.0.0.0/0""]
+  }
+
+  tags = {
+    Name = ""database_sg""
+  }
+}
+
+resource ""aws_db_subnet_group"" ""main"" {
+  name       = ""main_db_subnet_group""
+  subnet_ids = [aws_subnet.db_a.id, aws_subnet.db_b.id]
+
+  tags = {
+    Name = ""main_db_subnet_group""
+  }
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}"
+440,"terraform {
+  required_version = "">= 1.0""
+
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.0""
+    }
+  }
+}
+
+provider ""aws"" {
+  region = ""us-east-1""
+}
+
+data ""aws_availability_zones"" ""available"" {
+  state = ""available""
+}
+
+resource ""aws_vpc"" ""main"" {
+  cidr_block                       = ""10.0.0.0/16""
+  assign_generated_ipv6_cidr_block = true
+
+  enable_dns_support   = true
+  enable_dns_hostnames = true
+
+  tags = {
+    Name = ""pike-vpc""
+  }
+}
+
+resource ""aws_subnet"" ""ipv6"" {
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = cidrsubnet(aws_vpc.main.cidr_block, 8, 0)
+  ipv6_cidr_block   = cidrsubnet(aws_vpc.main.ipv6_cidr_block, 8, 1)
+  availability_zone = data.aws_availability_zones.available.names[0]
+
+  map_public_ip_on_launch         = false
+  assign_ipv6_address_on_creation = true
+
+  tags = {
+    Name = ""pike-ipv6-subnet""
+  }
+}
+
+resource ""aws_egress_only_internet_gateway"" ""pike"" {
+  vpc_id = aws_vpc.main.id
+
+  tags = {
+    Name        = ""pike""
+    permissions = ""permissions""
+  }
+}
+
+resource ""aws_route_table"" ""ipv6_egress"" {
+  vpc_id = aws_vpc.main.id
+
+  route {
+    ipv6_cidr_block        = ""::/0""
+    egress_only_gateway_id = aws_egress_only_internet_gateway.pike.id
+  }
+
+  tags = {
+    Name = ""pike-ipv6-egress""
+  }
+}
+
+resource ""aws_route_table_association"" ""ipv6_subnet"" {
+  subnet_id      = aws_subnet.ipv6.id
+  route_table_id = aws_route_table.ipv6_egress.id
+}"
+446,"terraform {
+  required_version = "">= 1.5.0""
+
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.0""
+    }
+  }
+}
+
+provider ""aws"" {
+  region = ""us-east-1""
+}
+
+locals {
+  vpc_cidr           = ""192.168.56.0/24""
+  domain_name        = ""windomain.local""
+  domain_name_servers = [""192.168.56.102"", ""8.8.8.8""]
+  netbios_servers    = [""192.168.56.102""]
+  netbios_node_type  = 2
+}
+
+resource ""aws_vpc"" ""main"" {
+  cidr_block           = local.vpc_cidr
+  enable_dns_support   = true
+  enable_dns_hostnames = true
+
+  tags = {
+    Name        = ""windomain-vpc""
+    Environment = ""greenfield""
+  }
+}
+
+resource ""aws_vpc_dhcp_options"" ""main"" {
+  domain_name          = local.domain_name
+  domain_name_servers  = local.domain_name_servers
+  netbios_name_servers = local.netbios_servers
+  netbios_node_type    = local.netbios_node_type
+
+  tags = {
+    Name        = ""windomain-dhcp-options""
+    Environment = ""greenfield""
+  }
+}
+
+resource ""aws_vpc_dhcp_options_association"" ""main"" {
+  vpc_id          = aws_vpc.main.id
+  dhcp_options_id = aws_vpc_dhcp_options.main.id
+}"

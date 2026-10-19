@@ -1,4 +1,3 @@
-# GENERATED from specs/cfn/row_176.json by intent_checks/build.py -- do not edit.
 package intent.cfn.row_176
 
 import rego.v1

@@ -215,13 +215,51 @@ def eval_rego_rule(
         return None, f"Unexpected OPA response: {raw[:300]}"
 
 
+def _leaves(value, path=()):
+    if isinstance(value, dict):
+        for k, v in value.items():
+            yield from _leaves(v, path + (str(k),))
+    elif isinstance(value, (list, tuple)):
+        for v in value:
+            yield from _leaves(v, path)
+    else:
+        yield path, value
+
+
+def eval_iaceval_criterion(rego_path: str, input_path: str, timeout: int = 120) -> tuple[bool | None, list[str], str | None]:
+    try:
+        rc, stdout, stderr = _run(
+            ["opa", "eval", "--v0-compatible", "-d", rego_path, "-i", input_path, "data"],
+            cwd=str(Path(rego_path).parent), timeout=timeout,
+        )
+    except FileNotFoundError:
+        return None, [], "opa not installed"
+    except subprocess.TimeoutExpired:
+        return None, [], f"opa eval timed out after {timeout}s"
+    try:
+        data = json.loads(stdout.strip() or "{}")
+    except json.JSONDecodeError:
+        return None, [], f"OPA JSON parse error: {stdout[:300]}"
+    if data.get("errors"):
+        return None, [], f"OPA errors: {json.dumps(data['errors'])[:500]}"
+    res = data.get("result", [])
+    if not res:
+        return None, [], "OPA returned no result for `data`"
+    value = res[0]["expressions"][0]["value"]
+    false_paths = sorted({".".join(p) for p, v in _leaves(value) if v is False})
+    return (len(false_paths) == 0), false_paths, None
+
+
 def audit_row(
     row_index: int,
     template: str,
     rego_intent: str,
     use_terraform: bool,
+    plan_save_path: "str | None" = None,
 ) -> dict:
     result = {
+        "rego_passed_iaceval": False,
+        "iaceval_false_rules": [],
         "row_index":       row_index,
         "rego_passed":     False,
         "all_rule_names":  [],
@@ -252,6 +290,19 @@ def audit_row(
         else:
             plan_json_path = str(Path(tmpdir) / "empty_input.json")
             Path(plan_json_path).write_text("{}", encoding="utf-8")
+
+        if plan_save_path and use_terraform and not result["terraform_error"]:
+            try:
+                Path(plan_save_path).parent.mkdir(parents=True, exist_ok=True)
+                Path(plan_save_path).write_text(Path(plan_json_path).read_text(encoding="utf-8"), encoding="utf-8")
+            except OSError:
+                pass
+
+        ie_pass, ie_false, ie_err = eval_iaceval_criterion(rego_path, plan_json_path)
+        result["rego_passed_iaceval"] = bool(ie_pass) and not result["terraform_error"]
+        result["iaceval_false_rules"] = ie_false
+        if ie_err:
+            result["iaceval_error"] = ie_err
 
         main_result, opa_err = eval_rego_rule(rego_path, plan_json_path, main_query)
         if opa_err:
@@ -341,6 +392,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--output-csv", metavar="CSV_OUT", default=None)
     p.add_argument("--limit", type=int, default=None, metavar="N")
     p.add_argument("--skip-empty", action="store_true")
+    p.add_argument("--plan-dir", metavar="DIR", default=None,
+                   help="Save each row's plan JSON as DIR/row_<n>.json, so rows can be re-scored without re-planning.")
     p.add_argument(
         "--no-terraform", action="store_true",
         help=(
@@ -366,6 +419,9 @@ def _write_csv_row(
         "all_rule_names":  ";".join(r["all_rule_names"]),
         "terraform_error": r.get("terraform_error") or "",
         "opa_error":       r.get("opa_error") or "",
+        "rego_passed_iaceval": r.get("rego_passed_iaceval", False),
+        "iaceval_false_rules": ";".join(r.get("iaceval_false_rules") or []),
+        "iaceval_error":   r.get("iaceval_error") or "",
     })
     fh.flush()
 
@@ -403,6 +459,7 @@ def main() -> None:
         "row_index", "row_number", "rego_passed",
         "passed_rules", "failed_rules", "all_rule_names",
         "terraform_error", "opa_error",
+        "rego_passed_iaceval", "iaceval_false_rules", "iaceval_error",
     ]
 
     csv_out_fh   = None
@@ -486,6 +543,7 @@ def main() -> None:
                     template=template,
                     rego_intent=rego_intent,
                     use_terraform=use_tf,
+                    plan_save_path=(str(Path(args.plan_dir) / f"row_{row_number}.json") if args.plan_dir else None),
                 )
                 r["row_number"] = row_number
                 row_results.append(r)

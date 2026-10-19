@@ -63,10 +63,12 @@ The agents are nodes of a LangGraph state machine (`graph.py`) that share one `G
 │   │   ├── terraform/    Terraform knowledge-base ingestion (01–05)
 │   │   └── security/     Security knowledge-base ingestion (00, 01, 04)
 │   └── nuke_vpc_dependencies.py   AWS account cleanup helpers used by the deploy stage
+├── baselines/            Zero-shot and OpenCode coding-agent baselines (see Baselines)
 ├── benchmark/            Multi-DPIaC-Eval: scenarios and reference templates
 ├── data/                 Benchmark datasets and security-ingestion inputs
 ├── results/              Experiment results reported in the thesis
 ├── analysis/             Benchmark construction, audits, and analysis notebooks (see analysis/README.md)
+├── examples/             Full trace of the thesis example run (see Example run)
 ├── main.py               Run one request
 ├── benchmark.py          Run a dataset of requests
 ├── graph.py              LangGraph definition and routing
@@ -224,6 +226,53 @@ python scripts/nuke_vpc_dependencies.py --profile default --dry-run
 
 Both delete real resources. Use them only in a dedicated test account.
 
+## Baselines
+
+`baselines/` holds the two baselines IaCGen-MAS is compared with. Both read the same datasets, score templates with the IaCGen-MAS Validator, and write the same outputs as `benchmark.py`. `--rows`, `--start-row`, `--max-rows`, `--exclude-completed-csv`, `--retry-errors`, and `--deploy-target` work as in `benchmark.py`; `--deploy-target none` runs the static checks only.
+
+| File | Purpose |
+|---|---|
+| `baselines/zeroshot_baseline.py` | Zero-shot baseline: one LLM call per scenario with IaCGen's first-generation prompt and no repair loop; the template is validated once. |
+| `baselines/zeroshot_prompts.py` | IaCGen's prompts, copied verbatim (the Terraform pair is the IaC-Eval prompt IaCGen carries), and IaCGen's template extraction. |
+| `baselines/opencode_baseline.py` | Coding-agent baseline: runs OpenCode once per scenario in an isolated workspace, then scores the template it leaves, validating and deploying it again if the agent did not. |
+| `baselines/opencode_driver.py` | Writes the OpenCode configuration (model endpoint, MCP server, tool allowlist), parses OpenCode's event stream into token counts and transcripts, and flags sessions that touched files outside their workspace. |
+| `baselines/mcp_server.py` | MCP server started by OpenCode, exposing `validate_iac`, `deploy_iac`, and `submit_template`. |
+| `baselines/evaluation.py` | State behind the three tools: one `validate_iac` call is one iteration, the iteration cap, deployment only after static validation passed, the Engineer's error format, and per-iteration snapshots. |
+| `baselines/prompts/` | OpenCode system prompts for CloudFormation and Terraform. |
+
+### Zero-shot
+
+Takes the LLM options of `benchmark.py` (`--provider`, `--model`, and the reasoning and token flags):
+
+```bash
+python -m baselines.zeroshot_baseline \
+  --iac-type cloudformation \
+  --dataset data/cfn_eval_benchmark_real_aws.csv \
+  --provider openrouter --model deepseek/deepseek-v4-flash \
+  --deploy-target aws \
+  --rows 1
+```
+
+The extra column `extraction_method` records whether the model wrapped the template in the requested tags (`iac_template_tags`) or it was recovered by a fallback.
+
+### OpenCode
+
+Needs the [OpenCode](https://opencode.ai) CLI on `PATH` (1.18.30 in the thesis) and `git`. OpenCode reaches the model through an OpenAI-compatible endpoint, OpenRouter by default:
+
+```bash
+python -m baselines.opencode_baseline \
+  --iac-type terraform \
+  --dataset data/tf_eval_benchmark_real_aws.csv \
+  --model deepseek/deepseek-v4-flash \
+  --deploy-target aws \
+  --max-iterations 15 \
+  --rows 1
+```
+
+For another endpoint, pass `--base-url`, `--api-key-env` (the variable holding its key), and `--provider-name`, e.g. `--base-url https://api.deepseek.com --api-key-env DEEPSEEK_API_KEY --provider-name deepseek-direct --model deepseek-v4-flash`. `--provider-name` must not be a provider OpenCode ships with (`deepseek`, `openai`, ...).
+
+Each scenario runs in `runs/<run_id>/workspace`, which is initialised as its own git repository so that OpenCode denies every path outside it. The agent may only read, write, and edit files and call the three tools; it has no shell. A session that still touches a path outside the workspace is recorded as `status=workspace_escape` and counted as a failure. The extra column `final_verdict_source` records how the final template was scored (`recorded`, `deployed_at_finalize`, `revalidated`, or `no_template_produced`). `--scenario-timeout` (default 1800 s) bounds each session, and `--keep-workspace` keeps the agent's files.
+
 ## Datasets
 
 | File | Benchmark | Scenarios |
@@ -263,7 +312,7 @@ Paths in these CSVs are relative to the language folder, e.g. `benchmark/cloudfo
 - **Benchmark**: `RealAWS` (Multi-DPIaC-Eval on live AWS), `DPIaCEval`, `IaCEval`, or `Ablation` (50 scenarios per language on LocalStack); `LintOnly` = IaC-Eval run checked by TFLint and `terraform validate` only
 - **System**: no tag = IaCGen-MAS; `OpenCode` = coding-agent baseline; `OneShot` / `ZeroShot` = zero-shot baseline; `IaCGen` = IaCGen baseline. In the ablation, `IaCGOD` is the full IaCGen-MAS and the other tags name the removed or changed component (`NoPlanner`, `NoDenseRAG`, `NoGraphRAG`, `NoQueryRewrite`, `NoRemediator`, `OpenCodeRetriever`, `TrivyAllSeverities`).
 - **Model**: `DSV4F` DeepSeek-V4-Flash, `GLM53F` GLM-5.3-Flash, `Gemini38F` Gemini-3.8-Flash, `Opus55` Claude-Opus-5.5, `o3mini` o3-mini
-- **Suffix**: `DeployOnly` = deployability-only criterion (no security gate); `L345` = difficulty levels 3–5 only; `PlanOnly` = no deployment and no security gate, a template passes when TFLint, `terraform validate`, and `terraform plan` accept it; `LiveAWS_GLM` = ablation scenarios deployed to live AWS with GLM-5.3-Flash.
+- **Suffix**: `DeployOnly` = deployability-only criterion (no security gate); `L345` = difficulty levels 3–5 only; `PlanOnly` = no deployment and no security gate, a template passes when TFLint, `terraform validate`, and `terraform plan` accept it; `LiveAWS_GLM` = ablation scenarios deployed to live AWS with GLM-5.3-Flash. `FirstAttempt` = the first iteration of the scenarios whose first iteration was blocked by an environment error, run again with one iteration; the repair-loop notebook counts these passes at every passItr@n.
 
 Unless noted, a scenario passes under the joint criterion: no syntax error, no critical or high Trivy finding, and a successful deployment.
 
@@ -282,9 +331,27 @@ Top-level files:
 | `SUMMARY.csv`, `SUMMARY.md` | Pass rates of every experiment. |
 | `repair_loop_summary.csv`, `repair_loop_tables/` | passItr@n, iterations, tokens, and per-error-class resolution statistics. |
 | `_figures/` | Figures generated from these tables. |
-| `_analysis_cache/` | Per-iteration tables parsed from the raw runs, used by the analysis notebooks. |
+| `_analysis_cache/` | Per-iteration tables parsed from the raw runs, and small extracts (`thesis_*.csv`) of the benchmark construction caches, the prior-benchmark audits, the raw runs, and the Terraform Registry categories, used by the analysis notebooks. |
 | `opencode_workspace_audit_*.csv` | Audit of OpenCode runs that read or wrote outside their workspace. |
 | `proxy_tool_use_*.csv` | Audit of tool use in the Claude-Opus-5.5 runs. |
+
+## Intent checks
+
+`analysis/intent_checks/` holds the per-scenario intent checks of the 100 ablation scenarios: a JSON spec per scenario (`specs/<lang>/row_NNN.json`, `NNN` = benchmark `row_number`), the Rego policy generated from it (`policies/`), the shared interpreter (`lib/intent.rego`), and the tools that validate specs and score templates with Open Policy Agent. `analysis/README.md` describes the commands and `analysis/intent_checks/SPEC_BRIEF.md` the spec format.
+
+## Example run
+
+`examples/scenario_S/` holds every agent's inputs and outputs for one run: DeepSeek-V4-Flash on Terraform scenario 229, which fails `terraform validate`, then Trivy, and passes in its third iteration. `examples/README.md` says which file holds which agent's inputs and outputs.
+
+## Thesis appendices
+
+| Appendix | Paths |
+|---|---|
+| Benchmark details | `benchmark/cloudformation/ground_truth/`, `benchmark/terraform/ground_truth/`. CloudFormation scenario 5: `benchmark/cloudformation/ground_truth/cfn_templates/sasmita1005__AWSSAM/sfn-eventbridge/template.yaml`, `analysis/intent_checks/specs/cfn/row_005.json`, `analysis/intent_checks/policies/cfn/row_005.rego`. Terraform scenario 79: `benchmark/terraform/ground_truth/scenarios/terrads_b9c4d791e93e/`, `analysis/intent_checks/specs/tf/row_079.json`, `analysis/intent_checks/policies/tf/row_079.rego`. Shared interpreter: `analysis/intent_checks/lib/intent.rego`. |
+| Agent prompts | `prompts/planner_prompt.py`, `prompts/engineer_prompt.py`, `prompts/retriever_prompt.py`, `prompts/remediator_prompt.py` |
+| Example run | `examples/scenario_S/` |
+| Baseline prompts | `baselines/zeroshot_prompts.py`, `baselines/prompts/cloudformation.md`, `baselines/prompts/terraform.md` |
+| Error categories | `analysis/audit/error_categories.py` |
 
 ## License
 
@@ -294,11 +361,12 @@ Some bundled data comes from third parties and keeps its original license:
 
 | Data | Source | License |
 |---|---|---|
-| `data/iac_eval_benchmark.csv` | [IaC-Eval](https://huggingface.co/datasets/autoiac-project/iac-eval) | CC BY 4.0 |
+| `data/iac_eval_benchmark.csv`, `data/iac_eval/train.parquet`, `analysis/result/final/rego_reference_ceiling/IaCEval_reference_outputs*.csv` | [IaC-Eval](https://huggingface.co/datasets/autoiac-project/iac-eval) | CC BY 4.0 |
 | `data/iac_with_difficulty_levels.csv` | DPIaC-Eval, from [IaCGen](https://github.com/Tianyi2/IaCGen) | Apache-2.0 |
 | Rego policy source in `data/trivy_enriched.csv`, `data/trivy_cfn_policy_map.csv`, `data/security_checks.json`, `analysis/Data/trivy_enriched.csv` | [aquasecurity/trivy-checks](https://github.com/aquasecurity/trivy-checks) | MIT |
 | Check descriptions in `data/avd_scraped.json` and the files above | [Aqua Vulnerability Database](https://avd.aquasec.com/misconfig/aws/) | Aqua Security's terms |
 | `data/cfn_spec.json` | AWS CloudFormation resource specification | AWS's terms |
+| `results/_analysis_cache/thesis_tf_registry_subcategories.csv` | Resource categories of the [Terraform AWS provider documentation](https://registry.terraform.io/providers/hashicorp/aws/latest/docs) | MPL-2.0 |
 | `benchmark/*/ground_truth/`, `analysis/intent_checks/fixtures/` | Reference templates of the benchmark scenarios (and normalised copies of the ablation subset), from the sources below | License of each source |
 
 The Multi-DPIaC-Eval prompts were written for this benchmark and are MIT-licensed with the rest of the repository. Each reference template keeps the license of the repository it came from:

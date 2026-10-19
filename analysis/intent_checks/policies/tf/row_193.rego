@@ -1,4 +1,3 @@
-# GENERATED from specs/tf/row_193.json by intent_checks/build.py -- do not edit.
 package intent.tf.row_193
 
 import rego.v1

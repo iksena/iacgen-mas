@@ -6,9 +6,9 @@ from pathlib import Path
 import pandas as pd
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-PARQUET_PATH = REPO_ROOT / "iac_benchmark" / "iac_eval_hf" / "data" / "train.parquet"
+PARQUET_PATH = REPO_ROOT.parent / "data" / "iac_eval" / "train.parquet"
 BENCHMARK_CSV = REPO_ROOT.parent / "data" / "iac_eval_benchmark.csv"
-AUDIT_OUT = REPO_ROOT / "iac_benchmark" / "dataset" / "iac_eval_satisfiability_audit.csv"
+AUDIT_OUT = REPO_ROOT / "result" / "final" / "iac_eval_satisfiability_audit.csv"
 FILTERED_OUT = REPO_ROOT.parent / "data" / "iac_eval_benchmark_filtered.csv"
 
 LABEL_DEPENDENCY_PATTERN = re.compile(

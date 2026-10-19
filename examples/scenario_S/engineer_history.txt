@@ -1,0 +1,1187 @@
+Agent: engineer
+Run ID: 20260924_122125_d07b61aa
+Updated: 2026-09-24T02:25:55.886048+00:00
+
+Turn 1
+[user]
+Generate the Terraform HCL configuration (main.tf) that fully satisfies all objectives above.
+[assistant]
+terraform {
+  required_version = ">= 1.3.0"
+
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.0"
+    }
+  }
+}
+
+###############################################################################
+# Inputs (non-infrastructure values only)
+###############################################################################
+
+variable "project" {
+  description = "Project name used for naming and tagging of the governance stack."
+  type        = string
+  default     = "service-catalog-governance"
+}
+
+variable "environment" {
+  description = "Environment name (e.g. test, dev, prod) used for tagging."
+  type        = string
+  default     = "test"
+}
+
+variable "external_id" {
+  description = "Optional external ID used to further scope the Service Catalog trust policy. Leave null to skip the sts:ExternalId condition."
+  type        = string
+  default     = null
+}
+
+variable "tags" {
+  description = "Additional tags merged onto every taggable resource in this stack."
+  type        = map(string)
+  default     = {}
+}
+
+###############################################################################
+# Static provider metadata (no pre-existing remote infrastructure)
+###############################################################################
+
+data "aws_caller_identity" "current" {}
+
+data "aws_partition" "current" {}
+
+data "aws_region" "current" {}
+
+locals {
+  common_tags = merge(
+    {
+      Project     = var.project
+      Environment = var.environment
+      ManagedBy   = "terraform"
+    },
+    var.tags
+  )
+}
+
+###############################################################################
+# Service Catalog launch-constraint role
+###############################################################################
+
+data "aws_iam_policy_document" "service_catalog_assume_role" {
+  statement {
+    sid     = "AllowServiceCatalogToAssumeRole"
+    effect  = "Allow"
+    actions = ["sts:AssumeRole"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["servicecatalog.amazonaws.com"]
+    }
+
+    dynamic "condition" {
+      for_each = var.external_id == null ? [] : [var.external_id]
+
+      content {
+        test     = "StringEquals"
+        variable = "sts:ExternalId"
+        values   = [condition.value]
+      }
+    }
+  }
+}
+
+resource "aws_iam_role" "test_role" {
+  name                 = "test_role"
+  description          = "Role assumed by AWS Service Catalog when provisioning products via the launch constraint."
+  assume_role_policy   = data.aws_iam_policy_document.service_catalog_assume_role.json
+  max_session_duration = 3600
+
+  tags = local.common_tags
+}
+
+###############################################################################
+# Artifact bucket used by provisioned products
+###############################################################################
+
+resource "aws_s3_bucket" "artifacts" {
+  bucket        = format("%s-%s-%s-artifacts", var.project, var.environment, data.aws_caller_identity.current.account_id)
+  force_destroy = false
+
+  tags = local.common_tags
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "artifacts" {
+  bucket = aws_s3_bucket.artifacts.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "artifacts" {
+  bucket = aws_s3_bucket.artifacts.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
+resource "aws_s3_bucket_versioning" "artifacts" {
+  bucket = aws_s3_bucket.artifacts.id
+
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+###############################################################################
+# Scoped launch-constraint policy attached to test_role
+###############################################################################
+
+data "aws_iam_policy_document" "launch_constraint" {
+  statement {
+    sid    = "CloudFormationStackProvisioning"
+    effect = "Allow"
+
+    actions = [
+      "cloudformation:CreateStack",
+      "cloudformation:UpdateStack",
+      "cloudformation:DeleteStack",
+      "cloudformation:DescribeStacks",
+      "cloudformation:DescribeStackEvents",
+      "cloudformation:DescribeStackResources",
+      "cloudformation:GetTemplate",
+      "cloudformation:GetTemplateSummary",
+      "cloudformation:ListStackResources",
+      "cloudformation:ValidateTemplate",
+    ]
+
+    resources = [
+      format(
+        "arn:%s:cloudformation:%s:%s:stack/*",
+        data.aws_partition.current.partition,
+        data.aws_region.current.name,
+        data.aws_caller_identity.current.account_id,
+      ),
+    ]
+  }
+
+  statement {
+    sid    = "ArtifactObjectReadWrite"
+    effect = "Allow"
+
+    actions = [
+      "s3:GetObject",
+      "s3:GetObjectVersion",
+      "s3:PutObject",
+      "s3:AbortMultipartUpload",
+    ]
+
+    resources = [
+      format("%s/*", aws_s3_bucket.artifacts.arn),
+    ]
+  }
+
+  statement {
+    sid    = "ArtifactBucketMetadata"
+    effect = "Allow"
+
+    actions = [
+      "s3:ListBucket",
+      "s3:GetBucketLocation",
+    ]
+
+    resources = [
+      aws_s3_bucket.artifacts.arn,
+    ]
+  }
+
+  statement {
+    sid    = "PassRoleToServiceCatalog"
+    effect = "Allow"
+
+    actions = [
+      "iam:PassRole",
+    ]
+
+    resources = [
+      aws_iam_role.test_role.arn,
+    ]
+
+    condition {
+      test     = "StringEquals"
+      variable = "iam:PassedToService"
+      values   = ["servicecatalog.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_policy" "launch_constraint" {
+  name        = "service-catalog-launch-constraint"
+  description = "Scoped permissions used by the Service Catalog launch-constraint role test_role."
+  policy      = data.aws_iam_policy_document.launch_constraint.json
+
+  tags = local.common_tags
+}
+
+resource "aws_iam_role_policy_attachment" "launch_constraint" {
+  role       = aws_iam_role.test_role.name
+  policy_arn = aws_iam_policy.launch_constraint.arn
+}
+
+###############################################################################
+# Governance group with scoped assume-role permissions
+###############################################################################
+
+resource "aws_iam_group" "governance" {
+  name = "test_group"
+  path = "/"
+}
+
+data "aws_iam_policy_document" "group_assume_role" {
+  statement {
+    sid       = "AssumeLaunchConstraintRole"
+    effect    = "Allow"
+    actions   = ["sts:AssumeRole"]
+    resources = [aws_iam_role.test_role.arn]
+  }
+}
+
+resource "aws_iam_group_policy" "assume_launch_role" {
+  name   = "test-group-assume-launch-role"
+  group  = aws_iam_group.governance.name
+  policy = data.aws_iam_policy_document.group_assume_role.json
+}
+
+###############################################################################
+# Console-enabled governance user
+###############################################################################
+
+resource "random_password" "console_password" {
+  length           = 20
+  special          = true
+  override_special = "!#$%&*()-_=+[]{}<>:?"
+  min_lower        = 2
+  min_upper        = 2
+  min_numeric      = 2
+  min_special      = 2
+}
+
+resource "aws_iam_user" "governance" {
+  name          = "test_user"
+  path          = "/"
+  force_destroy = true
+
+  tags = local.common_tags
+}
+
+resource "aws_iam_user_login_profile" "governance" {
+  user                    = aws_iam_user.governance.name
+  password                = random_password.console_password.result
+  password_reset_required = true
+}
+
+resource "aws_iam_group_membership" "governance" {
+  name  = "test-group-membership"
+  users = [aws_iam_user.governance.name]
+  group = aws_iam_group.governance.name
+}
+
+###############################################################################
+# Outputs
+###############################################################################
+
+output "role_name" {
+  description = "Name of the Service Catalog launch-constraint role."
+  value       = aws_iam_role.test_role.name
+}
+
+output "role_arn" {
+  description = "ARN of the Service Catalog launch-constraint role (use as the launch constraint)."
+  value       = aws_iam_role.test_role.arn
+}
+
+output "launch_constraint_policy_arn" {
+  description = "ARN of the scoped launch-constraint policy attached to the role."
+  value       = aws_iam_policy.launch_constraint.arn
+}
+
+output "group_name" {
+  description = "Name of the governance IAM group."
+  value       = aws_iam_group.governance.name
+}
+
+output "group_arn" {
+  description = "ARN of the governance IAM group."
+  value       = aws_iam_group.governance.arn
+}
+
+output "user_name" {
+  description = "Name of the console-enabled governance IAM user."
+  value       = aws_iam_user.governance.name
+}
+
+output "user_arn" {
+  description = "ARN of the console-enabled governance IAM user."
+  value       = aws_iam_user.governance.arn
+}
+
+output "console_login_url" {
+  description = "AWS console sign-in URL for the governance user."
+  value       = format("https://%s.signin.aws.amazon.com/console", data.aws_caller_identity.current.account_id)
+}
+
+output "console_password" {
+  description = "Generated console password for the governance user. Rotate on first login."
+  value       = random_password.console_password.result
+  sensitive   = true
+}
+
+output "artifact_bucket_name" {
+  description = "Name of the S3 bucket used for Service Catalog provisioned product artifacts."
+  value       = aws_s3_bucket.artifacts.bucket
+}
+
+Turn 2
+[user]
+Iteration 1 — The Remediator has analysed the current errors and provided fix objectives below.
+Apply them to the Terraform configuration you last generated.
+
+## Deployment Context (reminder)
+This is a GREENFIELD deployment — no external infrastructure exists.
+Reject any fix objective that introduces data sources querying pre-existing
+remote infrastructure, hardcoded resource IDs, or references to state outside
+this file. Only data sources for static provider metadata or well-known public
+AMI lookups are permitted. Replace any disallowed suggestion with the
+equivalent resource block creation approach.
+Do NOT add a provider block — it is managed by the deployment harness.
+
+## Validation Errors
+### TERRAFORM STRUCTURAL Errors
+**terraform-validate (provider schema):**
+  - [ERROR] | line 286 | Value for unconfigurable attribute | Can't configure a value for "password": its value will be decided automatically based on the result of applying this configuration.
+
+## Remediator RCA and Fix Objectives
+### Root Cause Analysis
+
+- **Single error, single root cause.** The only structural failure is `terraform-validate` rejecting `password` on `aws_iam_user_login_profile.governance` (line 286). The AWS provider marks this attribute as **computed-only**: the login-profile password is generated automatically at apply time and cannot be supplied from configuration.
+- **No Checkov/Trivy errors are present in this iteration**, so there is nothing to consolidate — but the fix must not reintroduce a plaintext secret to satisfy the original "password from `random_password`" objective. Those two goals are mutually exclusive with this resource type: the provider does not accept a user-supplied password.
+- **Downstream consequence of the fix:** once `password` is removed, `random_password.console_password` (and its output reference) has no consumer, and the `console_password` output must instead source the provider-generated value.
+
+### Fix Objectives
+
+1. **Remove the `password` argument from `resource "aws_iam_user_login_profile" "governance"`.** This is the direct cause of the "Value for unconfigurable attribute" error. The attribute is computed-only; the provider generates the password internally on create. Keep `user`, `password_reset_required`, and optionally `password_length` only.
+
+2. **Repoint the `console_password` output to the resource's computed attribute** — i.e. reference `aws_iam_user_login_profile.governance.password` (this attribute is only populated when `pgp_key` is not set, which is the case here). Keep `sensitive = true` so `terraform apply` stays unattended and never writes the secret to the plan/log. Optionally set `password_reset_required = false` for test usability, or leave `true` and document that the emitted value is a first-login temporary credential — either choice avoids re-declaring a configurable password.
+
+3. **Remove the now-orphaned `resource "random_password" "console_password"`** (and its output reference). Since the login-profile password cannot be set from Terraform, this resource has no valid consumer; leaving it in place is dead configuration that will mislead future iterations and can trigger unused-resource lint findings. If a deterministic, retrievable secret is genuinely required later, the correct provider-native mechanism is `pgp_key` on the login profile with an `encrypted_password` output — not a `password` argument — but that is a separate feature, not part of this fix.
+
+4. **Leave the `random` provider declaration in `required_providers` untouched for now** (it is harmless and unused) — do not add or remove providers as part of this change; only the resource and output references above are affected.
+
+5. **Re-run `terraform validate` after the edit** to confirm the sole remaining error class (unconfigurable attribute) is cleared and that no new reference error is introduced by the output rewiring; confirm Checkov/Trivy surface no new findings for the rebuilt login profile.
+
+Rules:
+- Apply every fix objective above to your last configuration.
+- Do not repeat changes already shown as applied in previous turns.
+- The final configuration must also satisfy Original User Request and Grounded Objectives.
+- Output the complete corrected HCL (main.tf).
+
+[assistant]
+terraform {
+  required_version = ">= 1.3.0"
+
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.0"
+    }
+  }
+}
+
+###############################################################################
+# Inputs (non-infrastructure values only)
+###############################################################################
+
+variable "project" {
+  description = "Project name used for naming and tagging of the governance stack."
+  type        = string
+  default     = "service-catalog-governance"
+}
+
+variable "environment" {
+  description = "Environment name (e.g. test, dev, prod) used for tagging."
+  type        = string
+  default     = "test"
+}
+
+variable "external_id" {
+  description = "Optional external ID used to further scope the Service Catalog trust policy. Leave null to skip the sts:ExternalId condition."
+  type        = string
+  default     = null
+}
+
+variable "tags" {
+  description = "Additional tags merged onto every taggable resource in this stack."
+  type        = map(string)
+  default     = {}
+}
+
+###############################################################################
+# Static provider metadata (no pre-existing remote infrastructure)
+###############################################################################
+
+data "aws_caller_identity" "current" {}
+
+data "aws_partition" "current" {}
+
+data "aws_region" "current" {}
+
+locals {
+  common_tags = merge(
+    {
+      Project     = var.project
+      Environment = var.environment
+      ManagedBy   = "terraform"
+    },
+    var.tags
+  )
+}
+
+###############################################################################
+# Service Catalog launch-constraint role
+###############################################################################
+
+data "aws_iam_policy_document" "service_catalog_assume_role" {
+  statement {
+    sid     = "AllowServiceCatalogToAssumeRole"
+    effect  = "Allow"
+    actions = ["sts:AssumeRole"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["servicecatalog.amazonaws.com"]
+    }
+
+    dynamic "condition" {
+      for_each = var.external_id == null ? [] : [var.external_id]
+
+      content {
+        test     = "StringEquals"
+        variable = "sts:ExternalId"
+        values   = [condition.value]
+      }
+    }
+  }
+}
+
+resource "aws_iam_role" "test_role" {
+  name                 = "test_role"
+  description          = "Role assumed by AWS Service Catalog when provisioning products via the launch constraint."
+  assume_role_policy   = data.aws_iam_policy_document.service_catalog_assume_role.json
+  max_session_duration = 3600
+
+  tags = local.common_tags
+}
+
+###############################################################################
+# Artifact bucket used by provisioned products
+###############################################################################
+
+resource "aws_s3_bucket" "artifacts" {
+  bucket        = format("%s-%s-%s-artifacts", var.project, var.environment, data.aws_caller_identity.current.account_id)
+  force_destroy = false
+
+  tags = local.common_tags
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "artifacts" {
+  bucket = aws_s3_bucket.artifacts.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "artifacts" {
+  bucket = aws_s3_bucket.artifacts.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
+resource "aws_s3_bucket_versioning" "artifacts" {
+  bucket = aws_s3_bucket.artifacts.id
+
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+###############################################################################
+# Scoped launch-constraint policy attached to test_role
+###############################################################################
+
+data "aws_iam_policy_document" "launch_constraint" {
+  statement {
+    sid    = "CloudFormationStackProvisioning"
+    effect = "Allow"
+
+    actions = [
+      "cloudformation:CreateStack",
+      "cloudformation:UpdateStack",
+      "cloudformation:DeleteStack",
+      "cloudformation:DescribeStacks",
+      "cloudformation:DescribeStackEvents",
+      "cloudformation:DescribeStackResources",
+      "cloudformation:GetTemplate",
+      "cloudformation:GetTemplateSummary",
+      "cloudformation:ListStackResources",
+      "cloudformation:ValidateTemplate",
+    ]
+
+    resources = [
+      format(
+        "arn:%s:cloudformation:%s:%s:stack/*",
+        data.aws_partition.current.partition,
+        data.aws_region.current.name,
+        data.aws_caller_identity.current.account_id,
+      ),
+    ]
+  }
+
+  statement {
+    sid    = "ArtifactObjectReadWrite"
+    effect = "Allow"
+
+    actions = [
+      "s3:GetObject",
+      "s3:GetObjectVersion",
+      "s3:PutObject",
+      "s3:AbortMultipartUpload",
+    ]
+
+    resources = [
+      format("%s/*", aws_s3_bucket.artifacts.arn),
+    ]
+  }
+
+  statement {
+    sid    = "ArtifactBucketMetadata"
+    effect = "Allow"
+
+    actions = [
+      "s3:ListBucket",
+      "s3:GetBucketLocation",
+    ]
+
+    resources = [
+      aws_s3_bucket.artifacts.arn,
+    ]
+  }
+
+  statement {
+    sid    = "PassRoleToServiceCatalog"
+    effect = "Allow"
+
+    actions = [
+      "iam:PassRole",
+    ]
+
+    resources = [
+      aws_iam_role.test_role.arn,
+    ]
+
+    condition {
+      test     = "StringEquals"
+      variable = "iam:PassedToService"
+      values   = ["servicecatalog.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_policy" "launch_constraint" {
+  name        = "service-catalog-launch-constraint"
+  description = "Scoped permissions used by the Service Catalog launch-constraint role test_role."
+  policy      = data.aws_iam_policy_document.launch_constraint.json
+
+  tags = local.common_tags
+}
+
+resource "aws_iam_role_policy_attachment" "launch_constraint" {
+  role       = aws_iam_role.test_role.name
+  policy_arn = aws_iam_policy.launch_constraint.arn
+}
+
+###############################################################################
+# Governance group with scoped assume-role permissions
+###############################################################################
+
+resource "aws_iam_group" "governance" {
+  name = "test_group"
+  path = "/"
+}
+
+data "aws_iam_policy_document" "group_assume_role" {
+  statement {
+    sid       = "AssumeLaunchConstraintRole"
+    effect    = "Allow"
+    actions   = ["sts:AssumeRole"]
+    resources = [aws_iam_role.test_role.arn]
+  }
+}
+
+resource "aws_iam_group_policy" "assume_launch_role" {
+  name   = "test-group-assume-launch-role"
+  group  = aws_iam_group.governance.name
+  policy = data.aws_iam_policy_document.group_assume_role.json
+}
+
+###############################################################################
+# Console-enabled governance user
+###############################################################################
+
+resource "aws_iam_user" "governance" {
+  name          = "test_user"
+  path          = "/"
+  force_destroy = true
+
+  tags = local.common_tags
+}
+
+# The AWS provider generates the console password internally at apply time and
+# exposes it as the computed attribute `password` (only populated when
+# `pgp_key` is not set). The value is a first-login temporary credential
+# because `password_reset_required` is true.
+resource "aws_iam_user_login_profile" "governance" {
+  user                    = aws_iam_user.governance.name
+  password_length         = 20
+  password_reset_required = true
+}
+
+resource "aws_iam_group_membership" "governance" {
+  name  = "test-group-membership"
+  users = [aws_iam_user.governance.name]
+  group = aws_iam_group.governance.name
+}
+
+###############################################################################
+# Outputs
+###############################################################################
+
+output "role_name" {
+  description = "Name of the Service Catalog launch-constraint role."
+  value       = aws_iam_role.test_role.name
+}
+
+output "role_arn" {
+  description = "ARN of the Service Catalog launch-constraint role (use as the launch constraint)."
+  value       = aws_iam_role.test_role.arn
+}
+
+output "launch_constraint_policy_arn" {
+  description = "ARN of the scoped launch-constraint policy attached to the role."
+  value       = aws_iam_policy.launch_constraint.arn
+}
+
+output "group_name" {
+  description = "Name of the governance IAM group."
+  value       = aws_iam_group.governance.name
+}
+
+output "group_arn" {
+  description = "ARN of the governance IAM group."
+  value       = aws_iam_group.governance.arn
+}
+
+output "user_name" {
+  description = "Name of the console-enabled governance IAM user."
+  value       = aws_iam_user.governance.name
+}
+
+output "user_arn" {
+  description = "ARN of the console-enabled governance IAM user."
+  value       = aws_iam_user.governance.arn
+}
+
+output "console_login_url" {
+  description = "AWS console sign-in URL for the governance user."
+  value       = format("https://%s.signin.aws.amazon.com/console", data.aws_caller_identity.current.account_id)
+}
+
+output "console_password" {
+  description = "Provider-generated first-login password for the governance user. Marked sensitive so it is never written to plan output; the user must reset it on first login."
+  value       = aws_iam_user_login_profile.governance.password
+  sensitive   = true
+}
+
+output "artifact_bucket_name" {
+  description = "Name of the S3 bucket used for Service Catalog provisioned product artifacts."
+  value       = aws_s3_bucket.artifacts.bucket
+}
+
+Turn 3
+[user]
+Iteration 2 — The Remediator has analysed the current errors and provided fix objectives below.
+Apply them to the Terraform configuration you last generated.
+
+## Deployment Context (reminder)
+This is a GREENFIELD deployment — no external infrastructure exists.
+Reject any fix objective that introduces data sources querying pre-existing
+remote infrastructure, hardcoded resource IDs, or references to state outside
+this file. Only data sources for static provider metadata or well-known public
+AMI lookups are permitted. Replace any disallowed suggestion with the
+equivalent resource block creation approach.
+Do NOT add a provider block — it is managed by the deployment harness.
+
+## Validation Errors
+### TRIVY Errors
+  - [AWS-0132] HIGH: S3 encryption should use Customer Managed Keys — Bucket does not encrypt data with a customer managed key.
+
+## Remediator RCA and Fix Objectives
+### Root Cause Analysis
+
+- **Single finding, single root cause.** Iteration 1's `terraform validate` error is resolved (the `password` argument is gone). The only outstanding issue is a **Trivy AWS-0132 (HIGH)** finding: the artifacts bucket's default encryption uses `sse_algorithm = "AES256"` (SSE-S3 / AWS-managed keys), which the policy treats as "no customer managed key." The Rego rule fails when `bucket.encryption.kmskeyid` is empty — so the fix is to introduce a real CMK and point `kms_master_key_id` at it.
+- **No Checkov errors and no structural errors are present**, so nothing to consolidate. The fix is additive: one new KMS resource plus an edit to the existing encryption configuration.
+- **Downstream correctness consequence (not a validator error, but must be handled):** once objects are encrypted with SSE-KMS, the `test_role` launch-constraint role needs `kms:Decrypt` / `kms:GenerateDataKey` / `kms:DescribeKey` on that key, otherwise its `s3:GetObject` / `s3:PutObject` grants will fail at runtime. This is part of the same logical fix even though only the encryption line is flagged.
+
+### Fix Objectives
+
+1. **Create a customer managed key for the artifacts bucket** as a new `resource "aws_kms_key"` block (e.g. label `artifacts`). This is the object the encryption config will reference; do not introduce any hardcoded key ARNs or account IDs.
+
+2. **Apply KMS hardening attributes on the key**: `description` referencing the artifacts bucket, `deletion_window_in_days` (e.g. 7 for a test stack), and `enable_key_rotation = true`. Add `tags = local.common_tags` so the key participates in the stack's tagging convention. This satisfies the CMK intent and is the expected best-practice companion to the AWS-0132 fix rather than a suppression.
+
+3. **Optionally add an `aws_kms_alias`** (e.g. `alias/<project>-<environment>-artifacts`) pointing at the key ARN, so downstream Service Catalog/test tooling can reference a stable, human-readable name. This is optional but recommended; it must use `aws_kms_key.artifacts.arn`, never a literal.
+
+4. **Update the existing `aws_s3_bucket_server_side_encryption_configuration.artifacts` rule** so `apply_server_side_encryption_by_default` sets `sse_algorithm = "aws:kms"` and `kms_master_key_id = aws_kms_key.artifacts.arn`. This is the direct fix for the AWS-0132 finding — it converts the "empty kmskeyid" state into a CMK-backed state.
+
+5. **Add `bucket_key_enabled = true`** to that same SSE rule block. It keeps the CMK requirement satisfied while reducing KMS API call cost/volume for S3 traffic (S3 Bucket Keys), which is the recommended pairing for SSE-KMS on a data bucket.
+
+6. **Extend the `data.aws_iam_policy_document.launch_constraint` policy document with a KMS statement** granting the launch-constraint role the operations it now needs against the CMK: `kms:Decrypt`, `kms:GenerateDataKey`, and `kms:DescribeKey`. Scope `resources` to `aws_kms_key.artifacts.arn` only (no `"*"` resource, no wildcard action pairing). Without this the role cannot read/write the now-KMS-encrypted objects it was already granted `s3:*Object` access to.
+
+7. **Do not add a restrictive inline KMS key policy that blocks the role/account.** The default key policy grants the account root full use of the key, which is sufficient for the S3 service to encrypt/decrypt on behalf of the role. If a key policy statement is added for defense-in-depth, derive the principal with `data.aws_caller_identity.current.account_id` (or build the root ARN via `format("arn:%s:iam::%s:root", data.aws_partition.current.partition, data.aws_caller_identity.current.account_id)`) — never a hardcoded account number.
+
+8. **Add an output for the CMK** (e.g. `kms_key_arn` = `aws_kms_key.artifacts.arn`, plus optionally the alias) so Service Catalog product/portfolio configuration and downstream tests can reference the key. Follow the existing output style; do not mark it sensitive.
+
+9. **Re-run Terraform validate, Checkov, and Trivy** after the change to confirm AWS-0132 clears, the validate stage stays clean, and no new finding (e.g. KMS key rotation, key deletion window) is introduced by the added resources.
+
+Rules:
+- Apply every fix objective above to your last configuration.
+- Do not repeat changes already shown as applied in previous turns.
+- The final configuration must also satisfy Original User Request and Grounded Objectives.
+- Output the complete corrected HCL (main.tf).
+
+[assistant]
+terraform {
+  required_version = ">= 1.3.0"
+
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.0"
+    }
+  }
+}
+
+###############################################################################
+# Inputs (non-infrastructure values only)
+###############################################################################
+
+variable "project" {
+  description = "Project name used for naming and tagging of the governance stack."
+  type        = string
+  default     = "service-catalog-governance"
+}
+
+variable "environment" {
+  description = "Environment name (e.g. test, dev, prod) used for tagging."
+  type        = string
+  default     = "test"
+}
+
+variable "external_id" {
+  description = "Optional external ID used to further scope the Service Catalog trust policy. Leave null to skip the sts:ExternalId condition."
+  type        = string
+  default     = null
+}
+
+variable "tags" {
+  description = "Additional tags merged onto every taggable resource in this stack."
+  type        = map(string)
+  default     = {}
+}
+
+###############################################################################
+# Static provider metadata (no pre-existing remote infrastructure)
+###############################################################################
+
+data "aws_caller_identity" "current" {}
+
+data "aws_partition" "current" {}
+
+data "aws_region" "current" {}
+
+locals {
+  common_tags = merge(
+    {
+      Project     = var.project
+      Environment = var.environment
+      ManagedBy   = "terraform"
+    },
+    var.tags
+  )
+}
+
+###############################################################################
+# Service Catalog launch-constraint role
+###############################################################################
+
+data "aws_iam_policy_document" "service_catalog_assume_role" {
+  statement {
+    sid     = "AllowServiceCatalogToAssumeRole"
+    effect  = "Allow"
+    actions = ["sts:AssumeRole"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["servicecatalog.amazonaws.com"]
+    }
+
+    dynamic "condition" {
+      for_each = var.external_id == null ? [] : [var.external_id]
+
+      content {
+        test     = "StringEquals"
+        variable = "sts:ExternalId"
+        values   = [condition.value]
+      }
+    }
+  }
+}
+
+resource "aws_iam_role" "test_role" {
+  name                 = "test_role"
+  description          = "Role assumed by AWS Service Catalog when provisioning products via the launch constraint."
+  assume_role_policy   = data.aws_iam_policy_document.service_catalog_assume_role.json
+  max_session_duration = 3600
+
+  tags = local.common_tags
+}
+
+###############################################################################
+# Customer managed key for the artifacts bucket (SSE-KMS)
+###############################################################################
+
+resource "aws_kms_key" "artifacts" {
+  description             = "CMK used to encrypt Service Catalog provisioned product artifacts in the ${aws_s3_bucket.artifacts.bucket} bucket."
+  deletion_window_in_days = 7
+  enable_key_rotation     = true
+
+  tags = local.common_tags
+}
+
+resource "aws_kms_alias" "artifacts" {
+  name          = format("alias/%s-%s-artifacts", var.project, var.environment)
+  target_key_id = aws_kms_key.artifacts.key_id
+}
+
+###############################################################################
+# Artifact bucket used by provisioned products
+###############################################################################
+
+resource "aws_s3_bucket" "artifacts" {
+  bucket        = format("%s-%s-%s-artifacts", var.project, var.environment, data.aws_caller_identity.current.account_id)
+  force_destroy = false
+
+  tags = local.common_tags
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "artifacts" {
+  bucket = aws_s3_bucket.artifacts.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "artifacts" {
+  bucket = aws_s3_bucket.artifacts.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm     = "aws:kms"
+      kms_master_key_id = aws_kms_key.artifacts.arn
+    }
+
+    bucket_key_enabled = true
+  }
+}
+
+resource "aws_s3_bucket_versioning" "artifacts" {
+  bucket = aws_s3_bucket.artifacts.id
+
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+###############################################################################
+# Scoped launch-constraint policy attached to test_role
+###############################################################################
+
+data "aws_iam_policy_document" "launch_constraint" {
+  statement {
+    sid    = "CloudFormationStackProvisioning"
+    effect = "Allow"
+
+    actions = [
+      "cloudformation:CreateStack",
+      "cloudformation:UpdateStack",
+      "cloudformation:DeleteStack",
+      "cloudformation:DescribeStacks",
+      "cloudformation:DescribeStackEvents",
+      "cloudformation:DescribeStackResources",
+      "cloudformation:GetTemplate",
+      "cloudformation:GetTemplateSummary",
+      "cloudformation:ListStackResources",
+      "cloudformation:ValidateTemplate",
+    ]
+
+    resources = [
+      format(
+        "arn:%s:cloudformation:%s:%s:stack/*",
+        data.aws_partition.current.partition,
+        data.aws_region.current.name,
+        data.aws_caller_identity.current.account_id,
+      ),
+    ]
+  }
+
+  statement {
+    sid    = "ArtifactObjectReadWrite"
+    effect = "Allow"
+
+    actions = [
+      "s3:GetObject",
+      "s3:GetObjectVersion",
+      "s3:PutObject",
+      "s3:AbortMultipartUpload",
+    ]
+
+    resources = [
+      format("%s/*", aws_s3_bucket.artifacts.arn),
+    ]
+  }
+
+  statement {
+    sid    = "ArtifactBucketMetadata"
+    effect = "Allow"
+
+    actions = [
+      "s3:ListBucket",
+      "s3:GetBucketLocation",
+    ]
+
+    resources = [
+      aws_s3_bucket.artifacts.arn,
+    ]
+  }
+
+  statement {
+    sid    = "ArtifactBucketKmsAccess"
+    effect = "Allow"
+
+    actions = [
+      "kms:Decrypt",
+      "kms:GenerateDataKey",
+      "kms:DescribeKey",
+    ]
+
+    resources = [
+      aws_kms_key.artifacts.arn,
+    ]
+  }
+
+  statement {
+    sid    = "PassRoleToServiceCatalog"
+    effect = "Allow"
+
+    actions = [
+      "iam:PassRole",
+    ]
+
+    resources = [
+      aws_iam_role.test_role.arn,
+    ]
+
+    condition {
+      test     = "StringEquals"
+      variable = "iam:PassedToService"
+      values   = ["servicecatalog.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_policy" "launch_constraint" {
+  name        = "service-catalog-launch-constraint"
+  description = "Scoped permissions used by the Service Catalog launch-constraint role test_role."
+  policy      = data.aws_iam_policy_document.launch_constraint.json
+
+  tags = local.common_tags
+}
+
+resource "aws_iam_role_policy_attachment" "launch_constraint" {
+  role       = aws_iam_role.test_role.name
+  policy_arn = aws_iam_policy.launch_constraint.arn
+}
+
+###############################################################################
+# Governance group with scoped assume-role permissions
+###############################################################################
+
+resource "aws_iam_group" "governance" {
+  name = "test_group"
+  path = "/"
+}
+
+data "aws_iam_policy_document" "group_assume_role" {
+  statement {
+    sid       = "AssumeLaunchConstraintRole"
+    effect    = "Allow"
+    actions   = ["sts:AssumeRole"]
+    resources = [aws_iam_role.test_role.arn]
+  }
+}
+
+resource "aws_iam_group_policy" "assume_launch_role" {
+  name   = "test-group-assume-launch-role"
+  group  = aws_iam_group.governance.name
+  policy = data.aws_iam_policy_document.group_assume_role.json
+}
+
+###############################################################################
+# Console-enabled governance user
+###############################################################################
+
+resource "aws_iam_user" "governance" {
+  name          = "test_user"
+  path          = "/"
+  force_destroy = true
+
+  tags = local.common_tags
+}
+
+# The AWS provider generates the console password internally at apply time and
+# exposes it as the computed attribute `password` (only populated when
+# `pgp_key` is not set). The value is a first-login temporary credential
+# because `password_reset_required` is true.
+resource "aws_iam_user_login_profile" "governance" {
+  user                    = aws_iam_user.governance.name
+  password_length         = 20
+  password_reset_required = true
+}
+
+resource "aws_iam_group_membership" "governance" {
+  name  = "test-group-membership"
+  users = [aws_iam_user.governance.name]
+  group = aws_iam_group.governance.name
+}
+
+###############################################################################
+# Outputs
+###############################################################################
+
+output "role_name" {
+  description = "Name of the Service Catalog launch-constraint role."
+  value       = aws_iam_role.test_role.name
+}
+
+output "role_arn" {
+  description = "ARN of the Service Catalog launch-constraint role (use as the launch constraint)."
+  value       = aws_iam_role.test_role.arn
+}
+
+output "launch_constraint_policy_arn" {
+  description = "ARN of the scoped launch-constraint policy attached to the role."
+  value       = aws_iam_policy.launch_constraint.arn
+}
+
+output "group_name" {
+  description = "Name of the governance IAM group."
+  value       = aws_iam_group.governance.name
+}
+
+output "group_arn" {
+  description = "ARN of the governance IAM group."
+  value       = aws_iam_group.governance.arn
+}
+
+output "user_name" {
+  description = "Name of the console-enabled governance IAM user."
+  value       = aws_iam_user.governance.name
+}
+
+output "user_arn" {
+  description = "ARN of the console-enabled governance IAM user."
+  value       = aws_iam_user.governance.arn
+}
+
+output "console_login_url" {
+  description = "AWS console sign-in URL for the governance user."
+  value       = format("https://%s.signin.aws.amazon.com/console", data.aws_caller_identity.current.account_id)
+}
+
+output "console_password" {
+  description = "Provider-generated first-login password for the governance user. Marked sensitive so it is never written to plan output; the user must reset it on first login."
+  value       = aws_iam_user_login_profile.governance.password
+  sensitive   = true
+}
+
+output "artifact_bucket_name" {
+  description = "Name of the S3 bucket used for Service Catalog provisioned product artifacts."
+  value       = aws_s3_bucket.artifacts.bucket
+}
+
+output "kms_key_arn" {
+  description = "ARN of the customer managed key used for artifact bucket encryption."
+  value       = aws_kms_key.artifacts.arn
+}
+
+output "kms_key_alias" {
+  description = "Alias of the customer managed key used for artifact bucket encryption."
+  value       = aws_kms_alias.artifacts.name
+}

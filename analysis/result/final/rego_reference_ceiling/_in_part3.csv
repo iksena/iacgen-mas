@@ -1,0 +1,6835 @@
+row_number,final_template
+3,"terraform {
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.75""
+      configuration_aliases = [ aws.main, aws.us_east, aws.eu_central, aws.ap_southeast ]
+    }
+  }
+}
+
+
+provider ""aws"" {
+  alias = ""main""
+  region = ""us-west-2"" 
+
+  profile = ""admin-1""
+
+  assume_role {
+    role_arn = ""arn:aws:iam::590184057477:role/yicun-iac""
+  }
+}
+
+provider ""aws"" {
+  alias  = ""us_east""
+  region = ""us-east-1"" # Example region for US East
+
+  profile = ""admin-1""
+
+  assume_role {
+    role_arn = ""arn:aws:iam::590184057477:role/yicun-iac""
+  }
+}
+
+provider ""aws"" {
+  alias  = ""eu_central""
+  region = ""eu-central-1"" # Example region for EU Central
+
+  profile = ""admin-1""
+
+  assume_role {
+    role_arn = ""arn:aws:iam::590184057477:role/yicun-iac""
+  }
+}
+
+provider ""aws"" {
+  alias  = ""ap_southeast""
+  region = ""ap-southeast-1"" # Example region for AP Southeast
+
+  profile = ""admin-1""
+
+  assume_role {
+    role_arn = ""arn:aws:iam::590184057477:role/yicun-iac""
+  }
+}
+
+resource ""aws_db_instance"" ""primary"" {
+  provider = aws.main
+  identifier = ""master""
+  allocated_storage    = 20
+  engine               = ""postgres""
+  instance_class       = ""db.t3.micro""
+  username             = ""dbadmin""
+  password             = ""your_password_here""
+  skip_final_snapshot  = true
+  backup_retention_period  = 7
+}
+
+resource ""aws_db_instance"" ""replica_us_east"" {
+  provider             = aws.us_east
+  replicate_source_db  = aws_db_instance.primary.arn
+  instance_class       = ""db.t3.micro""
+  identifier           = ""mydb-replica-us-east""
+  skip_final_snapshot  = true
+}
+
+resource ""aws_db_instance"" ""replica_eu_central"" {
+  provider             = aws.eu_central
+  replicate_source_db  = aws_db_instance.primary.arn
+  instance_class       = ""db.t3.micro""
+  identifier           = ""mydb-replica-eu-central""
+  skip_final_snapshot  = true
+}
+
+resource ""aws_db_instance"" ""replica_ap_southeast"" {
+  provider             = aws.ap_southeast
+  replicate_source_db  = aws_db_instance.primary.arn
+  
+  instance_class       = ""db.t3.micro""
+  identifier           = ""mydb-replica-ap-southeast""
+  skip_final_snapshot  = true
+}
+
+# Route53 Hosted Zone
+resource ""aws_route53_zone"" ""main"" {
+  provider = aws.main
+  name = ""example53.com""
+}
+
+
+# Route53 Records for each RDS Read Replica with a Weighted Routing Policy
+resource ""aws_route53_record"" ""replica_us_east_cname"" {
+  provider = aws.main
+
+  zone_id = aws_route53_zone.main.zone_id
+  name    = ""us.east.example53.com""
+  type    = ""CNAME""
+  records = [aws_db_instance.replica_us_east.endpoint]
+  ttl     = ""60""
+  weighted_routing_policy {
+    weight = 30
+  }
+  set_identifier = ""replica-us-east""
+}
+
+resource ""aws_route53_record"" ""replica_eu_central_cname"" {
+  provider = aws.main
+
+  zone_id = aws_route53_zone.main.zone_id
+  name    = ""eu.central.example53.com""
+  type    = ""CNAME""
+  records = [aws_db_instance.replica_eu_central.endpoint]
+  ttl     = ""60""
+  weighted_routing_policy {
+    weight = 30
+  }
+  set_identifier = ""replica-eu-central""
+}
+
+resource ""aws_route53_record"" ""replica_ap_southeast_cname"" {
+  provider = aws.main
+
+  zone_id = aws_route53_zone.main.zone_id
+  name    = ""ap.southeast.example53.com""
+  type    = ""CNAME""
+  records = [aws_db_instance.replica_ap_southeast.endpoint]
+  ttl     = ""60""
+  weighted_routing_policy {
+    weight = 30
+  }
+  set_identifier = ""replica-ap-southeast""
+}"
+7,"terraform {
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.75""
+    }
+  }
+}
+
+provider ""aws"" {
+  region  = ""us-east-1""
+  profile = ""admin-1""
+
+  assume_role {
+    role_arn = ""arn:aws:iam::590184057477:role/yicun-iac""
+  }
+}
+
+resource ""aws_iam_role"" ""eb_ec2_role"" {
+  name = ""elastic_beanstalk_ec2_role_eb1""
+
+  assume_role_policy = jsonencode({
+    Version = ""2012-10-17"",
+    Statement = [
+      {
+        Action = ""sts:AssumeRole"",
+        Effect = ""Allow"",
+        Principal = {
+          Service = ""ec2.amazonaws.com""
+        },
+      },
+    ]
+  })
+}
+
+# Attach the AWS managed policy for Elastic Beanstalk to the role
+resource ""aws_iam_role_policy_attachment"" ""eb_managed_policy"" {
+  role       = aws_iam_role.eb_ec2_role.name
+  policy_arn = ""arn:aws:iam::aws:policy/AWSElasticBeanstalkWebTier""
+}
+
+
+# Create an instance profile tied to the role
+resource ""aws_iam_instance_profile"" ""eb_ec2_profile"" {
+  name = ""elastic_beanstalk_ec2_profile""
+  role = aws_iam_role.eb_ec2_role.name
+}
+
+
+resource ""aws_elastic_beanstalk_application"" ""my_api_app"" {
+  name        = ""MyAPIApplication""
+}
+
+resource ""aws_elastic_beanstalk_environment"" ""my_api_env"" {
+  name                = ""MyApiEnvironment""
+  application         = aws_elastic_beanstalk_application.my_api_app.name
+  solution_stack_name = ""64bit Amazon Linux 2023 v4.3.0 running Python 3.9""
+
+  # Configure scaling triggers based on CPU usage
+  setting {
+    namespace = ""aws:autoscaling:trigger""
+    name      = ""MeasureName""
+    value     = ""CPUUtilization""
+  }
+
+  setting {
+    namespace = ""aws:autoscaling:trigger""
+    name      = ""Statistic""
+    value     = ""Average""
+  }
+
+  setting {
+    namespace = ""aws:autoscaling:trigger""
+    name      = ""Unit""
+    value     = ""Percent""
+  }
+
+  setting {
+    namespace = ""aws:autoscaling:trigger""
+    name      = ""UpperThreshold""
+    value     = ""75""  
+  }
+
+  setting {
+    namespace = ""aws:autoscaling:trigger""
+    name      = ""LowerThreshold""
+    value     = ""25""  
+  }
+
+  setting {
+    namespace = ""aws:autoscaling:asg""
+    name      = ""MinSize""
+    value     = ""1""   
+  }
+
+  setting {
+    namespace = ""aws:autoscaling:asg""
+    name      = ""MaxSize""
+    value     = ""5""    
+  }
+
+  setting {
+      namespace = ""aws:autoscaling:launchconfiguration""
+      name      = ""IamInstanceProfile""
+      value     = aws_iam_instance_profile.eb_ec2_profile.name
+    }
+
+}
+"
+11,"terraform {
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.75""
+    }
+  }
+}
+
+
+provider ""aws"" {
+  region  = ""us-east-1""
+  profile = ""admin-1""
+
+  assume_role {
+    role_arn = ""arn:aws:iam::590184057477:role/yicun-iac""
+  }
+}
+
+resource ""aws_iam_role"" ""eb_ec2_role"" {
+  name = ""elastic_beanstalk_ec2_role""
+
+  assume_role_policy = jsonencode({
+    Version = ""2012-10-17"",
+    Statement = [
+      {
+        Action = ""sts:AssumeRole"",
+        Effect = ""Allow"",
+        Principal = {
+          Service = ""ec2.amazonaws.com""
+        },
+      },
+    ]
+  })
+}
+
+# Attach the AWS managed policy for Elastic Beanstalk to the role
+resource ""aws_iam_role_policy_attachment"" ""eb_managed_policy"" {
+  role       = aws_iam_role.eb_ec2_role.name
+  policy_arn = ""arn:aws:iam::aws:policy/AWSElasticBeanstalkWebTier""
+}
+
+
+# Create an instance profile tied to the role
+resource ""aws_iam_instance_profile"" ""eb_ec2_profile"" {
+  name = ""elastic_beanstalk_ec2_profile""
+  role = aws_iam_role.eb_ec2_role.name
+}
+
+# Assuming you have a hosted zone for your domain in Route 53.
+# Route 53 Hosted Zone
+resource ""aws_route53_zone"" ""main"" {
+  name = ""example56.com""
+}
+
+# DNS Record to point to the Elastic Beanstalk environment
+resource ""aws_route53_record"" ""www"" {
+  zone_id = aws_route53_zone.main.zone_id
+  name    = ""app.example56.com""
+  type    = ""CNAME""
+  ttl     = 60
+  records = [aws_elastic_beanstalk_environment.eb-env.cname]
+}
+
+resource ""aws_s3_bucket"" ""sample_bucket"" {
+  bucket_prefix = ""sample-""
+}
+
+resource ""aws_s3_object"" ""examplebucket_object"" {
+  key    = ""randofile""
+  bucket = aws_s3_bucket.sample_bucket.id
+  source = ""./supplement/app.zip""
+}
+
+# Define the Elastic Beanstalk application
+resource ""aws_elastic_beanstalk_application"" ""myapp"" {
+  name        = ""something-application""
+}
+
+# Define the Elastic Beanstalk application version
+resource ""aws_elastic_beanstalk_application_version"" ""version"" {
+  name        = ""app-version""
+  application = aws_elastic_beanstalk_application.myapp.name
+  bucket = aws_s3_object.examplebucket_object.bucket
+  key    = aws_s3_object.examplebucket_object.key
+}
+
+
+# Elastic Beanstalk environment
+resource ""aws_elastic_beanstalk_environment"" ""eb-env"" {
+  name                = ""awesomeenv""
+  application         = aws_elastic_beanstalk_application.myapp.name
+  solution_stack_name = ""64bit Amazon Linux 2023 v4.3.0 running Python 3.9""
+  version_label = aws_elastic_beanstalk_application_version.version.name
+
+  setting {
+    namespace = ""aws:autoscaling:launchconfiguration""
+    name      = ""IamInstanceProfile""
+    value     = aws_iam_instance_profile.eb_ec2_profile.name
+  }
+}"
+15,"terraform {
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.75""
+    }
+  }
+}
+
+
+provider ""aws"" {
+  region  = ""us-east-1""
+  profile = ""admin-1""
+
+  assume_role {
+    role_arn = ""arn:aws:iam::590184057477:role/yicun-iac""
+  }
+}
+
+resource ""aws_iam_role"" ""eb_ec2_role"" {
+  name = ""elastic_beanstalk_ec2_role""
+
+  assume_role_policy = jsonencode({
+    Version = ""2012-10-17"",
+    Statement = [
+      {
+        Action = ""sts:AssumeRole"",
+        Effect = ""Allow"",
+        Principal = {
+          Service = ""ec2.amazonaws.com""
+        },
+      },
+    ]
+  })
+}
+
+# Attach the AWS managed policy for Elastic Beanstalk to the role
+resource ""aws_iam_role_policy_attachment"" ""eb_managed_policy"" {
+  role       = aws_iam_role.eb_ec2_role.name
+  policy_arn = ""arn:aws:iam::aws:policy/AWSElasticBeanstalkWebTier""
+}
+
+
+# Create an instance profile tied to the role
+resource ""aws_iam_instance_profile"" ""eb_ec2_profile"" {
+  name = ""elastic_beanstalk_ec2_profile""
+  role = aws_iam_role.eb_ec2_role.name
+}
+
+
+# RDS Database for Production
+resource ""aws_db_instance"" ""prod_db"" {
+  allocated_storage    = 20
+  storage_type         = ""gp2""
+  engine               = ""mysql""
+  engine_version       = ""5.7""
+  instance_class       = ""db.t3.micro""
+  username             = ""dbuser""
+  password             = ""prodsecret""
+  parameter_group_name = ""default.mysql5.7""
+  skip_final_snapshot  = true
+  identifier = ""production""
+}
+
+# Elastic Beanstalk Application
+resource ""aws_elastic_beanstalk_application"" ""my_app"" {
+  name        = ""my-app""
+  description = ""My awesome application""
+}
+
+# Elastic Beanstalk Environment for Production
+resource ""aws_elastic_beanstalk_environment"" ""prod_env"" {
+  name                = ""my-app-prod""
+  application         = aws_elastic_beanstalk_application.my_app.name
+  solution_stack_name = ""64bit Amazon Linux 2023 v4.3.0 running Python 3.9""
+
+  setting {
+    namespace = ""aws:elasticbeanstalk:application:environment""
+    name      = ""DB_HOST""
+    value     = aws_db_instance.prod_db.address
+  }
+
+  setting {
+    namespace = ""aws:elasticbeanstalk:application:environment""
+    name      = ""DB_USERNAME""
+    value     = aws_db_instance.prod_db.username
+  }
+
+  setting {
+    namespace = ""aws:elasticbeanstalk:application:environment""
+    name      = ""DB_PASSWORD""
+    value     = aws_db_instance.prod_db.password
+  }
+
+  setting {
+      namespace = ""aws:autoscaling:launchconfiguration""
+      name      = ""IamInstanceProfile""
+      value     = aws_iam_instance_profile.eb_ec2_profile.name
+    }
+}
+
+# RDS Database for Staging
+resource ""aws_db_instance"" ""staging_db"" {
+  allocated_storage    = 10
+  storage_type         = ""gp2""
+  engine               = ""mysql""
+  engine_version       = ""5.7""
+  instance_class       = ""db.t3.micro""
+  username             = ""dbuser""
+  password             = ""stagingsecret""
+  parameter_group_name = ""default.mysql5.7""
+  skip_final_snapshot  = true
+  identifier = ""staging""
+}
+
+# Elastic Beanstalk Environment for Staging
+resource ""aws_elastic_beanstalk_environment"" ""staging_env"" {
+  name                = ""my-app-staging""
+  application         = aws_elastic_beanstalk_application.my_app.name
+  solution_stack_name = ""64bit Amazon Linux 2023 v4.3.0 running Python 3.9""
+
+  setting {
+    namespace = ""aws:elasticbeanstalk:application:environment""
+    name      = ""DB_HOST""
+    value     = aws_db_instance.staging_db.address
+  }
+
+  setting {
+    namespace = ""aws:elasticbeanstalk:application:environment""
+    name      = ""DB_USERNAME""
+    value     = aws_db_instance.staging_db.username
+  }
+
+  setting {
+    namespace = ""aws:elasticbeanstalk:application:environment""
+    name      = ""DB_PASSWORD""
+    value     = aws_db_instance.staging_db.password
+  }
+
+  setting {
+    namespace = ""aws:autoscaling:launchconfiguration""
+    name      = ""IamInstanceProfile""
+    value     = aws_iam_instance_profile.eb_ec2_profile.name
+  }
+}"
+19,"terraform {
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.75""
+    }
+  }
+}
+
+
+provider ""aws"" {
+  region  = ""us-east-1""
+  profile = ""admin-1""
+
+  assume_role {
+    role_arn = ""arn:aws:iam::590184057477:role/yicun-iac""
+  }
+}
+
+resource ""aws_iam_role"" ""eb_ec2_role"" {
+  name = ""elastic_beanstalk_ec2_role""
+
+  assume_role_policy = jsonencode({
+    Version = ""2012-10-17"",
+    Statement = [
+      {
+        Action = ""sts:AssumeRole"",
+        Effect = ""Allow"",
+        Principal = {
+          Service = ""ec2.amazonaws.com""
+        },
+      },
+    ]
+  })
+}
+
+# Attach the AWS managed policy for Elastic Beanstalk to the role
+resource ""aws_iam_role_policy_attachment"" ""eb_managed_policy"" {
+  role       = aws_iam_role.eb_ec2_role.name
+  policy_arn = ""arn:aws:iam::aws:policy/AWSElasticBeanstalkWebTier""
+}
+
+# Create an instance profile tied to the role
+resource ""aws_iam_instance_profile"" ""eb_ec2_profile"" {
+  name = ""elastic_beanstalk_ec2_profile""
+  role = aws_iam_role.eb_ec2_role.name
+}
+
+# VPC
+resource ""aws_vpc"" ""eb_vpc"" {
+  cidr_block = ""10.0.0.0/16""
+  enable_dns_support   = true
+  enable_dns_hostnames = true
+}
+
+# Internet Gateway
+resource ""aws_internet_gateway"" ""eb_igw"" {
+  vpc_id = aws_vpc.eb_vpc.id
+}
+
+data ""aws_availability_zones"" ""available"" {
+  state = ""available""
+}
+
+# Subnets
+resource ""aws_subnet"" ""eb_subnet_public_1"" {
+  vpc_id     = aws_vpc.eb_vpc.id
+  cidr_block = ""10.0.1.0/24""
+
+  map_public_ip_on_launch = true
+  availability_zone       = data.aws_availability_zones.available.names[0]
+}
+
+resource ""aws_subnet"" ""eb_subnet_public_2"" {
+  vpc_id     = aws_vpc.eb_vpc.id
+  cidr_block = ""10.0.2.0/24""
+
+  map_public_ip_on_launch = true
+  availability_zone       = data.aws_availability_zones.available.names[1]
+}
+
+# Security groups for Elastic Beanstalk environments
+resource ""aws_security_group"" ""eb_env_sg"" {
+  name        = ""eb-env-sg""
+  description = ""Security group for Elastic Beanstalk environments""
+  vpc_id      = aws_vpc.eb_vpc.id
+}
+
+resource ""aws_vpc_security_group_ingress_rule"" ""ingress1"" {
+  security_group_id = aws_security_group.eb_env_sg.id
+  cidr_ipv4         = ""0.0.0.0/0""
+  from_port         = 80
+  ip_protocol       = ""tcp""
+  to_port           = 80
+}
+
+resource ""aws_vpc_security_group_ingress_rule"" ""ingress2"" {
+  security_group_id = aws_security_group.eb_env_sg.id
+  cidr_ipv4         = ""0.0.0.0/0""
+  from_port         = 443
+  ip_protocol       = ""tcp""
+  to_port           = 443
+}
+
+resource ""aws_vpc_security_group_egress_rule"" ""egress1"" {
+  security_group_id = aws_security_group.eb_env_sg.id
+  cidr_ipv4         = ""0.0.0.0/0""
+  ip_protocol       = ""-1""
+}
+
+# DB subnet group for RDS instance
+resource ""aws_db_subnet_group"" ""rds_subnet_group"" {
+  name       = ""rds-subnet-group""
+  subnet_ids = [aws_subnet.eb_subnet_public_1.id, aws_subnet.eb_subnet_public_2.id]
+}
+
+resource ""aws_route_table"" ""eb_route_table"" {
+  vpc_id = aws_vpc.eb_vpc.id
+
+  route {
+    cidr_block = ""0.0.0.0/0""
+    gateway_id = aws_internet_gateway.eb_igw.id
+  }
+}
+
+resource ""aws_route_table_association"" ""eb_route_table_association_1"" {
+  subnet_id      = aws_subnet.eb_subnet_public_1.id
+  route_table_id = aws_route_table.eb_route_table.id
+}
+
+resource ""aws_route_table_association"" ""eb_route_table_association_2"" {
+  subnet_id      = aws_subnet.eb_subnet_public_2.id
+  route_table_id = aws_route_table.eb_route_table.id
+}
+
+# RDS instance
+resource ""aws_db_instance"" ""shared_rds"" {
+  allocated_storage    = 20
+  engine               = ""mysql""
+  instance_class       = ""db.t3.micro""
+  username             = ""dbadmin""
+  password             = ""securepassword"" 
+  backup_retention_period = 0
+  skip_final_snapshot  = true
+  db_subnet_group_name  = aws_db_subnet_group.rds_subnet_group.name
+
+  vpc_security_group_ids = [aws_security_group.eb_env_sg.id]
+}
+
+# Elastic Beanstalk application
+resource ""aws_elastic_beanstalk_application"" ""microservice_app"" {
+  name        = ""MicroserviceApplication""
+  description = ""An application for microservices""
+}
+
+resource ""aws_elastic_beanstalk_environment"" ""microservice_env1"" {
+  name                = ""microservice-env1""
+  application         = aws_elastic_beanstalk_application.microservice_app.name
+  solution_stack_name = ""64bit Amazon Linux 2023 v4.3.0 running Python 3.9""
+
+  # Elastic Beanstalk environment variables for RDS connection
+  setting {
+    namespace = ""aws:elasticbeanstalk:application:environment""
+    name      = ""DB_HOSTNAME""
+    value     = aws_db_instance.shared_rds.address
+  }
+
+  setting {
+    namespace = ""aws:elasticbeanstalk:application:environment""
+    name      = ""DB_USERNAME""
+    value     = aws_db_instance.shared_rds.username
+  }
+
+  setting {
+    namespace = ""aws:elasticbeanstalk:application:environment""
+    name      = ""DB_PASSWORD""
+    value     = aws_db_instance.shared_rds.password
+  }
+
+  setting {
+    namespace = ""aws:ec2:vpc""
+    name      = ""VPCId""
+    value     = aws_vpc.eb_vpc.id
+  }
+
+  setting {
+    namespace = ""aws:ec2:vpc""
+    name      = ""Subnets""
+    value     = ""${aws_subnet.eb_subnet_public_1.id},${aws_subnet.eb_subnet_public_2.id}""
+  }
+
+  setting {
+    namespace = ""aws:autoscaling:launchconfiguration""
+    name      = ""SecurityGroups""
+    value     = aws_security_group.eb_env_sg.id
+  }
+
+  setting {
+    namespace = ""aws:autoscaling:launchconfiguration""
+    name      = ""IamInstanceProfile""
+    value     = aws_iam_instance_profile.eb_ec2_profile.name
+  }
+}
+
+resource ""aws_elastic_beanstalk_environment"" ""microservice_env2"" {
+  name                = ""microservice-env2""
+  application         = aws_elastic_beanstalk_application.microservice_app.name
+  solution_stack_name = ""64bit Amazon Linux 2023 v4.3.0 running Python 3.9""
+
+  # Elastic Beanstalk environment variables for RDS connection
+  setting {
+    namespace = ""aws:elasticbeanstalk:application:environment""
+    name      = ""DB_HOSTNAME""
+    value     = aws_db_instance.shared_rds.address
+  }
+
+  setting {
+    namespace = ""aws:elasticbeanstalk:application:environment""
+    name      = ""DB_USERNAME""
+    value     = aws_db_instance.shared_rds.username
+  }
+
+  setting {
+    namespace = ""aws:elasticbeanstalk:application:environment""
+    name      = ""DB_PASSWORD""
+    value     = aws_db_instance.shared_rds.password
+  }
+
+  setting {
+    namespace = ""aws:ec2:vpc""
+    name      = ""VPCId""
+    value     = aws_vpc.eb_vpc.id
+  }
+
+  setting {
+    namespace = ""aws:ec2:vpc""
+    name      = ""Subnets""
+    value     = ""${aws_subnet.eb_subnet_public_1.id},${aws_subnet.eb_subnet_public_2.id}""
+  }
+
+  setting {
+    namespace = ""aws:autoscaling:launchconfiguration""
+    name      = ""SecurityGroups""
+    value     = aws_security_group.eb_env_sg.id
+  }
+
+  setting {
+    namespace = ""aws:autoscaling:launchconfiguration""
+    name      = ""IamInstanceProfile""
+    value     = aws_iam_instance_profile.eb_ec2_profile.name
+  }
+}"
+23,"provider ""aws"" {
+  region = ""us-east-1""
+}
+
+resource ""aws_route53_zone"" ""example"" {
+  name = ""example53.com""
+}
+
+# TXT Record for domain verification or other purposes
+resource ""aws_route53_record"" ""example_txt"" {
+  zone_id = aws_route53_zone.example.zone_id
+  name    = ""sub.example53.com""
+  type    = ""TXT""
+  ttl     = ""300""
+  records = [""passwordpassword""] 
+}"
+27,"terraform {
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.75""
+    }
+  }
+}
+
+provider ""aws"" {
+  region  = ""us-east-1""
+  profile = ""admin-1""
+
+  assume_role {
+    role_arn = ""arn:aws:iam::590184057477:role/yicun-iac""
+  }
+}
+
+
+# IAM role for Elastic Beanstalk EC2 instances
+resource ""aws_iam_role"" ""eb_ec2_role"" {
+  name = ""elastic_beanstalk_ec2_role_eb1""
+
+  assume_role_policy = jsonencode({
+    Version = ""2012-10-17"",
+    Statement = [
+      {
+        Action = ""sts:AssumeRole"",
+        Effect = ""Allow"",
+        Principal = {
+          Service = ""ec2.amazonaws.com""
+        },
+      },
+    ]
+  })
+}
+
+# Attach the AWS managed policy for Elastic Beanstalk to the role
+resource ""aws_iam_role_policy_attachment"" ""eb_managed_policy"" {
+  role       = aws_iam_role.eb_ec2_role.name
+  policy_arn = ""arn:aws:iam::aws:policy/AWSElasticBeanstalkWebTier""
+}
+
+
+# Create an instance profile tied to the role
+resource ""aws_iam_instance_profile"" ""eb_ec2_profile"" {
+  name = ""elastic_beanstalk_ec2_profile""
+  role = aws_iam_role.eb_ec2_role.name
+}
+
+# Elastic Beanstalk Application
+resource ""aws_elastic_beanstalk_application"" ""my_application"" {
+  name        = ""my-three-tier-app""
+}
+
+# Elastic Beanstalk Environment for the web tier
+resource ""aws_elastic_beanstalk_environment"" ""web_tier"" {
+  name                = ""my-web-tier-env""
+  application         = aws_elastic_beanstalk_application.my_application.name
+  solution_stack_name = ""64bit Amazon Linux 2023 v4.3.0 running Python 3.9""
+  tier = ""WebServer""
+
+  setting {
+    namespace = ""aws:autoscaling:launchconfiguration""
+    name      = ""IamInstanceProfile""
+    value     = aws_iam_instance_profile.eb_ec2_profile.name
+  } 
+}"
+31,"provider ""aws"" {
+  region = ""us-east-1""
+}
+
+resource ""aws_iam_role"" ""beanstalk_service"" {
+  name = ""tf-test-beanstalk-service-role""
+
+  assume_role_policy = jsonencode({
+    Version = ""2012-10-17"",
+    Statement = [
+      {
+        Action = ""sts:AssumeRole"",
+        Effect = ""Allow"",
+        Principal = {
+          Service = ""elasticbeanstalk.amazonaws.com""
+        },
+      },
+    ]
+  })
+}
+
+resource ""aws_elastic_beanstalk_application"" ""tftest"" {
+  name        = ""tf-test-name""
+  description = ""tf-test-desc""
+
+  appversion_lifecycle {
+    service_role          = aws_iam_role.beanstalk_service.arn
+    max_count             = 128
+    delete_source_from_s3 = true
+  }
+}"
+35,"terraform {
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.75""
+    }
+  }
+}
+
+provider ""aws"" {
+  region  = ""us-east-1""
+  profile = ""admin-1""
+
+  assume_role {
+    role_arn = ""arn:aws:iam::590184057477:role/yicun-iac""
+  }
+}
+
+data ""aws_iam_policy_document"" ""assume_role"" {
+  statement {
+    effect = ""Allow""
+
+    principals {
+      type        = ""Service""
+      identifiers = [""codebuild.amazonaws.com""]
+    }
+
+    actions = [""sts:AssumeRole""]
+  }
+}
+
+resource ""aws_iam_role"" ""example3"" {
+  name               = ""example3""
+  assume_role_policy = data.aws_iam_policy_document.assume_role.json
+}
+
+resource ""aws_codebuild_project"" ""example3"" {
+  name          = ""DROW3_codebuild""
+  service_role  = aws_iam_role.example3.arn
+
+  artifacts {
+    type = ""NO_ARTIFACTS""
+  }
+
+  environment {
+    compute_type = ""BUILD_GENERAL1_SMALL""
+    image        = ""aws/codebuild/standard:7.0-24.10.29""
+    type         = ""LINUX_CONTAINER""
+
+    environment_variable {
+      name  = ""SOME_KEY1""
+      value = ""SOME_VALUE1""
+    }
+  }
+
+  source {
+    type            = ""NO_SOURCE""
+    buildspec       = file(""buildspec.yml"")
+  }
+}"
+39,"terraform {
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.75""
+    }
+  }
+}
+
+provider ""aws"" {
+  region  = ""us-east-1""
+  profile = ""admin-1""
+
+  assume_role {
+    role_arn = ""arn:aws:iam::590184057477:role/yicun-iac""
+  }
+}
+
+resource ""aws_iam_role"" ""test_role8"" {
+  name = ""test_role8""
+
+  assume_role_policy = jsonencode({
+    Version = ""2012-10-17""
+    Statement = [
+      {
+        Action = ""sts:AssumeRole""
+        Effect = ""Allow""
+        Sid    = """"
+        Principal = {
+          Service = ""codebuild.amazonaws.com""
+        }
+      },
+    ]
+  })
+}
+
+resource ""aws_s3_bucket"" ""apriltwentyninth"" {
+  bucket = ""apriltwentyninth""
+}
+
+resource ""aws_s3_bucket"" ""apriltwentyninth2"" {
+  bucket = ""apriltwentyninth2""
+}
+
+
+resource ""aws_codebuild_project"" ""example7"" {
+  name          = ""test-project8""
+  service_role  = aws_iam_role.test_role8.arn
+
+  artifacts {
+    location  = aws_s3_bucket.apriltwentyninth.bucket
+    type      = ""S3""
+    name     = ""results.zip""
+    path      = ""/""
+    packaging = ""ZIP""
+  }
+
+  secondary_artifacts {
+    artifact_identifier =  ""SecondaryArtifact""
+    type = ""S3""
+    location  = aws_s3_bucket.apriltwentyninth2.bucket
+  }
+
+  environment {
+    compute_type                = ""BUILD_GENERAL1_SMALL""
+    image                       = ""aws/codebuild/standard:7.0-24.10.29""
+    type                        = ""LINUX_CONTAINER""
+    image_pull_credentials_type = ""CODEBUILD""
+
+  }
+
+  source {
+    type            = ""GITHUB""
+    location        = ""https://github.com/mitchellh/packer.git""
+    git_clone_depth = 1
+  }
+
+  source_version = ""master""
+
+  secondary_sources {
+    source_identifier = ""source2""
+    type            = ""GITHUB""
+    location        = ""https://github.com/mitchellh/packer.git""
+    git_clone_depth = 1
+  }
+
+  secondary_source_version {
+    source_identifier = ""source2""
+    source_version = ""master""
+  }
+}"
+43,"terraform {
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.75""
+    }
+  }
+}
+
+provider ""aws"" {
+  region = ""us-east-1""
+  profile = ""admin-1""
+
+  assume_role {
+    role_arn = ""arn:aws:iam::590184057477:role/yicun-iac""
+  }
+}
+
+resource ""aws_lex_intent"" ""order_pizza_intent"" {
+  name                       = ""OrderPizzaIntent""
+  description                = ""To order a pizza""
+  
+  sample_utterances = [
+    ""I would like to pick up a pizza"",
+    ""I would like to order some pizzas"",
+  ]
+
+  fulfillment_activity {
+    type = ""ReturnIntent""
+  }
+
+  slot {
+    name                     = ""PizzaType""
+    description              = ""Type of pizza to order""
+    slot_constraint          = ""Required"" 
+    slot_type                = ""AMAZON.AlphaNumeric""
+    priority                 = 1
+    value_elicitation_prompt {
+      message {
+        content             = ""What type of pizza would you like?""
+        content_type        = ""PlainText""
+      }
+      max_attempts         = 2
+    }
+  }
+
+  slot {
+    name                     = ""PizzaSize""
+    description              = ""Size of pizza to order""
+    slot_constraint          = ""Required"" 
+    slot_type                = ""AMAZON.NUMBER""
+    priority                 = 2
+    value_elicitation_prompt {
+      message {
+        content             = ""What size of pizza would you like?""
+        content_type        = ""PlainText""
+      }
+      max_attempts         = 2
+    }
+  }
+
+  slot {
+    name                     = ""PizzaQuantity""
+    description              = ""Number of pizzas to order""
+    slot_constraint          = ""Required"" 
+    slot_type                = ""AMAZON.NUMBER""
+    priority                 = 3
+    value_elicitation_prompt {
+      message {
+        content             = ""How many pizzas do you want to order?""
+        content_type        = ""PlainText""
+      }
+      max_attempts         = 2
+    }
+  }
+
+  conclusion_statement {
+    message {
+      content              = ""Your pizza order has been received.""
+      content_type         = ""PlainText""
+    }
+  } 
+}
+
+resource ""aws_lex_bot"" ""pizza_ordering_bot"" {
+  name                     = ""PizzaOrderingBot""
+  description              = ""Bot to order pizzas""
+  voice_id                 = ""Joanna""
+  idle_session_ttl_in_seconds = 300
+  child_directed           = false
+  locale                  = ""en-US""
+  process_behavior        = ""BUILD""
+
+  clarification_prompt {
+    message {
+      content      = ""I didn't understand you, what type of pizza would you like to order?""
+      content_type = ""PlainText""
+    }
+    max_attempts = 5
+  }
+
+  abort_statement {
+    message {
+      content      = ""Sorry, I am unable to assist at the moment.""
+      content_type = ""PlainText""
+    }
+  }
+
+  intent {
+    intent_name    = aws_lex_intent.order_pizza_intent.name
+    intent_version = aws_lex_intent.order_pizza_intent.version
+  }
+}"
+47,"terraform {
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.75""
+    }
+  }
+}
+
+provider ""aws"" {
+  region = ""us-east-1""
+  profile = ""admin-1""
+
+  assume_role {
+    role_arn = ""arn:aws:iam::590184057477:role/yicun-iac""
+  }
+}
+
+resource ""aws_lex_intent"" ""OrderPizza"" {
+  name = ""OrderPizza""
+  description = ""Pizza order processing""
+
+  sample_utterances = [
+    ""I want to order a pizza""
+  ]
+
+  slot {
+    name                     = ""PizzaType""
+    description              = ""Type of pizza to order""
+    slot_constraint          = ""Required"" 
+    slot_type                = ""AMAZON.AlphaNumeric""
+    priority                 = 1
+    value_elicitation_prompt {
+      message {
+        content             = ""What type of pizza would you like?""
+        content_type        = ""PlainText""
+      }
+      max_attempts         = 2
+    }
+  }
+
+  fulfillment_activity {
+    type = ""ReturnIntent""
+  }
+}
+
+resource ""aws_lex_intent"" ""CancelOrder"" {
+  name = ""CancelOrder""
+  description = ""Cancel an order""
+
+  sample_utterances = [
+    ""I want to cancel my order""
+  ]
+
+  fulfillment_activity {
+    type = ""ReturnIntent""
+  }
+}
+
+resource ""aws_lex_intent"" ""CheckOrderStatus"" {
+  name = ""CheckOrderStatus""
+  description = ""Check status of an order""
+
+   sample_utterances = [
+    ""What is the status of my order""
+  ]
+
+  fulfillment_activity {
+    type = ""ReturnIntent""
+  }
+}
+
+resource ""aws_lex_intent"" ""ModifyOrder"" {
+  name = ""ModifyOrder""
+  description = ""Modify an existing order""
+
+  sample_utterances = [
+    ""I want to change my order""
+  ]
+
+  fulfillment_activity {
+    type = ""ReturnIntent""
+  }
+}
+
+resource ""aws_lex_intent"" ""HelpOrder"" {
+  name = ""HelpOrder""
+  description = ""Provide help for ordering""
+
+  sample_utterances = [
+    ""I need help"",
+    ""Can you help me""
+  ]
+
+  fulfillment_activity {
+    type = ""ReturnIntent""
+  }
+}
+
+resource ""aws_lex_bot"" ""PizzaOrderBot"" {
+  abort_statement {
+    message {
+      content      = ""Sorry, I could not assist on this request.""
+      content_type = ""PlainText""
+    }
+  }
+
+  name = ""PizzaOrderBot""
+  child_directed = false
+  create_version = false
+  idle_session_ttl_in_seconds = 600
+  process_behavior = ""BUILD""
+  locale = ""en-US""
+  voice_id = ""Salli""
+
+  clarification_prompt {
+    max_attempts = 2
+
+    message {
+      content      = ""I'm sorry, I didn't understand the request. Can you reformulate?""
+      content_type = ""PlainText""
+    }
+  }
+
+  intent {
+    intent_name    = aws_lex_intent.OrderPizza.name
+    intent_version = aws_lex_intent.OrderPizza.version
+  }
+
+  intent {
+    intent_name    = aws_lex_intent.CancelOrder.name
+    intent_version = aws_lex_intent.CancelOrder.version
+  }
+
+  intent {
+    intent_name    = aws_lex_intent.CheckOrderStatus.name
+    intent_version = aws_lex_intent.CheckOrderStatus.version
+  }
+
+  intent {
+    intent_name    = aws_lex_intent.ModifyOrder.name
+    intent_version = aws_lex_intent.ModifyOrder.version
+  }
+
+  intent {
+    intent_name    = aws_lex_intent.HelpOrder.name
+    intent_version = aws_lex_intent.HelpOrder.version
+  }
+}"
+51,"provider ""aws"" {
+  region = ""us-west-2""
+}
+
+resource ""aws_iam_role"" ""test_rolelex"" {
+  name = ""test_rolelex""
+
+  assume_role_policy = jsonencode({
+    Version = ""2012-10-17""
+    Statement = [
+      {
+        Action = ""sts:AssumeRole""
+        Effect = ""Allow""
+        Sid    = """"
+        Principal = {
+          Service = ""codebuild.amazonaws.com""
+        }
+      },
+    ]
+  })
+}
+
+resource ""aws_lexv2models_bot"" ""example"" {
+  name = ""example""
+  data_privacy {
+    child_directed = false
+  }
+  idle_session_ttl_in_seconds = 100
+  role_arn                    = aws_iam_role.test_rolelex.arn
+
+  tags = {
+    foo = ""bar""
+  }
+}"
+55,"terraform {
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.75""
+    }
+  }
+}
+
+provider ""aws"" {
+  region  = ""us-east-1""
+  profile = ""admin-1""
+
+  assume_role {
+    role_arn = ""arn:aws:iam::590184057477:role/yicun-iac""
+  }
+}
+
+data ""aws_region"" ""current"" {}
+
+resource ""aws_connect_instance"" ""example"" {
+  identity_management_type = ""CONNECT_MANAGED""
+  inbound_calls_enabled    = true
+  instance_alias           = ""friendly-name-connect-13""
+  outbound_calls_enabled   = true
+}
+
+resource ""aws_lex_intent"" ""example"" {
+  create_version = true
+  name           = ""connect_lex_intent""
+  
+  sample_utterances = [
+    ""I would like to pick up flowers."",
+  ]
+
+  fulfillment_activity {
+    type = ""ReturnIntent""
+  }
+}
+
+resource ""aws_lex_bot"" ""example13"" {
+  name             = ""connect_lex_bot""
+  process_behavior = ""BUILD""
+  child_directed   = false
+
+  abort_statement {
+    message {
+      content      = ""Sorry, I am not able to assist at this time.""
+      content_type = ""PlainText""
+    }
+  }
+  clarification_prompt {
+    max_attempts = 2
+    message {
+      content      = ""I didn't understand you, what would you like to do?""
+      content_type = ""PlainText""
+    }
+  }
+  intent {
+    intent_name    = aws_lex_intent.example.name
+    intent_version = ""1""
+  }  
+}
+
+resource ""aws_connect_bot_association"" ""example"" {
+  instance_id = aws_connect_instance.example.id
+  lex_bot {
+    lex_region = data.aws_region.current.name
+    name       = aws_lex_bot.example13.name
+  }
+}
+
+"
+59,"terraform {
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.75""
+    }
+  }
+}
+
+provider ""aws"" {
+  region  = ""us-east-1""
+  profile = ""admin-1""
+
+  assume_role {
+    role_arn = ""arn:aws:iam::590184057477:role/yicun-iac""
+  }
+}
+
+# even though this program seems to be problematic, it's copied from https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/kinesis_firehose_delivery_stream
+# so I'll leave it unmodified
+
+data ""aws_iam_policy_document"" ""firehose_assume_role"" {
+  statement {
+    effect = ""Allow""
+
+    principals {
+      type        = ""Service""
+      identifiers = [""firehose.amazonaws.com""]
+    }
+
+    actions = [""sts:AssumeRole""]
+  }
+}
+
+resource ""aws_iam_role"" ""firehose_role"" {
+  name               = ""firehose_test_role""
+  assume_role_policy = data.aws_iam_policy_document.firehose_assume_role.json
+}
+
+resource ""aws_s3_bucket"" ""decemberthirtysecond"" {
+  bucket = ""decemberthirtysecond""
+}
+resource ""aws_kinesis_firehose_delivery_stream"" ""extended_s3_stream"" {
+  name        = ""terraform-kinesis-firehose-extended-s3-test-stream""
+  destination = ""extended_s3""
+
+  extended_s3_configuration {
+    role_arn   = aws_iam_role.firehose_role.arn
+    bucket_arn = aws_s3_bucket.decemberthirtysecond.arn
+    buffering_size = 64
+
+    # https://docs.aws.amazon.com/firehose/latest/dev/dynamic-partitioning.html
+    dynamic_partitioning_configuration {
+      enabled = ""true""
+    }
+
+    # Example prefix using partitionKeyFromQuery, applicable to JQ processor
+    prefix              = ""data/customer_id=!{partitionKeyFromQuery:customer_id}/year=!{timestamp:yyyy}/month=!{timestamp:MM}/day=!{timestamp:dd}/hour=!{timestamp:HH}/""
+    error_output_prefix = ""errors/year=!{timestamp:yyyy}/month=!{timestamp:MM}/day=!{timestamp:dd}/hour=!{timestamp:HH}/!{firehose:error-output-type}/""
+
+    processing_configuration {
+      enabled = ""true""
+
+      # Multi-record deaggregation processor example
+      processors {
+        type = ""RecordDeAggregation""
+        parameters {
+          parameter_name  = ""SubRecordType""
+          parameter_value = ""JSON""
+        }
+      }
+
+      # New line delimiter processor example
+      processors {
+        type = ""AppendDelimiterToRecord""
+      }
+
+      # JQ processor example
+      processors {
+        type = ""MetadataExtraction""
+        parameters {
+          parameter_name  = ""JsonParsingEngine""
+          parameter_value = ""JQ-1.6""
+        }
+        parameters {
+          parameter_name  = ""MetadataExtractionQuery""
+          parameter_value = ""{customer_id:.customer_id}""
+        }
+      }
+    }
+  }
+}"
+63,"provider ""aws"" {
+  region = ""us-west-2""
+}
+
+data ""aws_iam_policy_document"" ""firehose_assume_role"" {
+  statement {
+    effect = ""Allow""
+
+    principals {
+      type        = ""Service""
+      identifiers = [""firehose.amazonaws.com""]
+    }
+
+    actions = [""sts:AssumeRole""]
+  }
+}
+
+resource ""aws_iam_role"" ""firehose_role"" {
+  name               = ""firehose_test_role""
+  assume_role_policy = data.aws_iam_policy_document.firehose_assume_role.json
+}
+
+resource ""aws_s3_bucket"" ""januaryfifth"" {
+  bucket = ""januaryfifth""
+}
+
+resource ""aws_kinesis_firehose_delivery_stream"" ""test_stream"" {
+  name        = ""terraform-kinesis-firehose-test-stream""
+  destination = ""splunk""
+
+  splunk_configuration {
+    hec_endpoint               = ""https://http-inputs-mydomain.splunkcloud.com:443""
+    hec_token                  = ""51D4DA16-C61B-4F5F-8EC7-ED4301342A4A""
+    hec_acknowledgment_timeout = 600
+    hec_endpoint_type          = ""Event""
+    s3_backup_mode             = ""FailedEventsOnly""
+
+    s3_configuration {
+      role_arn           = aws_iam_role.firehose_role.arn
+      bucket_arn         = aws_s3_bucket.januaryfifth.arn
+      buffering_size     = 10
+      buffering_interval = 400
+      compression_format = ""GZIP""
+    }
+  }
+}"
+67,"terraform {
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.75""
+    }
+  }
+}
+
+provider ""aws"" {
+  region = ""us-east-1""
+  profile = ""admin-1""
+
+  assume_role {
+    role_arn = ""arn:aws:iam::590184057477:role/yicun-iac""
+  }
+}
+
+resource ""aws_s3_bucket"" ""bucket"" {
+  bucket_prefix = ""my-bucket-""
+}
+
+resource ""aws_vpc"" ""main"" {
+  cidr_block = ""10.0.0.0/16""
+}
+
+data ""aws_availability_zones"" ""available"" {
+  state = ""available""
+}
+
+# Subnets
+resource ""aws_subnet"" ""first"" {
+  vpc_id     = aws_vpc.main.id
+  cidr_block = ""10.0.1.0/24""
+
+  map_public_ip_on_launch = true
+  availability_zone       = data.aws_availability_zones.available.names[0]
+}
+
+resource ""aws_subnet"" ""second"" {
+  vpc_id     = aws_vpc.main.id
+  cidr_block = ""10.0.2.0/24""
+
+  map_public_ip_on_launch = true
+  availability_zone       = data.aws_availability_zones.available.names[1]
+}
+
+resource ""aws_internet_gateway"" ""main"" {
+  vpc_id = aws_vpc.main.id
+}
+
+resource ""aws_route_table"" ""main"" {
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block = ""0.0.0.0/0""
+    gateway_id = aws_internet_gateway.main.id
+  }
+}
+
+resource ""aws_route_table_association"" ""first"" {
+  subnet_id      = aws_subnet.first.id
+  route_table_id = aws_route_table.main.id
+}
+
+resource ""aws_route_table_association"" ""second"" {
+  subnet_id      = aws_subnet.second.id
+  route_table_id = aws_route_table.main.id
+}
+
+resource ""aws_security_group"" ""first"" {
+  name        = ""test-security-group""
+  description = ""Allow traffic for Elasticsearch""
+  vpc_id      = aws_vpc.main.id
+}
+
+resource ""aws_vpc_security_group_ingress_rule"" ""ingress1"" {
+  security_group_id = aws_security_group.first.id
+  cidr_ipv4 = ""0.0.0.0/0""
+  from_port = 80
+  ip_protocol = ""tcp""
+  to_port = 80
+}
+
+resource ""aws_vpc_security_group_ingress_rule"" ""ingress2"" {
+  security_group_id = aws_security_group.first.id
+  cidr_ipv4 = ""0.0.0.0/0""
+  from_port = 443
+  ip_protocol = ""tcp""
+  to_port = 443
+}
+
+resource ""aws_vpc_security_group_ingress_rule"" ""ingress3"" {
+  security_group_id = aws_security_group.first.id
+  cidr_ipv4 = ""0.0.0.0/0""
+  from_port = 9200
+  ip_protocol = ""tcp""
+  to_port = 9200
+}
+
+resource ""aws_vpc_security_group_egress_rule"" ""egress1"" {
+  security_group_id = aws_security_group.first.id
+  cidr_ipv4         = ""0.0.0.0/0""
+  ip_protocol       = ""-1""
+}
+
+data ""aws_iam_policy_document"" ""firehose_assume_role"" {
+  statement {
+    effect = ""Allow""
+
+    principals {
+      type        = ""Service""
+      identifiers = [""firehose.amazonaws.com""]
+    }
+
+    actions = [""sts:AssumeRole""]
+  }
+}
+
+resource ""aws_iam_role"" ""firehose_role"" {
+  name               = ""firehose_test_role""
+  assume_role_policy = data.aws_iam_policy_document.firehose_assume_role.json
+}
+
+resource ""aws_iam_role_policy"" ""firehose-opensearch"" {
+  name   = ""opensearch""
+  role   = aws_iam_role.firehose_role.id
+  policy = <<EOF
+{
+  ""Version"": ""2012-10-17"",
+  ""Statement"": [
+    {
+      ""Effect"": ""Allow"",
+      ""Action"": [
+        ""es:*""
+      ],
+      ""Resource"": [
+        ""${aws_opensearch_domain.test_cluster.arn}"",
+        ""${aws_opensearch_domain.test_cluster.arn}/*""
+      ]
+        },
+        {
+          ""Effect"": ""Allow"",
+          ""Action"": [
+            ""ec2:DescribeVpcs"",
+            ""ec2:DescribeVpcAttribute"",
+            ""ec2:DescribeSubnets"",
+            ""ec2:DescribeSecurityGroups"",
+            ""ec2:DescribeNetworkInterfaces"",
+            ""ec2:CreateNetworkInterface"",
+            ""ec2:CreateNetworkInterfacePermission"",
+            ""ec2:DeleteNetworkInterface""
+          ],
+          ""Resource"": [
+            ""*""
+          ]
+        }
+  ]
+}
+EOF
+}
+
+resource ""aws_opensearch_domain"" ""test_cluster"" {
+  domain_name = ""es-test""
+
+  cluster_config {
+    instance_count         = 2
+    zone_awareness_enabled = true
+    instance_type          = ""m4.large.search""
+  }
+
+  ebs_options {
+    ebs_enabled = true
+    volume_size = 10
+  }
+
+  vpc_options {
+    security_group_ids = [aws_security_group.first.id]
+    subnet_ids         = [aws_subnet.first.id, aws_subnet.second.id]
+  }
+}
+
+resource ""aws_kinesis_firehose_delivery_stream"" ""test"" {
+  depends_on = [aws_iam_role_policy.firehose-opensearch]
+
+  name        = ""terraform-kinesis-firehose-os""
+  destination = ""opensearch""
+
+  opensearch_configuration {
+    domain_arn = aws_opensearch_domain.test_cluster.arn
+    role_arn   = aws_iam_role.firehose_role.arn
+    index_name = ""test""
+
+    s3_configuration {
+      role_arn   = aws_iam_role.firehose_role.arn
+      bucket_arn = aws_s3_bucket.bucket.arn
+    }
+
+    vpc_config {
+      subnet_ids         = [aws_subnet.first.id, aws_subnet.second.id]
+      security_group_ids = [aws_security_group.first.id]
+      role_arn           = aws_iam_role.firehose_role.arn
+    }
+  }
+}"
+71,"provider ""aws"" {
+  region = ""us-west-2""
+}
+
+resource ""aws_kinesis_analytics_application"" ""test_application"" {
+  name = ""kinesis-analytics-application-test""
+}"
+75,"terraform {
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.75""
+    }
+  }
+}
+
+provider ""aws"" {
+  region  = ""us-east-1""
+  profile = ""admin-1""
+
+  assume_role {
+    role_arn = ""arn:aws:iam::590184057477:role/yicun-iac""
+  }
+}
+
+resource ""aws_iam_role"" ""role"" {
+  name = ""Kendra-Role""
+  assume_role_policy = <<EOF
+{
+  ""Version"": ""2012-10-17"",
+  ""Statement"": [
+    {
+      ""Action"": ""sts:AssumeRole"",
+      ""Principal"": {
+        ""Service"": ""kendra.amazonaws.com""
+      },
+      ""Effect"": ""Allow"",
+      ""Sid"": """"
+    }
+  ]
+}
+EOF
+}
+
+resource ""aws_iam_role_policy"" ""policy"" {
+  name = ""Kendra-Policy""
+  role = aws_iam_role.role.id
+
+  policy = <<EOF
+{
+  ""Version"": ""2012-10-17"",
+  ""Statement"": [
+    {
+      ""Effect"": ""Allow"",
+      ""Action"": [
+        ""s3:GetObject"",
+        ""s3:ListBucket""
+      ],
+      ""Resource"": ""*""
+    }
+  ]
+}
+EOF
+}
+
+resource ""aws_kendra_index"" ""example"" {
+  name        = ""example""
+  description = ""example""
+  edition     = ""DEVELOPER_EDITION""
+  role_arn    = aws_iam_role.role.arn
+}
+
+resource ""aws_kendra_data_source"" ""example"" {
+  index_id = aws_kendra_index.example.id
+  name     = ""example""
+  type     = ""WEBCRAWLER""
+  role_arn = aws_iam_role.role.arn
+
+  configuration {
+    web_crawler_configuration {
+      url_exclusion_patterns = [""example""]
+      url_inclusion_patterns = [""hello""]
+
+      urls {
+        seed_url_configuration {
+          seed_urls = [
+            ""https://docs.aws.amazon.com/codedeploy/latest/userguide/getting-started-create-service-role.html""
+          ]
+        }
+      }
+    }
+  }
+}"
+79,"provider ""aws"" {
+  region = ""us-east-1""
+}
+
+resource ""aws_route53_zone"" ""example53"" {
+  name = ""example53.com""
+}
+
+resource ""aws_route53_record"" ""example53_A"" {
+  zone_id = aws_route53_zone.example53.zone_id
+  name    = ""example53.com""
+  type    = ""A""
+  ttl     = ""300""
+  records = [""192.0.2.1""]  
+}"
+83,"provider ""aws"" {
+  region = ""us-east-1"" 
+}
+
+resource ""aws_cloudwatch_metric_alarm"" ""foobar"" {
+  alarm_name          = ""terraform-test-foobar5""
+  comparison_operator = ""GreaterThanOrEqualToThreshold""
+  evaluation_periods  = ""2""
+  metric_name         = ""CPUUtilization""
+  namespace           = ""AWS/EC2""
+  period              = ""120""
+  statistic           = ""Average""
+  threshold           = ""80""
+  alarm_description   = ""This metric monitors ec2 cpu utilization""
+}
+
+resource ""aws_route53_health_check"" ""foo"" {
+  type                            = ""CLOUDWATCH_METRIC""
+  cloudwatch_alarm_name           = aws_cloudwatch_metric_alarm.foobar.alarm_name
+  cloudwatch_alarm_region         = ""us-east-1""
+  insufficient_data_health_status = ""Healthy""
+}"
+87,"terraform {
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.75""
+    }
+  }
+}
+
+provider ""aws"" {
+  region = ""us-east-1""
+  profile = ""admin-1""
+
+  assume_role {
+    role_arn = ""arn:aws:iam::590184057477:role/yicun-iac""
+  }
+}
+
+variable ""cluster_name"" {
+  type = string
+  default = ""test-cluster""
+}
+
+data ""aws_region"" ""current"" {}
+
+resource ""aws_vpc"" ""main"" {
+  cidr_block = ""10.0.0.0/16""
+}
+
+data ""aws_availability_zones"" ""available"" {
+  state = ""available""
+}
+
+resource ""aws_subnet"" ""test_eks_1"" {
+  vpc_id     = aws_vpc.main.id
+  cidr_block = ""10.0.1.0/24""
+
+  availability_zone = data.aws_availability_zones.available.names[0]
+}
+
+resource ""aws_subnet"" ""test_eks_2"" {
+  vpc_id     = aws_vpc.main.id
+  cidr_block = ""10.0.2.0/24""
+
+  availability_zone = data.aws_availability_zones.available.names[1]
+}
+
+resource ""aws_iam_role"" ""example"" {
+  name = ""${var.cluster_name}-eks""
+
+  assume_role_policy = jsonencode({
+    Statement = [{
+      Action = ""sts:AssumeRole""
+      Effect = ""Allow""
+      Principal = {
+        Service = ""eks.amazonaws.com""
+      }
+    }]
+    Version = ""2012-10-17""
+  })
+}
+
+resource ""aws_iam_role_policy_attachment"" ""eks_cluster_policy"" {
+  policy_arn = ""arn:aws:iam::aws:policy/AmazonEKSClusterPolicy""
+  role       = aws_iam_role.example.name
+}
+
+resource ""aws_iam_role_policy_attachment"" ""eks_service_policy"" {
+  policy_arn = ""arn:aws:iam::aws:policy/AmazonEKSServicePolicy""
+  role       = aws_iam_role.example.name
+}
+
+resource ""aws_eks_cluster"" ""example"" {
+  name     = var.cluster_name
+  role_arn = aws_iam_role.example.arn
+
+  vpc_config {
+    subnet_ids = [ aws_subnet.test_eks_1.id, aws_subnet.test_eks_2.id ]
+  }
+
+  # Ensure that IAM Role permissions are created before and deleted after EKS Cluster handling.
+  # Otherwise, EKS will not be able to properly delete EKS managed EC2 infrastructure such as Security Groups.
+  depends_on = [
+    aws_iam_role_policy_attachment.eks_cluster_policy,
+    aws_iam_role_policy_attachment.eks_service_policy,
+  ]
+
+  # Manage kubectl configuration
+  provisioner ""local-exec"" {
+    command = ""aws eks --region ${data.aws_region.current.name} update-kubeconfig --name ${self.name}""
+  }
+
+  provisioner ""local-exec"" {
+    when    = destroy
+    command = ""kubectl config unset users.${self.arn}""
+  }
+  provisioner ""local-exec"" {
+    when    = destroy
+    command = ""kubectl config unset clusters.${self.arn}""
+  }
+  provisioner ""local-exec"" {
+    when    = destroy
+    command = ""kubectl config unset contexts.${self.arn}""
+  }
+}
+"
+91,"terraform {
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.75""
+    }
+  }
+}
+
+provider ""aws"" {
+  region = ""us-east-1""
+  profile = ""admin-1""
+
+  assume_role {
+    role_arn = ""arn:aws:iam::590184057477:role/yicun-iac""
+  }
+}
+
+resource ""aws_vpc"" ""main"" {
+  cidr_block = ""10.0.0.0/16""
+}
+
+resource ""aws_subnet"" ""private-us-east-1a"" {
+  vpc_id     = aws_vpc.main.id
+  cidr_block = ""10.0.1.0/24""
+}
+
+resource ""aws_iam_role"" ""example"" {
+  name = ""eks-cluster-1""
+
+  assume_role_policy = <<POLICY
+{
+  ""Version"": ""2012-10-17"",
+  ""Statement"": [
+    {
+      ""Effect"": ""Allow"",
+      ""Principal"": {
+        ""Service"": ""eks.amazonaws.com""
+      },
+      ""Action"": ""sts:AssumeRole""
+    }
+  ]
+}
+POLICY
+}
+
+resource ""aws_iam_role_policy_attachment"" ""eks_cluster_policy"" {
+  policy_arn = ""arn:aws:iam::aws:policy/AmazonEKSClusterPolicy""
+  role       = aws_iam_role.example.name
+}
+
+resource ""aws_iam_role_policy_attachment"" ""eks_service_policy"" {
+  policy_arn = ""arn:aws:iam::aws:policy/AmazonEKSServicePolicy""
+  role       = aws_iam_role.example.name
+}
+
+resource ""aws_eks_cluster"" ""example"" {
+  name     = ""test""
+  version  = ""test-version""
+  role_arn = aws_iam_role.example.arn
+
+  vpc_config {
+    subnet_ids = [
+      aws_subnet.private-us-east-1a.id,
+    ]
+  }
+}
+
+resource ""aws_eks_access_entry"" ""example"" {
+  cluster_name      = aws_eks_cluster.example.name
+  principal_arn     = aws_iam_role.example.arn
+  kubernetes_groups = [""group-1"", ""group-2""]
+  type              = ""STANDARD""
+}"
+95,"terraform {
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.75""
+    }
+  }
+}
+
+provider ""aws"" {
+  region = ""us-east-1""
+  profile = ""admin-1""
+
+  assume_role {
+    role_arn = ""arn:aws:iam::590184057477:role/yicun-iac""
+  }
+}
+
+resource ""aws_vpc"" ""main"" {
+  cidr_block = ""10.0.0.0/16""
+}
+
+resource ""aws_subnet"" ""example1"" {
+  vpc_id     = aws_vpc.main.id
+  cidr_block = ""10.0.1.0/24""
+}
+
+resource ""aws_subnet"" ""example2"" {
+  vpc_id     = aws_vpc.main.id
+  cidr_block = ""10.0.2.0/24""
+}
+
+resource ""aws_iam_role"" ""example"" {
+  name = ""eks-cluster-1""
+
+  assume_role_policy = <<POLICY
+{
+  ""Version"": ""2012-10-17"",
+  ""Statement"": [
+    {
+      ""Effect"": ""Allow"",
+      ""Principal"": {
+        ""Service"": ""eks.amazonaws.com""
+      },
+      ""Action"": ""sts:AssumeRole""
+    }
+  ]
+}
+POLICY
+}
+
+resource ""aws_iam_role_policy_attachment"" ""eks_cluster_policy"" {
+  policy_arn = ""arn:aws:iam::aws:policy/AmazonEKSClusterPolicy""
+  role       = aws_iam_role.example.name
+}
+
+resource ""aws_iam_role_policy_attachment"" ""eks_service_policy"" {
+  policy_arn = ""arn:aws:iam::aws:policy/AmazonEKSServicePolicy""
+  role       = aws_iam_role.example.name
+}
+
+resource ""aws_iam_role"" ""example-fargate"" {
+  name = ""eks-fargate-profile-example""
+
+  assume_role_policy = jsonencode({
+    Statement = [{
+      Action = ""sts:AssumeRole""
+      Effect = ""Allow""
+      Principal = {
+        Service = ""eks-fargate-pods.amazonaws.com""
+      }
+    }]
+    Version = ""2012-10-17""
+  })
+}
+
+resource ""aws_iam_role_policy_attachment"" ""example-AmazonEKSFargatePodExecutionRolePolicy"" {
+  policy_arn = ""arn:aws:iam::aws:policy/AmazonEKSFargatePodExecutionRolePolicy""
+  role       = aws_iam_role.example-fargate.name
+}
+
+resource ""aws_eks_cluster"" ""example"" {
+  name     = ""example""
+  role_arn = aws_iam_role.example.arn
+
+  vpc_config {
+    subnet_ids = [aws_subnet.example1.id, aws_subnet.example2.id]
+  }
+}
+
+resource ""aws_eks_fargate_profile"" ""example"" {
+  cluster_name           = aws_eks_cluster.example.name
+  fargate_profile_name   = ""example""
+  pod_execution_role_arn = aws_iam_role.example-fargate.arn
+  subnet_ids             = [aws_subnet.example1.id, aws_subnet.example2.id]
+
+  selector {
+    namespace = ""example""
+  }
+}"
+99,"terraform {
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.75""
+    }
+  }
+}
+
+provider ""aws"" {
+  region  = ""us-east-1""
+  profile = ""admin-1""
+
+  assume_role {
+    role_arn = ""arn:aws:iam::590184057477:role/yicun-iac""
+  }
+}
+
+resource ""aws_vpc"" ""main"" {
+  cidr_block = ""10.0.0.0/16""
+}
+
+resource ""aws_subnet"" ""example1"" {
+  vpc_id     = aws_vpc.main.id
+  cidr_block = ""10.0.1.0/24""
+}
+
+resource ""aws_subnet"" ""example2"" {
+  vpc_id     = aws_vpc.main.id
+  cidr_block = ""10.0.2.0/24""
+}
+
+resource ""aws_iam_role"" ""example1"" {
+  name = ""eks-cluster-1""
+
+  assume_role_policy = <<POLICY
+{
+  ""Version"": ""2012-10-17"",
+  ""Statement"": [
+    {
+      ""Effect"": ""Allow"",
+      ""Principal"": {
+        ""Service"": ""eks.amazonaws.com""
+      },
+      ""Action"": ""sts:AssumeRole""
+    }
+  ]
+}
+POLICY
+}
+
+resource ""aws_iam_role_policy_attachment"" ""eks_cluster_policy"" {
+  policy_arn = ""arn:aws:iam::aws:policy/AmazonEKSClusterPolicy""
+  role       = aws_iam_role.example1.name
+}
+
+resource ""aws_iam_role_policy_attachment"" ""eks_service_policy"" {
+  policy_arn = ""arn:aws:iam::aws:policy/AmazonEKSServicePolicy""
+  role       = aws_iam_role.example1.name
+}
+
+resource ""aws_eks_cluster"" ""example"" {
+  name     = ""example""
+  role_arn = aws_iam_role.example1.arn
+
+  vpc_config {
+    subnet_ids = [aws_subnet.example1.id, aws_subnet.example2.id]
+  }
+
+  depends_on = [ 
+    aws_iam_role_policy_attachment.eks_cluster_policy,
+    aws_iam_role_policy_attachment.eks_service_policy,
+  ]
+}
+
+data ""aws_iam_policy_document"" ""assume_role"" {
+  statement {
+    effect = ""Allow""
+
+    principals {
+      type        = ""Service""
+      identifiers = [""pods.eks.amazonaws.com""]
+    }
+
+    actions = [
+      ""sts:AssumeRole"",
+      ""sts:TagSession""
+    ]
+  }
+}
+
+resource ""aws_iam_role"" ""example"" {
+  name               = ""eks-pod-identity-example""
+  assume_role_policy = data.aws_iam_policy_document.assume_role.json
+}
+
+resource ""aws_iam_role_policy_attachment"" ""example_s3"" {
+  policy_arn = ""arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess""
+  role       = aws_iam_role.example.name
+}
+
+resource ""aws_eks_pod_identity_association"" ""example"" {
+  cluster_name    = aws_eks_cluster.example.name
+  namespace       = ""example""
+  service_account = ""example-sa""
+  role_arn        = aws_iam_role.example.arn
+}"
+103,"terraform {
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.75""
+    }
+  }
+}
+
+provider ""aws"" {
+  region = ""us-east-1""
+  profile = ""admin-1""
+
+  assume_role {
+    role_arn = ""arn:aws:iam::590184057477:role/yicun-iac""
+  }
+}
+
+resource ""aws_vpc"" ""main"" {
+  cidr_block = ""10.0.0.0/16""
+}
+
+resource ""aws_subnet"" ""private-us-east-1a"" {
+  vpc_id     = aws_vpc.main.id
+  cidr_block = ""10.0.1.0/24""
+}
+
+resource ""aws_subnet"" ""public-us-east-1a"" {
+  vpc_id     = aws_vpc.main.id
+  cidr_block = ""10.0.2.0/24""
+}
+
+resource ""aws_iam_role"" ""example"" {
+  name = ""eks-cluster""
+
+  assume_role_policy = <<POLICY
+{
+  ""Version"": ""2012-10-17"",
+  ""Statement"": [
+    {
+      ""Effect"": ""Allow"",
+      ""Principal"": {
+        ""Service"": ""eks.amazonaws.com""
+      },
+      ""Action"": ""sts:AssumeRole""
+    }
+  ]
+}
+POLICY
+}
+
+resource ""aws_iam_role_policy_attachment"" ""eks_cluster_policy"" {
+  policy_arn = ""arn:aws:iam::aws:policy/AmazonEKSClusterPolicy""
+  role       = aws_iam_role.example.name
+}
+
+resource ""aws_iam_role_policy_attachment"" ""eks_service_policy"" {
+  policy_arn = ""arn:aws:iam::aws:policy/AmazonEKSServicePolicy""
+  role       = aws_iam_role.example.name
+}
+
+resource ""aws_eks_cluster"" ""cluster"" {
+  name     = ""test""
+  version  = ""1.22""
+  role_arn = aws_iam_role.example.arn
+
+  vpc_config {
+
+    endpoint_private_access = false
+    endpoint_public_access  = true
+    public_access_cidrs     = [""0.0.0.0/0""]
+
+    subnet_ids = [
+      aws_subnet.private-us-east-1a.id,
+      aws_subnet.public-us-east-1a.id,
+    ]
+  }
+
+  depends_on = [aws_iam_role_policy_attachment.eks_cluster_policy,
+                aws_iam_role_policy_attachment.eks_service_policy]
+}"
+107,"provider ""aws"" {
+    region = ""us-west-1""
+}
+
+resource ""aws_s3_bucket"" ""sample"" {
+  bucket = ""sample""
+}
+
+resource ""aws_s3_bucket_versioning"" ""sample"" {
+  bucket = ""sample""
+  versioning_configuration {
+    status = ""Enabled""
+  }
+  expected_bucket_owner = ""123456789012""
+}"
+111,"provider ""aws"" {
+    region = ""us-west-1""
+}
+
+resource ""aws_s3_bucket"" ""example"" {
+  bucket = ""example-bucket""
+}
+
+resource ""aws_s3_bucket_object_lock_configuration"" ""example"" {
+  bucket = aws_s3_bucket.example.bucket
+
+  rule {
+    default_retention {
+      mode  = ""GOVERNANCE""
+      days  = 90
+    }
+  }
+}"
+115,"terraform {
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.75""
+    }
+  }
+}
+
+provider ""aws"" {
+  region  = ""us-east-1""
+  profile = ""admin-1""
+
+  assume_role {
+    role_arn = ""arn:aws:iam::590184057477:role/yicun-iac""
+  }
+}
+
+# Bucket Name Suffix
+locals {
+  bucket_suffix = ""test""
+}
+
+#S3 Bucket glue-final
+resource ""aws_s3_bucket"" ""cg-data-s3-bucket"" {
+  bucket        = ""cg-data-s3-bucket-${local.bucket_suffix}""
+  force_destroy = true
+}
+
+
+# ACL is outdated (https://docs.aws.amazon.com/AmazonS3/latest/userguide/about-object-ownership.html)
+# resource ""aws_s3_bucket_acl"" ""cg-data-s3-bucket-acl"" {
+#   bucket     = aws_s3_bucket.cg-data-s3-bucket.id
+#   acl        = ""private""
+#   depends_on = [aws_s3_bucket_ownership_controls.s3_bucket_acl_ownership]
+# }
+
+resource ""aws_s3_bucket_ownership_controls"" ""s3_bucket_acl_ownership"" {
+  bucket = aws_s3_bucket.cg-data-s3-bucket.id
+  rule {
+    object_ownership = ""BucketOwnerPreferred""
+  }
+}
+
+# web to s3
+# test-glue-scenario2
+resource ""aws_s3_bucket"" ""cg-data-from-web"" {
+  bucket        = ""cg-data-from-web-${local.bucket_suffix}""
+  force_destroy = true
+}
+
+resource ""aws_s3_object"" ""web-data-primary"" {
+  bucket = aws_s3_bucket.cg-data-from-web.id
+  key    = ""order_data2.csv""
+  source = ""./supplement/order_data2.csv""
+  # acl    = ""bucket-owner-full-control""
+}
+
+
+resource ""aws_s3_bucket_public_access_block"" ""access_block"" {
+  bucket = aws_s3_bucket.cg-data-from-web.id
+
+  ignore_public_acls      = true
+  block_public_acls       = true
+  block_public_policy     = false
+  restrict_public_buckets = true
+}
+
+
+resource ""aws_s3_bucket_policy"" ""put_object"" {
+  bucket = aws_s3_bucket.cg-data-from-web.id
+  policy = jsonencode({
+    Version = ""2012-10-17""
+    Statement = [
+      {
+        Sid       = ""Statement1""
+        Action    = [""s3:PutObject""]
+        Effect    = ""Allow""
+        Resource  = ""${aws_s3_bucket.cg-data-from-web.arn}/*""
+        Principal = ""*""
+      }
+    ]
+  })
+  depends_on = [aws_s3_bucket_public_access_block.access_block]
+}"
+119,"provider ""aws"" {
+    region = ""us-west-1""
+}
+
+resource ""aws_kms_key"" ""mykey"" {
+  description             = ""This key is used to encrypt bucket objects""
+  deletion_window_in_days = 10
+}
+
+resource ""aws_s3_bucket"" ""mybucket"" {
+  bucket = ""mybucket""
+}
+
+resource ""aws_s3_bucket_server_side_encryption_configuration"" ""example"" {
+  bucket = aws_s3_bucket.mybucket.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      kms_master_key_id = aws_kms_key.mykey.arn
+      sse_algorithm     = ""aws:kms""
+    }
+  }
+}"
+123,"provider ""aws"" {
+    region = ""us-west-1""
+}
+
+resource ""aws_s3_bucket"" ""example"" {
+  bucket = ""example""
+}
+
+resource ""aws_s3_bucket_ownership_controls"" ""example"" {
+  bucket = aws_s3_bucket.example.id
+
+  rule {
+    object_ownership = ""BucketOwnerPreferred""
+  }
+}"
+127,"terraform {
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.75""
+    }
+  }
+}
+
+provider ""aws"" {
+  region = ""us-east-1""
+  profile = ""admin-1""
+
+  assume_role {
+    role_arn = ""arn:aws:iam::590184057477:role/yicun-iac""
+  }
+}
+
+data ""aws_ami"" ""latest_amazon_linux_2"" {
+  most_recent = true
+
+  owners = [""amazon""]
+
+  filter {
+    name   = ""name""
+    values = [""amzn2-ami-hvm-*-x86_64-gp2""]
+  }
+
+  filter {
+    name   = ""root-device-type""
+    values = [""ebs""]
+  }
+}
+
+# Create a Virtual Private Cloud (VPC)
+resource ""aws_vpc"" ""my_vpc"" {
+  cidr_block = ""10.0.0.0/16""
+}
+
+data ""aws_availability_zones"" ""azs"" {
+    state = ""available""
+}
+
+resource ""aws_subnet"" ""subnet_a"" {
+  vpc_id            = aws_vpc.my_vpc.id
+  cidr_block        = ""10.0.1.0/24""
+  availability_zone = data.aws_availability_zones.azs.names[0]
+}
+
+resource ""aws_subnet"" ""subnet_b"" {
+  vpc_id            = aws_vpc.my_vpc.id
+  cidr_block        = ""10.0.2.0/24""
+  availability_zone = data.aws_availability_zones.azs.names[1]
+}
+
+# Create an EC2 instance in Subnet A
+resource ""aws_instance"" ""ec2_instance_a"" {
+  ami           = data.aws_ami.latest_amazon_linux_2.id
+  instance_type = ""t2.micro""
+  subnet_id     = aws_subnet.subnet_a.id
+
+  root_block_device {
+    volume_size = 50
+  }
+}
+
+# # Create an EC2 instance in Subnet B
+resource ""aws_instance"" ""ec2_instance_b"" {
+  ami           = data.aws_ami.latest_amazon_linux_2.id
+  instance_type = ""t2.micro""
+  subnet_id     = aws_subnet.subnet_b.id
+
+  root_block_device {
+    volume_size = 50
+  }
+}"
+131,"terraform {
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.75""
+    }
+  }
+}
+
+provider ""aws"" {
+  region = ""us-east-1""
+  profile = ""admin-1""
+
+  assume_role {
+    role_arn = ""arn:aws:iam::590184057477:role/yicun-iac""
+  }
+}
+
+# Create a Virtual Private Cloud (VPC)
+resource ""aws_vpc"" ""my_vpc"" {
+  cidr_block = ""10.0.0.0/16""
+}
+
+# Create Public Subnet
+resource ""aws_subnet"" ""public_subnet"" {
+  vpc_id                  = aws_vpc.my_vpc.id
+  cidr_block              = ""10.0.1.0/24""
+  availability_zone       = ""us-east-1a""
+  map_public_ip_on_launch = true
+}
+
+data ""aws_availability_zones"" ""azs"" {
+    state = ""available""
+}
+
+# Create Private Subnet
+resource ""aws_subnet"" ""private_subnet"" {
+  vpc_id            = aws_vpc.my_vpc.id
+  cidr_block        = ""10.0.2.0/24""
+  availability_zone = data.aws_availability_zones.azs.names[0]
+}
+
+# Create EC2 Placement Group
+resource ""aws_placement_group"" ""my_placement_group"" {
+  name     = ""my-placement-group""
+  strategy = ""cluster""
+}
+
+# Create Security Group for EC2 instances
+resource ""aws_security_group"" ""ec2_sg"" {
+  vpc_id = aws_vpc.my_vpc.id
+  name   = ""ec2_sg""
+}
+
+data ""aws_ami"" ""amzn2"" {
+  most_recent = true
+  owners      = [""amazon""]
+
+  filter {
+    name   = ""name""
+    values = [""*ubuntu-noble-24.04-amd64-server-*""]
+  }
+}
+
+# Create EC2 instances in the Placement Group in the Private Subnet
+resource ""aws_instance"" ""ec2_instance"" {
+  count           = 3
+  ami             = data.aws_ami.amzn2.id
+  instance_type   = ""m5.large""
+  subnet_id       = aws_subnet.private_subnet.id
+  security_groups = [aws_security_group.ec2_sg.id]
+  placement_group = aws_placement_group.my_placement_group.name
+}"
+135,"resource ""aws_elasticache_user"" ""test"" {
+  user_id       = ""testUserId""
+  user_name     = ""testUserName""
+  access_string = ""on ~* +@all""
+  engine        = ""REDIS""
+
+  authentication_mode {
+    type = ""iam""
+  }
+}"
+139,"resource ""aws_redshift_cluster"" ""example"" {
+  cluster_identifier = ""tf-redshift-cluster""
+  database_name      = ""mydb""
+  master_username    = ""exampleuser""
+  master_password    = ""Mustbe8characters""
+  node_type          = ""dc2.large""
+  cluster_type       = ""single-node""
+}"
+143,"provider ""aws"" {
+  region = ""us-east-1""
+}
+
+resource ""aws_vpc"" ""main"" {
+  cidr_block = ""10.0.0.0/16""
+  enable_dns_support   = true
+  enable_dns_hostnames = true
+
+  tags = {
+    Name = ""main-vpc""
+  }
+}
+
+resource ""aws_subnet"" ""subnet_east_1a"" {
+  vpc_id     = aws_vpc.main.id
+  cidr_block = ""10.0.1.0/24""
+  availability_zone = ""us-east-1a""
+
+  tags = {
+    Name = ""subnet-east-1a""
+  }
+}
+
+resource ""aws_subnet"" ""subnet_east_1b"" {
+  vpc_id     = aws_vpc.main.id
+  cidr_block = ""10.0.2.0/24""
+  availability_zone = ""us-east-1b""
+
+  tags = {
+    Name = ""subnet-east-1b""
+  }
+}
+
+resource ""aws_redshift_subnet_group"" ""redshift_subnet_group"" {
+  name       = ""my-redshift-subnet-group""
+  subnet_ids = [aws_subnet.subnet_east_1a.id, aws_subnet.subnet_east_1b.id]
+
+  tags = {
+    Name = ""my-redshift-subnet-group""
+  }
+}"
+147,"resource ""aws_redshift_cluster"" ""example"" {
+  cluster_identifier = ""redshift-cluster-1""
+  node_type          = ""dc2.large""
+  cluster_type       = ""multi-node""
+  number_of_nodes    = 2
+
+  database_name = ""mydb""
+  master_username = ""foo""
+  master_password = ""Mustbe8characters""
+
+  skip_final_snapshot = true
+}
+
+resource ""aws_redshift_resource_policy"" ""example"" {
+  resource_arn = aws_redshift_cluster.example.cluster_namespace_arn
+  policy = jsonencode({
+    Version = ""2012-10-17""
+    Statement = [{
+      Effect = ""Allow""
+      Principal = {
+        AWS = ""arn:aws:iam::12345678901:root""
+      }
+      Action   = ""redshift:CreateInboundIntegration""
+      Resource = aws_redshift_cluster.example.cluster_namespace_arn
+      Sid      = """"
+    }]
+  })
+}"
+151,"data ""aws_iam_policy_document"" ""assume_role"" {
+  statement {
+    effect = ""Allow""
+
+    principals {
+      type        = ""Service""
+      identifiers = [""lambda.amazonaws.com""]
+    }
+
+    actions = [""sts:AssumeRole""]
+  }
+}
+
+resource ""aws_iam_role"" ""iam_for_lambda"" {
+  name               = ""iam_for_lambda""
+  assume_role_policy = data.aws_iam_policy_document.assume_role.json
+}
+
+data ""archive_file"" ""lambda"" {
+  type        = ""zip""
+  source_file = ""lambda.js""
+  output_path = ""lambda_function_payload.zip""
+}
+
+resource ""aws_lambda_function"" ""example_lambda"" {
+  filename      = ""lambda_function_payload.zip""
+  function_name = ""lambda_function_name""
+  role          = aws_iam_role.iam_for_lambda.arn
+  handler       = ""index.test""
+
+  runtime = ""nodejs18.x""
+}
+
+resource ""aws_lambda_invocation"" ""example"" {
+  function_name = aws_lambda_function.example_lambda.function_name
+
+  input = jsonencode({
+    key1 = ""value1""
+    key2 = ""value2""
+  })
+}"
+155,"terraform {
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.75""
+    }
+  }
+}
+
+provider ""aws"" {
+  region = ""us-east-1""
+  profile = ""admin-1""
+
+  assume_role {
+    role_arn = ""arn:aws:iam::590184057477:role/yicun-iac""
+  }
+}
+
+resource ""aws_cloudwatch_event_rule"" ""lambda_schedule"" {
+  name        = ""lambda-schedule-rule""
+  description = ""Invoke Lambda function every 15 minutes""
+  schedule_expression = ""rate(15 minutes)""
+  role_arn = aws_iam_role.cron.arn
+}
+
+# Create a CloudWatch Events Target to associate with the Lambda function
+resource ""aws_cloudwatch_event_target"" ""lambda_target"" {
+  rule = aws_cloudwatch_event_rule.lambda_schedule.name
+  arn = aws_lambda_function.cron.arn
+}
+
+data ""archive_file"" ""lambda-func"" {
+  type        = ""zip""
+  source_file = ""./supplement/lambda_func.py""
+  output_path = ""./supplement/lambda_func.zip""
+}
+
+resource ""aws_lambda_function"" ""cron"" {
+  function_name = ""cron-lambda-function""
+  role          = aws_iam_role.cron.arn
+  filename      = data.archive_file.lambda-func.output_path
+  source_code_hash = data.archive_file.lambda-func.output_base64sha256
+  handler       = ""lambda_func.handler""
+  runtime       = ""python3.12""
+}
+
+resource ""aws_lambda_permission"" ""cron"" {
+  function_name = aws_lambda_function.cron.function_name
+  action        = ""lambda:InvokeFunction""
+  principal     = ""events.amazonaws.com""
+  source_arn    = aws_cloudwatch_event_rule.lambda_schedule.arn
+}
+
+data ""aws_iam_policy_document"" ""cron_assume_role"" {
+  statement {
+    actions = [""sts:AssumeRole""]
+    principals {
+      type = ""Service""
+      identifiers = [
+        ""lambda.amazonaws.com"",
+        ""events.amazonaws.com""
+      ]
+    }
+  }
+}
+
+resource ""aws_iam_role"" ""cron"" {
+  name               = ""cron_assume_role""
+  assume_role_policy = data.aws_iam_policy_document.cron_assume_role.json
+}
+
+resource ""aws_iam_role_policy_attachment"" ""cron"" {
+  role       = aws_iam_role.cron.name
+  policy_arn = ""arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole""
+}
+"
+159,"resource ""aws_cloudwatch_composite_alarm"" ""example"" {
+  alarm_name        = ""example-composite-alarm""
+
+  alarm_rule = <<EOF
+ALARM(${aws_cloudwatch_metric_alarm.foobar.alarm_name})
+EOF
+
+}
+
+resource ""aws_cloudwatch_metric_alarm"" ""foobar"" {
+  alarm_name                = ""terraform-test-foobar5""
+  comparison_operator       = ""GreaterThanOrEqualToThreshold""
+  evaluation_periods        = ""2""
+  metric_name               = ""CPUUtilization""
+  namespace                 = ""AWS/EC2""
+  period                    = ""120""
+  statistic                 = ""Average""
+  threshold                 = ""80""
+  alarm_description         = ""This metric monitors ec2 cpu utilization""
+  insufficient_data_actions = []
+}"
+163,"terraform {
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.75""
+    }
+  }
+}
+
+
+provider ""aws"" {
+  region  = ""us-east-1""
+  profile = ""admin-1""
+
+  assume_role {
+    role_arn = ""arn:aws:iam::590184057477:role/yicun-iac""
+  }
+}
+
+resource ""aws_dynamodb_table"" ""base_table"" {
+  billing_mode     = ""PAY_PER_REQUEST""
+  hash_key         = ""myAttribute""
+  name             = ""myTable""
+  stream_enabled   = true
+  stream_view_type = ""NEW_AND_OLD_IMAGES""
+
+  attribute {
+    name = ""myAttribute""
+    type = ""S""
+  }
+
+  replica {
+    region_name = ""us-west-1""
+  }
+
+  replica {
+    region_name = ""us-west-2""
+  }
+}
+"
+167,"provider ""aws"" {
+  alias  = ""alt""
+  region = ""us-east-2""
+}
+
+resource ""aws_dynamodb_table"" ""example"" {
+  provider         = aws.alt
+  name             = ""TestTable""
+  hash_key         = ""BrodoBaggins""
+  billing_mode     = ""PAY_PER_REQUEST""
+  stream_enabled   = true
+  stream_view_type = ""NEW_AND_OLD_IMAGES""
+
+  attribute {
+    name = ""BrodoBaggins""
+    type = ""S""
+  }
+
+  lifecycle {
+    ignore_changes = [replica]
+  }
+}
+
+resource ""aws_dynamodb_table_replica"" ""example"" {
+  provider         = aws.alt
+  global_table_arn = aws_dynamodb_table.example.arn
+
+  tags = {
+    Name = ""IZPAWS""
+    Pozo = ""Amargo""
+  }
+}"
+171,"resource ""aws_dynamodb_table"" ""basic-dynamodb-table"" {
+  name           = ""example""
+  billing_mode   = ""PAY_PER_REQUEST""
+  hash_key       = ""UserId""
+
+  attribute {
+    name = ""UserId""
+    type = ""S""
+  }
+}"
+175,"terraform {
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.75""
+    }
+  }
+}
+
+provider ""aws"" {
+  region  = ""us-east-1""
+  profile = ""admin-1""
+
+  assume_role {
+    role_arn = ""arn:aws:iam::590184057477:role/yicun-iac""
+  }
+}
+
+resource ""aws_vpc"" ""example"" {
+  cidr_block = ""10.0.0.0/16""
+}
+
+resource ""aws_subnet"" ""example"" {
+  vpc_id     = aws_vpc.example.id
+  cidr_block = ""10.0.1.0/24""
+}
+
+resource ""aws_iam_role"" ""example"" {
+  name               = ""example""
+  path               = ""/""
+  assume_role_policy = data.aws_iam_policy_document.example.json
+}
+
+data ""aws_iam_policy_document"" ""example"" {
+  statement {
+    actions = [""sts:AssumeRole""]
+
+    principals {
+      type        = ""Service""
+      identifiers = [""sagemaker.amazonaws.com""]
+    }
+  }
+}
+
+resource ""aws_sagemaker_domain"" ""example"" {
+  domain_name = ""example""
+  auth_mode   = ""IAM""
+  vpc_id      = aws_vpc.example.id
+  subnet_ids  = [aws_subnet.example.id]
+
+  default_user_settings {
+    execution_role = aws_iam_role.example.arn
+  }
+}
+
+resource ""aws_sagemaker_user_profile"" ""example"" {
+  domain_id         = aws_sagemaker_domain.example.id
+  user_profile_name = ""example""
+}
+
+resource ""aws_sagemaker_app"" ""example"" {
+  domain_id         = aws_sagemaker_domain.example.id
+  user_profile_name = aws_sagemaker_user_profile.example.user_profile_name
+  app_name          = ""example""
+  app_type          = ""JupyterServer""
+}"
+179,"resource ""aws_sagemaker_notebook_instance"" ""ni"" {
+  name          = ""my-notebook-instance""
+  role_arn      = aws_iam_role.example.arn
+  instance_type = ""ml.t2.medium""
+}
+
+resource ""aws_iam_role"" ""example"" {
+  assume_role_policy = data.aws_iam_policy_document.assume_role.json
+}
+
+data ""aws_iam_policy_document"" ""assume_role"" {
+  statement {
+    actions = [""sts:AssumeRole""]
+
+    principals {
+      type        = ""Service""
+      identifiers = [""sagemaker.amazonaws.com""]
+    }
+  }
+}
+
+data ""aws_sagemaker_prebuilt_ecr_image"" ""test"" {
+  repository_name = ""kmeans""
+}"
+183,"resource ""aws_sagemaker_model"" ""example"" {
+  name               = ""my-model""
+  execution_role_arn = aws_iam_role.example.arn
+
+  primary_container {
+    image = data.aws_sagemaker_prebuilt_ecr_image.test.registry_path
+  }
+}
+
+resource ""aws_iam_role"" ""example"" {
+  assume_role_policy = data.aws_iam_policy_document.assume_role.json
+}
+
+data ""aws_iam_policy_document"" ""assume_role"" {
+  statement {
+    actions = [""sts:AssumeRole""]
+
+    principals {
+      type        = ""Service""
+      identifiers = [""sagemaker.amazonaws.com""]
+    }
+  }
+}
+
+data ""aws_sagemaker_prebuilt_ecr_image"" ""test"" {
+  repository_name = ""kmeans""
+}
+
+resource ""aws_sagemaker_endpoint_configuration"" ""ec"" {
+  name = ""my-endpoint-config""
+
+  production_variants {
+    variant_name           = ""variant-1""
+    model_name             = aws_sagemaker_model.example.name
+    initial_instance_count = 1
+    instance_type          = ""ml.t2.medium""
+  }
+
+}"
+187,"data ""aws_ami"" ""latest_amazon_linux_2"" {
+  most_recent = true
+  owners      = [""amazon""]
+
+  filter {
+    name   = ""name""
+    values = [""amzn2-ami-hvm-*-x86_64-gp2""]
+  }
+}"
+191,"# Define the provider (AWS in this case)
+terraform {
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.75""
+    }
+  }
+}
+
+provider ""aws"" {
+  region = ""us-east-1""
+  profile = ""admin-1""
+
+  assume_role {
+    role_arn = ""arn:aws:iam::590184057477:role/yicun-iac""
+  }
+}
+
+# Create a Virtual Private Cloud (VPC)
+resource ""aws_vpc"" ""my_vpc"" {
+  cidr_block = ""10.0.0.0/16""
+}
+
+data ""aws_availability_zones"" ""available"" {
+  state = ""available""
+}
+
+# Create Private Subnet 1
+resource ""aws_subnet"" ""private_subnet_1"" {
+  vpc_id            = aws_vpc.my_vpc.id
+  cidr_block        = ""10.0.1.0/24""
+  availability_zone = data.aws_availability_zones.available.names[0]
+}
+
+# Create Private Subnet 2
+resource ""aws_subnet"" ""private_subnet_2"" {
+  vpc_id            = aws_vpc.my_vpc.id
+  cidr_block        = ""10.0.2.0/24""
+  availability_zone = data.aws_availability_zones.available.names[1]
+}
+
+# Create Security Group for EC2 instances
+resource ""aws_security_group"" ""ec2_sg"" {
+  vpc_id = aws_vpc.my_vpc.id
+  name   = ""ec2_sg""
+}
+
+resource ""aws_vpc_security_group_ingress_rule"" ""ingress1"" {
+  security_group_id = aws_security_group.ec2_sg.id
+  cidr_ipv4 = ""0.0.0.0/0""
+  from_port = 80
+  ip_protocol = ""tcp""
+  to_port = 80
+}
+
+resource ""aws_vpc_security_group_ingress_rule"" ""ingress2"" {
+  security_group_id = aws_security_group.ec2_sg.id
+  cidr_ipv4 = ""0.0.0.0/0""
+  from_port = 22
+  ip_protocol = ""tcp""
+  to_port = 22
+}
+
+# Allow NFS traffic
+resource ""aws_vpc_security_group_ingress_rule"" ""ingress3"" {
+  security_group_id = aws_security_group.ec2_sg.id
+  cidr_ipv4 = ""0.0.0.0/0""
+  from_port = 2049
+  ip_protocol = ""tcp""
+  to_port = 2049
+}
+
+resource ""aws_vpc_security_group_egress_rule"" ""egress1"" {
+  security_group_id = aws_security_group.ec2_sg.id
+  cidr_ipv4         = ""0.0.0.0/0""
+  ip_protocol       = ""-1""
+}
+
+# Create EFS File System
+resource ""aws_efs_file_system"" ""efs"" {
+  creation_token = ""my-efs""
+  lifecycle_policy {
+    transition_to_ia = ""AFTER_30_DAYS""
+  }
+}
+
+# Create EFS Mount Target for Private Subnet 1
+resource ""aws_efs_mount_target"" ""mount_target_1"" {
+  file_system_id  = aws_efs_file_system.efs.id
+  subnet_id       = aws_subnet.private_subnet_1.id
+  security_groups = [aws_security_group.ec2_sg.id]
+}
+
+# Create EFS Mount Target for Private Subnet 2
+resource ""aws_efs_mount_target"" ""mount_target_2"" {
+  file_system_id  = aws_efs_file_system.efs.id
+  subnet_id       = aws_subnet.private_subnet_2.id
+  security_groups = [aws_security_group.ec2_sg.id]
+}
+
+data ""aws_ami"" ""amzn2"" {
+  most_recent = true
+  owners      = [""amazon""]
+
+  filter {
+    name   = ""name""
+    values = [""*ubuntu-noble-24.04-amd64-server-*""]
+  }
+}
+
+# Create EC2 instances in Private Subnet 1 and Subnet 2
+resource ""aws_instance"" ""ec2_instance_1"" {
+  ami             = data.aws_ami.amzn2.id
+  instance_type   = ""t2.micro""
+  subnet_id       = aws_subnet.private_subnet_1.id
+  security_groups = [aws_security_group.ec2_sg.id]
+
+  user_data = <<-EOF
+              #!/bin/bash
+              mkdir /mnt/efs
+              mount -t efs ${aws_efs_file_system.efs.id}:/ /mnt/efs
+              EOF
+}
+
+resource ""aws_instance"" ""ec2_instance_2"" {
+  ami             = data.aws_ami.amzn2.id
+  instance_type   = ""t2.micro""
+  subnet_id       = aws_subnet.private_subnet_2.id
+  security_groups = [aws_security_group.ec2_sg.id]
+
+  user_data = <<-EOF
+              #!/bin/bash
+              mkdir /mnt/efs
+              mount -t efs ${aws_efs_file_system.efs.id}:/ /mnt/efs
+              EOF
+}
+
+output ""ami_id"" {
+  value = data.aws_ami.amzn2.id
+}
+
+output ""ami_name"" {
+  value = data.aws_ami.amzn2.name
+}
+
+output ""efs_id"" {
+  value = aws_efs_file_system.efs.id
+}"
+195,"resource ""aws_elasticache_user"" ""test"" {
+  user_id       = ""testUserId""
+  user_name     = ""testUserName""
+  access_string = ""on ~* +@all""
+  engine        = ""REDIS""
+
+  authentication_mode {
+    type = ""iam""
+  }
+}"
+199,"resource ""aws_iam_role"" ""example"" {
+  name = ""redshift_role""
+
+  assume_role_policy = jsonencode({
+    Version = ""2012-10-17"",
+    Statement = [
+      {
+        Action = ""sts:AssumeRole"",
+        Effect = ""Allow"",
+        Principal = {
+          Service = ""redshift.amazonaws.com""
+        },
+      },
+    ],
+  })
+}
+
+resource ""aws_dax_cluster"" ""bar"" {
+  cluster_name       = ""cluster-example""
+  iam_role_arn       = aws_iam_role.example.arn
+  node_type          = ""dax.r4.large""
+  replication_factor = 1
+}"
+203,"terraform {
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.75""
+    }
+  }
+}
+
+provider ""aws"" {
+  region = ""us-east-1""
+  profile = ""admin-1""
+
+  assume_role {
+    role_arn = ""arn:aws:iam::590184057477:role/yicun-iac""
+  }
+}
+
+resource ""aws_vpc"" ""vpc"" {
+    cidr_block = ""192.168.0.0/22""
+}
+
+data ""aws_availability_zones"" ""azs"" {
+    state = ""available""
+}
+
+resource ""aws_subnet"" ""subnet_az1"" {
+    availability_zone = data.aws_availability_zones.azs.names[0]
+    cidr_block = ""192.168.0.0/24""
+    vpc_id = aws_vpc.vpc.id
+    map_public_ip_on_launch = true
+}
+
+resource ""aws_subnet"" ""subnet_az2"" {
+    availability_zone = data.aws_availability_zones.azs.names[1]
+    cidr_block = ""192.168.1.0/24""
+    vpc_id = aws_vpc.vpc.id
+    map_public_ip_on_launch = true
+}
+
+resource ""aws_subnet"" ""subnet_az3"" {
+    availability_zone = data.aws_availability_zones.azs.names[2]
+    cidr_block = ""192.168.2.0/24""
+    vpc_id = aws_vpc.vpc.id
+    map_public_ip_on_launch = true
+}
+
+resource ""aws_internet_gateway"" ""main"" {
+  vpc_id = aws_vpc.vpc.id
+}
+
+resource ""aws_route_table"" ""main"" {
+  vpc_id = aws_vpc.vpc.id
+
+  route {
+    cidr_block = ""0.0.0.0/0""
+    gateway_id = aws_internet_gateway.main.id
+  }
+}
+
+resource ""aws_route_table_association"" ""first"" {
+  subnet_id      = aws_subnet.subnet_az1.id
+  route_table_id = aws_route_table.main.id
+}
+
+resource ""aws_route_table_association"" ""second"" {
+  subnet_id      = aws_subnet.subnet_az2.id
+  route_table_id = aws_route_table.main.id
+}
+
+resource ""aws_route_table_association"" ""third"" {
+  subnet_id      = aws_subnet.subnet_az3.id
+  route_table_id = aws_route_table.main.id
+}
+
+resource ""aws_security_group"" ""sg"" {
+    vpc_id = aws_vpc.vpc.id
+}
+
+resource ""aws_vpc_security_group_ingress_rule"" ""ingress1"" {
+  security_group_id = aws_security_group.sg.id
+  cidr_ipv4 = ""0.0.0.0/0""
+  ip_protocol = ""-1""
+}
+
+resource ""aws_vpc_security_group_egress_rule"" ""egress1"" {
+  security_group_id = aws_security_group.sg.id
+  cidr_ipv4         = ""0.0.0.0/0""
+  ip_protocol       = ""-1""
+}
+
+resource ""aws_cloudwatch_log_group"" ""test"" {
+    name = ""msk_broker_logs""
+}
+
+resource ""aws_msk_cluster"" ""example"" {
+    cluster_name = ""example""
+    kafka_version = ""3.2.0""
+    number_of_broker_nodes = 3
+
+    broker_node_group_info {
+        instance_type = ""kafka.t3.small""
+        client_subnets = [
+            aws_subnet.subnet_az1.id,
+            aws_subnet.subnet_az2.id,
+            aws_subnet.subnet_az3.id,
+        ]
+
+        storage_info {
+            ebs_storage_info {
+                volume_size = 1000
+            }
+        }
+
+        security_groups = [aws_security_group.sg.id]
+    }
+
+    open_monitoring {
+        prometheus {
+            jmx_exporter {
+                enabled_in_broker = true
+            }
+            node_exporter {
+                enabled_in_broker = true
+            }
+        }
+    }
+
+    logging_info {
+        broker_logs {
+            cloudwatch_logs {
+                enabled = true
+                log_group = aws_cloudwatch_log_group.test.name
+            }
+            firehose {
+                enabled = false
+            }
+            s3 {
+                enabled = false
+            }
+        }
+    }
+}
+
+output ""zookeeper_connect_string"" {
+    value = aws_msk_cluster.example.zookeeper_connect_string
+}
+
+output ""bootstrap_brokers_tls"" {
+    description = ""TLS connection host:port pairs""
+    value = aws_msk_cluster.example.bootstrap_brokers_tls
+}"
+207,"terraform {
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.75""
+    }
+  }
+}
+
+provider ""aws"" {
+  region = ""us-east-1""
+  profile = ""admin-1""
+
+  assume_role {
+    role_arn = ""arn:aws:iam::590184057477:role/yicun-iac""
+  }
+}
+
+resource ""aws_vpc"" ""vpc"" {
+    cidr_block = ""192.168.0.0/22""
+}
+
+data ""aws_availability_zones"" ""azs"" {
+    state = ""available""
+}
+
+resource ""aws_subnet"" ""subnet_az1"" {
+    availability_zone = data.aws_availability_zones.azs.names[0]
+    cidr_block = ""192.168.0.0/24""
+    vpc_id = aws_vpc.vpc.id
+    map_public_ip_on_launch = true
+}
+
+resource ""aws_subnet"" ""subnet_az2"" {
+    availability_zone = data.aws_availability_zones.azs.names[1]
+    cidr_block = ""192.168.1.0/24""
+    vpc_id = aws_vpc.vpc.id
+    map_public_ip_on_launch = true
+}
+
+resource ""aws_subnet"" ""subnet_az3"" {
+    availability_zone = data.aws_availability_zones.azs.names[2]
+    cidr_block = ""192.168.2.0/24""
+    vpc_id = aws_vpc.vpc.id
+    map_public_ip_on_launch = true
+}
+
+resource ""aws_internet_gateway"" ""main"" {
+  vpc_id = aws_vpc.vpc.id
+}
+
+resource ""aws_route_table"" ""main"" {
+  vpc_id = aws_vpc.vpc.id
+
+  route {
+    cidr_block = ""0.0.0.0/0""
+    gateway_id = aws_internet_gateway.main.id
+  }
+}
+
+resource ""aws_route_table_association"" ""first"" {
+  subnet_id      = aws_subnet.subnet_az1.id
+  route_table_id = aws_route_table.main.id
+}
+
+resource ""aws_route_table_association"" ""second"" {
+  subnet_id      = aws_subnet.subnet_az2.id
+  route_table_id = aws_route_table.main.id
+}
+
+resource ""aws_route_table_association"" ""third"" {
+  subnet_id      = aws_subnet.subnet_az3.id
+  route_table_id = aws_route_table.main.id
+}
+
+resource ""aws_security_group"" ""sg"" {
+    vpc_id = aws_vpc.vpc.id
+}
+
+resource ""aws_vpc_security_group_ingress_rule"" ""ingress1"" {
+  security_group_id = aws_security_group.sg.id
+  cidr_ipv4 = ""0.0.0.0/0""
+  ip_protocol = ""-1""
+}
+
+resource ""aws_vpc_security_group_egress_rule"" ""egress1"" {
+  security_group_id = aws_security_group.sg.id
+  cidr_ipv4         = ""0.0.0.0/0""
+  ip_protocol       = ""-1""
+}
+
+data ""aws_iam_policy_document"" ""assume_role"" {
+    statement {
+        effect = ""Allow""
+        principals {
+            type = ""Service""
+            identifiers = [""firehose.amazonaws.com""]
+        }
+        actions = [""sts:AssumeRole""]
+        }
+}
+
+resource ""aws_msk_cluster"" ""example"" {
+    cluster_name = ""example""
+    kafka_version = ""3.2.0""
+    number_of_broker_nodes = 3
+
+    broker_node_group_info {
+        instance_type = ""kafka.t3.small""
+        client_subnets = [
+            aws_subnet.subnet_az1.id,
+            aws_subnet.subnet_az2.id,
+            aws_subnet.subnet_az3.id,
+        ]
+        storage_info {
+            ebs_storage_info {
+                volume_size = 1000
+            }
+        }
+        security_groups = [aws_security_group.sg.id]
+    }
+
+    open_monitoring {
+        prometheus {
+            jmx_exporter {
+                enabled_in_broker = true
+            }
+            node_exporter {
+                enabled_in_broker = true
+            }
+        }
+    }
+
+    logging_info {
+        broker_logs {
+            cloudwatch_logs {
+                enabled = false
+            }
+            firehose {
+                enabled = false
+            }
+            s3 {
+                enabled = false
+            }
+        }
+    }
+}
+
+output ""zookeeper_connect_string"" {
+    value = aws_msk_cluster.example.zookeeper_connect_string
+}
+
+output ""bootstrap_brokers_tls"" {
+description = ""TLS connection host:port pairs""
+    value = aws_msk_cluster.example.bootstrap_brokers_tls
+}
+"
+211,"terraform {
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.75""
+    }
+  }
+}
+
+provider ""aws"" {
+  region = ""us-east-2""
+  profile = ""admin-1""
+
+  assume_role {
+    role_arn = ""arn:aws:iam::590184057477:role/yicun-iac""
+  }
+}
+
+resource ""aws_vpc"" ""vpc"" {
+    cidr_block = ""192.168.0.0/22""
+    enable_dns_support = true
+    enable_dns_hostnames = true
+}
+
+data ""aws_availability_zones"" ""azs"" {
+    state = ""available""
+}
+
+resource ""aws_subnet"" ""subnet_az1"" {
+    availability_zone = data.aws_availability_zones.azs.names[0]
+    cidr_block = ""192.168.0.0/24""
+    vpc_id = aws_vpc.vpc.id
+    map_public_ip_on_launch = true
+}
+
+resource ""aws_subnet"" ""subnet_az2"" {
+    availability_zone = data.aws_availability_zones.azs.names[1]
+    cidr_block = ""192.168.1.0/24""
+    vpc_id = aws_vpc.vpc.id
+    map_public_ip_on_launch = true
+}
+
+resource ""aws_subnet"" ""subnet_az3"" {
+    availability_zone = data.aws_availability_zones.azs.names[2]
+    cidr_block = ""192.168.2.0/24""
+    vpc_id = aws_vpc.vpc.id
+    map_public_ip_on_launch = true
+}
+
+resource ""aws_internet_gateway"" ""main"" {
+  vpc_id = aws_vpc.vpc.id
+}
+
+resource ""aws_route_table"" ""main"" {
+  vpc_id = aws_vpc.vpc.id
+
+  route {
+    cidr_block = ""0.0.0.0/0""
+    gateway_id = aws_internet_gateway.main.id
+  }
+}
+
+resource ""aws_route_table_association"" ""first"" {
+  subnet_id      = aws_subnet.subnet_az1.id
+  route_table_id = aws_route_table.main.id
+}
+
+resource ""aws_route_table_association"" ""second"" {
+  subnet_id      = aws_subnet.subnet_az2.id
+  route_table_id = aws_route_table.main.id
+}
+
+resource ""aws_route_table_association"" ""third"" {
+  subnet_id      = aws_subnet.subnet_az3.id
+  route_table_id = aws_route_table.main.id
+}
+
+resource ""aws_security_group"" ""sg"" {
+    vpc_id = aws_vpc.vpc.id
+}
+
+resource ""aws_vpc_security_group_ingress_rule"" ""ingress1"" {
+  security_group_id = aws_security_group.sg.id
+  cidr_ipv4 = ""0.0.0.0/0""
+  ip_protocol = ""-1""
+}
+
+resource ""aws_vpc_security_group_egress_rule"" ""egress1"" {
+  security_group_id = aws_security_group.sg.id
+  cidr_ipv4         = ""0.0.0.0/0""
+  ip_protocol       = ""-1""
+}
+
+resource ""aws_msk_serverless_cluster"" ""example"" {
+    cluster_name = ""Example""
+
+    vpc_config {
+        subnet_ids = [aws_subnet.subnet_az1.id, aws_subnet.subnet_az2.id, aws_subnet.subnet_az3.id]
+        security_group_ids = [aws_security_group.sg.id]
+    }
+
+    client_authentication {
+        sasl {
+            iam {
+                enabled = true
+            }
+        }
+    }
+}"
+215,"terraform {
+required_providers {
+aws = {
+source = ""hashicorp/aws""
+version = ""~> 5.0""
+}
+}
+}
+
+# Configure the AWS Provider
+provider ""aws"" {
+region = ""us-east-1""
+}
+
+resource ""aws_vpc"" ""vpc"" {
+cidr_block = ""192.168.0.0/22""
+}
+
+resource ""aws_rds_cluster"" ""default"" {
+cluster_identifier = ""aurora-cluster-demo""
+engine = ""aurora-mysql""
+availability_zones = [""us-east-1a"", ""us-east-1b"", ""us-east-1c""]
+database_name = ""mydb""
+master_username = ""USERNAME""
+master_password = ""PASSWORD""
+backup_retention_period = 5
+preferred_backup_window = ""07:00-09:00""
+skip_final_snapshot = true
+}"
+219,"terraform {
+required_providers {
+aws = {
+source = ""hashicorp/aws""
+version = ""~> 5.0""
+}
+}
+}
+
+# Configure the AWS Provider
+provider ""aws"" {
+region = ""us-east-1""
+}
+
+resource ""aws_vpc"" ""vpc"" {
+cidr_block = ""192.168.0.0/22""
+}
+
+resource ""aws_db_instance"" ""default"" {
+allocated_storage = 10
+db_name = ""mydb""
+engine = ""mysql""
+instance_class = ""db.t3.micro""
+username = ""USERNAME""
+password = ""PASSWORD""
+parameter_group_name = ""default.mysql5.7""
+skip_final_snapshot = true
+}"
+223,"terraform {
+required_providers {
+aws = {
+source = ""hashicorp/aws""
+version = ""~> 5.0""
+}
+}
+}
+
+# Configure the AWS Provider
+provider ""aws"" {
+region = ""us-east-1""
+}
+
+resource ""aws_dynamodb_table"" ""example"" {
+name = ""your-dynamodb-table-name""
+billing_mode = ""PAY_PER_REQUEST"" # Or ""PROVISIONED"" if you prefer provisioned capacity
+hash_key = ""id""
+attribute {
+name = ""id""
+type = ""S""
+}
+
+point_in_time_recovery {
+enabled = true # Set to true to enable point-in-time recovery
+}
+
+}"
+227,"terraform {
+required_providers {
+aws = {
+source = ""hashicorp/aws""
+version = ""~> 5.0""
+}
+}
+}
+
+resource ""aws_dax_parameter_group"" ""example"" {
+name = ""example""
+
+parameters {
+name = ""query-ttl-millis""
+value = ""100000""
+}
+
+parameters {
+name = ""record-ttl-millis""
+value = ""100000""
+}
+}"
+231,"resource ""aws_dynamodb_table"" ""example"" {
+name = ""your-dynamodb-table-name""
+billing_mode = ""PAY_PER_REQUEST"" # Or ""PROVISIONED"" if you prefer provisioned capacity
+hash_key = ""id""
+attribute {
+name = ""id""
+type = ""S""
+}
+
+# Define other table settings as needed
+
+server_side_encryption {
+enabled = true
+}
+}"
+235,"resource ""aws_vpc"" ""main"" {
+  cidr_block                       = ""10.0.0.0/16""
+}
+
+resource ""aws_egress_only_internet_gateway"" ""example_egress_igw"" {
+  vpc_id = aws_vpc.main.id
+}"
+239,"resource ""aws_vpc"" ""main"" {
+  cidr_block = ""10.0.0.0/16""
+}
+
+resource ""aws_internet_gateway"" ""example_igw"" {
+  vpc_id = aws_vpc.main.id
+}
+
+resource ""aws_route_table"" ""example_public_rt"" {
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block = ""10.0.1.0/24""
+    gateway_id = aws_internet_gateway.example_igw.id
+  }
+}"
+243,"terraform {
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.75""
+    }
+  }
+}
+
+provider ""aws"" {
+  region = ""us-east-1""
+  profile = ""admin-1""
+
+  assume_role {
+    role_arn = ""arn:aws:iam::590184057477:role/yicun-iac""
+  }
+}
+
+resource ""aws_neptune_cluster_parameter_group"" ""example"" {
+  family      = ""neptune1.3""
+  name        = ""example""
+
+  parameter {
+    name  = ""neptune_enable_audit_log""
+    value = 1
+  }
+}
+
+resource ""aws_neptune_cluster"" ""default"" {
+  cluster_identifier                  = ""neptune-cluster-demo""
+  engine                              = ""neptune""
+  backup_retention_period             = 5
+  preferred_backup_window             = ""07:00-09:00""
+  skip_final_snapshot                 = true
+  iam_database_authentication_enabled = true
+  apply_immediately                   = true
+  neptune_cluster_parameter_group_name = aws_neptune_cluster_parameter_group.example.id
+  neptune_subnet_group_name = aws_neptune_subnet_group.default.id
+}
+
+resource ""aws_vpc"" ""example_vpc"" {
+  cidr_block = ""10.0.0.0/16""
+}
+
+data ""aws_availability_zones"" ""azs"" {
+    state = ""available""
+}
+
+resource ""aws_subnet"" ""subnet1"" {
+  vpc_id     = aws_vpc.example_vpc.id
+  cidr_block = ""10.0.1.0/24""
+  availability_zone = data.aws_availability_zones.azs.names[0]
+}
+
+resource ""aws_subnet"" ""subnet2"" {
+  vpc_id     = aws_vpc.example_vpc.id
+  cidr_block = ""10.0.2.0/24""
+  availability_zone = data.aws_availability_zones.azs.names[1]
+}
+resource ""aws_neptune_subnet_group"" ""default"" {
+  name       = ""main""
+  subnet_ids = [aws_subnet.subnet1.id, aws_subnet.subnet2.id]
+}"
+247,"resource ""aws_chime_voice_connector"" ""vc1"" {
+  name               = ""connector-test-1""
+  require_encryption = true
+  aws_region         = ""us-east-1""
+}
+
+resource ""aws_chime_voice_connector"" ""vc2"" {
+  name               = ""connector-test-2""
+  require_encryption = true
+  aws_region         = ""us-west-2""
+}
+
+resource ""aws_chime_voice_connector_group"" ""group"" {
+  name = ""test-group""
+
+  connector {
+    voice_connector_id = aws_chime_voice_connector.vc1.id
+    priority           = 1
+  }
+
+  connector {
+    voice_connector_id = aws_chime_voice_connector.vc2.id
+    priority           = 3
+  }
+}"
+251,"resource ""aws_chime_voice_connector"" ""default"" {
+  name               = ""vc-name-test""
+  require_encryption = true
+}
+
+resource ""aws_chime_voice_connector_logging"" ""default"" {
+  enable_sip_logs          = false
+  enable_media_metric_logs = true
+  voice_connector_id       = aws_chime_voice_connector.default.id
+}"
+255,"terraform {
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.75""
+    }
+  }
+}
+
+provider ""aws"" {
+  region = ""us-east-1""
+  profile = ""admin-1""
+
+  assume_role {
+    role_arn = ""arn:aws:iam::590184057477:role/yicun-iac""
+  }
+}
+
+resource ""aws_redshift_cluster"" ""example"" {
+  cluster_identifier = ""tf-redshift-cluster""
+  database_name      = ""mydb""
+  master_username    = ""exampleuser""
+  master_password    = ""Mustbe8characters""
+  node_type          = ""ra3.xlplus""
+  cluster_type       = ""single-node""
+}
+
+resource ""aws_redshift_endpoint_access"" ""example"" {
+  endpoint_name      = ""example""
+  subnet_group_name  = aws_redshift_subnet_group.foobar.id
+  cluster_identifier = aws_redshift_cluster.example.cluster_identifier
+}
+
+resource ""aws_vpc"" ""foo"" {
+  cidr_block = ""10.1.0.0/16""
+}
+
+data ""aws_availability_zones"" ""azs"" {
+    state = ""available""
+}
+
+resource ""aws_subnet"" ""foo"" {
+  cidr_block        = ""10.1.1.0/24""
+  availability_zone = data.aws_availability_zones.azs.names[0]
+  vpc_id            = aws_vpc.foo.id
+}
+
+resource ""aws_subnet"" ""bar"" {
+  cidr_block        = ""10.1.2.0/24""
+  availability_zone = data.aws_availability_zones.azs.names[1]
+  vpc_id            = aws_vpc.foo.id
+}
+
+resource ""aws_redshift_subnet_group"" ""foobar"" {
+  name       = ""foo""
+  subnet_ids = [aws_subnet.foo.id, aws_subnet.bar.id]
+}"
+259,"terraform {
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.75""
+    }
+  }
+}
+
+provider ""aws"" {
+  region = ""us-east-1""
+  profile = ""admin-1""
+
+  assume_role {
+    role_arn = ""arn:aws:iam::590184057477:role/yicun-iac""
+  }
+}
+
+resource ""aws_redshift_cluster"" ""example"" {
+  cluster_identifier  = ""tf-redshift-cluster""
+  database_name       = ""mydb""
+  master_username     = ""exampleuser""
+  master_password     = ""Mustbe8characters""
+  node_type           = ""ra3.xlplus""
+  cluster_type        = ""single-node""
+  skip_final_snapshot = true
+  cluster_parameter_group_name = aws_redshift_parameter_group.bar.id
+}
+
+resource ""aws_redshift_parameter_group"" ""bar"" {
+  name   = ""parameter-group-test-terraform""
+  family = ""redshift-1.0""
+
+  parameter {
+    name  = ""require_ssl""
+    value = ""true""
+  }
+
+  parameter {
+    name  = ""query_group""
+    value = ""example""
+  }
+
+  parameter {
+    name  = ""enable_user_activity_logging""
+    value = ""true""
+  }
+}
+
+resource ""aws_sns_topic"" ""default"" {
+  name = ""redshift-events""
+}
+
+resource ""aws_redshift_event_subscription"" ""default"" {
+  name          = ""redshift-event-sub""
+  sns_topic_arn = aws_sns_topic.default.arn
+
+  source_type = ""cluster-parameter-group""
+  source_ids  = [aws_redshift_parameter_group.bar.id]
+
+  severity = ""INFO""
+
+  event_categories = [
+    ""configuration"",
+    ""management"",
+    ""monitoring"",
+    ""security"",
+  ]
+}"
+263,"resource ""aws_iam_user"" ""user"" {
+  name = ""test-user""
+  path = ""/""
+}
+
+resource ""aws_iam_user_ssh_key"" ""user"" {
+  username   = aws_iam_user.user.name
+  encoding   = ""SSH""
+  public_key = ""ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQD3F6tyPEFEzV0LX3X8BsXdMsQz1x2cEikKDEY0aIj41qgxMCP/iteneqXSIFZBp5vizPvaoIR3Um9xK7PGoW8giupGn+EPuxIA4cDM4vzOqOkiMPhz5XK0whEjkVzTo4+S0puvDZuwIsdiW9mxhJc7tgBNL0cYlWSYVkz4G/fslNfRPW5mYAM49f4fhtxPb5ok4Q2Lg9dPKVHO/Bgeu5woMc7RY0p1ej6D4CKFE6lymSDJpW0YHX/wqE9+cfEauh7xZcG0q9t2ta6F6fmX0agvpFyZo8aFbXeUBr7osSCJNgvavWbM/06niWrOvYX2xwWdhXmXSrbX8ZbabVohBK41 mytest@mydomain.com""
+}"
+267,"resource ""aws_s3_bucket"" ""example"" {
+  bucket = ""my-tf-test-bucket""
+}"
+271,"resource ""aws_s3_bucket_analytics_configuration"" ""example-entire-bucket"" {
+  bucket = aws_s3_bucket.example.id
+  name   = ""EntireBucket""
+
+  storage_class_analysis {
+    data_export {
+      destination {
+        s3_bucket_destination {
+          bucket_arn = aws_s3_bucket.analytics.arn
+        }
+      }
+    }
+  }
+}
+
+resource ""aws_s3_bucket"" ""example"" {
+  bucket = ""mybucket""
+}
+
+resource ""aws_s3_bucket"" ""analytics"" {
+  bucket = ""analytics destination""
+}"
+275,"resource ""aws_s3_bucket"" ""example"" {
+  bucket = ""example""
+}
+
+resource ""aws_s3_bucket_metric"" ""example-entire-bucket"" {
+  bucket = aws_s3_bucket.example.id
+  name   = ""EntireBucket""
+}"
+279,"resource ""aws_s3_bucket"" ""example"" {
+  bucket = ""mybucket""
+
+  object_lock_enabled = true
+}
+
+resource ""aws_s3_bucket_object_lock_configuration"" ""example"" {
+  bucket = aws_s3_bucket.example.id
+
+  rule {
+    default_retention {
+      mode = ""COMPLIANCE""
+      days = 5
+    }
+  }
+}"
+283,"resource ""aws_s3_bucket"" ""example"" {
+  bucket = ""mybucket""
+}
+
+resource ""aws_s3_bucket_cors_configuration"" ""example"" {
+  bucket = aws_s3_bucket.example.id
+
+  cors_rule {
+    allowed_headers = [""*""]
+    allowed_methods = [""GET"", ""POST""]
+    allowed_origins = [""https://domain.com""]
+  }
+}"
+287,"resource ""aws_s3_bucket"" ""example"" {
+  bucket = ""mybucket""
+}
+
+resource ""aws_s3_bucket_request_payment_configuration"" ""example"" {
+  bucket = aws_s3_bucket.example.id
+  payer  = ""Requester""
+}"
+291,"resource ""aws_s3_bucket"" ""example"" {
+  bucket = ""example-bucket""
+}
+
+resource ""aws_s3_bucket_versioning"" ""versioning_example"" {
+  bucket = aws_s3_bucket.example.id
+  versioning_configuration {
+    status = ""Disabled""
+  }
+}"
+295,"terraform {
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.75""
+    }
+  }
+}
+
+provider ""aws"" {
+  region = ""us-east-1""
+  profile = ""admin-1""
+
+  assume_role {
+    role_arn = ""arn:aws:iam::590184057477:role/yicun-iac""
+  }
+}
+
+resource ""aws_s3_bucket"" ""artifact_bucket"" {
+  bucket_prefix = ""artifact-bucket-""
+}
+
+resource ""aws_codebuild_project"" ""autograder_build"" {
+  name         = ""autograder_build""
+  service_role = aws_iam_role.autograder_build_role.arn
+
+  artifacts {
+    type     = ""S3""
+    location = aws_s3_bucket.artifact_bucket.arn
+    name     = ""results.zip"" # include this
+  }
+
+  environment { # arguments required, exact value not specified
+    compute_type = ""BUILD_GENERAL1_SMALL""
+    image        = ""aws/codebuild/standard:7.0-24.10.29""
+    type         = ""LINUX_CONTAINER""
+  }
+
+  source {
+    type            = ""GITHUB""
+    git_clone_depth = 1 # good to have, not required
+    location        = ""github.com/source-location""
+  }
+}
+
+resource ""aws_iam_role"" ""autograder_build_role"" {
+  assume_role_policy = data.aws_iam_policy_document.autograder_build_policy_assume.json
+}
+
+data ""aws_iam_policy_document"" ""autograder_build_policy_assume"" {
+  statement {
+    actions = [""sts:AssumeRole""]
+
+    principals {
+      type        = ""Service""
+      identifiers = [""codebuild.amazonaws.com""]
+    }
+  }
+
+}
+
+data ""aws_iam_policy_document"" ""autograder_build_policy"" {
+  statement {
+    effect = ""Allow""
+    actions = [
+      ""ec2:DescribeSubnets"",
+      ""ec2:DescribeSecurityGroups"",
+      ""ec2:DescribeVpcs""
+    ]
+    resources = [
+      ""*""
+    ]
+  }
+}
+
+resource ""aws_iam_policy"" ""autograder_build_policy"" {
+  name        = ""lambda_policy""
+  description = ""Grants permissions to Lambda to describe vpc, subnet, security group""
+
+  policy = data.aws_iam_policy_document.autograder_build_policy.json
+}
+
+resource ""aws_iam_role_policy_attachment"" ""lambda_policy_attach"" {
+  role       = aws_iam_role.autograder_build_role.name
+  policy_arn = aws_iam_policy.autograder_build_policy.arn
+}"
+299,"terraform {
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.75""
+    }
+  }
+}
+
+provider ""aws"" {
+  region = ""us-east-1""
+  profile = ""admin-1""
+
+  assume_role {
+    role_arn = ""arn:aws:iam::590184057477:role/yicun-iac""
+  }
+}
+
+resource ""aws_s3_bucket"" ""artifact_bucket"" {
+  bucket_prefix = ""artifact-bucket-""
+}
+
+resource ""aws_codebuild_project"" ""autograder_build"" {
+  name         = ""autograder_build""
+  service_role = aws_iam_role.autograder_build_role.arn
+
+  artifacts {
+    type     = ""S3""
+    location = aws_s3_bucket.artifact_bucket.arn
+    name     = ""results.zip"" # include this
+  }
+
+  environment { # arguments required, exact value not specified
+    compute_type = ""BUILD_GENERAL1_SMALL""
+    image        = ""aws/codebuild/standard:7.0-24.10.29""
+    type         = ""LINUX_CONTAINER""
+  }
+
+  source {
+    type            = ""GITHUB""
+    git_clone_depth = 1 # good to have, not required
+    location        = ""github.com/source-location""
+  }
+
+  vpc_config {
+    vpc_id             = aws_vpc.autograder_vpc.id
+    subnets            = [aws_subnet.autograder_vpc_subnet.id]
+    security_group_ids = [aws_security_group.autograder_vpc_securitygroup.id]
+  }
+}
+
+resource ""aws_vpc"" ""autograder_vpc"" {
+  cidr_block = ""10.0.0.0/16"" # extra value not specified
+}
+
+resource ""aws_subnet"" ""autograder_vpc_subnet"" {
+  vpc_id     = aws_vpc.autograder_vpc.id
+  cidr_block = ""10.0.0.0/24"" # include this
+}
+
+resource ""aws_security_group"" ""autograder_vpc_securitygroup"" {
+  vpc_id = aws_vpc.autograder_vpc.id
+}
+
+resource ""aws_iam_role"" ""autograder_build_role"" {
+  assume_role_policy = data.aws_iam_policy_document.autograder_build_policy_assume.json
+}
+
+data ""aws_iam_policy_document"" ""autograder_build_policy_assume"" {
+  statement {
+    actions = [""sts:AssumeRole""]
+
+    principals {
+      type        = ""Service""
+      identifiers = [""codebuild.amazonaws.com""]
+    }
+  }
+}
+
+data ""aws_iam_policy_document"" ""autograder_build_policy"" {
+  statement {
+    effect = ""Allow""
+    actions = [
+      ""ec2:DescribeSubnets"",
+      ""ec2:DescribeSecurityGroups"",
+      ""ec2:DescribeVpcs""
+    ]
+    resources = [
+      ""*""
+    ]
+  }
+
+  statement {
+    effect  = ""Allow""
+    actions = [""s3:*""]
+    resources = [
+      aws_s3_bucket.artifact_bucket.arn,
+      ""${aws_s3_bucket.artifact_bucket.arn}/*"",
+    ]
+  }
+}
+
+resource ""aws_iam_policy"" ""autograder_build_policy"" {
+  name        = ""lambda_policy""
+  description = ""Grants permissions to Lambda to describe vpc, subnet, security group""
+
+  policy = data.aws_iam_policy_document.autograder_build_policy.json
+}
+
+resource ""aws_iam_role_policy_attachment"" ""lambda_policy_attach"" {
+  role       = aws_iam_role.autograder_build_role.name
+  policy_arn = aws_iam_policy.autograder_build_policy.arn
+}"
+303,"terraform {
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.75""
+    }
+  }
+}
+
+
+provider ""aws"" {
+  region  = ""us-east-1""
+  profile = ""admin-1""
+
+  assume_role {
+    role_arn = ""arn:aws:iam::590184057477:role/yicun-iac""
+  }
+}
+
+resource ""aws_dynamodb_table"" ""caas"" {
+  name           = ""cat_names""
+  hash_key       = ""name""
+  billing_mode   = ""PAY_PER_REQUEST""
+
+  attribute {
+    name = ""name""
+    type = ""S""
+  }
+}
+
+resource ""aws_s3_bucket"" ""caas"" {
+  bucket_prefix = ""cat-image""
+}
+
+resource ""aws_iam_role"" ""lambda_role"" {
+  name = ""lambda_api_gateway_role""
+
+  assume_role_policy = jsonencode({
+    Version = ""2012-10-17""
+    Statement = [
+      {
+        Action = ""sts:AssumeRole""
+        Effect = ""Allow""
+        Principal = {
+          Service = ""lambda.amazonaws.com""
+        }
+      }
+    ]
+  })
+}
+
+resource ""aws_iam_role_policy"" ""lambda_policy"" {
+  name   = ""lambda_policy""
+  role   = aws_iam_role.lambda_role.id
+  policy = jsonencode({
+    Version = ""2012-10-17""
+    Statement = [
+      {
+        Action = [
+          ""s3:GetObject"",
+          ""s3:PutObject""
+        ]
+        Effect   = ""Allow""
+        Resource = ""${aws_s3_bucket.caas.arn}/*""
+      },
+      {
+        Action = [
+          ""dynamodb:PutItem""
+        ]
+        Effect   = ""Allow""
+        Resource = aws_dynamodb_table.caas.arn
+      }
+    ]
+  })
+}
+
+resource ""aws_api_gateway_rest_api"" ""caas"" {
+  name = ""caas""
+}
+
+resource ""aws_api_gateway_resource"" ""caas_cat"" {
+  rest_api_id = aws_api_gateway_rest_api.caas.id
+  parent_id   = aws_api_gateway_rest_api.caas.root_resource_id
+  path_part   = ""cat""
+}
+
+resource ""aws_api_gateway_method"" ""caas_cat_get"" {
+  rest_api_id   = aws_api_gateway_rest_api.caas.id
+  resource_id   = aws_api_gateway_resource.caas_cat.id
+  http_method   = ""GET""
+  authorization = ""NONE""
+}
+
+resource ""aws_api_gateway_method"" ""caas_cat_put"" {
+  rest_api_id   = aws_api_gateway_rest_api.caas.id
+  resource_id   = aws_api_gateway_resource.caas_cat.id
+  http_method   = ""PUT""
+  authorization = ""NONE""
+}
+
+data ""archive_file"" ""caas_cat"" {
+  type        = ""zip""
+  source_file = ""./supplement/caas_cat.py""
+  output_path = ""./supplement/caas_cat.zip""
+}
+
+resource ""aws_lambda_function"" ""caas_cat"" {
+  function_name = ""caas_cat""
+  role          = aws_iam_role.lambda_role.arn
+  filename      = data.archive_file.caas_cat.output_path
+  source_code_hash = data.archive_file.caas_cat.output_base64sha256
+  handler       = ""caas_cat.handler""
+  runtime       = ""python3.12""
+
+  environment {
+    variables = {
+      CAAS_S3_BUCKET = ""${aws_s3_bucket.caas.id}""
+      DYNAMODB_TABLE_NAME = ""${aws_dynamodb_table.caas.id}""
+    }
+  }
+}
+
+resource ""aws_api_gateway_integration"" ""caas_cat_get"" {
+  rest_api_id             = aws_api_gateway_rest_api.caas.id
+  resource_id             = aws_api_gateway_resource.caas_cat.id
+  http_method             = aws_api_gateway_method.caas_cat_get.http_method
+  type                    = ""AWS_PROXY""
+  integration_http_method = ""GET""
+  uri                     = aws_lambda_function.caas_cat.invoke_arn
+}
+
+resource ""aws_api_gateway_integration"" ""caas_cat_put"" {
+  rest_api_id             = aws_api_gateway_rest_api.caas.id
+  resource_id             = aws_api_gateway_resource.caas_cat.id
+  http_method             = aws_api_gateway_method.caas_cat_put.http_method
+  type                    = ""AWS_PROXY""
+  integration_http_method = ""PUT""
+  uri                     = aws_lambda_function.caas_cat.invoke_arn
+}
+
+resource ""aws_lambda_permission"" ""caas_cat"" {
+  action        = ""lambda:InvokeFunction""
+  principal     = ""apigateway.amazonaws.com""
+  function_name = aws_lambda_function.caas_cat.function_name
+
+  source_arn = ""${aws_api_gateway_rest_api.caas.execution_arn}/*/*""
+}
+
+resource ""aws_api_gateway_deployment"" ""api_deployment"" {
+  rest_api_id = aws_api_gateway_rest_api.caas.id
+  depends_on  = [aws_api_gateway_integration.caas_cat_get, 
+                 aws_api_gateway_integration.caas_cat_put]
+}
+
+resource ""aws_api_gateway_stage"" ""api_stage"" {
+  deployment_id = aws_api_gateway_deployment.api_deployment.id
+  rest_api_id   = aws_api_gateway_rest_api.caas.id
+  stage_name    = ""dev""
+}
+
+output ""api_id"" {
+  value = aws_api_gateway_rest_api.caas.id
+  description = ""The API Gateway ID""
+}"
+307,"terraform {
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.75""
+    }
+  }
+}
+
+provider ""aws"" {
+  region = ""us-east-1""
+  profile = ""admin-1""
+
+  assume_role {
+    role_arn = ""arn:aws:iam::590184057477:role/yicun-iac""
+  }
+}
+
+data ""aws_ami"" ""amzn2"" {
+  most_recent = true
+  owners      = [""amazon""]
+
+  filter {
+    name   = ""name""
+    values = [""*ubuntu-noble-24.04-amd64-server-*""]
+  }
+}
+
+
+resource ""aws_instance"" ""cloud_desktop"" {
+  instance_type = ""t2.micro""
+  ami = data.aws_ami.amzn2.id
+}
+
+resource ""aws_backup_plan"" ""cloud_desktop_backup"" {
+  name = ""cloud_desktop_backup_plan""
+  rule {
+    rule_name         = ""cloud_desktop_backup_rule"" # required, not specified
+    target_vault_name = aws_backup_vault.valut.name # required, not specified
+    schedule          = ""cron(0 0 * * ? *)""
+  }
+
+  advanced_backup_setting {
+    backup_options = {
+      WindowsVSS = ""enabled""
+    }
+    resource_type = ""EC2""
+  }
+}
+
+resource ""aws_backup_vault"" ""valut"" {
+  name = ""cloud_desktop_backup_valut""
+}
+
+resource ""aws_backup_selection"" ""backup_ec2"" {
+  iam_role_arn = aws_iam_role.backup.arn
+
+  name    = ""backup_ec2""
+  plan_id = aws_backup_plan.cloud_desktop_backup.id
+
+  resources = [
+    aws_instance.cloud_desktop.arn,
+  ]
+}
+
+data ""aws_iam_policy_document"" ""backup_assume_role"" {
+  statement {
+    effect = ""Allow""
+
+    principals {
+      type        = ""Service""
+      identifiers = [""backup.amazonaws.com""]
+    }
+
+    actions = [""sts:AssumeRole""]
+  }
+}
+
+resource ""aws_iam_role"" ""backup"" {
+  name               = ""backup""
+  assume_role_policy = data.aws_iam_policy_document.backup_assume_role.json
+}
+
+resource ""aws_iam_role_policy_attachment"" ""backup"" {
+  policy_arn = ""arn:aws:iam::aws:policy/service-role/AWSBackupServiceRolePolicyForBackup""
+  role       = aws_iam_role.backup.name
+}"
+311,"terraform {
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.75""
+    }
+  }
+}
+
+provider ""aws"" {
+  region = ""us-east-1""
+  profile = ""admin-1""
+
+  assume_role {
+    role_arn = ""arn:aws:iam::590184057477:role/yicun-iac""
+  }
+}
+
+resource ""aws_cloudwatch_event_rule"" ""cron"" {
+  schedule_expression = ""cron(0 7 * * ? *)""
+
+  role_arn = aws_iam_role.cron.arn
+}
+
+resource ""aws_cloudwatch_event_target"" ""cron"" {
+  rule = aws_cloudwatch_event_rule.cron.name
+  arn  = aws_lambda_function.cron.arn
+}
+
+data ""archive_file"" ""lambda-func"" {
+  type        = ""zip""
+  source_file = ""./supplement/lambda_func.py""
+  output_path = ""./supplement/lambda_func.zip""
+}
+
+resource ""aws_lambda_function"" ""cron"" {
+  function_name = ""cron-lambda-function""
+  role          = aws_iam_role.cron.arn
+  filename      = data.archive_file.lambda-func.output_path
+  source_code_hash = data.archive_file.lambda-func.output_base64sha256
+  handler       = ""lambda_func.handler""
+  runtime       = ""python3.12""
+}
+
+resource ""aws_lambda_permission"" ""cron"" {
+  function_name = aws_lambda_function.cron.function_name
+  action        = ""lambda:InvokeFunction""
+  principal     = ""events.amazonaws.com""
+  source_arn    = aws_cloudwatch_event_rule.cron.arn
+}
+
+data ""aws_iam_policy_document"" ""cron_assume_role"" {
+  statement {
+    actions = [""sts:AssumeRole""]
+    principals {
+      type = ""Service""
+      identifiers = [
+        ""lambda.amazonaws.com"",
+        ""events.amazonaws.com""
+      ]
+    }
+  }
+}
+
+resource ""aws_iam_role"" ""cron"" {
+  name               = ""cron_assume_role""
+  assume_role_policy = data.aws_iam_policy_document.cron_assume_role.json
+}
+
+resource ""aws_iam_role_policy_attachment"" ""cron"" {
+  role       = aws_iam_role.cron.name
+  policy_arn = ""arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole""
+}"
+315,"terraform {
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.75""
+    }
+  }
+}
+
+provider ""aws"" {
+  region = ""us-east-1""
+  profile = ""admin-1""
+
+  assume_role {
+    role_arn = ""arn:aws:iam::590184057477:role/yicun-iac""
+  }
+}
+
+resource ""aws_cloudwatch_event_rule"" ""cron"" {
+  schedule_expression = ""cron(0 7 * * ? *)""
+
+  role_arn = aws_iam_role.cron.arn
+}
+
+resource ""aws_cloudwatch_event_target"" ""cron"" {
+  rule = aws_cloudwatch_event_rule.cron.name
+  arn  = aws_lambda_function.cron.arn
+}
+
+data ""archive_file"" ""lambda-func"" {
+  type        = ""zip""
+  source_file = ""./supplement/lambda_func.py""
+  output_path = ""./supplement/lambda_func.zip""
+}
+
+resource ""aws_lambda_function"" ""cron"" {
+  function_name = ""cron-lambda-function""
+  role          = aws_iam_role.cron.arn
+  filename      = data.archive_file.lambda-func.output_path
+  source_code_hash = data.archive_file.lambda-func.output_base64sha256
+  handler       = ""lambda_func.handler""
+  runtime       = ""python3.12""
+}
+
+resource ""aws_lambda_permission"" ""cron"" {
+  function_name = aws_lambda_function.cron.function_name
+  action        = ""lambda:InvokeFunction""
+  principal     = ""events.amazonaws.com""
+  source_arn    = aws_cloudwatch_event_rule.cron.arn
+}
+
+data ""aws_iam_policy_document"" ""cron_assume_role"" {
+  statement {
+    actions = [""sts:AssumeRole""]
+    principals {
+      type = ""Service""
+      identifiers = [
+        ""lambda.amazonaws.com"",
+        ""events.amazonaws.com""
+      ]
+    }
+  }
+}
+
+resource ""aws_iam_role"" ""cron"" {
+  name               = ""cron_assume_role""
+  assume_role_policy = data.aws_iam_policy_document.cron_assume_role.json
+}
+
+resource ""aws_iam_role_policy_attachment"" ""cron"" {
+  role       = aws_iam_role.cron.name
+  policy_arn = ""arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole""
+}"
+319,"terraform {
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.75""
+    }
+  }
+}
+
+
+provider ""aws"" {
+  region  = ""us-east-1""
+  profile = ""admin-1""
+
+  assume_role {
+    role_arn = ""arn:aws:iam::590184057477:role/yicun-iac""
+  }
+}
+
+resource ""aws_s3_bucket"" ""website_content"" {
+  bucket_prefix = ""website-content-""
+}
+
+resource ""aws_s3_object"" ""put_website"" {
+  bucket = aws_s3_bucket.website_content.bucket
+  key = ""index.html""
+  source = ""./supplement/index.html""
+  content_type = ""text/html""
+}
+
+resource ""aws_s3_object"" ""put_website_css"" {
+  bucket = aws_s3_bucket.website_content.bucket
+  key = ""css/style.css""
+  source = ""./supplement/css/style.css""
+  content_type = ""text/css""
+}
+
+resource ""aws_s3_bucket_policy"" ""bucket_policy"" {
+  bucket = aws_s3_bucket.website_content.id
+
+  policy = jsonencode({
+    Version = ""2012-10-17""
+    Statement = [
+      {
+        Effect = ""Allow""
+        Principal = {
+          Service = ""cloudfront.amazonaws.com""
+        }
+        Action = ""s3:GetObject""
+        Resource = ""${aws_s3_bucket.website_content.arn}/*""
+        Condition = {
+          StringEquals = {
+            ""AWS:SourceArn"" = aws_cloudfront_distribution.my_distribution.arn
+          }
+        }
+      }
+    ]
+  })
+}
+
+
+locals {
+  s3_origin_id = ""s3_website_origin""
+}
+
+resource ""aws_cloudfront_origin_access_control"" ""s3_oac"" {
+  name                              = ""s3-oac""
+  description                       = ""aws access control policy""
+  origin_access_control_origin_type = ""s3""
+  signing_behavior                  = ""always""
+  signing_protocol                  = ""sigv4""
+}
+
+resource ""aws_cloudfront_distribution"" ""my_distribution"" {
+  origin {
+    domain_name              = aws_s3_bucket.website_content.bucket_regional_domain_name
+    origin_access_control_id = aws_cloudfront_origin_access_control.s3_oac.id
+    origin_id                = local.s3_origin_id
+  }
+
+  enabled             = true
+  is_ipv6_enabled     = true
+  default_root_object = ""index.html""
+
+  default_cache_behavior {
+    allowed_methods  = [""GET"", ""HEAD""]
+    cached_methods   = [""GET"", ""HEAD""]
+    target_origin_id = local.s3_origin_id
+
+    forwarded_values {
+      query_string = false
+
+      cookies {
+        forward = ""none""
+      }
+    }
+
+    viewer_protocol_policy = ""allow-all""
+    min_ttl                = 0
+    default_ttl            = 3600
+    max_ttl                = 86400
+  }
+
+  price_class = ""PriceClass_200""
+
+  restrictions {
+    geo_restriction {
+      restriction_type = ""whitelist""
+      locations        = [""US"", ""CA"", ""GB"", ""DE""]
+    }
+  }
+
+  viewer_certificate {
+    cloudfront_default_certificate = true
+  }
+}
+
+# Route53
+resource ""aws_route53_zone"" ""my_zone"" {
+  name = ""my-test-cloudfront.com""
+}
+
+resource ""aws_route53_record"" ""cdn_ipv4"" {
+  type    = ""A""
+  name    = ""cdn""
+  zone_id = aws_route53_zone.my_zone.zone_id
+
+  alias {
+    name                   = aws_cloudfront_distribution.my_distribution.domain_name
+    zone_id                = aws_cloudfront_distribution.my_distribution.hosted_zone_id
+    evaluate_target_health = true
+  }
+}
+
+resource ""aws_route53_record"" ""cdn_ipv6"" {
+  type    = ""AAAA"" # ipv6 is enabled
+  name    = ""cdn""
+  zone_id = aws_route53_zone.my_zone.zone_id
+
+  alias {
+    name                   = aws_cloudfront_distribution.my_distribution.domain_name
+    zone_id                = aws_cloudfront_distribution.my_distribution.hosted_zone_id
+    evaluate_target_health = true
+  }
+}"
+323,"terraform {
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.75""
+    }
+  }
+}
+
+provider ""aws"" {
+  region  = ""us-east-1""
+  profile = ""admin-1""
+
+  assume_role {
+    role_arn = ""arn:aws:iam::590184057477:role/yicun-iac""
+  }
+}
+
+data ""aws_availability_zones"" ""available"" {
+  state = ""available""
+}
+
+module ""vpc"" {
+  source  = ""terraform-aws-modules/vpc/aws""
+
+  name = ""main-vpc""
+  cidr = ""10.0.0.0/16""
+
+  azs                  = data.aws_availability_zones.available.names
+  public_subnets       = [""10.0.4.0/24"", ""10.0.5.0/24"", ""10.0.6.0/24""]
+}
+
+data ""aws_ami"" ""ubuntu"" {
+  most_recent = true
+  owners      = [""amazon""]
+
+  filter {
+    name   = ""name""
+    values = [""*ubuntu-noble-24.04-amd64-server-*""]
+  }
+}
+
+resource ""aws_launch_configuration"" ""launch-config"" {
+  name_prefix     = ""aws-asg-launch-config-""
+  image_id        = data.aws_ami.ubuntu.id
+  instance_type   = ""t2.micro""
+  # user_data       = file(""user-data.sh"")  # load your script if needed
+  security_groups = [aws_security_group.instance-sg.id]
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+resource ""aws_autoscaling_group"" ""asg"" {
+  name                 = ""asg""
+  min_size             = 1
+  max_size             = 3
+  desired_capacity     = 1
+  launch_configuration = aws_launch_configuration.launch-config.name
+  vpc_zone_identifier  = module.vpc.public_subnets
+
+  lifecycle { 
+    ignore_changes = [desired_capacity, target_group_arns]
+  }
+
+  health_check_type    = ""ELB""
+}
+
+resource ""aws_autoscaling_policy"" ""scale-down"" {
+  name                   = ""scale-down""
+  autoscaling_group_name = aws_autoscaling_group.asg.name
+  adjustment_type        = ""ChangeInCapacity""
+  scaling_adjustment     = -1
+  cooldown               = 120
+}
+
+resource ""aws_cloudwatch_metric_alarm"" ""scale-down"" {
+  alarm_description   = ""Monitors CPU utilization for Terramino ASG""
+  alarm_actions       = [aws_autoscaling_policy.scale-down.arn]
+  alarm_name          = ""scale-down""
+  comparison_operator = ""LessThanOrEqualToThreshold""
+  namespace           = ""AWS/EC2""
+  metric_name         = ""CPUUtilization""
+  threshold           = ""10""
+  evaluation_periods  = ""2""
+  period              = ""120""
+  statistic           = ""Average""
+
+  dimensions = {
+    AutoScalingGroupName = aws_autoscaling_group.asg.name
+  }
+}
+
+resource ""aws_autoscaling_policy"" ""scale-up"" {
+  name                   = ""scale-up""
+  autoscaling_group_name = aws_autoscaling_group.asg.name
+  adjustment_type        = ""ChangeInCapacity""
+  scaling_adjustment     = 1
+  cooldown               = 120
+}
+
+resource ""aws_cloudwatch_metric_alarm"" ""scale-up"" {
+  alarm_description   = ""Monitors CPU utilization for Terramino ASG""
+  alarm_actions       = [aws_autoscaling_policy.scale-up.arn]
+  alarm_name          = ""scale-up""
+  comparison_operator = ""GreaterThanOrEqualToThreshold""
+  namespace           = ""AWS/EC2""
+  metric_name         = ""CPUUtilization""
+  threshold           = ""80""
+  evaluation_periods  = ""2""
+  period              = ""120""
+  statistic           = ""Average""
+
+  dimensions = {
+    AutoScalingGroupName = aws_autoscaling_group.asg.name
+  }
+}
+
+resource ""aws_lb"" ""lb"" {
+  name               = ""my-lb""
+  internal           = false
+  load_balancer_type = ""application""
+  security_groups    = [aws_security_group.lb-sg.id]
+  subnets            = module.vpc.public_subnets
+}
+
+resource ""aws_lb_listener"" ""lb-listener"" {
+  load_balancer_arn = aws_lb.lb.arn
+  port              = ""80""
+  protocol          = ""HTTP""
+
+  default_action {
+    type             = ""forward""
+    target_group_arn = aws_lb_target_group.target-group.arn
+  }
+}
+
+resource ""aws_lb_target_group"" ""target-group"" {
+  name     = ""my-lb-target-group""
+  port     = 80
+  protocol = ""HTTP""
+  vpc_id   = module.vpc.vpc_id
+}
+
+resource ""aws_autoscaling_attachment"" ""as-attachment"" {
+  autoscaling_group_name = aws_autoscaling_group.asg.id
+  lb_target_group_arn   = aws_lb_target_group.target-group.arn
+}
+
+resource ""aws_security_group"" ""instance-sg"" {
+  name = ""instance-sg""
+  vpc_id = module.vpc.vpc_id
+}
+
+resource ""aws_vpc_security_group_ingress_rule"" ""instance-sg-ingress-rule"" {
+  from_port       = 80
+  to_port         = 80
+  ip_protocol     = ""tcp""
+  referenced_security_group_id = aws_security_group.lb-sg.id
+  security_group_id = aws_security_group.instance-sg.id
+}
+
+resource ""aws_vpc_security_group_egress_rule"" ""instance-sg-egress-rule"" {
+  from_port       = 0
+  to_port         = 0
+  ip_protocol     = ""-1""
+  cidr_ipv4       = ""0.0.0.0/0""
+  security_group_id = aws_security_group.instance-sg.id
+}
+
+resource ""aws_security_group"" ""lb-sg"" {
+  name = ""lb-sg""
+  vpc_id = module.vpc.vpc_id
+}
+
+resource ""aws_vpc_security_group_ingress_rule"" ""lb-sg-ingress-rule"" {
+  from_port   = 80
+  to_port     = 80
+  ip_protocol = ""tcp""
+  cidr_ipv4   = ""0.0.0.0/0""
+  security_group_id = aws_security_group.lb-sg.id
+}
+
+resource ""aws_vpc_security_group_egress_rule"" ""lb-sg-egress-rule"" {
+  from_port   = 0
+  to_port     = 0
+  ip_protocol = ""-1""
+  cidr_ipv4   = ""0.0.0.0/0""
+  security_group_id = aws_security_group.lb-sg.id
+}
+
+resource ""aws_route53_zone"" ""test-video-stream"" {
+  name = ""test-video-stream.com""
+}
+
+resource ""aws_route53_record"" ""lb_ipv4"" {
+  type    = ""A""
+  name    = ""lb""
+  zone_id = aws_route53_zone.test-video-stream.zone_id
+
+  alias {
+    name                   = aws_lb.lb.dns_name
+    zone_id                = aws_lb.lb.zone_id
+    evaluate_target_health = true
+  }
+}
+
+resource ""aws_route53_record"" ""lb_ipv6"" {
+  type    = ""AAAA""
+  name    = ""lb""
+  zone_id = aws_route53_zone.test-video-stream.zone_id
+
+  alias {
+    name                   = aws_lb.lb.dns_name
+    zone_id                = aws_lb.lb.zone_id
+    evaluate_target_health = true
+  }
+}
+
+output ""lb_endpoint"" {
+  value = ""http://${aws_lb.lb.dns_name}""
+}
+
+output ""application_endpoint"" {
+  value = ""http://${aws_lb.lb.dns_name}/index.php""
+}
+
+output ""asg_name"" {
+  value = aws_autoscaling_group.asg.name
+}
+"
+327,"terraform {
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.75""
+    }
+  }
+}
+
+provider ""aws"" {
+  region  = ""us-east-1""
+  profile = ""admin-1""
+
+  assume_role {
+    role_arn = ""arn:aws:iam::590184057477:role/yicun-iac""
+  }
+}
+
+data ""aws_availability_zones"" ""available"" {
+  state = ""available""
+}
+
+module ""vpc"" {
+  source  = ""terraform-aws-modules/vpc/aws""
+
+  name = ""main-vpc""
+  cidr = ""10.0.0.0/16""
+
+  azs                  = data.aws_availability_zones.available.names
+  public_subnets       = [""10.0.4.0/24"", ""10.0.5.0/24"", ""10.0.6.0/24""]
+}
+
+resource ""aws_db_subnet_group"" ""db-subnet-group"" {
+  name       = ""db-subnet-group""
+  subnet_ids = module.vpc.public_subnets
+}
+
+resource ""aws_security_group"" ""db-sg"" {
+  name = ""db-sg""
+  vpc_id = module.vpc.vpc_id
+}
+
+resource ""aws_vpc_security_group_ingress_rule"" ""db-sg-ingress-rule"" {
+  from_port       = 5432
+  to_port         = 5432
+  ip_protocol     = ""tcp""
+  cidr_ipv4       = ""0.0.0.0/0""
+  security_group_id = aws_security_group.db-sg.id
+}
+
+resource ""aws_vpc_security_group_egress_rule"" ""db-sg-egress-rule"" {
+  from_port       = 5432
+  to_port         = 5432
+  ip_protocol     = ""tcp""
+  cidr_ipv4       = ""0.0.0.0/0""
+  security_group_id = aws_security_group.db-sg.id
+}
+
+resource ""aws_db_instance"" ""database"" {
+  identifier             = ""dolphinscheduler""
+  db_name                = ""dolphinscheduler""
+  instance_class         = ""db.t3.micro""
+  allocated_storage      = 5
+  engine                 = ""postgres""
+  engine_version         = ""17.1""
+  skip_final_snapshot    = true
+  db_subnet_group_name   = aws_db_subnet_group.db-subnet-group.id
+  publicly_accessible    = true
+  vpc_security_group_ids = [aws_security_group.db-sg.id]
+  username               = ""myusername""
+  password               = ""mypassword""
+}
+"
+331,"terraform {
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.75""
+    }
+  }
+}
+
+provider ""aws"" {
+  region  = ""us-east-1""
+  profile = ""admin-1""
+
+  assume_role {
+    role_arn = ""arn:aws:iam::590184057477:role/yicun-iac""
+  }
+}
+
+data ""aws_availability_zones"" ""available"" {
+  state = ""available""
+}
+
+module ""vpc"" {
+  source  = ""terraform-aws-modules/vpc/aws""
+
+  name = ""main-vpc""
+  cidr = ""10.0.0.0/16""
+
+  azs                  = data.aws_availability_zones.available.names
+  public_subnets       = [""10.0.4.0/24"", ""10.0.5.0/24"", ""10.0.6.0/24""]
+}
+
+resource ""aws_db_subnet_group"" ""db-subnet-group"" {
+  name       = ""db-subnet-group""
+  subnet_ids = module.vpc.public_subnets
+}
+
+resource ""aws_security_group"" ""db-sg"" {
+  name = ""db-sg""
+  vpc_id = module.vpc.vpc_id
+}
+
+resource ""aws_vpc_security_group_ingress_rule"" ""db-sg-ingress-rule"" {
+  from_port       = 5432
+  to_port         = 5432
+  ip_protocol     = ""tcp""
+  cidr_ipv4       = ""0.0.0.0/0""
+  security_group_id = aws_security_group.db-sg.id
+}
+
+resource ""aws_vpc_security_group_egress_rule"" ""db-sg-egress-rule"" {
+  from_port       = 5432
+  to_port         = 5432
+  ip_protocol     = ""tcp""
+  cidr_ipv4       = ""0.0.0.0/0""
+  security_group_id = aws_security_group.db-sg.id
+}
+
+resource ""aws_db_parameter_group"" ""postgre-param-group"" {
+  name   = ""pgparamgrp15""
+  family = ""postgres15""
+
+  parameter {
+    name  = ""password_encryption""
+    value = ""scram-sha-256""
+  }
+
+  parameter {
+    name  = ""rds.force_ssl""
+    value = ""0""
+  }
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+resource ""aws_kms_key"" ""rds-key"" {
+  description             = ""kmsrds""
+  deletion_window_in_days = 14
+}
+
+resource ""aws_db_instance"" ""postgres"" {
+  identifier                      = ""pg""
+  skip_final_snapshot             = true
+  allocated_storage               = 50
+  backup_retention_period         = 7
+  db_subnet_group_name            = aws_db_subnet_group.db-subnet-group.id
+  parameter_group_name            = aws_db_parameter_group.postgre-param-group.name
+  enabled_cloudwatch_logs_exports = [""postgresql"", ""upgrade""]
+  engine                          = ""postgres""
+  engine_version                  = ""15""
+  instance_class                  = ""db.t3.micro""
+  db_name                         = ""postgres"" # Initial database name
+  username                        = ""myusername""
+  password                        = ""mypassword""
+  vpc_security_group_ids          = [aws_security_group.db-sg.id]
+  # Other security settings
+  publicly_accessible             = true
+  multi_az                        = true
+  storage_encrypted               = true
+  kms_key_id                      = aws_kms_key.rds-key.arn
+  # Default daily backup window
+  # https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_WorkingWithAutomatedBackups.html#USER_WorkingWithAutomatedBackups.BackupWindow
+}"
+335,"terraform {
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.75""
+    }
+  }
+}
+
+provider ""aws"" {
+  region  = ""us-east-1""
+  profile = ""admin-1""
+
+  assume_role {
+    role_arn = ""arn:aws:iam::590184057477:role/yicun-iac""
+  }
+}
+
+data ""aws_availability_zones"" ""available"" {
+  state = ""available""
+}
+
+module ""vpc"" {
+  source  = ""terraform-aws-modules/vpc/aws""
+
+  name = ""main-vpc""
+  cidr = ""10.0.0.0/16""
+
+  azs                  = data.aws_availability_zones.available.names
+  public_subnets       = [""10.0.4.0/24"", ""10.0.5.0/24"", ""10.0.6.0/24""]
+}
+
+resource ""aws_db_subnet_group"" ""db-subnet-group"" {
+  name       = ""db-subnet-group""
+  subnet_ids = module.vpc.public_subnets
+}
+
+resource ""aws_security_group"" ""db-sg"" {
+  name = ""db-sg""
+  vpc_id = module.vpc.vpc_id
+}
+
+resource ""aws_vpc_security_group_ingress_rule"" ""db-sg-ingress-rule"" {
+  from_port       = 5432
+  to_port         = 5432
+  ip_protocol     = ""tcp""
+  cidr_ipv4       = ""0.0.0.0/0""
+  security_group_id = aws_security_group.db-sg.id
+}
+
+resource ""aws_vpc_security_group_egress_rule"" ""db-sg-egress-rule"" {
+  from_port       = 5432
+  to_port         = 5432
+  ip_protocol     = ""tcp""
+  cidr_ipv4       = ""0.0.0.0/0""
+  security_group_id = aws_security_group.db-sg.id
+}
+
+resource ""aws_db_parameter_group"" ""postgre-param-group"" {
+  name   = ""pgparamgrp15""
+  family = ""postgres15""
+
+  parameter {
+    name  = ""password_encryption""
+    value = ""scram-sha-256""
+  }
+
+  parameter {
+    name  = ""rds.force_ssl""
+    value = ""0""
+  }
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+resource ""aws_kms_key"" ""rds-key"" {
+  description             = ""kmsrds""
+  deletion_window_in_days = 14
+}
+
+resource ""aws_db_instance"" ""postgres"" {
+  identifier                      = ""pg""
+  skip_final_snapshot             = true
+  allocated_storage               = 5
+  backup_retention_period         = 7
+  db_subnet_group_name            = aws_db_subnet_group.db-subnet-group.id
+  parameter_group_name            = aws_db_parameter_group.postgre-param-group.name
+  enabled_cloudwatch_logs_exports = [""postgresql"", ""upgrade""]
+  engine                          = ""postgres""
+  engine_version                  = ""15""
+  instance_class                  = ""db.t3.micro""
+  db_name                         = ""postgres"" # Initial database name
+  username                        = ""myusername""
+  password                        = ""mypassword""
+  vpc_security_group_ids          = [aws_security_group.db-sg.id]
+  # Other security settings
+  publicly_accessible             = true
+  multi_az                        = true
+  storage_encrypted               = true
+  kms_key_id                      = aws_kms_key.rds-key.arn
+  # Default daily backup window
+  # https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_WorkingWithAutomatedBackups.html#USER_WorkingWithAutomatedBackups.BackupWindow
+}"
+339,"terraform {
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.75""
+    }
+  }
+}
+
+provider ""aws"" {
+  region = ""us-east-1""
+  profile = ""admin-1""
+
+  assume_role {
+    role_arn = ""arn:aws:iam::590184057477:role/yicun-iac""
+  }
+}
+
+resource ""aws_db_instance"" ""mysql"" {
+  allocated_storage      = 500
+  storage_type           = ""gp2""
+  engine                 = ""mysql""
+  engine_version         = ""5.7""
+  instance_class         = ""db.t3.micro""
+  skip_final_snapshot    = true
+  db_name                = ""name""
+  username               = ""username""
+  password               = ""password""
+  vpc_security_group_ids = [aws_security_group.rds-proxy-sg.id]
+  db_subnet_group_name   = aws_db_subnet_group.main.id
+  publicly_accessible    = true
+}
+
+data ""aws_availability_zones"" ""available"" {
+  state = ""available""
+}
+
+module ""vpc"" {
+  source  = ""terraform-aws-modules/vpc/aws""
+
+  name                 = ""main-vpc""
+  cidr                 = ""10.0.0.0/16""
+  azs                  = data.aws_availability_zones.available.names
+  private_subnets      = [""10.0.1.0/24"", ""10.0.2.0/24""]
+  public_subnets       = [""10.0.3.0/24"", ""10.0.4.0/24""]
+}
+
+resource ""aws_security_group"" ""rds-proxy-sg"" {
+  name        = ""rds-proxy-sg""
+  vpc_id      = module.vpc.vpc_id
+}
+
+resource ""aws_vpc_security_group_ingress_rule"" ""db-proxy-sg-ingress-rule"" {
+  from_port       = 3306
+  to_port         = 3306
+  ip_protocol     = ""tcp""
+  cidr_ipv4       = ""0.0.0.0/0""
+  security_group_id = aws_security_group.rds-proxy-sg.id
+}
+
+resource ""aws_vpc_security_group_egress_rule"" ""db-proxy-sg-egress-rule"" {
+  from_port       = 3306
+  to_port         = 3306
+  ip_protocol     = ""tcp""
+  cidr_ipv4       = ""0.0.0.0/0""
+  security_group_id = aws_security_group.rds-proxy-sg.id
+}
+
+resource ""aws_db_subnet_group"" ""main"" {
+  name       = ""main""
+  subnet_ids = module.vpc.private_subnets
+}"
+343,"terraform {
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.75""
+    }
+  }
+}
+
+provider ""aws"" {
+  region = ""us-east-1""
+  profile = ""admin-1""
+
+  assume_role {
+    role_arn = ""arn:aws:iam::590184057477:role/yicun-iac""
+  }
+}
+
+data ""aws_region"" ""current"" {}
+
+resource ""random_string"" ""db_password"" {
+  keepers = {
+    region = data.aws_region.current.name
+  }
+
+  special = false
+  length  = 20
+}
+
+resource ""aws_db_instance"" ""main"" {
+  identifier_prefix      = ""go-cloud-test""
+  engine                 = ""mysql""
+  engine_version         = ""5.7""
+  instance_class         = ""db.t3.micro""
+  allocated_storage      = 20
+  username               = ""root""
+  password               = random_string.db_password.result
+  db_name                = ""testdb""
+  publicly_accessible    = true
+  vpc_security_group_ids = [aws_security_group.main.id]
+  skip_final_snapshot    = true
+}
+
+resource ""aws_security_group"" ""main"" {
+  name_prefix = ""testdb""
+  description = ""Security group for the Go CDK MySQL test database.""
+
+  ingress {
+    from_port   = 3306
+    to_port     = 3306
+    protocol    = ""tcp""
+    cidr_blocks = [""0.0.0.0/0""]
+    description = ""Public MySQL access""
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = ""-1""
+    cidr_blocks = [""0.0.0.0/0""]
+    description = ""All outgoing traffic allowed""
+  }
+}"
+347,"terraform {
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.75""
+    }
+  }
+}
+
+provider ""aws"" {
+  region = ""us-east-1""
+  profile = ""admin-1""
+
+  assume_role {
+    role_arn = ""arn:aws:iam::590184057477:role/yicun-iac""
+  }
+}
+
+resource ""aws_db_instance"" ""db"" {
+  engine            = ""postgres""
+  engine_version    = ""17.2""
+  instance_class    = ""db.t4g.micro""
+  allocated_storage = 5
+
+  db_name  = ""mydbname""
+  username = ""username""
+  password = ""password""
+
+  db_subnet_group_name   = aws_db_subnet_group.main.name
+
+  allow_major_version_upgrade = true
+  auto_minor_version_upgrade  = true
+  apply_immediately           = true
+  max_allocated_storage       = 50
+
+  skip_final_snapshot     = true
+  backup_retention_period = 5
+  backup_window           = ""03:00-06:00""
+  maintenance_window      = ""Mon:00:00-Mon:03:00""
+  publicly_accessible = false
+  enabled_cloudwatch_logs_exports = [""postgresql""]
+
+  timeouts {
+    create = ""40m""
+    update = ""80m""
+    delete = ""40m""
+  }
+}
+
+data ""aws_availability_zones"" ""available"" {
+  state = ""available""
+}
+
+module ""vpc"" {
+  source  = ""terraform-aws-modules/vpc/aws""
+
+  name                 = ""main-vpc""
+  cidr                 = ""10.0.0.0/16""
+  azs                  = data.aws_availability_zones.available.names
+  private_subnets      = [""10.0.1.0/24"", ""10.0.2.0/24""]
+  public_subnets       = [""10.0.3.0/24"", ""10.0.4.0/24""]
+}
+
+resource ""aws_security_group"" ""rds-proxy-sg"" {
+  name        = ""rds-proxy-sg""
+  vpc_id      = module.vpc.vpc_id
+}
+
+resource ""aws_vpc_security_group_ingress_rule"" ""db-proxy-sg-ingress-rule"" {
+  from_port       = 5432
+  to_port         = 5432
+  ip_protocol     = ""tcp""
+  cidr_ipv4       = ""0.0.0.0/0""
+  security_group_id = aws_security_group.rds-proxy-sg.id
+}
+
+resource ""aws_vpc_security_group_egress_rule"" ""db-proxy-sg-egress-rule"" {
+  from_port       = 5432
+  to_port         = 5432
+  ip_protocol     = ""tcp""
+  cidr_ipv4       = ""0.0.0.0/0""
+  security_group_id = aws_security_group.rds-proxy-sg.id
+}
+
+resource ""aws_db_subnet_group"" ""main"" {
+  name       = ""main""
+  subnet_ids = module.vpc.private_subnets
+}"
+351,"provider ""aws"" {
+  region = ""us-east-1""
+}
+
+resource ""aws_db_option_group"" ""example"" {
+  name                     = ""option-group-pike""
+  option_group_description = ""Terraform Option Group""
+  engine_name              = ""sqlserver-ee""
+  major_engine_version     = ""11.00""
+
+  option {
+    db_security_group_memberships  = []
+    option_name                    = ""SQLSERVER_AUDIT""
+    port                           = 0
+    vpc_security_group_memberships = []
+
+    option_settings {
+      name  = ""IAM_ROLE_ARN""
+      value = ""arn:aws:iam::680235478471:role/aws-service-role/rds.amazonaws.com/AWSServiceRoleForRDS""
+    }
+    option_settings {
+      name  = ""S3_BUCKET_ARN""
+      value = ""arn:aws:s3:::testbucketineu-west2/rds""
+    }
+  }
+
+  option {
+    option_name = ""TDE""
+    port        = 0
+  }
+
+  tags = {
+    pike = ""permissions""
+  }
+}"
+355,"terraform {
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.75""
+    }
+  }
+}
+
+provider ""aws"" {
+  region  = ""us-east-1""
+  profile = ""admin-1""
+
+  assume_role {
+    role_arn = ""arn:aws:iam::590184057477:role/yicun-iac""
+  }
+}
+
+data ""aws_availability_zones"" ""available"" {
+  state = ""available""
+}
+
+module ""vpc"" {
+  source  = ""terraform-aws-modules/vpc/aws""
+
+  name                 = ""main-vpc""
+  cidr                 = ""10.0.0.0/16""
+  azs                  = data.aws_availability_zones.available.names
+  private_subnets      = [""10.0.1.0/24"", ""10.0.2.0/24""]
+  public_subnets       = [""10.0.3.0/24"", ""10.0.4.0/24""]
+}
+
+resource ""aws_security_group"" ""rds-proxy-sg"" {
+  name        = ""rds-proxy-sg""
+  vpc_id      = module.vpc.vpc_id
+}
+
+resource ""aws_vpc_security_group_ingress_rule"" ""db-proxy-sg-ingress-rule"" {
+  from_port       = 3306
+  to_port         = 3306
+  ip_protocol     = ""tcp""
+  cidr_ipv4       = ""0.0.0.0/0""
+  security_group_id = aws_security_group.rds-proxy-sg.id
+}
+
+resource ""aws_vpc_security_group_egress_rule"" ""db-proxy-sg-egress-rule"" {
+  from_port       = 3306
+  to_port         = 3306
+  ip_protocol     = ""tcp""
+  cidr_ipv4       = ""0.0.0.0/0""
+  security_group_id = aws_security_group.rds-proxy-sg.id
+}
+
+resource ""aws_db_subnet_group"" ""main"" {
+  name       = ""main""
+  subnet_ids = module.vpc.private_subnets
+}
+
+resource ""aws_rds_cluster"" ""example"" {
+  cluster_identifier      = ""example-cluster""
+  engine                  = ""aurora-mysql""
+  engine_version          = ""8.0.mysql_aurora.3.08.0""
+  master_username         = ""myusername""
+  master_password         = ""password123""
+  database_name           = ""exampledb""
+  backup_retention_period = 5
+  preferred_backup_window = ""07:00-09:00""
+  skip_final_snapshot     = true
+  vpc_security_group_ids  = [aws_security_group.rds-proxy-sg.id]
+  db_subnet_group_name    = aws_db_subnet_group.main.name
+}
+
+resource ""aws_secretsmanager_secret"" ""db-credentials"" {
+  name_prefix = ""db-credentials-""
+}
+
+resource ""aws_secretsmanager_secret_version"" ""db-credentials-version"" {
+  secret_id     = aws_secretsmanager_secret.db-credentials.id
+  secret_string = jsonencode({
+    username = aws_rds_cluster.example.master_username
+    password = aws_rds_cluster.example.master_password
+  })
+}
+
+resource ""aws_iam_role"" ""rds-proxy-role"" {
+  name = ""rds-proxy-role""
+
+  assume_role_policy = jsonencode({
+    Version = ""2012-10-17""
+    Statement = [
+      {
+        Action = ""sts:AssumeRole""
+        Effect = ""Allow""
+        Principal = {
+          Service = ""rds.amazonaws.com""
+        }
+      }
+    ]
+  })
+}
+
+resource ""aws_iam_policy"" ""rds-proxy-policy"" {
+  name        = ""rds-proxy-policy""
+
+  policy = jsonencode({
+    Version = ""2012-10-17""
+    Statement = [
+      {
+        Effect = ""Allow""
+        Action = [
+          ""secretsmanager:GetSecretValue"",
+        ]
+        Resource = [
+          ""${aws_secretsmanager_secret_version.db-credentials-version.arn}"",
+        ]
+      }
+    ]
+  })
+}
+
+resource ""aws_iam_role_policy_attachment"" ""attach-proxy-policy"" {
+  role       = aws_iam_role.rds-proxy-role.name
+  policy_arn = aws_iam_policy.rds-proxy-policy.arn
+}
+
+resource ""aws_db_proxy"" ""example"" {
+  name                   = ""example-proxy""
+  debug_logging          = false
+  engine_family          = ""MYSQL""
+  idle_client_timeout    = 1800
+  require_tls            = true
+  role_arn               = aws_iam_role.rds-proxy-role.arn
+  vpc_security_group_ids = [aws_security_group.rds-proxy-sg.id]
+  vpc_subnet_ids         = module.vpc.private_subnets
+
+  auth {
+    auth_scheme  = ""SECRETS""
+    secret_arn   = aws_secretsmanager_secret.db-credentials.arn
+    iam_auth     = ""DISABLED""
+  }
+}
+
+resource ""aws_db_proxy_default_target_group"" ""example"" {
+  db_proxy_name = aws_db_proxy.example.name
+
+  connection_pool_config {
+    connection_borrow_timeout    = 120
+    init_query                   = ""SET x=1, y=2""
+    max_connections_percent      = 100
+    max_idle_connections_percent = 50
+    session_pinning_filters      = [""EXCLUDE_VARIABLE_SETS""]
+  }
+}
+
+resource ""aws_db_proxy_target"" ""example"" {
+  db_cluster_identifier = aws_rds_cluster.example.cluster_identifier
+  db_proxy_name          = aws_db_proxy.example.name
+  target_group_name      = aws_db_proxy_default_target_group.example.name
+}
+"
+359,"provider ""aws"" {
+  region     = ""us-east-1""
+}
+
+resource ""aws_lightsail_instance"" ""custom"" {
+  name              = ""custom""
+  availability_zone = ""us-east-1b""
+  blueprint_id      = ""amazon_linux_2""
+  bundle_id         = ""nano_1_0""
+  user_data         = ""sudo yum install -y httpd && sudo systemctl start httpd && sudo systemctl enable httpd && echo '<h1>Deployed via Terraform</h1>' | sudo tee /var/www/html/index.html""
+}"
+363,"provider ""aws"" {
+  region     = ""us-east-1""
+}
+
+resource ""aws_lightsail_static_ip_attachment"" ""test"" {
+  static_ip_name = aws_lightsail_static_ip.test.id
+  instance_name  = aws_lightsail_instance.test.id
+}
+
+resource ""aws_lightsail_static_ip"" ""test"" {
+  name = ""example""
+}
+
+resource ""aws_lightsail_instance"" ""test"" {
+  name              = ""custom_gitlab""
+  availability_zone = ""us-east-1b""
+  blueprint_id      = ""amazon_linux_2""
+  bundle_id         = ""nano_2_0""
+}"
+367,"resource ""aws_lightsail_database"" ""test"" {
+  relational_database_name = ""test""
+  availability_zone        = ""us-east-1a""
+  master_database_name     = ""testdatabasename""
+  master_password          = ""testdatabasepassword""
+  master_username          = ""test""
+  blueprint_id             = ""mysql_8_0""
+  bundle_id                = ""micro_1_0""
+}"
+371,"provider ""aws"" {
+  region     = ""us-east-1""
+}
+
+data ""aws_availability_zones"" ""available"" {
+  state = ""available""
+
+  filter {
+    name   = ""opt-in-status""
+    values = [""opt-in-not-required""]
+  }
+}
+
+resource ""aws_lightsail_disk"" ""test"" {
+  name              = ""test""
+  size_in_gb        = 8
+  availability_zone = data.aws_availability_zones.available.names[0]
+}"
+375,"provider ""aws"" {
+  region     = ""us-east-1""
+}
+
+resource ""aws_lightsail_bucket"" ""test"" {
+  name      = ""mytestbucket""
+  bundle_id = ""small_1_0""
+}
+
+resource ""aws_lightsail_instance"" ""test"" {
+  name              = ""mytestinstance""
+  availability_zone = ""us-east-1b""
+  blueprint_id      = ""amazon_linux_2""
+  bundle_id         = ""nano_1_0""
+}
+
+resource ""aws_lightsail_bucket_resource_access"" ""test"" {
+  bucket_name   = aws_lightsail_bucket.test.name
+  resource_name = aws_lightsail_instance.test.name
+}"
+379,"provider ""aws"" {
+  region = ""us-east-1""  # Replace with your desired AWS region
+}
+
+resource ""aws_glacier_vault"" ""example"" {
+  name = ""my-glacier-vault""
+}"
+383,"resource ""aws_sns_topic"" ""aws_sns_topic"" {
+  name = ""glacier-sns-topic""
+}
+
+data ""aws_iam_policy_document"" ""my_archive"" {
+  statement {
+    sid    = ""add-read-only-perm""
+    effect = ""Allow""
+
+    principals {
+      type        = ""*""
+      identifiers = [""*""]
+    }
+
+    actions = [
+      ""glacier:InitiateJob"",
+      ""glacier:GetJobOutput"",
+    ]
+
+    resources = [""arn:aws:glacier:eu-west-1:432981146916:vaults/MyArchive""]
+  }
+}
+
+resource ""aws_glacier_vault"" ""my_archive"" {
+  name = ""MyArchive""
+
+  notification {
+    sns_topic = aws_sns_topic.aws_sns_topic.arn
+    events    = [""ArchiveRetrievalCompleted"", ""InventoryRetrievalCompleted""]
+  }
+
+  access_policy = data.aws_iam_policy_document.my_archive.json
+
+  tags = {
+    Test = ""MyArchive""
+  }
+}"
+387,"provider ""aws"" {
+  region     = ""us-east-1""
+}
+
+# Create an SNS topic for notifications
+resource ""aws_sns_topic"" ""glacier_notifications"" {
+  name = ""glacier-archive-retrieval-notifications""
+}
+
+# Create an S3 Glacier Vault
+resource ""aws_glacier_vault"" ""my_archive"" {
+  name = ""MyArchive""
+
+  notification {
+    sns_topic = aws_sns_topic.glacier_notifications.arn
+    events    = [""ArchiveRetrievalCompleted""]
+  }
+}"
+391,"terraform {
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.75""
+    }
+  }
+}
+
+provider ""aws"" {
+  region  = ""us-east-1""
+  profile = ""admin-1""
+
+  assume_role {
+    role_arn = ""arn:aws:iam::590184057477:role/yicun-iac""
+  }
+}
+
+data ""aws_availability_zones"" ""available"" {
+  state = ""available""
+}
+
+module ""vpc"" {
+  source  = ""terraform-aws-modules/vpc/aws""
+
+  name = ""main-vpc""
+  cidr = ""10.0.0.0/16""
+
+  azs                  = data.aws_availability_zones.available.names
+  public_subnets       = [""10.0.4.0/24"", ""10.0.5.0/24"", ""10.0.6.0/24""]
+}
+
+data ""aws_ami"" ""ubuntu"" {
+  most_recent = true
+  owners      = [""amazon""]
+
+  filter {
+    name   = ""name""
+    values = [""*ubuntu-noble-24.04-amd64-server-*""]
+  }
+}
+
+resource ""aws_security_group"" ""instance-sg"" {
+  name = ""instance-sg""
+  vpc_id = module.vpc.vpc_id
+}
+
+resource ""aws_vpc_security_group_ingress_rule"" ""instance-sg-ingress-rule"" {
+  from_port       = 80
+  to_port         = 80
+  ip_protocol     = ""tcp""
+  referenced_security_group_id = aws_security_group.lb-sg.id
+  security_group_id = aws_security_group.instance-sg.id
+}
+
+resource ""aws_vpc_security_group_egress_rule"" ""instance-sg-egress-rule"" {
+  from_port       = 0
+  to_port         = 0
+  ip_protocol     = ""-1""
+  cidr_ipv4       = ""0.0.0.0/0""
+  security_group_id = aws_security_group.instance-sg.id
+}
+
+resource ""aws_security_group"" ""lb-sg"" {
+  name = ""lb-sg""
+  vpc_id = module.vpc.vpc_id
+}
+
+resource ""aws_vpc_security_group_ingress_rule"" ""lb-sg-ingress-rule"" {
+  from_port   = 80
+  to_port     = 80
+  ip_protocol = ""tcp""
+  cidr_ipv4   = ""0.0.0.0/0""
+  security_group_id = aws_security_group.lb-sg.id
+}
+
+resource ""aws_vpc_security_group_egress_rule"" ""lb-sg-egress-rule"" {
+  from_port   = 0
+  to_port     = 0
+  ip_protocol = ""-1""
+  cidr_ipv4   = ""0.0.0.0/0""
+  security_group_id = aws_security_group.lb-sg.id
+}
+
+
+resource ""aws_instance"" ""my_instance"" {
+  ami           = data.aws_ami.ubuntu.id
+  instance_type = ""t2.micro""
+  subnet_id     = module.vpc.public_subnets[0]
+  security_groups = [ aws_security_group.instance-sg.id ]
+}
+
+resource ""aws_lb"" ""test"" {
+  subnets            = module.vpc.public_subnets
+  internal           = false
+  load_balancer_type = ""network""
+  security_groups    = [aws_security_group.lb-sg.id]
+}
+
+resource ""aws_lb_listener"" ""my_listener"" {
+  load_balancer_arn = aws_lb.test.arn
+  port              = ""80""
+  protocol          = ""TCP""
+
+  default_action {
+    type             = ""forward""
+    target_group_arn = aws_lb_target_group.target_group.arn
+  }
+}
+
+resource ""aws_lb_target_group"" ""target_group"" {
+  port     = 80
+  protocol = ""TCP""
+  vpc_id   = module.vpc.vpc_id
+}
+
+resource ""aws_lb_target_group_attachment"" ""ec2_attach"" {
+  target_group_arn = aws_lb_target_group.target_group.arn
+  target_id = aws_instance.my_instance.id
+}"
+395,"terraform {
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.75""
+    }
+  }
+}
+
+provider ""aws"" {
+  region  = ""us-east-1""
+  profile = ""admin-1""
+
+  assume_role {
+    role_arn = ""arn:aws:iam::590184057477:role/yicun-iac""
+  }
+}
+
+data ""aws_availability_zones"" ""available"" {
+  state = ""available""
+}
+
+module ""vpc"" {
+  source  = ""terraform-aws-modules/vpc/aws""
+
+  name = ""main-vpc""
+  cidr = ""10.0.0.0/16""
+
+  azs                  = data.aws_availability_zones.available.names
+  public_subnets       = [""10.0.4.0/24"", ""10.0.5.0/24"", ""10.0.6.0/24""]
+}
+
+data ""aws_ami"" ""ubuntu"" {
+  most_recent = true
+  owners      = [""amazon""]
+
+  filter {
+    name   = ""name""
+    values = [""*ubuntu-noble-24.04-amd64-server-*""]
+  }
+}
+
+resource ""aws_security_group"" ""instance-sg"" {
+  name = ""instance-sg""
+  vpc_id = module.vpc.vpc_id
+}
+
+resource ""aws_vpc_security_group_ingress_rule"" ""instance-sg-ingress-rule"" {
+  from_port       = 80
+  to_port         = 80
+  ip_protocol     = ""tcp""
+  referenced_security_group_id = aws_security_group.lb-sg.id
+  security_group_id = aws_security_group.instance-sg.id
+}
+
+resource ""aws_vpc_security_group_egress_rule"" ""instance-sg-egress-rule"" {
+  from_port       = 0
+  to_port         = 0
+  ip_protocol     = ""-1""
+  cidr_ipv4       = ""0.0.0.0/0""
+  security_group_id = aws_security_group.instance-sg.id
+}
+
+resource ""aws_security_group"" ""lb-sg"" {
+  name = ""lb-sg""
+  vpc_id = module.vpc.vpc_id
+}
+
+resource ""aws_vpc_security_group_ingress_rule"" ""lb-sg-ingress-rule"" {
+  from_port   = 80
+  to_port     = 80
+  ip_protocol = ""tcp""
+  cidr_ipv4   = ""0.0.0.0/0""
+  security_group_id = aws_security_group.lb-sg.id
+}
+
+resource ""aws_vpc_security_group_egress_rule"" ""lb-sg-egress-rule"" {
+  from_port   = 0
+  to_port     = 0
+  ip_protocol = ""-1""
+  cidr_ipv4   = ""0.0.0.0/0""
+  security_group_id = aws_security_group.lb-sg.id
+}
+
+
+resource ""aws_instance"" ""my_instance"" {
+  ami           = data.aws_ami.ubuntu.id
+  instance_type = ""t2.micro""
+  subnet_id     = module.vpc.public_subnets[0]
+  security_groups = [ aws_security_group.instance-sg.id ]
+}
+
+resource ""aws_lb"" ""test"" {
+  subnets            = module.vpc.public_subnets
+  internal           = false
+  load_balancer_type = ""network""
+  security_groups    = [aws_security_group.lb-sg.id]
+}
+
+resource ""aws_lb_listener"" ""my_listener"" {
+  load_balancer_arn = aws_lb.test.arn
+  port              = ""80""
+  protocol          = ""TCP""
+
+  default_action {
+    type             = ""forward""
+    target_group_arn = aws_lb_target_group.target_group.arn
+  }
+}
+
+resource ""aws_lb_target_group"" ""target_group"" {
+  port     = 80
+  protocol = ""TCP""
+  vpc_id   = module.vpc.vpc_id
+}
+
+resource ""aws_lb_target_group_attachment"" ""ec2_attach"" {
+  target_group_arn = aws_lb_target_group.target_group.arn
+  target_id = aws_instance.my_instance.id
+}"
+399,"terraform {
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.75""
+    }
+  }
+}
+
+provider ""aws"" {
+  region  = ""us-east-1""
+  profile = ""admin-1""
+
+  assume_role {
+    role_arn = ""arn:aws:iam::590184057477:role/yicun-iac""
+  }
+}
+
+data ""aws_availability_zones"" ""available"" {
+  state = ""available""
+}
+
+module ""vpc"" {
+  source  = ""terraform-aws-modules/vpc/aws""
+
+  name = ""main-vpc""
+  cidr = ""10.0.0.0/16""
+
+  azs                  = data.aws_availability_zones.available.names
+  public_subnets       = [""10.0.4.0/24"", ""10.0.5.0/24"", ""10.0.6.0/24""]
+}
+
+data ""aws_ami"" ""ubuntu"" {
+  most_recent = true
+  owners      = [""amazon""]
+
+  filter {
+    name   = ""name""
+    values = [""*ubuntu-noble-24.04-amd64-server-*""]
+  }
+}
+
+resource ""aws_security_group"" ""instance-sg"" {
+  name = ""instance-sg""
+  vpc_id = module.vpc.vpc_id
+}
+
+resource ""aws_vpc_security_group_ingress_rule"" ""instance-sg-ingress-rule"" {
+  from_port       = 80
+  to_port         = 80
+  ip_protocol     = ""tcp""
+  referenced_security_group_id = aws_security_group.lb-sg.id
+  security_group_id = aws_security_group.instance-sg.id
+}
+
+resource ""aws_vpc_security_group_egress_rule"" ""instance-sg-egress-rule"" {
+  from_port       = 0
+  to_port         = 0
+  ip_protocol     = ""-1""
+  cidr_ipv4       = ""0.0.0.0/0""
+  security_group_id = aws_security_group.instance-sg.id
+}
+
+resource ""aws_security_group"" ""lb-sg"" {
+  name = ""lb-sg""
+  vpc_id = module.vpc.vpc_id
+}
+
+resource ""aws_vpc_security_group_ingress_rule"" ""lb-sg-ingress-rule"" {
+  from_port   = 80
+  to_port     = 80
+  ip_protocol = ""tcp""
+  cidr_ipv4   = ""0.0.0.0/0""
+  security_group_id = aws_security_group.lb-sg.id
+}
+
+resource ""aws_vpc_security_group_egress_rule"" ""lb-sg-egress-rule"" {
+  from_port   = 0
+  to_port     = 0
+  ip_protocol = ""-1""
+  cidr_ipv4   = ""0.0.0.0/0""
+  security_group_id = aws_security_group.lb-sg.id
+}
+
+
+resource ""aws_instance"" ""my_instance"" {
+  ami           = data.aws_ami.ubuntu.id
+  instance_type = ""t2.micro""
+  subnet_id     = module.vpc.public_subnets[0]
+  security_groups = [ aws_security_group.instance-sg.id ]
+}
+
+resource ""aws_lb"" ""test"" {
+  subnets            = module.vpc.public_subnets
+  internal           = false
+  load_balancer_type = ""application""
+  security_groups    = [aws_security_group.lb-sg.id]
+}
+
+resource ""aws_lb_listener"" ""my_listener"" {
+  load_balancer_arn = aws_lb.test.arn
+  port              = ""80""
+  protocol          = ""HTTP""
+
+  default_action {
+    type = ""authenticate-oidc""
+
+  authenticate_oidc {
+      authorization_endpoint = ""https://example.com/authorization_endpoint""
+      client_id              = ""client_id""
+      client_secret          = ""client_secret""
+      issuer                 = ""https://example.com""
+      token_endpoint         = ""https://example.com/token_endpoint""
+      user_info_endpoint     = ""https://example.com/user_info_endpoint""
+    }
+  }
+
+  default_action {
+    type             = ""forward""
+    target_group_arn = aws_lb_target_group.target_group.arn
+  }
+}
+
+resource ""aws_lb_target_group"" ""target_group"" {
+  port     = 80
+  protocol = ""HTTP""
+  vpc_id   = module.vpc.vpc_id
+}
+
+resource ""aws_lb_target_group_attachment"" ""ec2_attach"" {
+  target_group_arn = aws_lb_target_group.target_group.arn
+  target_id = aws_instance.my_instance.id
+}"
+403,"terraform {
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.75""
+    }
+  }
+}
+
+provider ""aws"" {
+  region  = ""us-east-1""
+  profile = ""admin-1""
+
+  assume_role {
+    role_arn = ""arn:aws:iam::590184057477:role/yicun-iac""
+  }
+}
+
+data ""aws_availability_zones"" ""available"" {
+  state = ""available""
+}
+
+module ""vpc"" {
+  source  = ""terraform-aws-modules/vpc/aws""
+
+  name = ""main-vpc""
+  cidr = ""10.0.0.0/16""
+
+  azs                  = data.aws_availability_zones.available.names
+  public_subnets       = [""10.0.4.0/24"", ""10.0.5.0/24"", ""10.0.6.0/24""]
+}
+
+data ""aws_ami"" ""ubuntu"" {
+  most_recent = true
+  owners      = [""amazon""]
+
+  filter {
+    name   = ""name""
+    values = [""*ubuntu-noble-24.04-amd64-server-*""]
+  }
+}
+
+resource ""aws_security_group"" ""lb-sg"" {
+  name = ""lb-sg""
+  vpc_id = module.vpc.vpc_id
+}
+
+resource ""aws_vpc_security_group_ingress_rule"" ""lb-sg-ingress-rule"" {
+  from_port   = 80
+  to_port     = 80
+  ip_protocol = ""tcp""
+  cidr_ipv4   = ""0.0.0.0/0""
+  security_group_id = aws_security_group.lb-sg.id
+}
+
+resource ""aws_vpc_security_group_egress_rule"" ""lb-sg-egress-rule"" {
+  from_port   = 0
+  to_port     = 0
+  ip_protocol = ""-1""
+  cidr_ipv4   = ""0.0.0.0/0""
+  security_group_id = aws_security_group.lb-sg.id
+}
+
+
+resource ""aws_iam_role"" ""lambda_role"" {
+  name = ""example-lambda-role""
+
+  assume_role_policy = jsonencode({
+    Version = ""2012-10-17"",
+    Statement = [
+      {
+        Action = ""sts:AssumeRole"",
+        Effect = ""Allow"",
+        Principal = {
+          Service = ""lambda.amazonaws.com""
+        }
+      }
+    ]
+  })
+}
+
+resource ""aws_iam_policy_attachment"" ""lambda_policy_attachment"" {
+  name       = ""example-lambda-policy-attachment""
+  roles      = [aws_iam_role.lambda_role.name]
+  policy_arn = ""arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole""
+}
+
+data ""archive_file"" ""lambda-func"" {
+  type        = ""zip""
+  source_file = ""./supplement/index.js""
+  output_path = ""./supplement/lambda_func.zip""
+}
+
+resource ""aws_lambda_function"" ""example"" {
+  function_name = ""example-lambda""
+  role          = aws_iam_role.lambda_role.arn
+  handler       = ""index.handler""
+  runtime       = ""nodejs18.x""
+
+  filename         = data.archive_file.lambda-func.output_path
+  source_code_hash = data.archive_file.lambda-func.output_base64sha256
+}
+
+resource ""aws_lambda_permission"" ""elb_invocation"" {
+  statement_id  = ""AllowExecutionFromALB""
+  action        = ""lambda:InvokeFunction""
+  function_name = aws_lambda_function.example.function_name
+  principal     = ""elasticloadbalancing.amazonaws.com""
+  source_arn    = aws_lb_target_group.target_group.arn
+}
+
+resource ""aws_lb"" ""test"" {
+  subnets            = module.vpc.public_subnets
+  internal           = false
+  load_balancer_type = ""application""
+  security_groups    = [aws_security_group.lb-sg.id]
+}
+
+resource ""aws_lb_listener"" ""my_listener"" {
+  load_balancer_arn = aws_lb.test.arn
+  port              = ""80""
+  protocol          = ""HTTP""
+
+  default_action {
+    type             = ""forward""
+    target_group_arn = aws_lb_target_group.target_group.arn
+  }
+}
+
+resource ""aws_lb_target_group"" ""target_group"" {
+  target_type = ""lambda""
+}
+
+resource ""aws_lb_target_group_attachment"" ""ec2_attach"" {
+  target_group_arn = aws_lb_target_group.target_group.arn
+  target_id = aws_lambda_function.example.arn
+}"
+407,"resource ""aws_db_instance"" ""default"" {
+  allocated_storage    = 10
+  engine               = ""mysql""
+  instance_class       = ""db.t3.micro""
+  username             = ""foo""
+  password             = ""foobarbaz""
+}"
+411,"resource ""aws_db_instance"" ""default"" {
+  allocated_storage    = 20
+  engine               = ""mysql""
+  instance_class       = ""db.z1d.micro""
+  username             = ""foo""
+  password             = ""foobarbaz""
+  skip_final_snapshot = true
+}"
+415,"resource ""aws_db_instance"" ""default"" {
+  allocated_storage    = 100
+  engine               = ""mysql""
+  instance_class       = ""db.t3.micro""
+  username             = ""foo""
+  password             = ""foobarbaz""
+  storage_type        = ""io1""
+}"
+419,"resource ""aws_db_instance"" ""default"" {
+  allocated_storage    = 20
+  engine               = ""mysql""
+  instance_class       = ""db.t3.micro""
+  username             = ""foo""
+  manage_master_user_password = true
+  master_user_secret_kms_key_id = aws_kms_key.example.key_id
+}
+
+resource ""aws_kms_key"" ""example"" {
+  description = ""Example KMS Key""
+}"
+423,"resource ""aws_efs_file_system"" ""fs"" {
+  creation_token = ""my-product""
+}
+
+data ""aws_iam_policy_document"" ""policy"" {
+  statement {
+    sid    = ""ExampleStatement01""
+    effect = ""Allow""
+
+    principals {
+      type        = ""AWS""
+      identifiers = [""*""]
+    }
+
+    actions = [
+      ""elasticfilesystem:ClientMount"",
+      ""elasticfilesystem:ClientWrite"",
+    ]
+
+    resources = [aws_efs_file_system.fs.arn]
+
+    condition {
+      test     = ""Bool""
+      variable = ""aws:SecureTransport""
+      values   = [""true""]
+    }
+  }
+}
+
+resource ""aws_efs_file_system_policy"" ""policy"" {
+  file_system_id = aws_efs_file_system.fs.id
+  policy         = data.aws_iam_policy_document.policy.json
+}"
+427,"terraform {
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.75""
+    }
+  }
+}
+
+provider ""aws"" {
+  region  = ""us-east-1""
+  profile = ""admin-1""
+
+  assume_role {
+    role_arn = ""arn:aws:iam::590184057477:role/yicun-iac""
+  }
+}
+
+data ""aws_availability_zones"" ""available"" {
+  state = ""available""
+}
+
+locals {
+  subnet_count = 2
+}
+
+resource ""aws_vpc"" ""_"" {
+  cidr_block           = ""10.0.0.0/16""
+  enable_dns_hostnames = true
+}
+
+resource ""aws_subnet"" ""public"" {
+  count             = local.subnet_count
+  vpc_id            = aws_vpc._.id
+  cidr_block        = [""10.0.1.0/24"",
+                      ""10.0.2.0/24"",
+                      ""10.0.3.0/24"",
+                      ""10.0.4.0/24""][count.index]
+  availability_zone = data.aws_availability_zones.available.names[count.index]
+}
+
+resource ""aws_internet_gateway"" ""_"" {
+  vpc_id = aws_vpc._.id
+}
+
+resource ""aws_route_table"" ""public"" {
+  vpc_id = aws_vpc._.id
+  route {
+    cidr_block = ""0.0.0.0/0""
+    gateway_id = aws_internet_gateway._.id
+  }
+}
+
+resource ""aws_route_table_association"" ""public"" {
+  count          = local.subnet_count
+  subnet_id      = aws_subnet.public[count.index].id
+  route_table_id = aws_route_table.public.id
+}"
+431,"terraform {
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 4.16""
+    }
+  }
+}
+# Define the provider block for AWS
+provider ""aws"" {
+  region = ""us-east-2"" # Set your desired AWS region
+}
+
+resource ""aws_vpc"" ""dgraph"" {
+  cidr_block           = ""10.0.0.0/16""
+  enable_dns_support   = true
+  instance_tenancy     = ""dedicated""
+
+  # For enabling assignment of private dns addresses within AWS.
+  enable_dns_hostnames = true
+
+  tags = {
+    Name = ""var.name""
+  }
+}
+
+resource ""aws_internet_gateway"" ""dgraph_gw"" {
+  vpc_id = aws_vpc.dgraph.id
+
+  tags = {
+    Name = ""var.name""
+  }
+}
+
+resource ""aws_route_table"" ""dgraph_igw"" {
+  vpc_id = aws_vpc.dgraph.id
+
+  route {
+    cidr_block = ""0.0.0.0/0""
+    gateway_id = aws_internet_gateway.dgraph_gw.id
+  }
+
+  tags = {
+    Name = ""var.name""
+  }
+}"
+435,"terraform {
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 4.16""
+    }
+  }
+}
+# Define the provider block for AWS
+provider ""aws"" {
+  region = ""us-east-2"" # Set your desired AWS region
+}
+
+resource ""aws_vpc"" ""_"" {
+  cidr_block           = ""10.0.0.0/16""
+  enable_dns_hostnames = true
+  tags = merge({
+    ""Name"" = ""vpc""
+  })
+}
+
+resource ""aws_internet_gateway"" ""_"" {
+  vpc_id = aws_vpc._.id
+  tags = merge({
+    ""Name"" = ""ig""
+  })
+}"
+439,"terraform {
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 5.75""
+    }
+  }
+}
+
+provider ""aws"" {
+  region  = ""us-east-1""
+  profile = ""admin-1""
+
+  assume_role {
+    role_arn = ""arn:aws:iam::590184057477:role/yicun-iac""
+  }
+}
+
+resource ""aws_vpc"" ""main"" {
+  cidr_block           = ""10.0.0.0/16""
+  enable_dns_hostnames = true
+}
+
+data ""aws_availability_zones"" ""azs"" {
+    state = ""available""
+}
+
+resource ""aws_subnet"" ""zonea"" {
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = ""10.0.1.0/24""
+  availability_zone = data.aws_availability_zones.azs.names[0]
+}
+
+resource ""aws_subnet"" ""zoneb"" {
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = ""10.0.2.0/24""
+  availability_zone = data.aws_availability_zones.azs.names[1]
+}
+
+resource ""aws_internet_gateway"" ""gateway"" {
+  vpc_id = aws_vpc.main.id
+}
+
+resource ""aws_route_table"" ""public"" {
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block = ""0.0.0.0/0""
+    gateway_id = aws_internet_gateway.gateway.id
+  }
+}
+
+resource ""aws_route_table_association"" ""publica"" {
+  subnet_id      = aws_subnet.zonea.id
+  route_table_id = aws_route_table.public.id
+}
+
+resource ""aws_route_table_association"" ""publicb"" {
+  subnet_id      = aws_subnet.zoneb.id
+  route_table_id = aws_route_table.public.id
+}
+
+resource ""aws_security_group"" ""allow-db-access"" {
+  name   = ""allow-all""
+  vpc_id = aws_vpc.main.id
+
+  ingress {
+    from_port   = ""3306""
+    to_port     = ""3306""
+    protocol    = ""tcp""
+    cidr_blocks = [""0.0.0.0/0""]
+  }
+
+  ingress {
+    from_port   = ""5432""
+    to_port     = ""5432""
+    protocol    = ""tcp""
+    cidr_blocks = [""0.0.0.0/0""]
+  }
+}
+
+resource ""aws_db_subnet_group"" ""default"" {
+  subnet_ids = [aws_subnet.zonea.id, aws_subnet.zoneb.id]
+}"
+443,"terraform {
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 4.16""
+    }
+  }
+}
+# Define the provider block for AWS
+provider ""aws"" {
+  region = ""us-east-2"" # Set your desired AWS region
+}
+
+
+resource ""aws_vpc_dhcp_options_association"" ""pike"" {
+  dhcp_options_id = aws_vpc_dhcp_options.pike.id
+  vpc_id          = ""vpc-0c33dc8cd64f408c4""
+}
+
+resource ""aws_vpc_dhcp_options"" ""pike"" {
+  domain_name_servers = [""8.8.8.8"", ""8.8.4.4""]
+  tags = {
+    pike = ""permissions""
+  }
+}"
+447,"terraform {
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 4.16""
+    }
+  }
+}
+# Define the provider block for AWS
+provider ""aws"" {
+  region = ""us-east-2"" # Set your desired AWS region
+}
+
+resource ""aws_vpc"" ""default"" {
+  cidr_block = ""192.168.0.0/16""
+}
+
+resource ""aws_vpc_dhcp_options"" ""default"" {
+  domain_name          = ""windomain.local""
+  domain_name_servers  = concat([""192.168.56.102""], [""8.8.8.8""])
+  netbios_name_servers = [""192.168.56.102""]
+}
+
+resource ""aws_vpc_dhcp_options_association"" ""default"" {
+  vpc_id          = aws_vpc.default.id
+  dhcp_options_id = aws_vpc_dhcp_options.default.id
+}"
+451,"terraform {
+  required_providers {
+    aws = {
+      source  = ""hashicorp/aws""
+      version = ""~> 4.16""
+    }
+  }
+}
+# Define the provider block for AWS
+provider ""aws"" {
+  region = ""us-east-2"" # Set your desired AWS region
+}
+
+resource ""aws_nat_gateway"" ""pike"" {
+  subnet_id         = ""subnet-0562ef1d304b968f4""
+  allocation_id     = ""eipalloc-0047fa56c40637c3b""
+  connectivity_type = ""public""
+}"
+455,"provider ""aws"" {
+  region = ""us-west-1""
+}
+
+resource ""aws_default_network_acl"" ""pike"" {
+  default_network_acl_id = ""acl-01c8f6820c190c9dd""
+  ingress {
+    protocol   = -1
+    rule_no    = 100
+    action     = ""allow""
+    cidr_block = ""0.0.0.0/0""
+    from_port  = 0
+    to_port    = 0
+  }
+
+  egress {
+    protocol   = -1
+    rule_no    = 100
+    action     = ""allow""
+    cidr_block = ""0.0.0.0/0""
+    from_port  = 0
+    to_port    = 0
+  }
+}"
