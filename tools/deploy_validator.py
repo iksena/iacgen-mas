@@ -218,14 +218,18 @@ def _validate_terraform_deployment(
             )
 
         timeout = deploy_config.stack_creation_timeout
-        print(f"[Deploy] Running {tf_bin} apply (timeout={timeout}s)...")
+        plan_only = os.environ.get("IACGOD_TF_PLAN_ONLY") == "1"
+        tf_verb = "plan" if plan_only else "apply"
+        print(f"[Deploy] Running {tf_bin} {tf_verb} (timeout={timeout}s)...")
+        tf_cmd = ([tf_bin, "plan", "-input=false", "-no-color", "-lock=false"] if plan_only
+                  else [tf_bin, "apply", "-auto-approve", "-input=false", "-no-color"])
         try:
             apply_result = subprocess.run(
-                [tf_bin, "apply", "-auto-approve", "-input=false", "-no-color"],
+                tf_cmd,
                 cwd=tmpdir, capture_output=True, text=True, timeout=timeout, env=run_env,
             )
         except subprocess.TimeoutExpired:
-            timeout_msg = f"{tf_bin} apply timed out after {timeout}s"
+            timeout_msg = f"{tf_bin} {tf_verb} timed out after {timeout}s"
             deploy_logs.append(timeout_msg)
             return DeployValidationResult(
                 target=target_name, passed=False, stack_id=None,
@@ -237,6 +241,17 @@ def _validate_terraform_deployment(
 
         apply_output = (apply_result.stdout or "") + (apply_result.stderr or "")
         deploy_logs.extend(apply_output.splitlines())
+
+        if apply_result.returncode == 0 and plan_only:
+            planned = re.findall(r'^\s*#\s+(\S+)\s+will be created', apply_output, re.MULTILINE)
+            print(f"[Deploy] ✅ {tf_bin} plan succeeded ({len(planned)} resources planned)")
+            return DeployValidationResult(
+                target=target_name, passed=True, stack_id=None,
+                completed_resources=planned, failed_resources=[],
+                error_message=None,
+                duration_seconds=round(time.time() - start_time, 2),
+                deployment_logs=deploy_logs,
+            )
 
         if apply_result.returncode == 0:
             completed: list[str] = re.findall(
@@ -314,7 +329,16 @@ def _validate_terraform_deployment(
             failed_resources = [{"logical_name": "apply", "status_reason": raw_err[:500]}]
 
         error_msg = format_failed_resources(failed_resources)
-        print(f"[Deploy] ❌ {tf_bin} apply failed: {error_msg}")
+        print(f"[Deploy] ❌ {tf_bin} {tf_verb} failed: {error_msg}")
+
+        if plan_only:
+            return DeployValidationResult(
+                target=target_name, passed=False, stack_id=None,
+                completed_resources=[], failed_resources=failed_resources,
+                error_message=error_msg,
+                duration_seconds=round(time.time() - start_time, 2),
+                deployment_logs=deploy_logs,
+            )
 
         print(f"[Deploy] Cleaning up with {tf_bin} destroy...")
         try:

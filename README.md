@@ -215,6 +215,8 @@ Useful options:
 | `--exclude-completed-csv`, `--retry-errors` | Resume or retry against an earlier `results.csv` |
 | `--openrouter-reasoning-effort`, `--openrouter-reasoning-max-tokens`, `--disable-reasoning`, `--max-tokens`, `--no-max-tokens` | Reasoning and output-token settings |
 
+Setting `IACGOD_TF_PLAN_ONLY=1` stops Terraform validation at `terraform plan`, so nothing is deployed. The IaC-Eval experiment (`TF_IaCEval_GLM53F_PlanOnly`) ran with it and `--skip-security`.
+
 `benchmark.py` writes `results.csv`, `results.jsonl`, `results.json`, and `summary.json` to `benchmark_runs/<iac_type>_<timestamp>/`. Each scenario also gets a folder under `runs/<run_id>/` with `llm_calls.jsonl`, `tool_calls.jsonl`, per-iteration snapshots, and `final_report.json`.
 
 ### AWS cleanup
@@ -239,6 +241,7 @@ Both delete real resources. Use them only in a dedicated test account.
 | `baselines/opencode_driver.py` | Writes the OpenCode configuration (model endpoint, MCP server, tool allowlist), parses OpenCode's event stream into token counts and transcripts, and flags sessions that touched files outside their workspace. |
 | `baselines/mcp_server.py` | MCP server started by OpenCode, exposing `validate_iac`, `deploy_iac`, and `submit_template`. |
 | `baselines/evaluation.py` | State behind the three tools: one `validate_iac` call is one iteration, the iteration cap, deployment only after static validation passed, the Engineer's error format, and per-iteration snapshots. |
+| `baselines/sandbox_audit.py` | Checks whether an OpenCode session's tool calls stayed inside its workspace; `analysis/audit/aggregate_benchmark_run_data.py` uses it to label workspace escapes. |
 | `baselines/prompts/` | OpenCode system prompts for CloudFormation and Terraform. |
 | `baselines/iacgen_rerun.patch` | Local changes to IaCGen's public implementation (https://github.com/Tianyi2/IaCGen) used for the IaCGen baseline: settings for the model, feedback level, iteration budget, and output-token limit, routing through OpenRouter, resuming an interrupted run, and a 15-minute limit on each deployment. Apply with `git apply` in an IaCGen checkout. |
 
@@ -283,6 +286,7 @@ Each scenario runs in `runs/<run_id>/workspace`, which is initialised as its own
 | `data/tf_eval_benchmark_real_aws.csv` | Multi-DPIaC-Eval, Terraform | 250 |
 | `data/cfn_eval_benchmark_ablation.csv` | Ablation subset, CloudFormation | 50 |
 | `data/tf_eval_benchmark_ablation.csv` | Ablation subset, Terraform | 50 |
+| `data/cfn_eval_benchmark_real_aws_diff345.csv` | Earlier levels 3–5 subset of Multi-DPIaC-Eval, CloudFormation (the `L345` runs) | 150 |
 | `data/iac_with_difficulty_levels.csv` | DPIaC-Eval (CloudFormation) | 153 |
 | `data/iac_eval_benchmark.csv` | IaC-Eval (Terraform) | 458 |
 
@@ -317,6 +321,8 @@ Paths in these CSVs are relative to the language folder, e.g. `benchmark/cloudfo
 - **Suffix**: `DeployOnly` = deployability-only criterion (no security gate); `L345` = difficulty levels 3–5 only; `PlanOnly` = no deployment and no security gate, a template passes when TFLint, `terraform validate`, and `terraform plan` accept it; `LiveAWS_GLM` = ablation scenarios deployed to live AWS with GLM-5.3-Flash. `FirstAttempt` = the first iteration of the scenarios whose first iteration was blocked by an environment error, run again with one iteration; the repair-loop notebook counts these passes at every passItr@n.
 
 Unless noted, a scenario passes under the joint criterion: no syntax error, no critical or high Trivy finding, and a successful deployment.
+
+AWS account IDs in the results, caches, and notebook outputs are replaced with `000000000000`.
 
 Each experiment folder contains:
 
