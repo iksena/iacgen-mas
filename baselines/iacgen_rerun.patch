@@ -1,0 +1,263 @@
+diff --git a/Code/evaluation/cloud_evaluation.py b/Code/evaluation/cloud_evaluation.py
+index 9625d89..059c697 100644
+--- a/Code/evaluation/cloud_evaluation.py
++++ b/Code/evaluation/cloud_evaluation.py
+@@ -203,6 +203,9 @@ def evaluate_template_deployment(template_path):
+         template_body = f.read()
+     
+     try:
++        timeout_minutes = 15
++        start_time = datetime.datetime.now(datetime.timezone.utc)
++
+         # Generate a unique stack name
+         stack_name = f'validation-stack-{uuid.uuid4().hex[:8]}'
+         
+@@ -224,6 +227,22 @@ def evaluate_template_deployment(template_path):
+         
+         # Track the stack creation
+         while True:
++            elapsed_time = datetime.datetime.now(datetime.timezone.utc) - start_time
++            if elapsed_time > datetime.timedelta(minutes=timeout_minutes):
++                try:
++                    cfn_client.delete_stack(StackName=stack_id)
++                except ClientError:
++                    pass
++
++                return {
++                    'success': False,
++                    'error_message': f'Deployment timed out after {timeout_minutes} minutes',
++                    'stack_id': stack_id,
++                    'failed_reason': failed_reason,
++                    'completed_resources': completed_resources,
++                    'stack_events': list(seen_events)
++                }
++
+             # Get all new events
+             events = cfn_client.describe_stack_events(StackName=stack_id)['StackEvents']
+             new_events = []
+diff --git a/Code/main.py b/Code/main.py
+index 7da831c..700c5d4 100644
+--- a/Code/main.py
++++ b/Code/main.py
+@@ -1,5 +1,6 @@
+ import sys
+ import os
++import time
+ import pandas as pd
+ import anthropic
+ import google.generativeai as genai
+@@ -44,7 +45,12 @@ class IterativeTemplateGenerator:
+         # self.singe_level_max_iterations = 3   
+         self.moderate_level_max_iterations = 4
+         self.advance_level_max_iterations = 4
+-        self.max_iterations = 30
++        # IACGEN_FEEDBACK_LEVELS="simple,moderate,advanced" attempts per level; "0,15,0" = moderate feedback only
++        _lv = os.getenv('IACGEN_FEEDBACK_LEVELS')
++        if _lv:
++            (self.simple_level_max_iterations, self.moderate_level_max_iterations,
++             self.advance_level_max_iterations) = [int(x) for x in _lv.split(',')]
++        self.max_iterations = int(os.getenv('IACGEN_MAX_ITER', '30'))  # 15 to match the IaCGOD evaluation budget
+         self.max_same_error_attempts = self.simple_level_max_iterations + self.moderate_level_max_iterations + self.advance_level_max_iterations
+         self.output_base_path = "llm_generated_data/template/iterative/"
+         self.setup_llm_model()
+@@ -59,7 +65,12 @@ class IterativeTemplateGenerator:
+         elif self.llm_type == "claude":
+             self.model = anthropic.Anthropic(api_key=CLAUDE_API_KEY)
+         elif self.llm_type == "deepseek":
+-            self.model = OpenAI(api_key=DEEPSEEK_API_KEY, base_url="https://api.deepseek.com")
++            base_url = (
++                "https://openrouter.ai/api/v1"
++                if "openrouter" in self.llm_model   # flag via model name
++                else "https://api.deepseek.com"
++            )
++            self.model = OpenAI(api_key=DEEPSEEK_API_KEY, base_url=base_url)
+         else:
+             raise ValueError(f"Unsupported LLM type: {self.llm_type}")
+ 
+@@ -124,7 +135,13 @@ class IterativeTemplateGenerator:
+             }
+ 
+         # Step 4: Resource coverage analysis
+-        coverage_result = analyze_resource_coverage(ground_truth_path, template_path)
++        # Reporting only: a missing/unparseable ground truth must not turn a deployed template into a failure.
++        try:
++            coverage_result = analyze_resource_coverage(ground_truth_path, template_path)
++        except Exception as e:
++            print(f"Coverage analysis skipped ({e})")
++            coverage_result = {'correct_resources': [], 'missing_resources': [], 'extra_resources': [],
++                               'coverage_percentage': None, 'accuracy_percentage': None}
+         return {
+             'success': True,
+             'correct_resources': coverage_result['correct_resources'],
+@@ -499,17 +516,38 @@ class IterativeTemplateGenerator:
+             content = response.choices[0].message.content
+ 
+         elif self.llm_type == "deepseek":
++            model_name = self.llm_model.replace("openrouter/", "")
+             # Get system content from first message and remove it from messages
+             system_content = conversation_history[0]["content"]
+             messages = conversation_history[1:]  # All messages after system
+ 
+-            response = self.model.chat.completions.create(
+-                model=self.llm_model,
+-                messages=[{"role": "system", "content": system_content}] + messages,
+-                max_tokens=8000,
+-                temperature=0
+-            )
+-            content = response.choices[0].message.content
++            # No max_tokens (IACGEN_NO_MAX_TOKENS=1): reasoning models need room to finish.
++            kwargs = {} if os.getenv('IACGEN_NO_MAX_TOKENS') == '1' else {'max_tokens': 8000}
++            content = ""
++            for attempt in range(4):
++                try:
++                    # IACGEN_PROVIDER_ONLY="Z.AI" pins OpenRouter routing to the listed provider(s) (comma separated).
++                    _prov = os.getenv('IACGEN_PROVIDER_ONLY')
++                    if _prov:
++                        kwargs['extra_body'] = {'provider': {'only': [p.strip() for p in _prov.split(',')]}}
++                    response = self.model.chat.completions.create(
++                        model=model_name,
++                        messages=[{"role": "system", "content": system_content}] + messages,
++                        temperature=0,
++                        **kwargs
++                    )
++                    content = response.choices[0].message.content or ""
++                except Exception as e:
++                    print(f"LLM call failed (attempt {attempt + 1}/4): {e}")
++                    # Key/credit problems cannot be fixed by retrying: stop the whole run instead of recording a bogus failure.
++                    if any(k in str(e) for k in ("Key limit exceeded", "Insufficient credits", "Error code: 401", "Error code: 402")):
++                        raise SystemExit(f"FATAL API key/credit error, stopping run without recording this row: {e}")
++                    time.sleep(10 * (attempt + 1))
++                    continue
++                if content.strip():
++                    break
++                print(f"Empty completion (attempt {attempt + 1}/4), retrying")
++                time.sleep(5)
+         
+         elif self.llm_type == "claude":  # claude
+             # Get system content from first message and remove it from messages
+@@ -645,75 +683,67 @@ class IterativeTemplateGenerator:
+ def process_ioc_csv(input_csv, output_csv, llm_type, llm_model, start_row=0, end_row=None):
+     generator = IterativeTemplateGenerator(llm_type, llm_model)
+     df = pd.read_csv(input_csv, encoding='latin-1')
++    df['ground_truth_path'] = df['ground_truth_path'].str.replace('\\', '/', regex=False)
++    # Original IaCGen layout: Data/... -> ./Data/...  Paths that already resolve are left alone.
++    df['ground_truth_path'] = [p if os.path.exists(p) else p.replace('Data/', './Data/') for p in df['ground_truth_path']]
++    if 'row_number' in df.columns:
++        df['row_number'] = df['row_number'].astype(int)
+ 
+-    # Validate and adjust row ranges
+     end_row = len(df) if end_row is None else min(end_row, len(df))
+     if start_row >= end_row:
+         raise ValueError(f"Invalid row range: start_row ({start_row}) must be less than end_row ({end_row})")
+-    
+-    print(f"Processing {end_row - start_row} rows from {start_row} to {end_row-1} row")
+-    
+-    results = []
+-    try:
+-        for index, row in df.iloc[start_row:end_row].iterrows():
++
++    # Resume: skip rows already written to output_csv (row_number column).
++    done = set()
++    if os.path.exists(output_csv):
++        done = set(pd.read_csv(output_csv)['row_number'].astype(int))
++    print(f"Processing rows {start_row}..{end_row - 1}; {len(done)} already in {output_csv}")
++    os.makedirs(os.path.dirname(output_csv), exist_ok=True)
++    error_csv_path = f"result/error_tracking/{llm_model}_error_history.csv"
++    os.makedirs(os.path.dirname(error_csv_path), exist_ok=True)
++
++    for pos, row in df.iloc[start_row:end_row].iterrows():
++        index = int(row['row_number']) if 'row_number' in df.columns else pos
++        if index in done:
++            continue
++        try:
+             result = generator.process_template(row['prompt'], row['ground_truth_path'], index)
+-            results.append({
+-                # Basic Information
+-                'row_number': index,
+-                'prompt': row['prompt'],
+-                'ground_truth_path': row['ground_truth_path'],
+-                'final_template_path': result.get('template_path'),
+-
+-                # Success Metrics
+-                'success': result['success'],
+-                'failure_reason': result.get('reason', None),
+-                'error_message': result.get('error', None),
+-                'failed_at_stage': result.get('failed_stage', None) if not result['success'] else None,
+-                'total_iterations': result.get('iterations'),    
+-                'highest_feedback_level': result.get('highest_feedback_level'),
+-
+-                # Coverage and Accuracy Metrics
+-                'coverage_percentage': result.get('coverage_percentage', None),
+-                'accuracy_percentage': result.get('accuracy_percentage', None),
+-                # 'missing_resources': result.get('missing_resources', []),
+-                # 'extra_resources': result.get('extra_resources', []),
+-
+-                # Model Information
+-                # 'llm_type': generator.llm_type,
+-                # 'llm_model': generator.llm_model,
+-            })
+             generator.generate_conversation_history(result['conversation_history'], "llm_generated_data/iterative/history", result['success'], index)
+-    except Exception as e:
+-        print(f"Fail at {index}. Reason: {e}.")
+-    finally:
+-        # Create the directory for output_csv if it doesn't exist
+-        os.makedirs(os.path.dirname(output_csv), exist_ok=True)
+-
+-        if os.path.exists(output_csv):
+-            existing_df = pd.read_csv(output_csv)
+-            results_df = pd.DataFrame(results)
+-            combined_df = pd.concat([existing_df, results_df], ignore_index=True)
+-            combined_df.to_csv(output_csv, index=False)
+-        else:
+-            pd.DataFrame(results).to_csv(output_csv, index=False)
+-        # Generate error history CSV
+-        error_csv_path = f"result/error_tracking/{llm_model}_error_history.csv"
+-        os.makedirs(os.path.dirname(error_csv_path), exist_ok=True)
++        except Exception as e:
++            print(f"Row {index} crashed ({e}); not recorded, so a resume retries it")
++            continue
++        rec = {
++            'row_number': index,
++            'prompt': row['prompt'],
++            'ground_truth_path': row['ground_truth_path'],
++            'final_template_path': result.get('template_path'),
++            'success': result['success'],
++            'failure_reason': result.get('reason', None),
++            'error_message': result.get('error', None),
++            'failed_at_stage': result.get('failed_stage', None) if not result['success'] else None,
++            'total_iterations': result.get('iterations'),
++            'highest_feedback_level': result.get('highest_feedback_level'),
++            'coverage_percentage': result.get('coverage_percentage', None),
++            'accuracy_percentage': result.get('accuracy_percentage', None),
++        }
++        pd.DataFrame([rec]).to_csv(output_csv, mode='a', header=not os.path.exists(output_csv), index=False)
+         IterativeTemplateGenerator.generate_error_history_csv(error_csv_path)
+ 
+ 
+ # Start
+ if __name__ == "__main__":
+     print("IaCGen Starting")
+-    input_csv = "Data/iac.csv"
+-    llm_type = "claude"  # "gemini", "gpt", "claude", or "deepseek"
+-    llm_model = "claude-3-7-sonnet-20250219"  # [gemini-1.5-flash, gpt-4o, o3-mini, o1, claude-3-5-sonnet-20241022, claude-3-7-sonnet-20250219, deepseek-chat [V3], deepseek-reasoner [R1]]
+-    output_csv = f"Result/iterative_{llm_model}_results.csv"
+-    start_row = 0
+-    end_row = 153
++    # Environment overrides so a run is configured without editing the file:
++    #   IACGEN_INPUT_CSV, IACGEN_MODEL, IACGEN_START, IACGEN_END, IACGEN_MAX_ITER, IACGEN_NO_MAX_TOKENS=1, IACGEN_OUTPUT_CSV
++    input_csv = os.getenv("IACGEN_INPUT_CSV", "./Data/iac_basic.csv")
++    llm_type = "deepseek"  # OpenAI-compatible client; with "openrouter/" in the model name it targets OpenRouter
++    llm_model = os.getenv("IACGEN_MODEL", "openrouter/z-ai/glm-5.3-flash")
++    output_csv = os.getenv("IACGEN_OUTPUT_CSV", f"Result/iterative_{llm_model}_results.csv")
++    start_row = int(os.getenv("IACGEN_START", "0"))
++    end_row = int(os.getenv("IACGEN_END", "153"))  # exclusive
+ 
+-    print(f"Starting iterative generation with {llm_type} model")
++    print(f"Starting iterative generation with {llm_type} model {llm_model} on {input_csv}")
+ 
+-    process_ioc_csv(input_csv, output_csv, llm_type, llm_model, start_row=start_row, end_row=end_row)  # start row include, end row exclude
++    process_ioc_csv(input_csv, output_csv, llm_type, llm_model, start_row=start_row, end_row=end_row)
+ 
+-    print(f"Generation completed. Results saved to: {output_csv}")
+\ No newline at end of file
++    print(f"Generation completed. Results saved to: {output_csv}")

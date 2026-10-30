@@ -31,3 +31,12 @@ The complete trace of one IaCGen-MAS run: DeepSeek-V4-Flash on Terraform scenari
 ### Redaction
 
 The AWS account ID is replaced by `123456789012`. Everything else is as logged.
+
+## IaCGen human feedback (`iacgen_feedback/`)
+
+Two cases from the logs of IaCGen's human-in-the-loop evaluation, published in https://github.com/iksena/llm-iac-data-analysis. Each file names the log it comes from.
+
+| File | Content |
+|---|---|
+| `ami_case.txt` | Claude-3.5-Sonnet on DPIaC-Eval row 121: the deployment error for a hard-coded AMI ID and the expert feedback that followed, which points to the public Systems Manager parameter for the latest Amazon Linux AMI. |
+| `vpc_subnet_case.txt` | DeepSeek-V3 on DPIaC-Eval row 14: the expert feedback asking for the security group, VPC, and subnet to be created in the template's `Resources` section instead of being passed as parameters. |

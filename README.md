@@ -62,6 +62,7 @@ The agents are nodes of a LangGraph state machine (`graph.py`) that share one `G
 │   ├── graphrag/         CloudFormation knowledge-base ingestion (01–05)
 │   │   ├── terraform/    Terraform knowledge-base ingestion (01–05)
 │   │   └── security/     Security knowledge-base ingestion (00, 01, 04)
+│   ├── import_iacgen_results.py   Converts IaCGen baseline results into the results/ format
 │   └── nuke_vpc_dependencies.py   AWS account cleanup helpers used by the deploy stage
 ├── baselines/            Zero-shot and OpenCode coding-agent baselines (see Baselines)
 ├── benchmark/            Multi-DPIaC-Eval: scenarios and reference templates
@@ -239,6 +240,7 @@ Both delete real resources. Use them only in a dedicated test account.
 | `baselines/mcp_server.py` | MCP server started by OpenCode, exposing `validate_iac`, `deploy_iac`, and `submit_template`. |
 | `baselines/evaluation.py` | State behind the three tools: one `validate_iac` call is one iteration, the iteration cap, deployment only after static validation passed, the Engineer's error format, and per-iteration snapshots. |
 | `baselines/prompts/` | OpenCode system prompts for CloudFormation and Terraform. |
+| `baselines/iacgen_rerun.patch` | Local changes to IaCGen's public implementation (https://github.com/Tianyi2/IaCGen) used for the IaCGen baseline: settings for the model, feedback level, iteration budget, and output-token limit, routing through OpenRouter, resuming an interrupted run, and a 15-minute limit on each deployment. Apply with `git apply` in an IaCGen checkout. |
 
 ### Zero-shot
 
@@ -324,6 +326,8 @@ Each experiment folder contains:
 | `attempts_all.csv` | Every attempt of every scenario, with a `validity` label (`valid_pass`, `valid_fail`, `superseded`, `invalid_environment`, `invalid_harness`, `invalid_runtime`, `invalid_workspace_escape`) and the reason for invalid ones. |
 | `status.json` | Counts of expected, valid, passing, failing, and invalid scenarios. |
 
+`scripts/import_iacgen_results.py` writes these three files for the `IaCGen` folders from IaCGen's own results table, error history, and final templates. `CFN_RealAWS_IaCGen_DSV4Flash/` also keeps the IaCGen files it was built from (`iterative_DSV4Flash_merged_results.csv`, `error_history.csv`) and `row_source.csv`, which records whether each row comes from the earlier or the new IaCGen run.
+
 Top-level files:
 
 | File | Content |
@@ -337,11 +341,11 @@ Top-level files:
 
 ## Intent checks
 
-`analysis/intent_checks/` holds the per-scenario intent checks of the 100 ablation scenarios: a JSON spec per scenario (`specs/<lang>/row_NNN.json`, `NNN` = benchmark `row_number`), the Rego policy generated from it (`policies/`), the shared interpreter (`lib/intent.rego`), and the tools that validate specs and score templates with Open Policy Agent. `analysis/README.md` describes the commands and `analysis/intent_checks/SPEC_BRIEF.md` the spec format.
+`analysis/intent_checks/` holds the per-scenario intent checks of 100 scenarios, 50 per language: a JSON spec per scenario (`specs/<lang>/row_NNN.json`, `NNN` = benchmark `row_number`), the Rego policy generated from it (`policies/`), the shared interpreter (`lib/intent.rego`), and the tools that validate specs and score templates with Open Policy Agent. `analysis/README.md` describes the commands and `analysis/intent_checks/SPEC_BRIEF.md` the spec format.
 
 ## Example run
 
-`examples/scenario_S/` holds every agent's inputs and outputs for one run: DeepSeek-V4-Flash on Terraform scenario 229, which fails `terraform validate`, then Trivy, and passes in its third iteration. `examples/README.md` says which file holds which agent's inputs and outputs.
+`examples/scenario_S/` holds every agent's inputs and outputs for one run: DeepSeek-V4-Flash on Terraform scenario 229, which fails `terraform validate`, then Trivy, and passes in its third iteration. `examples/README.md` says which file holds which agent's inputs and outputs. `examples/iacgen_feedback/` holds the two cases of IaCGen's human feedback that the thesis reproduces.
 
 ## Thesis appendices
 
@@ -349,8 +353,9 @@ Top-level files:
 |---|---|
 | Benchmark details | `benchmark/cloudformation/ground_truth/`, `benchmark/terraform/ground_truth/`. CloudFormation scenario 5: `benchmark/cloudformation/ground_truth/cfn_templates/sasmita1005__AWSSAM/sfn-eventbridge/template.yaml`, `analysis/intent_checks/specs/cfn/row_005.json`, `analysis/intent_checks/policies/cfn/row_005.rego`. Terraform scenario 79: `benchmark/terraform/ground_truth/scenarios/terrads_b9c4d791e93e/`, `analysis/intent_checks/specs/tf/row_079.json`, `analysis/intent_checks/policies/tf/row_079.rego`. Shared interpreter: `analysis/intent_checks/lib/intent.rego`. |
 | Agent prompts | `prompts/planner_prompt.py`, `prompts/engineer_prompt.py`, `prompts/retriever_prompt.py`, `prompts/remediator_prompt.py` |
+| Examples of IaCGen's human feedback | `examples/iacgen_feedback/` |
 | Example run | `examples/scenario_S/` |
-| Baseline prompts | `baselines/zeroshot_prompts.py`, `baselines/prompts/cloudformation.md`, `baselines/prompts/terraform.md` |
+| Baseline prompts | `baselines/zeroshot_prompts.py`, `baselines/prompts/cloudformation.md`, `baselines/prompts/terraform.md`, `baselines/iacgen_rerun.patch` |
 | Error categories | `analysis/audit/error_categories.py` |
 
 ## License

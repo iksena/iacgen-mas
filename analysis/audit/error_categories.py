@@ -44,6 +44,9 @@ def _stage_messages(stage: str, rec: dict, lang: str, blocking) -> list[tuple[st
         if isinstance(js, dict) and "diagnostics" in js:
             out = [(d.get("summary") or "unknown", "", f"{d.get('summary') or ''}: {d.get('detail') or ''}")
                    for d in js["diagnostics"] if d.get("severity") == "error"]
+            if not out:
+                out = [(d.get("summary") or "unknown", "warning", f"{d.get('summary') or ''}: {d.get('detail') or ''}")
+                       for d in js["diagnostics"] if d.get("severity") == "warning"]
         else:
             blocks = raw.split("\nError: ")
             sums = rl._tf_text_diagnostics(raw)
@@ -165,7 +168,7 @@ TF_SUMMARY_RULES = [
     ("Malformed template", r"^(Invalid (character|multi-line string|block definition|single-argument block definition|expression|escape sequence|"
                            r"string literal|argument name|resource type name|resource name|validation expression|variable validation condition)|"
                            r"Unclosed configuration block|Unterminated|Argument or block definition required|"
-                           r"Missing (newline|false expression|expression|attribute separator|item separator|key/value separator|name for resource)|"
+                           r"Missing (newline|false expression|expression|attribute separator|argument separator|item separator|key/value separator|name for resource)|"
                            r"Variables not allowed|Function calls not allowed|Unsupported operator|Unbalanced parentheses|Reserved block type name|"
                            r"Extraneous label|Unexpected \"\w+\" block|Duplicate .*(declaration|configuration)|Invalid combination of \"count\" and \"for_each\")"),
     ("Missing required property", r"^(Missing required argument|Insufficient \w+ blocks|Invalid combination of arguments|Not enough list items)"),
@@ -173,11 +176,12 @@ TF_SUMMARY_RULES = [
     ("Invalid value or type", r"^(expected .* to be (one of|in the range)|Incorrect attribute value type|Invalid function argument|"
                               r"(Not enough|Too many) function arguments|Inconsistent conditional result types|Invalid operand|Unsuitable value type|"
                               r"Value for unconfigurable attribute|Invalid Configuration for Read-Only Attribute|Invalid Attribute Value Match|"
-                              r"Unsupported Terraform Core version|Error in function call|Invalid value for input variable|\"\w+\" must )"),
+                              r"Unsupported Terraform Core version|Error in function call|Invalid value for input variable|Invalid source$|\"\w+\" must |"
+                              r"Invalid template interpolation value|Resource precondition failed)"),
     ("Invalid reference or dependency", r"^(Reference to undeclared|Invalid reference|Invalid resource type$|Missing resource instance key|Cycle:|"
                                         r"Self-referential block|Module not found|Unreadable module directory|Invalid registry module source address|"
                                         r"Unresolvable module version constraint|Provider configuration not present|Invalid for_each argument|"
-                                        r"Invalid count argument|Invalid index)"),
+                                        r"Invalid count argument|Invalid index|Invalid import id argument)"),
 ]
 
 SECURITY_RULES = [
@@ -230,6 +234,12 @@ DEPLOY_RULES = [
                               r"Review the application logs|Response object is too long|TERRAFORM CRASH|unknown identity type|did not stabilize|^\s*$"),
     ("Transient provider failure or account state", r"Internal ?Failure|InternalError|InternalServerError|ServiceUnavailable|"
                                                     r"Could not connect to the endpoint|Connection was closed|No valid credential sources"),
+    ("No actionable message", r"Invalid request provided: AWS::[\w:]+\"\s*(\(|$)|Invalid templateBody\. Please make sure that your template is valid|"
+                              r"Message returned: See the details in CloudWatch Log Stream|The code contains one or more errors|"
+                              r"unexpected state 'deleting'.*last error: %!s\(<nil>\)"),
+    ("Referenced resource or service not available", r"doesn't exist|with name [\w-]+ is missing|Invalid API ID|Invalid Integration identifier|"
+                                                     r"VPCIdNotSpecified|No default VPC|NoAvailableConfigurationRecorder|is not enabled in any region"),
+    ("IAM and permission errors", r"MalformedPolicy\b|Policy document is Malformed|InsufficientDeliveryPolicyException|does not have permission"),
     ("Resource configuration rejected by the provider", r"Resource handler returned message|api error|\w+Exception|[Ii]nvalid|not (a )?valid|"
                                                         r"[Vv]alidation|[Mm]ust|not supported|[Uu]nsupported|cannot|can not|can't|"
                                                         r"required|expected|[Mm]alformed|not allowed|failed to satisfy|[Cc]onflict|"
@@ -273,6 +283,8 @@ def categorise(lang: str, cls: str, stage: str, key: str, sub: str, msg: str, ch
         cat, rule, _ = security_category(key, checks)
         return cat, rule
     if stage in ("terraform-validate", "tflint"):
+        if sub == "warning":
+            return "Invalid value or type", "terraform validate failed on warnings only"
         s = key[len("init: "):] if key.startswith("init: ") else key
         r = _tf_summary(s)
         return r if r else (UNMAPPED, "no terraform rule")
