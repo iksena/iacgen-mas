@@ -11,11 +11,17 @@ class ToolCall:
     paths: list[str]
     ok: bool
     output: str
+    command: str = ""
 
 
 _PATH_KEYS = ("filePath", "file_path", "path", "notebook_path")
 _PATTERN_TOOLS = ("glob",)
 _OWN_TOOL_PREFIXES = ("iacgod_", "mcp__iacgod__")
+
+
+def _command(inp: dict) -> str:
+    value = inp.get("command")
+    return value if isinstance(value, str) else ""
 
 
 def _paths(tool: str, inp: dict) -> list[str]:
@@ -40,6 +46,7 @@ def _opencode_calls(events: list[dict]) -> list[ToolCall]:
             paths=_paths(tool, state.get("input") or {}),
             ok=state.get("status") == "completed",
             output=str(state.get("output") or state.get("error") or ""),
+            command=_command(state.get("input") or {}),
         ))
     return calls
 
@@ -59,7 +66,8 @@ def _claude_calls(events: list[dict]) -> list[ToolCall]:
                 tool = block.get("name", "")
                 if tool.startswith(_OWN_TOOL_PREFIXES):
                     continue
-                call = ToolCall(tool=tool, paths=_paths(tool, block.get("input") or {}), ok=False, output="")
+                inp = block.get("input") or {}
+                call = ToolCall(tool=tool, paths=_paths(tool, inp), ok=False, output="", command=_command(inp))
                 pending[block.get("id", "")] = call
                 calls.append(call)
             elif ev.get("type") == "user" and block.get("type") == "tool_result":
@@ -98,3 +106,20 @@ def describe(calls: list[ToolCall], workspace: str) -> list[str]:
     return [
         f"{c.tool}:{p}" for c in calls for p in c.paths if not is_inside(p, workspace)
     ]
+
+
+def shell_commands(calls: list[ToolCall]) -> list[ToolCall]:
+    return [c for c in calls if c.command and c.tool.lower() == "bash" and c.ok]
+
+
+def forbidden_commands(calls: list[ToolCall], needles: list[str]) -> list[str]:
+    hits = []
+    for c in shell_commands(calls):
+        found = [n for n in needles if n and n in c.command]
+        if found:
+            hits.append(f"bash:{c.command[:160]} (mentions {', '.join(found)})")
+            continue
+        leaked = [n for n in needles if n and n.startswith("/") and n in c.output]
+        if leaked:
+            hits.append(f"bash:{c.command[:160]} (output contains {', '.join(leaked)})")
+    return hits

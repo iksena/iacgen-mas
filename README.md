@@ -239,10 +239,12 @@ Both delete real resources. Use them only in a dedicated test account.
 | `baselines/zeroshot_prompts.py` | IaCGen's prompts, copied verbatim (the Terraform pair is the IaC-Eval prompt IaCGen carries), and IaCGen's template extraction. |
 | `baselines/opencode_baseline.py` | Coding-agent baseline: runs OpenCode once per scenario in an isolated workspace, then scores the template it leaves, validating and deploying it again if the agent did not. |
 | `baselines/opencode_driver.py` | Writes the OpenCode configuration (model endpoint, MCP server, tool allowlist), parses OpenCode's event stream into token counts and transcripts, and flags sessions that touched files outside their workspace. |
+| `baselines/opencode_agent_driver.py` | Coding-agent condition (`--agent`): OpenCode gets a shell and a logged-in AWS CLI instead of the three tools. Builds the self-testing system prompt, the permission rules, the reduced environment, and the Docker (or bubblewrap) isolation. |
+| `baselines/agent_container/` | Dockerfile of the image the agent runs in: OpenCode, AWS CLI, cfn-lint, Terraform, TFLint, and Trivy with the Validator's pinned checks bundle. |
 | `baselines/mcp_server.py` | MCP server started by OpenCode, exposing `validate_iac`, `deploy_iac`, and `submit_template`. |
 | `baselines/evaluation.py` | State behind the three tools: one `validate_iac` call is one iteration, the iteration cap, deployment only after static validation passed, the Engineer's error format, and per-iteration snapshots. |
 | `baselines/sandbox_audit.py` | Checks whether an OpenCode session's tool calls stayed inside its workspace; `analysis/audit/aggregate_benchmark_run_data.py` uses it to label workspace escapes. |
-| `baselines/prompts/` | OpenCode system prompts for CloudFormation and Terraform. |
+| `baselines/prompts/` | OpenCode system prompts for CloudFormation and Terraform; `--agent` replaces their Workflow section. |
 | `baselines/iacgen_rerun.patch` | Local changes to IaCGen's public implementation (https://github.com/Tianyi2/IaCGen) used for the IaCGen baseline: settings for the model, feedback level, iteration budget, and output-token limit, routing through OpenRouter, resuming an interrupted run, and a 15-minute limit on each deployment. Apply with `git apply` in an IaCGen checkout. |
 
 ### Zero-shot
@@ -277,6 +279,23 @@ python -m baselines.opencode_baseline \
 For another endpoint, pass `--base-url`, `--api-key-env` (the variable holding its key), and `--provider-name`, e.g. `--base-url https://api.deepseek.com --api-key-env DEEPSEEK_API_KEY --provider-name deepseek-direct --model deepseek-v4-flash`. `--provider-name` must not be a provider OpenCode ships with (`deepseek`, `openai`, ...).
 
 Each scenario runs in `runs/<run_id>/workspace`, which is initialised as its own git repository so that OpenCode denies every path outside it. The agent may only read, write, and edit files and call the three tools; it has no shell. A session that still touches a path outside the workspace is recorded as `status=workspace_escape` and counted as a failure. The extra column `final_verdict_source` records how the final template was scored (`recorded`, `deployed_at_finalize`, `revalidated`, or `no_template_produced`). `--scenario-timeout` (default 1800 s) bounds each session, and `--keep-workspace` keeps the agent's files.
+
+### OpenCode coding agent (shell and AWS CLI)
+
+`--agent` runs the same command with a different condition: OpenCode has a shell and an AWS CLI logged in to a dedicated test account, and no `validate_iac`, `deploy_iac` or `submit_template` tools. It writes, tests (static tools, real test stacks named `iac-god-eval-agent-*`) and repairs the template on its own, and is scored once with the Validator when it stops, so `iterations_used` is 1 and `--max-iterations` has no effect; `--scenario-timeout` is the only bound. Its prompt is the OpenCode prompt with the Workflow section replaced and a section stating the scoring stages (yamllint or TFLint, cfn-lint or `terraform validate` errors, Trivy HIGH/CRITICAL, and a deployment with no parameter values supplied), with no commands or examples.
+
+```bash
+docker build -t iacgod-agent:latest baselines/agent_container
+python -m baselines.opencode_baseline --agent \
+  --expected-aws-account 123456789012 \
+  --iac-type cloudformation \
+  --dataset data/cfn_eval_benchmark_real_aws.csv \
+  --model deepseek/deepseek-v4-flash \
+  --deploy-target aws --scenario-timeout 7200 \
+  --rows 1
+```
+
+The run refuses to start unless the AWS CLI resolves to `--expected-aws-account`, and every row is swept against AWS after scoring, so use a dedicated account that nothing else runs in. The agent runs in the container with only its run directory (under `--agent-sandbox-root`, outside the checkout) and the read-only `~/.aws` mounted; `--agent-isolation bwrap` is the Linux alternative. A shell command that names the checkout, the real home directory or a code-hosting site marks the row `workspace_escape`. Extra columns: `agent_shell_calls`, `agent_aws_calls`, `agent_deploy_attempts`.
 
 ## Datasets
 
@@ -316,7 +335,7 @@ Paths in these CSVs are relative to the language folder, e.g. `benchmark/cloudfo
 
 - **Language**: `CFN` (CloudFormation) or `TF` (Terraform)
 - **Benchmark**: `RealAWS` (Multi-DPIaC-Eval on live AWS), `DPIaCEval`, `IaCEval`, or `Ablation` (50 scenarios per language on LocalStack); `LintOnly` = IaC-Eval run checked by TFLint and `terraform validate` only
-- **System**: no tag = IaCGen-MAS; `OpenCode` = coding-agent baseline; `OneShot` / `ZeroShot` = zero-shot baseline; `IaCGen` = IaCGen baseline. In the ablation, `IaCGOD` is the full IaCGen-MAS and the other tags name the removed or changed component (`NoPlanner`, `NoDenseRAG`, `NoGraphRAG`, `NoQueryRewrite`, `NoRemediator`, `OpenCodeRetriever`, `TrivyAllSeverities`).
+- **System**: no tag = IaCGen-MAS; `OpenCode` = coding-agent baseline (validator tools); `OpencodeAgent` = coding-agent baseline with a shell and the AWS CLI (`--agent`); `OneShot` / `ZeroShot` = zero-shot baseline; `IaCGen` = IaCGen baseline. In the ablation, `IaCGOD` is the full IaCGen-MAS and the other tags name the removed or changed component (`NoPlanner`, `NoDenseRAG`, `NoGraphRAG`, `NoQueryRewrite`, `NoRemediator`, `OpenCodeRetriever`, `TrivyAllSeverities`).
 - **Model**: `DSV4F` DeepSeek-V4-Flash, `GLM53F` GLM-5.3-Flash, `Gemini38F` Gemini-3.8-Flash, `Opus55` Claude-Opus-5.5, `o3mini` o3-mini
 - **Suffix**: `DeployOnly` = deployability-only criterion (no security gate); `L345` = difficulty levels 3–5 only; `PlanOnly` = no deployment and no security gate, a template passes when TFLint, `terraform validate`, and `terraform plan` accept it; `LiveAWS_GLM` = ablation scenarios deployed to live AWS with GLM-5.3-Flash. `FirstAttempt` = the first iteration of the scenarios whose first iteration was blocked by an environment error, run again with one iteration; the repair-loop notebook counts these passes at every passItr@n.
 

@@ -11,13 +11,19 @@ import subprocess
 import time
 import traceback
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 from baselines.evaluation import STATE_FILENAME, ScenarioConfig, _sha, template_filename
+from baselines.opencode_agent_driver import (
+    OpenCodeAgentDriver,
+    bwrap_available,
+    docker_available,
+)
 from baselines.opencode_driver import OpenCodeDriver, workspace_escapes
+from baselines.sandbox_audit import forbidden_commands, shell_commands, tool_calls
 from benchmark_common import (
     CSV_RESULT_FIELDS,
     _append_jsonl,
@@ -53,6 +59,9 @@ BASELINE_CSV_EXTRA = [
     "harness_stalled_attempt_run_ids",
     "thinking_tokens_total",
     "workspace_escapes",
+    "agent_shell_calls",
+    "agent_aws_calls",
+    "agent_deploy_attempts",
 ]
 BASELINE_CSV_FIELDS = CSV_RESULT_FIELDS + BASELINE_CSV_EXTRA
 
@@ -91,6 +100,12 @@ class BaselineConfig:
     max_tokens: int | None = None
     no_max_tokens: bool = False
     skip_security: bool = False
+
+    agent_sandbox_root: Path = Path("/tmp/iacgod_agent_sandbox")
+    expected_aws_account: str | None = None
+    agent_isolation: str = "docker"
+    agent_image: str = "iacgod-agent:latest"
+    agent_hide_paths: list[Path] = field(default_factory=lambda: [REPO_ROOT.parent])
 
 
 def _terminate_process_group(proc: subprocess.Popen) -> None:
@@ -173,6 +188,10 @@ def run_harness(
     )
     shutil.rmtree(state_dir, ignore_errors=True)
 
+    after_run = getattr(driver, "after_run", None)
+    if after_run is not None:
+        after_run(config, scenario)
+
     telemetry = driver.parse_stream(
         stdout,
         returncode=returncode,
@@ -180,6 +199,25 @@ def run_harness(
         duration=round(time.time() - started, 3),
     )
     telemetry["workspace_escapes"] = workspace_escapes(stdout, workdir)
+    calls = tool_calls(stdout, driver.name)
+    shell = shell_commands(calls)
+    if shell:
+        telemetry["workspace_escapes"] += forbidden_commands(
+            calls,
+            [str(Path(h).resolve()) for h in config.agent_hide_paths]
+            + [str(REPO_ROOT.resolve()),
+               "github.com", "githubusercontent.com", "gitlab.com", "bitbucket.org"],
+        )
+    aws = [c for c in shell if "aws " in c.command or c.command.startswith("aws")]
+    telemetry["agent_shell_calls"] = len(shell)
+    telemetry["agent_aws_calls"] = len(aws)
+    telemetry["agent_deploy_attempts"] = sum(
+        1 for c in shell
+        if any(k in c.command for k in (
+            "cloudformation deploy", "cloudformation create-stack",
+            "cloudformation update-stack", "terraform apply",
+        ))
+    )
     return telemetry
 
 
@@ -284,6 +322,14 @@ def _run_one_attempt(
     recorder = ResearchRecorder(run_id=run_id, output_dir=str(config.runs_dir))
 
     workdir = (recorder.output_dir / "workspace").resolve()
+    sandbox_run_dir = None
+    if getattr(driver, "external_workspace", False):
+        sandbox_run_dir = (config.agent_sandbox_root / run_id).resolve()
+        if sandbox_run_dir.is_relative_to(REPO_ROOT.resolve()):
+            raise RuntimeError(
+                f"--agent-sandbox-root {config.agent_sandbox_root} is inside the repository"
+            )
+        workdir = sandbox_run_dir / "workspace"
     workdir.mkdir(parents=True, exist_ok=True)
 
     scenario = ScenarioConfig(
@@ -305,6 +351,25 @@ def _run_one_attempt(
         driver,
     )
     final = finalize_scenario(config, workdir, recorder)
+
+    if sandbox_run_dir is not None:
+        recorder.save_iteration_snapshot({
+            "current_iteration": 1,
+            "objectives": [],
+            "iac_template": final["template"],
+            "validation_results": final["validation_results"],
+            "validation_passed": bool(final["passed"]),
+            "deploy_validation_result": final["deploy_result"],
+            "remediation_history": [],
+        })
+        recorded = recorder.output_dir / "workspace"
+        if config.keep_workspace:
+            shutil.copytree(
+                workdir, recorded, dirs_exist_ok=True,
+                ignore=shutil.ignore_patterns(".git", ".terraform", "*.tfstate*"),
+            )
+        shutil.rmtree(sandbox_run_dir, ignore_errors=True)
+        workdir = recorded
     return run_id, recorder, workdir, telemetry, final
 
 
@@ -329,6 +394,8 @@ def run_scenario(
 
     state = final["state"]
     iterations_used = _safe_int(state.get("iteration_count"))
+    if getattr(driver, "external_workspace", False):
+        iterations_used = 1 if final["template"] else 0
 
     recorder.save_final_report(
         {
@@ -403,6 +470,9 @@ def run_scenario(
         "harness_stalled_attempt_run_ids": ",".join(stalled_run_ids) or None,
         "thinking_tokens_total": telemetry["thinking_tokens_total"],
         "workspace_escapes": "; ".join(escapes) or None,
+        "agent_shell_calls": telemetry.get("agent_shell_calls"),
+        "agent_aws_calls": telemetry.get("agent_aws_calls"),
+        "agent_deploy_attempts": telemetry.get("agent_deploy_attempts"),
     }
 
 
@@ -415,7 +485,7 @@ def _append_baseline_csv(path: Path, payload: dict[str, Any]) -> None:
 
 
 def run_baseline(config: BaselineConfig) -> dict[str, Any]:
-    driver = OpenCodeDriver()
+    driver = OpenCodeAgentDriver() if config.harness == "opencode_agent" else OpenCodeDriver()
 
     config.output_dir.mkdir(parents=True, exist_ok=True)
     config.runs_dir.mkdir(parents=True, exist_ok=True)
@@ -469,7 +539,8 @@ def run_baseline(config: BaselineConfig) -> dict[str, Any]:
 
     print(f"\n{'=' * 80}")
     print(
-        f"OpenCode baseline | model={config.model} | iac_type={config.iac_type} "
+        f"OpenCode {'agent' if config.harness == 'opencode_agent' else 'MCP'} baseline "
+        f"| model={config.model} | iac_type={config.iac_type} "
         f"| rows={len(selected)} | deploy={config.deploy_target}"
     )
     print(f"{'=' * 80}")
@@ -556,8 +627,12 @@ def run_baseline(config: BaselineConfig) -> dict[str, Any]:
                 print(traceback.format_exc())
             finally:
                 try:
+                    cleanup_target = (
+                        DeployTarget.AWS if getattr(driver, "aws_cli_access", False)
+                        else DeployTarget(config.deploy_target)
+                    )
                     cleanup_scenario_resources(
-                        DeployConfig(target=DeployTarget(config.deploy_target))
+                        DeployConfig(target=cleanup_target)
                     )
                 except Exception as cleanup_exc:
                     print(
@@ -646,7 +721,8 @@ def run_baseline(config: BaselineConfig) -> dict[str, Any]:
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(
         description="Coding-agent baseline: OpenCode writes and repairs the template, "
-        "calling the IaCGen-MAS Validator through an MCP server."
+        "calling the IaCGen-MAS Validator through an MCP server, or (--agent) with a "
+        "shell and the AWS CLI and no validator tools."
     )
     p.add_argument("--iac-type", choices=["cloudformation", "terraform"], default="cloudformation")
     p.add_argument("--dataset", type=Path, default=None)
@@ -677,11 +753,52 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--sleep-between-rows", type=float, default=0.0)
     p.add_argument("--keep-workspace", action="store_true",
                    help="Keep runs/<run_id>/workspace instead of deleting it after scoring")
+    p.add_argument("--agent", action="store_true",
+                   help="Coding-agent condition: OpenCode gets a shell and a logged-in AWS CLI "
+                        "instead of the validate_iac/deploy_iac/submit_template tools, tests and "
+                        "repairs the template itself, and is scored once when it stops.")
+    p.add_argument("--expected-aws-account", type=str, default=None,
+                   help="--agent only (required): the 12-digit AWS account ID the logged-in CLI "
+                        "must resolve to; any other account is refused.")
+    p.add_argument("--agent-isolation", choices=["docker", "auto", "bwrap", "none"], default="docker",
+                   help="--agent only. docker (default): run the agent in the iacgod-agent container "
+                        "with only its own run directory mounted (build it with docker build -t "
+                        "iacgod-agent:latest baselines/agent_container). bwrap: bubblewrap namespace "
+                        "in which --agent-hide-path trees are empty (Linux). auto: docker if the "
+                        "image exists, else bwrap. none: no isolation, testing only.")
+    p.add_argument("--agent-image", type=str, default="iacgod-agent:latest")
+    p.add_argument("--agent-sandbox-root", type=Path, default=Path("/tmp/iacgod_agent_sandbox"),
+                   help="--agent only: where per-run workspaces are created, outside the "
+                        "repository; each is deleted after scoring.")
+    p.add_argument("--agent-hide-path", action="append", type=Path, default=None,
+                   help="--agent only, repeatable: a directory the agent must not see "
+                        "(default: the directory containing this checkout).")
 
     args = p.parse_args()
+    if args.agent and not args.expected_aws_account:
+        p.error("--agent requires --expected-aws-account")
     if args.retry_errors and args.exclude_completed_csv is None:
         p.error("--retry-errors requires --exclude-completed-csv")
     return args
+
+
+def _check_aws_account(expected: str) -> None:
+    try:
+        out = subprocess.run(
+            ["aws", "sts", "get-caller-identity", "--output", "json"],
+            capture_output=True, text=True, timeout=60,
+        )
+    except FileNotFoundError:
+        raise SystemExit("The `aws` CLI is not on PATH; the coding agent needs it.")
+    if out.returncode != 0:
+        raise SystemExit(f"`aws sts get-caller-identity` failed: {out.stderr.strip()}")
+    account = json.loads(out.stdout).get("Account")
+    if account != expected:
+        raise SystemExit(
+            f"The AWS CLI is logged in to account {account}, not --expected-aws-account "
+            f"{expected}. Refusing to give the agent access to it."
+        )
+    print(f"[Baseline] AWS CLI account check passed ({account}).")
 
 
 def main() -> None:
@@ -701,7 +818,8 @@ def main() -> None:
     if args.rows:
         rows = [int(r.strip()) for r in args.rows.split(",") if r.strip().isdigit()]
 
-    if shutil.which("opencode") is None:
+    host_needs_binary = not (args.agent and args.agent_isolation == "docker")
+    if host_needs_binary and shutil.which("opencode") is None:
         raise SystemExit("The `opencode` CLI was not found on PATH.")
 
     config = BaselineConfig(
@@ -724,7 +842,37 @@ def main() -> None:
         max_stall_retries=args.max_stall_retries,
         sleep_between_rows=args.sleep_between_rows,
         keep_workspace=args.keep_workspace,
+        harness="opencode_agent" if args.agent else "opencode",
+        agent_sandbox_root=args.agent_sandbox_root,
+        agent_image=args.agent_image,
+        agent_hide_paths=args.agent_hide_path or [REPO_ROOT.parent],
+        expected_aws_account=args.expected_aws_account,
     )
+
+    if args.agent:
+        _check_aws_account(config.expected_aws_account)
+        mode = args.agent_isolation
+        have_docker = mode in ("auto", "docker") and docker_available(config.agent_image)
+        have_bwrap = mode in ("auto", "bwrap") and not have_docker and bwrap_available()
+        if mode == "docker" and not have_docker:
+            raise SystemExit(f"--agent-isolation docker: Docker is not running or image "
+                             f"{config.agent_image} is missing. Build it with: docker build -t "
+                             f"{config.agent_image} baselines/agent_container")
+        if mode == "bwrap" and not have_bwrap:
+            raise SystemExit("--agent-isolation bwrap requested but bubblewrap is missing or "
+                             "cannot create a namespace here (apt install bubblewrap).")
+        if mode == "auto" and not (have_docker or have_bwrap):
+            raise SystemExit("--agent-isolation auto: neither the agent image nor bubblewrap is "
+                             "usable here. Build the image or pass --agent-isolation none explicitly.")
+        config.agent_isolation = "docker" if have_docker else "bwrap" if have_bwrap else "none"
+        if config.agent_isolation == "none":
+            print("[Baseline] WARNING: the coding agent's shell is NOT isolated; only the "
+                  "tripwire will catch access outside its workspace.")
+        elif config.agent_isolation == "docker":
+            print(f"[Baseline] Coding agent runs in container {config.agent_image}; it sees only "
+                  "its own run directory.")
+        else:
+            print("[Baseline] Coding agent isolated with bubblewrap.")
     run_baseline(config)
 
 
