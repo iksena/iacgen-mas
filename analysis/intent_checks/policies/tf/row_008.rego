@@ -1,0 +1,686 @@
+package intent.tf.row_008
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {
+  "bud": {
+   "types": [
+    "aws_budgets_budget"
+   ],
+   "where": []
+  },
+  "topic": {
+   "types": [
+    "aws_sns_topic"
+   ],
+   "where": [
+    {
+     "path": [
+      "name"
+     ],
+     "op": "eq",
+     "value": "budget"
+    }
+   ]
+  },
+  "kms": {
+   "types": [
+    "aws_kms_key"
+   ],
+   "where": []
+  }
+ },
+ "checks": [
+  {
+   "id": "budget_exists",
+   "kind": "exists",
+   "tier": "core",
+   "select": "bud",
+   "quote": "creates a monthly cost budget"
+  },
+  {
+   "id": "budget_name",
+   "kind": "attr",
+   "tier": "core",
+   "select": "bud",
+   "cond": {
+    "path": [
+     "name"
+    ],
+    "op": "eq",
+    "value": "budget"
+   },
+   "quote": "a monthly cost budget named \"budget\""
+  },
+  {
+   "id": "budget_monthly",
+   "kind": "attr",
+   "tier": "core",
+   "select": "bud",
+   "cond": {
+    "path": [
+     "time_unit"
+    ],
+    "op": "eq",
+    "value": "MONTHLY"
+   },
+   "quote": "a monthly cost budget"
+  },
+  {
+   "id": "budget_cost",
+   "kind": "attr",
+   "tier": "core",
+   "select": "bud",
+   "cond": {
+    "path": [
+     "budget_type"
+    ],
+    "op": "eq",
+    "value": "COST"
+   },
+   "quote": "cost budget"
+  },
+  {
+   "id": "budget_limit",
+   "kind": "attr",
+   "tier": "core",
+   "select": "bud",
+   "cond": {
+    "path": [
+     "limit_amount"
+    ],
+    "op": "regex",
+    "value": "^25(\\.0+)?$"
+   },
+   "quote": "a limit of 25.0 USD"
+  },
+  {
+   "id": "budget_unit",
+   "kind": "attr",
+   "tier": "core",
+   "select": "bud",
+   "cond": {
+    "path": [
+     "limit_unit"
+    ],
+    "op": "eq",
+    "value": "USD"
+   },
+   "quote": "a limit of 25.0 USD"
+  },
+  {
+   "id": "budget_start",
+   "kind": "attr",
+   "tier": "core",
+   "select": "bud",
+   "cond": {
+    "path": [
+     "time_period_start"
+    ],
+    "op": "regex",
+    "value": "^2021-07-01_00:00"
+   },
+   "quote": "starting from July 1, 2021 at 00:00"
+  },
+  {
+   "id": "notif_threshold",
+   "kind": "attr",
+   "tier": "core",
+   "select": "bud",
+   "cond": {
+    "path": [
+     "notification",
+     "*"
+    ],
+    "op": "match",
+    "value": [
+     {
+      "path": [
+       "notification_type"
+      ],
+      "op": "eq",
+      "value": "ACTUAL"
+     },
+     {
+      "path": [
+       "comparison_operator"
+      ],
+      "op": "eq",
+      "value": "GREATER_THAN"
+     },
+     {
+      "path": [
+       "threshold"
+      ],
+      "op": "eq",
+      "value": 100
+     },
+     {
+      "path": [
+       "threshold_type"
+      ],
+      "op": "eq",
+      "value": "PERCENTAGE"
+     }
+    ]
+   },
+   "quote": "triggers when actual costs exceed 100% of the budget limit",
+   "justify": "100% of the budget limit means threshold 100 PERCENTAGE"
+  },
+  {
+   "id": "notif_email",
+   "kind": "attr",
+   "tier": "core",
+   "select": "bud",
+   "cond": {
+    "path": [
+     "notification",
+     "*"
+    ],
+    "op": "match",
+    "value": [
+     {
+      "path": [
+       "notification_type"
+      ],
+      "op": "eq",
+      "value": "ACTUAL"
+     },
+     {
+      "path": [
+       "threshold"
+      ],
+      "op": "eq",
+      "value": 100
+     },
+     {
+      "path": [
+       "subscriber_email_addresses",
+       "*"
+      ],
+      "op": "eq",
+      "value": "hello@chriswilding.co.uk"
+     }
+    ]
+   },
+   "quote": "the email address \"hello@chriswilding.co.uk\"",
+   "justify": "the email is a subscriber of the notification at 100% of actual costs"
+  },
+  {
+   "id": "topic_named",
+   "kind": "exists",
+   "tier": "core",
+   "select": "topic",
+   "quote": "a newly created SNS topic named \"budget\""
+  },
+  {
+   "id": "budget_alerts_topic",
+   "kind": "ref",
+   "tier": "core",
+   "to": "topic",
+   "quote": "sending alerts to the email address \"hello@chriswilding.co.uk\" as well as a newly created SNS topic",
+   "from": "bud"
+  },
+  {
+   "id": "topic_cmk",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "encrypted with a customer-managed KMS key",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "topic",
+     "to": "kms"
+    },
+    {
+     "kind": "ref",
+     "from": "topic",
+     "to": {
+      "types": [
+       "aws_kms_alias"
+      ],
+      "where": []
+     }
+    }
+   ]
+  },
+  {
+   "id": "kms_budgets_allowed",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_kms_key"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "policy"
+      ],
+      "op": "regex",
+      "value": "(?i)budgets\\.amazonaws\\.com"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_kms_key_policy"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "policy"
+      ],
+      "op": "regex",
+      "value": "(?i)budgets\\.amazonaws\\.com"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_kms_key"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "policy"
+      ],
+      "op": "regex",
+      "value": "(?i)budgets\\.amazonaws\\.com"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_kms_key",
+       "aws_kms_key_policy"
+      ],
+      "where": []
+     },
+     "to": {
+      "types": [
+       "data.aws_iam_policy_document"
+      ],
+      "where": [
+       {
+        "path": [
+         "statement",
+         "*"
+        ],
+        "op": "match",
+        "value": [
+         {
+          "path": [
+           "effect"
+          ],
+          "op": "eq",
+          "value": "Allow"
+         },
+         {
+          "path": [
+           "principals",
+           "*",
+           "identifiers",
+           "*"
+          ],
+          "op": "eq",
+          "value": "budgets.amazonaws.com"
+         }
+        ]
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "a customer-managed KMS key that the AWS Budgets service is allowed to use"
+  },
+  {
+   "id": "topic_policy_exists",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "an SNS topic policy",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_sns_topic_policy"
+      ],
+      "where": []
+     },
+     "to": "topic"
+    },
+    {
+     "kind": "attr",
+     "select": "topic",
+     "cond": {
+      "path": [
+       "policy"
+      ],
+      "op": "present"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_sns_topic"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "policy"
+      ],
+      "op": "present"
+     }
+    }
+   ]
+  },
+  {
+   "id": "topic_policy_principal",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_sns_topic_policy",
+       "aws_sns_topic"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "policy"
+      ],
+      "op": "regex",
+      "value": "(?i)budgets\\.amazonaws\\.com"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_sns_topic_policy"
+      ],
+      "where": []
+     },
+     "to": {
+      "types": [
+       "data.aws_iam_policy_document"
+      ],
+      "where": [
+       {
+        "path": [
+         "statement",
+         "*"
+        ],
+        "op": "match",
+        "value": [
+         {
+          "path": [
+           "effect"
+          ],
+          "op": "eq",
+          "value": "Allow"
+         },
+         {
+          "path": [
+           "principals",
+           "*",
+           "identifiers",
+           "*"
+          ],
+          "op": "eq",
+          "value": "budgets.amazonaws.com"
+         }
+        ]
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "regex",
+        "value": "^aws_sns_topic(_policy)?$"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "policy"
+      ],
+      "op": "regex",
+      "value": "(?i)budgets\\.amazonaws\\.com"
+     }
+    }
+   ],
+   "quote": "allowing the AWS Budgets service principal"
+  },
+  {
+   "id": "topic_policy_publish",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "an SNS topic policy allowing the AWS Budgets service principal to publish to the SNS topic",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_sns_topic_policy"
+      ],
+      "where": []
+     },
+     "to": {
+      "types": [
+       "data.aws_iam_policy_document"
+      ],
+      "where": [
+       {
+        "path": [
+         "statement",
+         "*"
+        ],
+        "op": "match",
+        "value": [
+         {
+          "path": [
+           "effect"
+          ],
+          "op": "eq",
+          "value": "Allow"
+         },
+         {
+          "path": [
+           "actions",
+           "*"
+          ],
+          "op": "glob_covers",
+          "value": "SNS:Publish"
+         },
+         {
+          "path": [
+           "principals",
+           "*",
+           "identifiers",
+           "*"
+          ],
+          "op": "eq",
+          "value": "budgets.amazonaws.com"
+         }
+        ]
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_sns_topic_policy",
+       "aws_sns_topic"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "policy"
+      ],
+      "op": "regex",
+      "value": "(?is)\"Action\":\\[?(\"[^\"]*\",)*\"sns:(publish|\\*)\"(,\"[^\"]*\")*\\]?,(?:\"Condition\":\\{(?:[^{}]|\\{[^{}]*\\})*\\},)?\"Effect\":\"Allow\",\"Principal\":\\{\"Service\":\\[?(\"[^\"]*\",)*\"budgets\\.amazonaws\\.com"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "regex",
+        "value": "^aws_sns_topic(_policy)?$"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "policy"
+      ],
+      "op": "regex",
+      "value": "(?is)'action':\\s*\\[?\\s*'sns:(publish|\\*)'[^{}]{0,40}?\\}?(?:[^{}]|\\{[^{}]*\\}){0,300}'principal':\\s*\\{'service':\\s*\\[?\\s*'budgets\\.amazonaws\\.com|'principal':\\s*\\{'service':\\s*\\[?\\s*'budgets\\.amazonaws\\.com[^{}]{0,40}?\\}?(?:[^{}]|\\{[^{}]*\\}){0,300}'action':\\s*\\[?\\s*'sns:(publish|\\*)'"
+     }
+    }
+   ]
+  },
+  {
+   "id": "sms_protocol",
+   "kind": "attr",
+   "tier": "core",
+   "select": {
+    "types": [
+     "aws_sns_topic_subscription"
+    ],
+    "where": []
+   },
+   "cond": {
+    "path": [
+     "protocol"
+    ],
+    "op": "eq",
+    "value": "sms"
+   },
+   "quote": "an SMS subscription on the topic"
+  },
+  {
+   "id": "sms_endpoint",
+   "kind": "attr",
+   "tier": "core",
+   "select": {
+    "types": [
+     "aws_sns_topic_subscription"
+    ],
+    "where": [
+     {
+      "path": [
+       "protocol"
+      ],
+      "op": "eq",
+      "value": "sms"
+     }
+    ]
+   },
+   "cond": {
+    "path": [
+     "endpoint"
+    ],
+    "op": "eq",
+    "value": "+447828835419"
+   },
+   "quote": "the phone number \"+447828835419\""
+  },
+  {
+   "id": "sms_on_topic",
+   "kind": "ref",
+   "tier": "core",
+   "to": "topic",
+   "quote": "an SMS subscription on the topic",
+   "from": {
+    "types": [
+     "aws_sns_topic_subscription"
+    ],
+    "where": [
+     {
+      "path": [
+       "protocol"
+      ],
+      "op": "eq",
+      "value": "sms"
+     }
+    ]
+   }
+  },
+  {
+   "id": "kms_rotation",
+   "kind": "attr",
+   "tier": "extra",
+   "select": "kms",
+   "cond": {
+    "path": [
+     "enable_key_rotation"
+    ],
+    "op": "truthy"
+   }
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

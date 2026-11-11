@@ -1,0 +1,901 @@
+package intent.cfn.row_227
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {
+  "vpc": {
+   "types": [
+    "AWS::EC2::VPC"
+   ],
+   "where": []
+  },
+  "vpc22": {
+   "types": [
+    "AWS::EC2::VPC"
+   ],
+   "where": [
+    {
+     "path": [
+      "CidrBlock"
+     ],
+     "op": "eq",
+     "value": "10.0.0.0/22"
+    }
+   ]
+  },
+  "subnets": {
+   "types": [
+    "AWS::EC2::Subnet"
+   ],
+   "where": []
+  },
+  "sn1": {
+   "types": [
+    "AWS::EC2::Subnet"
+   ],
+   "where": [
+    {
+     "path": [
+      "CidrBlock"
+     ],
+     "op": "eq",
+     "value": "10.0.0.0/24"
+    }
+   ]
+  },
+  "sn2": {
+   "types": [
+    "AWS::EC2::Subnet"
+   ],
+   "where": [
+    {
+     "path": [
+      "CidrBlock"
+     ],
+     "op": "eq",
+     "value": "10.0.1.0/24"
+    }
+   ]
+  },
+  "sg": {
+   "types": [
+    "AWS::EC2::SecurityGroup"
+   ],
+   "where": []
+  },
+  "sgi": {
+   "types": [
+    "AWS::EC2::SecurityGroupIngress"
+   ],
+   "where": [
+    {
+     "path": [
+      "CidrIp"
+     ],
+     "op": "in",
+     "value": [
+      "10.0.0.0/24",
+      "10.0.1.0/24"
+     ]
+    }
+   ]
+  },
+  "sng": {
+   "types": [
+    "AWS::ElastiCache::SubnetGroup"
+   ],
+   "where": []
+  },
+  "rg": {
+   "types": [
+    "AWS::ElastiCache::ReplicationGroup"
+   ],
+   "where": []
+  },
+  "key": {
+   "types": [
+    "AWS::KMS::Key"
+   ],
+   "where": []
+  },
+  "topic": {
+   "types": [
+    "AWS::SNS::Topic"
+   ],
+   "where": []
+  },
+  "tpol": {
+   "types": [
+    "AWS::SNS::TopicPolicy"
+   ],
+   "where": []
+  },
+  "role": {
+   "types": [
+    "AWS::IAM::Role"
+   ],
+   "where": []
+  },
+  "named_subnets": {
+   "types": [
+    "AWS::EC2::Subnet"
+   ],
+   "where": [
+    {
+     "path": [
+      "CidrBlock"
+     ],
+     "op": "in",
+     "value": [
+      "10.0.0.0/24",
+      "10.0.1.0/24"
+     ]
+    }
+   ]
+  },
+  "alias": {
+   "types": [
+    "AWS::KMS::Alias"
+   ],
+   "where": []
+  }
+ },
+ "checks": [
+  {
+   "id": "vpc",
+   "kind": "exists",
+   "select": "vpc22",
+   "tier": "core",
+   "quote": "build its own VPC (defaulting to a 10.0.0.0/22 CIDR block)"
+  },
+  {
+   "id": "subnet_cidr1",
+   "kind": "exists",
+   "select": "sn1",
+   "tier": "core",
+   "quote": "(defaulting to 10.0.0.0/24 and 10.0.1.0/24)"
+  },
+  {
+   "id": "subnet_cidr2",
+   "kind": "exists",
+   "select": "sn2",
+   "tier": "core",
+   "quote": "(defaulting to 10.0.0.0/24 and 10.0.1.0/24)"
+  },
+  {
+   "id": "subnets_two_azs",
+   "kind": "exists",
+   "select": "named_subnets",
+   "distinct_path": [
+    "AvailabilityZone"
+   ],
+   "min": 2,
+   "tier": "core",
+   "quote": "two private subnets in different Availability Zones",
+   "justify": "the two subnets the prompt gives CIDRs for"
+  },
+  {
+   "id": "subnets_in_vpc",
+   "kind": "ref",
+   "from": "named_subnets",
+   "to": "vpc22",
+   "tier": "detail",
+   "quote": "build its own VPC (defaulting to a 10.0.0.0/22 CIDR block) with two private subnets"
+  },
+  {
+   "id": "subnets_private",
+   "kind": "attr",
+   "select": "named_subnets",
+   "cond": {
+    "path": [
+     "MapPublicIpOnLaunch"
+    ],
+    "op": "none_eq",
+    "value": true
+   },
+   "quantifier": "all",
+   "tier": "core",
+   "quote": "two private subnets"
+  },
+  {
+   "id": "security_group",
+   "kind": "exists",
+   "select": "sg",
+   "tier": "core",
+   "quote": "a security group permitting traffic between those subnets"
+  },
+  {
+   "id": "sg_permits_subnets",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "a security group permitting traffic between those subnets",
+   "justify": "a rule per subnet, a rule for the VPC CIDR that holds both, a CIDR read from the subnet or VPC, or a security-group source all let the subnets talk",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "sg",
+     "cond": {
+      "path": [
+       "SecurityGroupIngress"
+      ],
+      "op": "regex",
+      "value": "(?s)10\\.0\\.0\\.0/24.*10\\.0\\.1\\.0/24|10\\.0\\.1\\.0/24.*10\\.0\\.0\\.0/24"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "sg",
+     "cond": {
+      "path": [
+       "SecurityGroupIngress",
+       "*",
+       "CidrIp"
+      ],
+      "op": "eq",
+      "value": "10.0.0.0/22"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "sg",
+     "cond": {
+      "path": [
+       "SecurityGroupIngress",
+       "*",
+       "CidrIp",
+       "attr"
+      ],
+      "op": "eq",
+      "value": "CidrBlock"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "sg",
+     "cond": {
+      "path": [
+       "SecurityGroupIngress",
+       "*",
+       "SourceSecurityGroupId"
+      ],
+      "op": "present"
+     }
+    },
+    {
+     "kind": "exists",
+     "select": "sgi",
+     "distinct_path": [
+      "CidrIp"
+     ],
+     "min": 2
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "AWS::EC2::SecurityGroupIngress"
+      ],
+      "where": [
+       {
+        "path": [
+         "CidrIp"
+        ],
+        "op": "eq",
+        "value": "10.0.0.0/22"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "AWS::EC2::SecurityGroupIngress"
+      ],
+      "where": [
+       {
+        "path": [
+         "CidrIp",
+         "attr"
+        ],
+        "op": "eq",
+        "value": "CidrBlock"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "AWS::EC2::SecurityGroupIngress"
+      ],
+      "where": [
+       {
+        "path": [
+         "SourceSecurityGroupId"
+        ],
+        "op": "present"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "subnet_group",
+   "kind": "exists",
+   "select": "sng",
+   "tier": "core",
+   "quote": "an ElastiCache subnet group"
+  },
+  {
+   "id": "subnet_group_subnets",
+   "kind": "all_of",
+   "tier": "detail",
+   "quote": "an ElastiCache subnet group",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "sng",
+     "to": "sn1"
+    },
+    {
+     "kind": "ref",
+     "from": "sng",
+     "to": "sn2"
+    }
+   ]
+  },
+  {
+   "id": "rg_in_subnet_group",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "an ElastiCache subnet group",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "rg",
+     "to": "sng"
+    },
+    {
+     "kind": "join",
+     "from": "rg",
+     "from_path": [
+      "CacheSubnetGroupName"
+     ],
+     "to": "sng",
+     "to_path": [
+      "CacheSubnetGroupName"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "rg_uses_sg",
+   "kind": "ref",
+   "from": "rg",
+   "to": "sg",
+   "tier": "detail",
+   "quote": "a security group permitting traffic between those subnets"
+  },
+  {
+   "id": "replication_group",
+   "kind": "exists",
+   "select": "rg",
+   "tier": "core",
+   "quote": "an Amazon ElastiCache for Redis replication group with cluster mode enabled"
+  },
+  {
+   "id": "redis_engine",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "ElastiCache for Redis replication group",
+   "justify": "Redis engine; the property is optional and defaults to redis",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "rg",
+     "cond": {
+      "path": [
+       "Engine"
+      ],
+      "op": "eq",
+      "value": "redis"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "rg",
+     "cond": {
+      "path": [
+       "Engine"
+      ],
+      "op": "absent"
+     }
+    }
+   ]
+  },
+  {
+   "id": "cluster_mode_two_shards",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "two shards with one replica each",
+   "justify": "shards are node groups",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "rg",
+     "cond": {
+      "path": [
+       "NumNodeGroups"
+      ],
+      "op": "eq",
+      "value": 2
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "rg",
+     "cond": {
+      "path": [
+       "NodeGroupConfiguration"
+      ],
+      "op": "len_eq",
+      "value": 2
+     }
+    }
+   ]
+  },
+  {
+   "id": "one_replica",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "two shards with one replica each",
+   "justify": "one replica each",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "rg",
+     "cond": {
+      "path": [
+       "ReplicasPerNodeGroup"
+      ],
+      "op": "eq",
+      "value": 1
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "rg",
+     "cond": {
+      "path": [
+       "NodeGroupConfiguration",
+       "*",
+       "ReplicaCount"
+      ],
+      "op": "eq",
+      "value": 1,
+      "every": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "multi_az",
+   "kind": "attr",
+   "select": "rg",
+   "cond": {
+    "path": [
+     "MultiAZEnabled"
+    ],
+    "op": "eq",
+    "value": true
+   },
+   "tier": "core",
+   "quote": "Multi-AZ and automatic failover enabled"
+  },
+  {
+   "id": "auto_failover",
+   "kind": "attr",
+   "select": "rg",
+   "cond": {
+    "path": [
+     "AutomaticFailoverEnabled"
+    ],
+    "op": "eq",
+    "value": true
+   },
+   "tier": "core",
+   "quote": "Multi-AZ and automatic failover enabled"
+  },
+  {
+   "id": "at_rest_encryption",
+   "kind": "attr",
+   "select": "rg",
+   "cond": {
+    "path": [
+     "AtRestEncryptionEnabled"
+    ],
+    "op": "eq",
+    "value": true
+   },
+   "tier": "core",
+   "quote": "both at-rest and in-transit encryption turned on"
+  },
+  {
+   "id": "in_transit_encryption",
+   "kind": "attr",
+   "select": "rg",
+   "cond": {
+    "path": [
+     "TransitEncryptionEnabled"
+    ],
+    "op": "eq",
+    "value": true
+   },
+   "tier": "core",
+   "quote": "both at-rest and in-transit encryption turned on"
+  },
+  {
+   "id": "kms_key",
+   "kind": "exists",
+   "select": "key",
+   "tier": "core",
+   "quote": "a customer-managed KMS key that the stack also creates"
+  },
+  {
+   "id": "rg_uses_key",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "using a customer-managed KMS key",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "rg",
+     "to": "key"
+    },
+    {
+     "kind": "ref",
+     "from": "rg",
+     "to": "alias"
+    },
+    {
+     "kind": "join",
+     "from": "rg",
+     "from_path": [
+      "KmsKeyId"
+     ],
+     "to": "alias",
+     "to_path": [
+      "AliasName"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "sns_topic",
+   "kind": "exists",
+   "select": "topic",
+   "tier": "core",
+   "quote": "an SNS topic, encrypted with that same key"
+  },
+  {
+   "id": "topic_uses_key",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "encrypted with that same key",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "topic",
+     "to": "key"
+    },
+    {
+     "kind": "ref",
+     "from": "topic",
+     "to": "alias"
+    },
+    {
+     "kind": "join",
+     "from": "topic",
+     "from_path": [
+      "KmsMasterKeyId"
+     ],
+     "to": "alias",
+     "to_path": [
+      "AliasName"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "same_key",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "encrypted with that same key",
+   "checks": [
+    {
+     "kind": "join",
+     "from": "rg",
+     "from_path": [
+      "KmsKeyId",
+      "ref"
+     ],
+     "to": "topic",
+     "to_path": [
+      "KmsMasterKeyId",
+      "ref"
+     ]
+    },
+    {
+     "kind": "join",
+     "from": "rg",
+     "from_path": [
+      "KmsKeyId"
+     ],
+     "to": "topic",
+     "to_path": [
+      "KmsMasterKeyId"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "topic_policy_cloudwatch",
+   "kind": "attr",
+   "select": "tpol",
+   "cond": {
+    "path": [
+     "PolicyDocument",
+     "Statement",
+     "*"
+    ],
+    "op": "match",
+    "value": [
+     {
+      "path": [
+       "Effect"
+      ],
+      "op": "eq",
+      "value": "Allow"
+     },
+     {
+      "path": [
+       "Principal",
+       "Service",
+       "*"
+      ],
+      "op": "eq",
+      "value": "cloudwatch.amazonaws.com"
+     },
+     {
+      "path": [
+       "Action",
+       "*"
+      ],
+      "op": "glob_covers",
+      "value": "sns:Publish"
+     }
+    ]
+   },
+   "tier": "core",
+   "quote": "a policy allowing CloudWatch to publish alarm notifications to it",
+   "justify": "CloudWatch principal is cloudwatch.amazonaws.com; publishing is sns:Publish; one statement must grant it"
+  },
+  {
+   "id": "topic_policy_on_topic",
+   "kind": "ref",
+   "from": "tpol",
+   "to": "topic",
+   "tier": "detail",
+   "quote": "a policy allowing CloudWatch to publish alarm notifications to it"
+  },
+  {
+   "id": "iam_role",
+   "kind": "exists",
+   "select": "role",
+   "tier": "core",
+   "quote": "an IAM role with a minimal policy"
+  },
+  {
+   "id": "role_ssm_signal",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "allowing it to send SSM Automation signals",
+   "justify": "sending an automation signal is ssm:SendAutomationSignal",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "role",
+     "cond": {
+      "path": [
+       "Policies",
+       "*",
+       "PolicyDocument",
+       "Statement",
+       "*",
+       "Action",
+       "*"
+      ],
+      "op": "glob_covers",
+      "value": "ssm:SendAutomationSignal"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy"
+      ],
+      "where": [
+       {
+        "path": [
+         "PolicyDocument",
+         "Statement",
+         "*",
+         "Action",
+         "*"
+        ],
+        "op": "glob_covers",
+        "value": "ssm:SendAutomationSignal"
+       }
+      ]
+     },
+     "to": "role",
+     "bidirectional": true
+    }
+   ]
+  },
+  {
+   "id": "role_policy_minimal",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "an IAM role with a minimal policy",
+   "justify": "minimal rules out granting every action or every SSM action",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "AWS::IAM::Role"
+      ],
+      "where": [
+       {
+        "path": [
+         "Policies",
+         "*",
+         "PolicyDocument",
+         "Statement",
+         "*",
+         "Action",
+         "*"
+        ],
+        "op": "glob_covers",
+        "value": "ssm:SendAutomationSignal"
+       },
+       {
+        "path": [
+         "Policies",
+         "*",
+         "PolicyDocument",
+         "Statement",
+         "*",
+         "Action",
+         "*"
+        ],
+        "op": "none_eq",
+        "value": "*"
+       },
+       {
+        "path": [
+         "Policies",
+         "*",
+         "PolicyDocument",
+         "Statement",
+         "*",
+         "Action",
+         "*"
+        ],
+        "op": "none_eq",
+        "value": "ssm:*"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy"
+      ],
+      "where": [
+       {
+        "path": [
+         "PolicyDocument",
+         "Statement",
+         "*",
+         "Action",
+         "*"
+        ],
+        "op": "glob_covers",
+        "value": "ssm:SendAutomationSignal"
+       },
+       {
+        "path": [
+         "PolicyDocument",
+         "Statement",
+         "*",
+         "Action",
+         "*"
+        ],
+        "op": "none_eq",
+        "value": "*"
+       },
+       {
+        "path": [
+         "PolicyDocument",
+         "Statement",
+         "*",
+         "Action",
+         "*"
+        ],
+        "op": "none_eq",
+        "value": "ssm:*"
+       }
+      ]
+     },
+     "to": "role",
+     "bidirectional": true
+    }
+   ]
+  },
+  {
+   "id": "x_node_type_present",
+   "kind": "attr",
+   "select": "rg",
+   "cond": {
+    "path": [
+     "CacheNodeType"
+    ],
+    "op": "eq",
+    "value": "cache.t3.micro"
+   },
+   "tier": "extra"
+  },
+  {
+   "id": "x_key_policy_present",
+   "kind": "attr",
+   "select": "key",
+   "cond": {
+    "path": [
+     "KeyPolicy"
+    ],
+    "op": "present"
+   },
+   "tier": "extra"
+  },
+  {
+   "id": "x_dns_hostnames",
+   "kind": "attr",
+   "select": "vpc",
+   "cond": {
+    "path": [
+     "EnableDnsHostnames"
+    ],
+    "op": "eq",
+    "value": true
+   },
+   "tier": "extra"
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

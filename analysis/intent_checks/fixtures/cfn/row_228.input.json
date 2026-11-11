@@ -1,0 +1,686 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "d02201ec8505c376e0fb8c8d0befb388758ac1d4b83a58afc57de8aa09e034d5",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "ApiF70053CD",
+   "cfg": "ApiF70053CD",
+   "type": "AWS::AppSync::GraphQLApi",
+   "values": {
+    "AuthenticationType": "AWS_IAM",
+    "Name": "simple-web-service-songs",
+    "XrayEnabled": true,
+    "__resource__": {
+     "Metadata": {
+      "aws:cdk:path": "SimpleWebServiceStack/Api/Resource"
+     }
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "ApiSchema510EECD7",
+   "cfg": "ApiSchema510EECD7",
+   "type": "AWS::AppSync::GraphQLSchema",
+   "values": {
+    "ApiId": {
+     "ref": "ApiF70053CD",
+     "attr": "ApiId"
+    },
+    "Definition": "type Song {\n  id: String!\n  name: String!\n  artist: String!\n}\n\ntype Query {\n  getSongs: [Song!]\n}\n\ninput SongInput {\n  name: String!\n  artist: String!\n}\n\ntype Mutation {\n  addSong(input: SongInput!): Song\n}\n",
+    "__resource__": {
+     "Metadata": {
+      "aws:cdk:path": "SimpleWebServiceStack/Api/Schema"
+     }
+    }
+   },
+   "refs": [
+    "ApiF70053CD"
+   ]
+  },
+  {
+   "id": "ApiDDBSimpleWebDataSourceServiceRoleBF35967E",
+   "cfg": "ApiDDBSimpleWebDataSourceServiceRoleBF35967E",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "appsync.amazonaws.com"
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "__resource__": {
+     "Metadata": {
+      "aws:cdk:path": "SimpleWebServiceStack/Api/DDBSimpleWebDataSource/ServiceRole/Resource"
+     }
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "ApiDDBSimpleWebDataSourceServiceRoleDefaultPolicy5CE47D5E",
+   "cfg": "ApiDDBSimpleWebDataSourceServiceRoleDefaultPolicy5CE47D5E",
+   "type": "AWS::IAM::Policy",
+   "values": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "dynamodb:BatchGetItem",
+        "dynamodb:GetRecords",
+        "dynamodb:GetShardIterator",
+        "dynamodb:Query",
+        "dynamodb:GetItem",
+        "dynamodb:Scan",
+        "dynamodb:ConditionCheckItem",
+        "dynamodb:BatchWriteItem",
+        "dynamodb:PutItem",
+        "dynamodb:UpdateItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:DescribeTable"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "ref": "SimpleWebTable337AA208",
+         "attr": "Arn"
+        }
+       ]
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "ApiDDBSimpleWebDataSourceServiceRoleDefaultPolicy5CE47D5E",
+    "Roles": [
+     {
+      "ref": "ApiDDBSimpleWebDataSourceServiceRoleBF35967E"
+     }
+    ],
+    "__resource__": {
+     "Metadata": {
+      "aws:cdk:path": "SimpleWebServiceStack/Api/DDBSimpleWebDataSource/ServiceRole/DefaultPolicy/Resource"
+     }
+    }
+   },
+   "refs": [
+    "ApiDDBSimpleWebDataSourceServiceRoleBF35967E",
+    "SimpleWebTable337AA208"
+   ]
+  },
+  {
+   "id": "ApiDDBSimpleWebDataSource465F48A6",
+   "cfg": "ApiDDBSimpleWebDataSource465F48A6",
+   "type": "AWS::AppSync::DataSource",
+   "values": {
+    "ApiId": {
+     "ref": "ApiF70053CD",
+     "attr": "ApiId"
+    },
+    "Name": "DDBSimpleWebDataSource",
+    "Type": "AMAZON_DYNAMODB",
+    "DynamoDBConfig": {
+     "AwsRegion": "eu-west-1",
+     "TableName": {
+      "ref": "SimpleWebTable337AA208"
+     }
+    },
+    "ServiceRoleArn": {
+     "ref": "ApiDDBSimpleWebDataSourceServiceRoleBF35967E",
+     "attr": "Arn"
+    },
+    "__resource__": {
+     "Metadata": {
+      "aws:cdk:path": "SimpleWebServiceStack/Api/DDBSimpleWebDataSource/Resource"
+     }
+    }
+   },
+   "refs": [
+    "ApiDDBSimpleWebDataSourceServiceRoleBF35967E",
+    "ApiF70053CD",
+    "SimpleWebTable337AA208"
+   ]
+  },
+  {
+   "id": "ApiDDBSimpleWebDataSourceQuerygetSongsResolver7D528DA9",
+   "cfg": "ApiDDBSimpleWebDataSourceQuerygetSongsResolver7D528DA9",
+   "type": "AWS::AppSync::Resolver",
+   "values": {
+    "ApiId": {
+     "ref": "ApiF70053CD",
+     "attr": "ApiId"
+    },
+    "FieldName": "getSongs",
+    "TypeName": "Query",
+    "DataSourceName": "DDBSimpleWebDataSource",
+    "Kind": "UNIT",
+    "RequestMappingTemplate": "{\"version\" : \"2017-02-28\", \"operation\" : \"Scan\"}",
+    "ResponseMappingTemplate": "$util.toJson($ctx.result.items)",
+    "__resource__": {
+     "DependsOn": [
+      "ApiDDBSimpleWebDataSource465F48A6",
+      "ApiSchema510EECD7"
+     ],
+     "Metadata": {
+      "aws:cdk:path": "SimpleWebServiceStack/Api/DDBSimpleWebDataSource/QuerygetSongsResolver/Resource"
+     }
+    }
+   },
+   "refs": [
+    "ApiF70053CD"
+   ]
+  },
+  {
+   "id": "Apinone1F55F3F3",
+   "cfg": "Apinone1F55F3F3",
+   "type": "AWS::AppSync::DataSource",
+   "values": {
+    "ApiId": {
+     "ref": "ApiF70053CD",
+     "attr": "ApiId"
+    },
+    "Name": "none",
+    "Type": "NONE",
+    "__resource__": {
+     "Metadata": {
+      "aws:cdk:path": "SimpleWebServiceStack/Api/none/Resource"
+     }
+    }
+   },
+   "refs": [
+    "ApiF70053CD"
+   ]
+  },
+  {
+   "id": "SimpleWebTable337AA208",
+   "cfg": "SimpleWebTable337AA208",
+   "type": "AWS::DynamoDB::Table",
+   "values": {
+    "KeySchema": [
+     {
+      "AttributeName": "id",
+      "KeyType": "HASH"
+     }
+    ],
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "id",
+      "AttributeType": "S"
+     }
+    ],
+    "ProvisionedThroughput": {
+     "ReadCapacityUnits": 5,
+     "WriteCapacityUnits": 5
+    },
+    "__resource__": {
+     "DeletionPolicy": "Retain",
+     "UpdateReplacePolicy": "Retain",
+     "Metadata": {
+      "aws:cdk:path": "SimpleWebServiceStack/SimpleWebTable/Resource"
+     }
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "validateSongFn17DF165E",
+   "cfg": "validateSongFn17DF165E",
+   "type": "AWS::AppSync::FunctionConfiguration",
+   "values": {
+    "ApiId": {
+     "ref": "ApiF70053CD",
+     "attr": "ApiId"
+    },
+    "DataSourceName": "none",
+    "FunctionVersion": "2018-05-29",
+    "Name": "simpleWebValidateFunction",
+    "RequestMappingTemplate": "#set($errors = [])\n\n#if (!$util.matches(\"^a-zA-Z{1,100}$\", $ctx.args.input.artist))\n    #if ($util.isNullOrEmpty($ctx.args.input.artist))\n        $util.qr($errors.add(\"Artist is a required property\"))\n    #else\n        $util.qr($errors.add(\"$ctx.args.input.artist is not a valid artist property\"))\n    #end\n#end\n\n#if ($errors.size() > 0)\n    $util.error($util.toJson($errors))\n#end\n\n## Return if no errors\n{}",
+    "ResponseMappingTemplate": "{}",
+    "__resource__": {
+     "DependsOn": [
+      "Apinone1F55F3F3",
+      "ApiSchema510EECD7"
+     ],
+     "Metadata": {
+      "aws:cdk:path": "SimpleWebServiceStack/validateSongFn/Resource"
+     }
+    }
+   },
+   "refs": [
+    "ApiF70053CD"
+   ]
+  },
+  {
+   "id": "createSongFnD820489C",
+   "cfg": "createSongFnD820489C",
+   "type": "AWS::AppSync::FunctionConfiguration",
+   "values": {
+    "ApiId": {
+     "ref": "ApiF70053CD",
+     "attr": "ApiId"
+    },
+    "DataSourceName": "DDBSimpleWebDataSource",
+    "FunctionVersion": "2018-05-29",
+    "Name": "simpleWebCreateFunction",
+    "RequestMappingTemplate": "\n      #set($input = $ctx.args.input)\n\n      {\n        \"version\": \"2017-02-28\",\n        \"operation\": \"PutItem\",\n        \"key\" : {\n      \"id\" : $util.dynamodb.toDynamoDBJson($util.autoId())\n    },\n        \"attributeValues\": $util.dynamodb.toMapValuesJson($input)\n      }",
+    "ResponseMappingTemplate": "$util.toJson($ctx.result)",
+    "__resource__": {
+     "DependsOn": [
+      "ApiDDBSimpleWebDataSource465F48A6",
+      "ApiSchema510EECD7"
+     ],
+     "Metadata": {
+      "aws:cdk:path": "SimpleWebServiceStack/createSongFn/Resource"
+     }
+    }
+   },
+   "refs": [
+    "ApiF70053CD"
+   ]
+  },
+  {
+   "id": "createSongPipelineF3257CD2",
+   "cfg": "createSongPipelineF3257CD2",
+   "type": "AWS::AppSync::Resolver",
+   "values": {
+    "ApiId": {
+     "ref": "ApiF70053CD",
+     "attr": "ApiId"
+    },
+    "FieldName": "addSong",
+    "TypeName": "Mutation",
+    "Kind": "PIPELINE",
+    "PipelineConfig": {
+     "Functions": [
+      {
+       "ref": "validateSongFn17DF165E",
+       "attr": "FunctionId"
+      },
+      {
+       "ref": "createSongFnD820489C",
+       "attr": "FunctionId"
+      }
+     ]
+    },
+    "RequestMappingTemplate": "{}",
+    "ResponseMappingTemplate": "#if($ctx.error)\n$util.error($ctx.error.message, $ctx.error.type)\n#end\n$util.toJson($ctx.result)",
+    "__resource__": {
+     "DependsOn": [
+      "ApiSchema510EECD7"
+     ],
+     "Metadata": {
+      "aws:cdk:path": "SimpleWebServiceStack/createSongPipeline/Resource"
+     }
+    }
+   },
+   "refs": [
+    "ApiF70053CD",
+    "createSongFnD820489C",
+    "validateSongFn17DF165E"
+   ]
+  },
+  {
+   "id": "CDKMetadata",
+   "cfg": "CDKMetadata",
+   "type": "AWS::CDK::Metadata",
+   "values": {
+    "Analytics": "v2:deflate64:H4sIAAAAAAAA/1WOy07DMBBFv6V7d4oRiy6pGsEGIUj4gcnEoW6TcfCjKLL872CHSGU194zu6IwE+bCHu80jfrstdZddJGMVxMYjXUStnAmWlDgadt4G8uLY87pNIh9FnCY3M0F8tjidvobDpHOr0PvLf2ropEYU1cw4mqqt0GPzZ+j5hrJiuCq76kp+NaxuOofF+xSYvDacq2v+fbfXn8FihiQ0jhBrMxRLmW9m0DRnXFISXXmpayF+YLs0S0gpCTadgrPbXeUe5D3IzdlpvbWBvR4V1Mv8AVbz1gxKAQAA",
+    "__resource__": {
+     "Metadata": {
+      "aws:cdk:path": "SimpleWebServiceStack/CDKMetadata/Default"
+     }
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "__declared__.AWS::AppSync::GraphQLApi.ApiF70053CD",
+   "cfg": "ApiF70053CD",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::AppSync::GraphQLApi",
+    "name": "ApiF70053CD",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AuthenticationType": "AWS_IAM",
+     "Name": "simple-web-service-songs",
+     "XrayEnabled": true
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::AppSync::GraphQLSchema.ApiSchema510EECD7",
+   "cfg": "ApiSchema510EECD7",
+   "type": "__declared__",
+   "refs": [
+    "ApiF70053CD"
+   ],
+   "values": {
+    "type": "AWS::AppSync::GraphQLSchema",
+    "name": "ApiSchema510EECD7",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "ApiF70053CD",
+      "attr": "ApiId"
+     },
+     "Definition": "type Song {\n  id: String!\n  name: String!\n  artist: String!\n}\n\ntype Query {\n  getSongs: [Song!]\n}\n\ninput SongInput {\n  name: String!\n  artist: String!\n}\n\ntype Mutation {\n  addSong(input: SongInput!): Song\n}\n"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.ApiDDBSimpleWebDataSourceServiceRoleBF35967E",
+   "cfg": "ApiDDBSimpleWebDataSourceServiceRoleBF35967E",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "ApiDDBSimpleWebDataSourceServiceRoleBF35967E",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "appsync.amazonaws.com"
+         ]
+        }
+       }
+      ],
+      "Version": "2012-10-17"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Policy.ApiDDBSimpleWebDataSourceServiceRoleDefaultPolicy5CE47D5E",
+   "cfg": "ApiDDBSimpleWebDataSourceServiceRoleDefaultPolicy5CE47D5E",
+   "type": "__declared__",
+   "refs": [
+    "ApiDDBSimpleWebDataSourceServiceRoleBF35967E",
+    "SimpleWebTable337AA208"
+   ],
+   "values": {
+    "type": "AWS::IAM::Policy",
+    "name": "ApiDDBSimpleWebDataSourceServiceRoleDefaultPolicy5CE47D5E",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "PolicyDocument": {
+      "Statement": [
+       {
+        "Action": [
+         "dynamodb:BatchGetItem",
+         "dynamodb:GetRecords",
+         "dynamodb:GetShardIterator",
+         "dynamodb:Query",
+         "dynamodb:GetItem",
+         "dynamodb:Scan",
+         "dynamodb:ConditionCheckItem",
+         "dynamodb:BatchWriteItem",
+         "dynamodb:PutItem",
+         "dynamodb:UpdateItem",
+         "dynamodb:DeleteItem",
+         "dynamodb:DescribeTable"
+        ],
+        "Effect": "Allow",
+        "Resource": [
+         {
+          "ref": "SimpleWebTable337AA208",
+          "attr": "Arn"
+         }
+        ]
+       }
+      ],
+      "Version": "2012-10-17"
+     },
+     "PolicyName": "ApiDDBSimpleWebDataSourceServiceRoleDefaultPolicy5CE47D5E",
+     "Roles": [
+      {
+       "ref": "ApiDDBSimpleWebDataSourceServiceRoleBF35967E"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::AppSync::DataSource.ApiDDBSimpleWebDataSource465F48A6",
+   "cfg": "ApiDDBSimpleWebDataSource465F48A6",
+   "type": "__declared__",
+   "refs": [
+    "ApiDDBSimpleWebDataSourceServiceRoleBF35967E",
+    "ApiF70053CD",
+    "SimpleWebTable337AA208"
+   ],
+   "values": {
+    "type": "AWS::AppSync::DataSource",
+    "name": "ApiDDBSimpleWebDataSource465F48A6",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "ApiF70053CD",
+      "attr": "ApiId"
+     },
+     "Name": "DDBSimpleWebDataSource",
+     "Type": "AMAZON_DYNAMODB",
+     "DynamoDBConfig": {
+      "AwsRegion": "eu-west-1",
+      "TableName": {
+       "ref": "SimpleWebTable337AA208"
+      }
+     },
+     "ServiceRoleArn": {
+      "ref": "ApiDDBSimpleWebDataSourceServiceRoleBF35967E",
+      "attr": "Arn"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::AppSync::Resolver.ApiDDBSimpleWebDataSourceQuerygetSongsResolver7D528DA9",
+   "cfg": "ApiDDBSimpleWebDataSourceQuerygetSongsResolver7D528DA9",
+   "type": "__declared__",
+   "refs": [
+    "ApiF70053CD"
+   ],
+   "values": {
+    "type": "AWS::AppSync::Resolver",
+    "name": "ApiDDBSimpleWebDataSourceQuerygetSongsResolver7D528DA9",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "ApiF70053CD",
+      "attr": "ApiId"
+     },
+     "FieldName": "getSongs",
+     "TypeName": "Query",
+     "DataSourceName": "DDBSimpleWebDataSource",
+     "Kind": "UNIT",
+     "RequestMappingTemplate": "{\"version\" : \"2017-02-28\", \"operation\" : \"Scan\"}",
+     "ResponseMappingTemplate": "$util.toJson($ctx.result.items)"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::AppSync::DataSource.Apinone1F55F3F3",
+   "cfg": "Apinone1F55F3F3",
+   "type": "__declared__",
+   "refs": [
+    "ApiF70053CD"
+   ],
+   "values": {
+    "type": "AWS::AppSync::DataSource",
+    "name": "Apinone1F55F3F3",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "ApiF70053CD",
+      "attr": "ApiId"
+     },
+     "Name": "none",
+     "Type": "NONE"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::DynamoDB::Table.SimpleWebTable337AA208",
+   "cfg": "SimpleWebTable337AA208",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::DynamoDB::Table",
+    "name": "SimpleWebTable337AA208",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "KeySchema": [
+      {
+       "AttributeName": "id",
+       "KeyType": "HASH"
+      }
+     ],
+     "AttributeDefinitions": [
+      {
+       "AttributeName": "id",
+       "AttributeType": "S"
+      }
+     ],
+     "ProvisionedThroughput": {
+      "ReadCapacityUnits": 5,
+      "WriteCapacityUnits": 5
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::AppSync::FunctionConfiguration.validateSongFn17DF165E",
+   "cfg": "validateSongFn17DF165E",
+   "type": "__declared__",
+   "refs": [
+    "ApiF70053CD"
+   ],
+   "values": {
+    "type": "AWS::AppSync::FunctionConfiguration",
+    "name": "validateSongFn17DF165E",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "ApiF70053CD",
+      "attr": "ApiId"
+     },
+     "DataSourceName": "none",
+     "FunctionVersion": "2018-05-29",
+     "Name": "simpleWebValidateFunction",
+     "RequestMappingTemplate": "#set($errors = [])\n\n#if (!$util.matches(\"^a-zA-Z{1,100}$\", $ctx.args.input.artist))\n    #if ($util.isNullOrEmpty($ctx.args.input.artist))\n        $util.qr($errors.add(\"Artist is a required property\"))\n    #else\n        $util.qr($errors.add(\"$ctx.args.input.artist is not a valid artist property\"))\n    #end\n#end\n\n#if ($errors.size() > 0)\n    $util.error($util.toJson($errors))\n#end\n\n## Return if no errors\n{}",
+     "ResponseMappingTemplate": "{}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::AppSync::FunctionConfiguration.createSongFnD820489C",
+   "cfg": "createSongFnD820489C",
+   "type": "__declared__",
+   "refs": [
+    "ApiF70053CD"
+   ],
+   "values": {
+    "type": "AWS::AppSync::FunctionConfiguration",
+    "name": "createSongFnD820489C",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "ApiF70053CD",
+      "attr": "ApiId"
+     },
+     "DataSourceName": "DDBSimpleWebDataSource",
+     "FunctionVersion": "2018-05-29",
+     "Name": "simpleWebCreateFunction",
+     "RequestMappingTemplate": "\n      #set($input = $ctx.args.input)\n\n      {\n        \"version\": \"2017-02-28\",\n        \"operation\": \"PutItem\",\n        \"key\" : {\n      \"id\" : $util.dynamodb.toDynamoDBJson($util.autoId())\n    },\n        \"attributeValues\": $util.dynamodb.toMapValuesJson($input)\n      }",
+     "ResponseMappingTemplate": "$util.toJson($ctx.result)"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::AppSync::Resolver.createSongPipelineF3257CD2",
+   "cfg": "createSongPipelineF3257CD2",
+   "type": "__declared__",
+   "refs": [
+    "ApiF70053CD",
+    "createSongFnD820489C",
+    "validateSongFn17DF165E"
+   ],
+   "values": {
+    "type": "AWS::AppSync::Resolver",
+    "name": "createSongPipelineF3257CD2",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "ApiF70053CD",
+      "attr": "ApiId"
+     },
+     "FieldName": "addSong",
+     "TypeName": "Mutation",
+     "Kind": "PIPELINE",
+     "PipelineConfig": {
+      "Functions": [
+       {
+        "ref": "validateSongFn17DF165E",
+        "attr": "FunctionId"
+       },
+       {
+        "ref": "createSongFnD820489C",
+        "attr": "FunctionId"
+       }
+      ]
+     },
+     "RequestMappingTemplate": "{}",
+     "ResponseMappingTemplate": "#if($ctx.error)\n$util.error($ctx.error.message, $ctx.error.type)\n#end\n$util.toJson($ctx.result)"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::CDK::Metadata.CDKMetadata",
+   "cfg": "CDKMetadata",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::CDK::Metadata",
+    "name": "CDKMetadata",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Analytics": "v2:deflate64:H4sIAAAAAAAA/1WOy07DMBBFv6V7d4oRiy6pGsEGIUj4gcnEoW6TcfCjKLL872CHSGU194zu6IwE+bCHu80jfrstdZddJGMVxMYjXUStnAmWlDgadt4G8uLY87pNIh9FnCY3M0F8tjidvobDpHOr0PvLf2ropEYU1cw4mqqt0GPzZ+j5hrJiuCq76kp+NaxuOofF+xSYvDacq2v+fbfXn8FihiQ0jhBrMxRLmW9m0DRnXFISXXmpayF+YLs0S0gpCTadgrPbXeUe5D3IzdlpvbWBvR4V1Mv8AVbz1gxKAQAA"
+    }
+   }
+  }
+ ]
+}

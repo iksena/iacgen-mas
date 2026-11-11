@@ -1,0 +1,704 @@
+{
+ "meta": {
+  "lang": "tf",
+  "mode": "plan",
+  "warnings": [],
+  "gt_hash": "44197f8a5552a28d4c465dde8cb902b5d6a7e30d149cf084b49d75a92c6a717c",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "data.aws_iam_policy_document.cognito_auth_assume",
+   "cfg": "data.aws_iam_policy_document.cognito_auth_assume",
+   "type": "data.aws_iam_policy_document",
+   "values": {
+    "override_json": null,
+    "override_policy_documents": null,
+    "policy_id": null,
+    "source_json": null,
+    "source_policy_documents": null,
+    "statement": [
+     {
+      "actions": [
+       "sts:AssumeRoleWithWebIdentity"
+      ],
+      "condition": [
+       {
+        "test": "ForAnyValue:StringLike",
+        "values": [
+         "authenticated"
+        ],
+        "variable": "cognito-identity.amazonaws.com:amr"
+       },
+       {
+        "test": "StringEquals",
+        "values": [
+         null
+        ],
+        "variable": "cognito-identity.amazonaws.com:aud"
+       }
+      ],
+      "effect": "Allow",
+      "not_actions": null,
+      "not_principals": [],
+      "not_resources": null,
+      "principals": [
+       {
+        "identifiers": [
+         "cognito-identity.amazonaws.com"
+        ],
+        "type": "Federated"
+       }
+      ],
+      "resources": null,
+      "sid": null
+     }
+    ],
+    "version": null
+   },
+   "refs": [
+    "aws_cognito_identity_pool.twitter_id_pool"
+   ]
+  },
+  {
+   "id": "data.aws_iam_policy_document.cognito_unauth_assume",
+   "cfg": "data.aws_iam_policy_document.cognito_unauth_assume",
+   "type": "data.aws_iam_policy_document",
+   "values": {
+    "override_json": null,
+    "override_policy_documents": null,
+    "policy_id": null,
+    "source_json": null,
+    "source_policy_documents": null,
+    "statement": [
+     {
+      "actions": [
+       "sts:AssumeRoleWithWebIdentity"
+      ],
+      "condition": [
+       {
+        "test": "ForAnyValue:StringLike",
+        "values": [
+         "unauthenticated"
+        ],
+        "variable": "cognito-identity.amazonaws.com:amr"
+       },
+       {
+        "test": "StringEquals",
+        "values": [
+         null
+        ],
+        "variable": "cognito-identity.amazonaws.com:aud"
+       }
+      ],
+      "effect": "Allow",
+      "not_actions": null,
+      "not_principals": [],
+      "not_resources": null,
+      "principals": [
+       {
+        "identifiers": [
+         "cognito-identity.amazonaws.com"
+        ],
+        "type": "Federated"
+       }
+      ],
+      "resources": null,
+      "sid": null
+     }
+    ],
+    "version": null
+   },
+   "refs": [
+    "aws_cognito_identity_pool.twitter_id_pool"
+   ]
+  },
+  {
+   "id": "aws_cognito_identity_pool.twitter_id_pool",
+   "cfg": "aws_cognito_identity_pool.twitter_id_pool",
+   "type": "aws_cognito_identity_pool",
+   "values": {
+    "allow_classic_flow": false,
+    "allow_unauthenticated_identities": false,
+    "cognito_identity_providers": [],
+    "developer_provider_name": null,
+    "identity_pool_name": "coop tweets",
+    "openid_connect_provider_arns": null,
+    "region": "us-east-1",
+    "saml_provider_arns": null,
+    "supported_login_providers": null,
+    "tags": null
+   },
+   "refs": []
+  },
+  {
+   "id": "aws_cognito_identity_pool_roles_attachment.id_pool_roles",
+   "cfg": "aws_cognito_identity_pool_roles_attachment.id_pool_roles",
+   "type": "aws_cognito_identity_pool_roles_attachment",
+   "values": {
+    "region": "us-east-1",
+    "role_mapping": []
+   },
+   "refs": [
+    "aws_cognito_identity_pool.twitter_id_pool",
+    "aws_iam_role.cognito_auth",
+    "aws_iam_role.cognito_unauth"
+   ]
+  },
+  {
+   "id": "aws_cognito_user_pool.twitter_user_pool",
+   "cfg": "aws_cognito_user_pool.twitter_user_pool",
+   "type": "aws_cognito_user_pool",
+   "values": {
+    "account_recovery_setting": [],
+    "admin_create_user_config": [
+     {
+      "allow_admin_create_user_only": true,
+      "invite_message_template": []
+     }
+    ],
+    "alias_attributes": null,
+    "auto_verified_attributes": null,
+    "deletion_protection": "INACTIVE",
+    "device_configuration": [],
+    "email_configuration": [],
+    "email_mfa_configuration": [],
+    "lambda_config": [],
+    "mfa_configuration": "OFF",
+    "name": "coop-tweets",
+    "password_policy": [
+     {
+      "minimum_length": 6,
+      "password_history_size": null,
+      "require_lowercase": null,
+      "require_numbers": true,
+      "require_symbols": true,
+      "require_uppercase": true
+     }
+    ],
+    "region": "us-east-1",
+    "schema": [],
+    "sms_authentication_message": null,
+    "software_token_mfa_configuration": [],
+    "tags": null,
+    "user_attribute_update_settings": [],
+    "user_pool_add_ons": [],
+    "username_attributes": null,
+    "web_authn_configuration": []
+   },
+   "refs": []
+  },
+  {
+   "id": "aws_cognito_user_pool_domain.twitter_domain_user_pool",
+   "cfg": "aws_cognito_user_pool_domain.twitter_domain_user_pool",
+   "type": "aws_cognito_user_pool_domain",
+   "values": {
+    "certificate_arn": null,
+    "domain": "coop-tweets-domain",
+    "region": "us-east-1"
+   },
+   "refs": [
+    "aws_cognito_user_pool.twitter_user_pool"
+   ]
+  },
+  {
+   "id": "aws_iam_policy.cognito_auth",
+   "cfg": "aws_iam_policy.cognito_auth",
+   "type": "aws_iam_policy",
+   "values": {
+    "delay_after_policy_creation_in_ms": null,
+    "description": null,
+    "name": "cognito_kibana_auth_coop-tweets",
+    "path": "/",
+    "policy": "{\"Statement\":[{\"Action\":[\"mobileanalytics:PutEvents\",\"cognito-sync:*\",\"cognito-identity:*\"],\"Effect\":\"Allow\",\"Resource\":\"*\"}],\"Version\":\"2012-10-17\"}",
+    "tags": null
+   },
+   "refs": [
+    "data.aws_iam_policy_document.cognito_auth"
+   ]
+  },
+  {
+   "id": "aws_iam_policy.cognito_unauth",
+   "cfg": "aws_iam_policy.cognito_unauth",
+   "type": "aws_iam_policy",
+   "values": {
+    "delay_after_policy_creation_in_ms": null,
+    "description": null,
+    "name": "cognito_kibana_unauth_coop-tweets",
+    "path": "/",
+    "policy": "{\"Statement\":[{\"Action\":[\"mobileanalytics:PutEvents\",\"cognito-sync:*\",\"cognito-identity:*\"],\"Effect\":\"Allow\",\"Resource\":\"*\"}],\"Version\":\"2012-10-17\"}",
+    "tags": null
+   },
+   "refs": [
+    "data.aws_iam_policy_document.cognito_auth"
+   ]
+  },
+  {
+   "id": "aws_iam_role.cognito_auth",
+   "cfg": "aws_iam_role.cognito_auth",
+   "type": "aws_iam_role",
+   "values": {
+    "description": null,
+    "force_detach_policies": false,
+    "max_session_duration": 3600,
+    "name": "coop-tweets_cognito_auth_role",
+    "path": "/",
+    "permissions_boundary": null,
+    "tags": null
+   },
+   "refs": [
+    "data.aws_iam_policy_document.cognito_auth_assume"
+   ]
+  },
+  {
+   "id": "aws_iam_role.cognito_unauth",
+   "cfg": "aws_iam_role.cognito_unauth",
+   "type": "aws_iam_role",
+   "values": {
+    "description": null,
+    "force_detach_policies": false,
+    "max_session_duration": 3600,
+    "name": "coop-tweets_cognito_unauth_role",
+    "path": "/",
+    "permissions_boundary": null,
+    "tags": null
+   },
+   "refs": [
+    "data.aws_iam_policy_document.cognito_unauth_assume"
+   ]
+  },
+  {
+   "id": "aws_iam_role_policy_attachment.cognito_auth",
+   "cfg": "aws_iam_role_policy_attachment.cognito_auth",
+   "type": "aws_iam_role_policy_attachment",
+   "values": {
+    "role": "coop-tweets_cognito_auth_role"
+   },
+   "refs": [
+    "aws_iam_policy.cognito_auth",
+    "aws_iam_role.cognito_auth"
+   ]
+  },
+  {
+   "id": "aws_iam_role_policy_attachment.cognito_unauth",
+   "cfg": "aws_iam_role_policy_attachment.cognito_unauth",
+   "type": "aws_iam_role_policy_attachment",
+   "values": {
+    "role": "coop-tweets_cognito_unauth_role"
+   },
+   "refs": [
+    "aws_iam_policy.cognito_unauth",
+    "aws_iam_role.cognito_unauth"
+   ]
+  },
+  {
+   "id": "__parameter__.app_name",
+   "cfg": "__parameter__.app_name",
+   "type": "__parameter__",
+   "values": {
+    "name": "app_name",
+    "default": "coop-tweets"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.auth_role",
+   "cfg": "__output__.auth_role",
+   "type": "__output__",
+   "values": {
+    "name": "auth_role",
+    "value": null,
+    "description": null
+   },
+   "refs": [
+    "aws_iam_role.cognito_auth"
+   ]
+  },
+  {
+   "id": "__output__.identity_pool_id",
+   "cfg": "__output__.identity_pool_id",
+   "type": "__output__",
+   "values": {
+    "name": "identity_pool_id",
+    "value": null,
+    "description": null
+   },
+   "refs": [
+    "aws_cognito_identity_pool.twitter_id_pool"
+   ]
+  },
+  {
+   "id": "__output__.unauth_role",
+   "cfg": "__output__.unauth_role",
+   "type": "__output__",
+   "values": {
+    "name": "unauth_role",
+    "value": null,
+    "description": null
+   },
+   "refs": [
+    "aws_iam_role.cognito_unauth"
+   ]
+  },
+  {
+   "id": "__output__.user_pool_id",
+   "cfg": "__output__.user_pool_id",
+   "type": "__output__",
+   "values": {
+    "name": "user_pool_id",
+    "value": null,
+    "description": null
+   },
+   "refs": [
+    "aws_cognito_user_pool.twitter_user_pool"
+   ]
+  },
+  {
+   "id": "__declared__.aws_cognito_user_pool.twitter_user_pool",
+   "cfg": "aws_cognito_user_pool.twitter_user_pool",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_cognito_user_pool",
+    "name": "twitter_user_pool",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "coop-tweets",
+     "admin_create_user_config": [
+      {
+       "allow_admin_create_user_only": true
+      }
+     ],
+     "password_policy": [
+      {
+       "minimum_length": 6,
+       "require_numbers": true,
+       "require_uppercase": true,
+       "require_symbols": true
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_cognito_user_pool_domain.twitter_domain_user_pool",
+   "cfg": "aws_cognito_user_pool_domain.twitter_domain_user_pool",
+   "type": "__declared__",
+   "refs": [
+    "aws_cognito_user_pool.twitter_user_pool"
+   ],
+   "values": {
+    "type": "aws_cognito_user_pool_domain",
+    "name": "twitter_domain_user_pool",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "domain": "${var.app_name}-domain",
+     "user_pool_id": "${aws_cognito_user_pool.twitter_user_pool.id}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_cognito_identity_pool.twitter_id_pool",
+   "cfg": "aws_cognito_identity_pool.twitter_id_pool",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_cognito_identity_pool",
+    "name": "twitter_id_pool",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "identity_pool_name": "${replace(var.app_name,\"-\",\" \")}",
+     "allow_unauthenticated_identities": false,
+     "lifecycle": [
+      {
+       "ignore_changes": "${all}"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_cognito_identity_pool_roles_attachment.id_pool_roles",
+   "cfg": "aws_cognito_identity_pool_roles_attachment.id_pool_roles",
+   "type": "__declared__",
+   "refs": [
+    "aws_cognito_identity_pool.twitter_id_pool",
+    "aws_iam_role.cognito_auth",
+    "aws_iam_role.cognito_unauth"
+   ],
+   "values": {
+    "type": "aws_cognito_identity_pool_roles_attachment",
+    "name": "id_pool_roles",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "identity_pool_id": "${aws_cognito_identity_pool.twitter_id_pool.id}",
+     "roles": {
+      "authenticated": "${aws_iam_role.cognito_auth.arn}",
+      "unauthenticated": "${aws_iam_role.cognito_unauth.arn}"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.data.aws_iam_policy_document.cognito_auth_assume",
+   "cfg": "data.aws_iam_policy_document.cognito_auth_assume",
+   "type": "__declared__",
+   "refs": [
+    "aws_cognito_identity_pool.twitter_id_pool"
+   ],
+   "values": {
+    "type": "data.aws_iam_policy_document",
+    "name": "cognito_auth_assume",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "statement": [
+      {
+       "actions": [
+        "sts:AssumeRoleWithWebIdentity"
+       ],
+       "effect": "Allow",
+       "principals": [
+        {
+         "type": "Federated",
+         "identifiers": [
+          "cognito-identity.amazonaws.com"
+         ]
+        }
+       ],
+       "condition": [
+        {
+         "test": "StringEquals",
+         "variable": "cognito-identity.amazonaws.com:aud",
+         "values": [
+          "${aws_cognito_identity_pool.twitter_id_pool.id}"
+         ]
+        },
+        {
+         "test": "ForAnyValue:StringLike",
+         "variable": "cognito-identity.amazonaws.com:amr",
+         "values": [
+          "authenticated"
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.data.aws_iam_policy_document.cognito_auth",
+   "cfg": "data.aws_iam_policy_document.cognito_auth",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "data.aws_iam_policy_document",
+    "name": "cognito_auth",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "statement": [
+      {
+       "actions": [
+        "mobileanalytics:PutEvents",
+        "cognito-sync:*",
+        "cognito-identity:*"
+       ],
+       "resources": [
+        "*"
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role.cognito_auth",
+   "cfg": "aws_iam_role.cognito_auth",
+   "type": "__declared__",
+   "refs": [
+    "data.aws_iam_policy_document.cognito_auth_assume"
+   ],
+   "values": {
+    "type": "aws_iam_role",
+    "name": "cognito_auth",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "${var.app_name}_cognito_auth_role",
+     "assume_role_policy": "${data.aws_iam_policy_document.cognito_auth_assume.json}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_policy.cognito_auth",
+   "cfg": "aws_iam_policy.cognito_auth",
+   "type": "__declared__",
+   "refs": [
+    "data.aws_iam_policy_document.cognito_auth"
+   ],
+   "values": {
+    "type": "aws_iam_policy",
+    "name": "cognito_auth",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "cognito_kibana_auth_${var.app_name}",
+     "policy": "${data.aws_iam_policy_document.cognito_auth.json}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role_policy_attachment.cognito_auth",
+   "cfg": "aws_iam_role_policy_attachment.cognito_auth",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_policy.cognito_auth",
+    "aws_iam_role.cognito_auth"
+   ],
+   "values": {
+    "type": "aws_iam_role_policy_attachment",
+    "name": "cognito_auth",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "role": "${aws_iam_role.cognito_auth.name}",
+     "policy_arn": "${aws_iam_policy.cognito_auth.arn}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.data.aws_iam_policy_document.cognito_unauth_assume",
+   "cfg": "data.aws_iam_policy_document.cognito_unauth_assume",
+   "type": "__declared__",
+   "refs": [
+    "aws_cognito_identity_pool.twitter_id_pool"
+   ],
+   "values": {
+    "type": "data.aws_iam_policy_document",
+    "name": "cognito_unauth_assume",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "statement": [
+      {
+       "actions": [
+        "sts:AssumeRoleWithWebIdentity"
+       ],
+       "effect": "Allow",
+       "principals": [
+        {
+         "type": "Federated",
+         "identifiers": [
+          "cognito-identity.amazonaws.com"
+         ]
+        }
+       ],
+       "condition": [
+        {
+         "test": "StringEquals",
+         "variable": "cognito-identity.amazonaws.com:aud",
+         "values": [
+          "${aws_cognito_identity_pool.twitter_id_pool.id}"
+         ]
+        },
+        {
+         "test": "ForAnyValue:StringLike",
+         "variable": "cognito-identity.amazonaws.com:amr",
+         "values": [
+          "unauthenticated"
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.data.aws_iam_policy_document.cognito_unauth",
+   "cfg": "data.aws_iam_policy_document.cognito_unauth",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "data.aws_iam_policy_document",
+    "name": "cognito_unauth",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "statement": [
+      {
+       "actions": [
+        "mobileanalytics:PutEvents",
+        "cognito-sync:*"
+       ],
+       "resources": [
+        "*"
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role_policy_attachment.cognito_unauth",
+   "cfg": "aws_iam_role_policy_attachment.cognito_unauth",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_policy.cognito_unauth",
+    "aws_iam_role.cognito_unauth"
+   ],
+   "values": {
+    "type": "aws_iam_role_policy_attachment",
+    "name": "cognito_unauth",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "role": "${aws_iam_role.cognito_unauth.name}",
+     "policy_arn": "${aws_iam_policy.cognito_unauth.arn}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_policy.cognito_unauth",
+   "cfg": "aws_iam_policy.cognito_unauth",
+   "type": "__declared__",
+   "refs": [
+    "data.aws_iam_policy_document.cognito_auth"
+   ],
+   "values": {
+    "type": "aws_iam_policy",
+    "name": "cognito_unauth",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "cognito_kibana_unauth_${var.app_name}",
+     "policy": "${data.aws_iam_policy_document.cognito_auth.json}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role.cognito_unauth",
+   "cfg": "aws_iam_role.cognito_unauth",
+   "type": "__declared__",
+   "refs": [
+    "data.aws_iam_policy_document.cognito_unauth_assume"
+   ],
+   "values": {
+    "type": "aws_iam_role",
+    "name": "cognito_unauth",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "${var.app_name}_cognito_unauth_role",
+     "assume_role_policy": "${data.aws_iam_policy_document.cognito_unauth_assume.json}"
+    }
+   }
+  }
+ ]
+}

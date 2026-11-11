@@ -1,0 +1,1653 @@
+package intent.tf.row_348
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {
+  "kms": {
+   "types": [
+    "aws_kms_key"
+   ],
+   "where": []
+  },
+  "ddb": {
+   "types": [
+    "aws_dynamodb_table"
+   ],
+   "where": [
+    {
+     "path": [
+      "name"
+     ],
+     "op": "eq",
+     "value": "terraform-locks"
+    }
+   ]
+  },
+  "glue": {
+   "types": [
+    "aws_iam_role"
+   ],
+   "where": [
+    {
+     "path": [
+      "name"
+     ],
+     "op": "eq",
+     "value": "glue-service-role"
+    }
+   ]
+  },
+  "comp": {
+   "types": [
+    "aws_iam_role"
+   ],
+   "where": [
+    {
+     "path": [
+      "name"
+     ],
+     "op": "eq",
+     "value": "comprehend-service-role"
+    }
+   ]
+  },
+  "lam": {
+   "types": [
+    "aws_iam_role"
+   ],
+   "where": [
+    {
+     "path": [
+      "name"
+     ],
+     "op": "eq",
+     "value": "lambda-execution-role"
+    }
+   ]
+  },
+  "sfn": {
+   "types": [
+    "aws_iam_role"
+   ],
+   "where": [
+    {
+     "path": [
+      "name"
+     ],
+     "op": "eq",
+     "value": "step-functions-service-role"
+    }
+   ]
+  },
+  "state_b": {
+   "types": [
+    "aws_s3_bucket"
+   ],
+   "where": [
+    {
+     "path": [
+      "bucket"
+     ],
+     "op": "regex",
+     "value": "^my-terraform-state-bucket-"
+    }
+   ]
+  },
+  "sse_kms": {
+   "types": [
+    "aws_s3_bucket_server_side_encryption_configuration"
+   ],
+   "where": [
+    {
+     "path": [
+      "rule",
+      "*",
+      "apply_server_side_encryption_by_default",
+      "*",
+      "sse_algorithm"
+     ],
+     "op": "eq",
+     "value": "aws:kms"
+    }
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "state_bucket",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "a versioned S3 bucket named \"my-terraform-state-bucket-\" followed by the current account ID",
+   "justify": "\"followed by the current account ID\" implies a 12-digit account suffix (planned) or a caller-identity/account reference (declared)",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "state_b",
+     "cond": {
+      "path": [
+       "bucket"
+      ],
+      "op": "regex",
+      "value": "^my-terraform-state-bucket-[0-9]{12}$"
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_s3_bucket"
+       },
+       {
+        "path": [
+         "properties",
+         "bucket"
+        ],
+        "op": "regex",
+        "value": "^my-terraform-state-bucket-\\$\\{(data\\.aws_caller_identity\\.[A-Za-z0-9_]+\\.account_id|(local|var)\\.[A-Za-z0-9_]*account[A-Za-z0-9_]*)\\}$"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "versioning",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "a versioned S3 bucket",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_s3_bucket_versioning"
+      ],
+      "where": [
+       {
+        "path": [
+         "versioning_configuration",
+         "*",
+         "status"
+        ],
+        "op": "eq",
+        "value": "Enabled"
+       }
+      ]
+     },
+     "to": "state_b"
+    },
+    {
+     "kind": "attr",
+     "select": "state_b",
+     "cond": {
+      "path": [
+       "versioning",
+       "*",
+       "enabled"
+      ],
+      "op": "truthy"
+     }
+    }
+   ]
+  },
+  {
+   "id": "public_block",
+   "kind": "ref",
+   "tier": "core",
+   "quote": "blocks all public access",
+   "to": "state_b",
+   "from": {
+    "types": [
+     "aws_s3_bucket_public_access_block"
+    ],
+    "where": [
+     {
+      "path": [
+       "block_public_acls"
+      ],
+      "op": "truthy"
+     },
+     {
+      "path": [
+       "block_public_policy"
+      ],
+      "op": "truthy"
+     },
+     {
+      "path": [
+       "ignore_public_acls"
+      ],
+      "op": "truthy"
+     },
+     {
+      "path": [
+       "restrict_public_buckets"
+      ],
+      "op": "truthy"
+     }
+    ]
+   }
+  },
+  {
+   "id": "sse_kms",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "uses SSE-KMS default encryption",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "sse_kms",
+     "to": "state_b"
+    },
+    {
+     "kind": "attr",
+     "select": "state_b",
+     "cond": {
+      "path": [
+       "server_side_encryption_configuration"
+      ],
+      "op": "regex",
+      "value": "aws:kms"
+     }
+    }
+   ]
+  },
+  {
+   "id": "kms_key",
+   "kind": "exists",
+   "select": "kms",
+   "tier": "core",
+   "quote": "a new customer-managed KMS key"
+  },
+  {
+   "id": "kms_rotation",
+   "kind": "attr",
+   "select": "kms",
+   "tier": "detail",
+   "quote": "key rotation enabled",
+   "cond": {
+    "path": [
+     "enable_key_rotation"
+    ],
+    "op": "truthy"
+   }
+  },
+  {
+   "id": "kms_window",
+   "kind": "attr",
+   "select": "kms",
+   "tier": "detail",
+   "quote": "7-day deletion window",
+   "cond": {
+    "path": [
+     "deletion_window_in_days"
+    ],
+    "op": "eq",
+    "value": 7
+   }
+  },
+  {
+   "id": "sse_uses_key",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "SSE-KMS default encryption with a new customer-managed KMS key",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "sse_kms",
+     "to": "kms"
+    },
+    {
+     "kind": "ref",
+     "from": "state_b",
+     "to": "kms"
+    }
+   ]
+  },
+  {
+   "id": "lock_table",
+   "kind": "exists",
+   "select": "ddb",
+   "tier": "core",
+   "quote": "DynamoDB lock table named \"terraform-locks\""
+  },
+  {
+   "id": "lock_ondemand",
+   "kind": "attr",
+   "select": "ddb",
+   "tier": "core",
+   "quote": "an on-demand DynamoDB lock table",
+   "cond": {
+    "path": [
+     "billing_mode"
+    ],
+    "op": "eq",
+    "value": "PAY_PER_REQUEST"
+   },
+   "justify": "\"on-demand\" is billing mode PAY_PER_REQUEST"
+  },
+  {
+   "id": "lock_hashkey",
+   "kind": "attr",
+   "select": "ddb",
+   "tier": "core",
+   "quote": "a string hash key \"LockID\"",
+   "cond": {
+    "path": [
+     "hash_key"
+    ],
+    "op": "eq",
+    "value": "LockID"
+   }
+  },
+  {
+   "id": "lock_hashkey_type",
+   "kind": "attr",
+   "select": "ddb",
+   "tier": "detail",
+   "quote": "a string hash key \"LockID\"",
+   "cond": {
+    "path": [
+     "attribute",
+     "*"
+    ],
+    "op": "match",
+    "value": [
+     {
+      "path": [
+       "name"
+      ],
+      "op": "eq",
+      "value": "LockID"
+     },
+     {
+      "path": [
+       "type"
+      ],
+      "op": "eq",
+      "value": "S"
+     }
+    ]
+   }
+  },
+  {
+   "id": "glue_role",
+   "kind": "exists",
+   "select": "glue",
+   "tier": "core",
+   "quote": "\"glue-service-role\""
+  },
+  {
+   "id": "glue_trust",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "trusted by Glue",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "glue",
+     "cond": {
+      "path": [
+       "assume_role_policy"
+      ],
+      "op": "contains",
+      "value": "glue.amazonaws.com"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": "glue",
+     "to": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "data.aws_iam_policy_document"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "contains",
+        "value": "glue.amazonaws.com"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_iam_role"
+       },
+       {
+        "path": [
+         "properties",
+         "name"
+        ],
+        "op": "eq",
+        "value": "glue-service-role"
+       },
+       {
+        "path": [
+         "properties",
+         "assume_role_policy"
+        ],
+        "op": "contains",
+        "value": "glue.amazonaws.com"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "comp_role",
+   "kind": "exists",
+   "select": "comp",
+   "tier": "core",
+   "quote": "\"comprehend-service-role\""
+  },
+  {
+   "id": "comp_trust",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "trusted by Comprehend",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "comp",
+     "cond": {
+      "path": [
+       "assume_role_policy"
+      ],
+      "op": "contains",
+      "value": "comprehend.amazonaws.com"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": "comp",
+     "to": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "data.aws_iam_policy_document"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "contains",
+        "value": "comprehend.amazonaws.com"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_iam_role"
+       },
+       {
+        "path": [
+         "properties",
+         "name"
+        ],
+        "op": "eq",
+        "value": "comprehend-service-role"
+       },
+       {
+        "path": [
+         "properties",
+         "assume_role_policy"
+        ],
+        "op": "contains",
+        "value": "comprehend.amazonaws.com"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "lam_role",
+   "kind": "exists",
+   "select": "lam",
+   "tier": "core",
+   "quote": "\"lambda-execution-role\""
+  },
+  {
+   "id": "lam_trust",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "trusted by Lambda",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "lam",
+     "cond": {
+      "path": [
+       "assume_role_policy"
+      ],
+      "op": "contains",
+      "value": "lambda.amazonaws.com"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": "lam",
+     "to": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "data.aws_iam_policy_document"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "contains",
+        "value": "lambda.amazonaws.com"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_iam_role"
+       },
+       {
+        "path": [
+         "properties",
+         "name"
+        ],
+        "op": "eq",
+        "value": "lambda-execution-role"
+       },
+       {
+        "path": [
+         "properties",
+         "assume_role_policy"
+        ],
+        "op": "contains",
+        "value": "lambda.amazonaws.com"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "sfn_role",
+   "kind": "exists",
+   "select": "sfn",
+   "tier": "core",
+   "quote": "\"step-functions-service-role\""
+  },
+  {
+   "id": "sfn_trust",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "trusted by Step Functions",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "sfn",
+     "cond": {
+      "path": [
+       "assume_role_policy"
+      ],
+      "op": "contains",
+      "value": "states.amazonaws.com"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": "sfn",
+     "to": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "data.aws_iam_policy_document"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "contains",
+        "value": "states.amazonaws.com"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_iam_role"
+       },
+       {
+        "path": [
+         "properties",
+         "name"
+        ],
+        "op": "eq",
+        "value": "step-functions-service-role"
+       },
+       {
+        "path": [
+         "properties",
+         "assume_role_policy"
+        ],
+        "op": "contains",
+        "value": "states.amazonaws.com"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "glue_managed",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "the AWS managed Glue service role policy attached",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_role_policy_attachment",
+       "aws_iam_policy_attachment"
+      ],
+      "where": [
+       {
+        "path": [
+         "policy_arn"
+        ],
+        "op": "regex",
+        "value": "AWSGlueServiceRole$"
+       }
+      ]
+     },
+     "to": "glue"
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_iam_role_policy_attachment"
+      ],
+      "where": [
+       {
+        "path": [
+         "role"
+        ],
+        "op": "eq",
+        "value": "glue-service-role"
+       },
+       {
+        "path": [
+         "policy_arn"
+        ],
+        "op": "regex",
+        "value": "AWSGlueServiceRole$"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_iam_policy_attachment"
+      ],
+      "where": [
+       {
+        "path": [
+         "roles",
+         "*"
+        ],
+        "op": "eq",
+        "value": "glue-service-role"
+       },
+       {
+        "path": [
+         "policy_arn"
+        ],
+        "op": "regex",
+        "value": "AWSGlueServiceRole$"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "glue",
+     "cond": {
+      "path": [
+       "managed_policy_arns",
+       "*"
+      ],
+      "op": "regex",
+      "value": "AWSGlueServiceRole$"
+     }
+    }
+   ]
+  },
+  {
+   "id": "lambda_managed",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "the AWS managed basic execution policy",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_role_policy_attachment",
+       "aws_iam_policy_attachment"
+      ],
+      "where": [
+       {
+        "path": [
+         "policy_arn"
+        ],
+        "op": "regex",
+        "value": "AWSLambdaBasicExecutionRole$"
+       }
+      ]
+     },
+     "to": "lam"
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_iam_role_policy_attachment"
+      ],
+      "where": [
+       {
+        "path": [
+         "role"
+        ],
+        "op": "eq",
+        "value": "lambda-execution-role"
+       },
+       {
+        "path": [
+         "policy_arn"
+        ],
+        "op": "regex",
+        "value": "AWSLambdaBasicExecutionRole$"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_iam_policy_attachment"
+      ],
+      "where": [
+       {
+        "path": [
+         "roles",
+         "*"
+        ],
+        "op": "eq",
+        "value": "lambda-execution-role"
+       },
+       {
+        "path": [
+         "policy_arn"
+        ],
+        "op": "regex",
+        "value": "AWSLambdaBasicExecutionRole$"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "lam",
+     "cond": {
+      "path": [
+       "managed_policy_arns",
+       "*"
+      ],
+      "op": "regex",
+      "value": "AWSLambdaBasicExecutionRole$"
+     }
+    }
+   ]
+  },
+  {
+   "id": "glue_inline_s3",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "an inline policy allowing object reads and writes in the \"nlp-pipeline-bucket\" bucket",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_role_policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "nlp-pipeline-bucket"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?i)s3:(GetObject|Get\\*|\\*[\"'])"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?i)s3:(PutObject|Put\\*|\\*[\"'])"
+       }
+      ]
+     },
+     "to": "glue"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_iam_role_policy"
+       },
+       {
+        "path": [
+         "properties",
+         "policy"
+        ],
+        "op": "regex",
+        "value": "nlp-pipeline-bucket"
+       },
+       {
+        "path": [
+         "properties",
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?i)s3:(GetObject|Get\\*|\\*[\"'])"
+       },
+       {
+        "path": [
+         "properties",
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?i)s3:(PutObject|Put\\*|\\*[\"'])"
+       }
+      ]
+     },
+     "to": "glue"
+    },
+    {
+     "kind": "attr",
+     "select": "glue",
+     "cond": {
+      "path": [
+       "inline_policy",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "nlp-pipeline-bucket"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?i)s3:(GetObject|Get\\*|\\*[\"'])"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?i)s3:(PutObject|Put\\*|\\*[\"'])"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "comp_inline_s3",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "with the same inline S3 object access",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_role_policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "nlp-pipeline-bucket"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?i)s3:(GetObject|Get\\*|\\*[\"'])"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?i)s3:(PutObject|Put\\*|\\*[\"'])"
+       }
+      ]
+     },
+     "to": "comp"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_iam_role_policy"
+       },
+       {
+        "path": [
+         "properties",
+         "policy"
+        ],
+        "op": "regex",
+        "value": "nlp-pipeline-bucket"
+       },
+       {
+        "path": [
+         "properties",
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?i)s3:(GetObject|Get\\*|\\*[\"'])"
+       },
+       {
+        "path": [
+         "properties",
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?i)s3:(PutObject|Put\\*|\\*[\"'])"
+       }
+      ]
+     },
+     "to": "comp"
+    },
+    {
+     "kind": "attr",
+     "select": "comp",
+     "cond": {
+      "path": [
+       "inline_policy",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "nlp-pipeline-bucket"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?i)s3:(GetObject|Get\\*|\\*[\"'])"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?i)s3:(PutObject|Put\\*|\\*[\"'])"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "lam_inline_s3",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "an inline policy allowing S3 object reads and writes on that bucket",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_role_policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "nlp-pipeline-bucket"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?i)s3:(GetObject|Get\\*|\\*[\"'])"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?i)s3:(PutObject|Put\\*|\\*[\"'])"
+       }
+      ]
+     },
+     "to": "lam"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_iam_role_policy"
+       },
+       {
+        "path": [
+         "properties",
+         "policy"
+        ],
+        "op": "regex",
+        "value": "nlp-pipeline-bucket"
+       },
+       {
+        "path": [
+         "properties",
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?i)s3:(GetObject|Get\\*|\\*[\"'])"
+       },
+       {
+        "path": [
+         "properties",
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?i)s3:(PutObject|Put\\*|\\*[\"'])"
+       }
+      ]
+     },
+     "to": "lam"
+    },
+    {
+     "kind": "attr",
+     "select": "lam",
+     "cond": {
+      "path": [
+       "inline_policy",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "nlp-pipeline-bucket"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?i)s3:(GetObject|Get\\*|\\*[\"'])"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?i)s3:(PutObject|Put\\*|\\*[\"'])"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "lambda_ddb",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "writes to a DynamoDB table named \"NLPResults\"",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_role_policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?is)dynamodb:(PutItem|BatchWriteItem|UpdateItem|Put\\*|\\*[\"']).*NLPResults|NLPResults.*dynamodb:(PutItem|BatchWriteItem|UpdateItem|Put\\*|\\*[\"'])"
+       }
+      ]
+     },
+     "to": "lam"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_iam_role_policy"
+       },
+       {
+        "path": [
+         "properties",
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?is)dynamodb:(PutItem|BatchWriteItem|UpdateItem|Put\\*|\\*[\"']).*NLPResults|NLPResults.*dynamodb:(PutItem|BatchWriteItem|UpdateItem|Put\\*|\\*[\"'])"
+       }
+      ]
+     },
+     "to": "lam"
+    },
+    {
+     "kind": "attr",
+     "select": "lam",
+     "cond": {
+      "path": [
+       "inline_policy",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?is)dynamodb:(PutItem|BatchWriteItem|UpdateItem|Put\\*|\\*[\"']).*NLPResults|NLPResults.*dynamodb:(PutItem|BatchWriteItem|UpdateItem|Put\\*|\\*[\"'])"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "lambda_sfn",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "starting executions of a state machine named \"YourStateMachineName\"",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_role_policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?i)(states|stepfunctions):(StartExecution|Start\\*|\\*[\"'])"
+       }
+      ]
+     },
+     "to": "lam"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_iam_role_policy"
+       },
+       {
+        "path": [
+         "properties",
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?i)(states|stepfunctions):(StartExecution|Start\\*|\\*[\"'])"
+       }
+      ]
+     },
+     "to": "lam"
+    },
+    {
+     "kind": "attr",
+     "select": "lam",
+     "cond": {
+      "path": [
+       "inline_policy",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?i)(states|stepfunctions):(StartExecution|Start\\*|\\*[\"'])"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "lambda_sfn_name",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "a state machine named \"YourStateMachineName\"",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_role_policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "YourStateMachineName"
+       }
+      ]
+     },
+     "to": "lam"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_iam_role_policy"
+       },
+       {
+        "path": [
+         "properties",
+         "policy"
+        ],
+        "op": "regex",
+        "value": "YourStateMachineName"
+       }
+      ]
+     },
+     "to": "lam"
+    },
+    {
+     "kind": "attr",
+     "select": "lam",
+     "cond": {
+      "path": [
+       "inline_policy",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "YourStateMachineName"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "sfn_lambda",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "invoke any Lambda function",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_role_policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?i)lambda:(InvokeFunction|Invoke\\*|\\*[\"'])"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?i)(function:\\*|[\"']Resource[\"']: ?\\[?[\"']\\*[\"'])"
+       }
+      ]
+     },
+     "to": "sfn"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_iam_role_policy"
+       },
+       {
+        "path": [
+         "properties",
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?i)lambda:(InvokeFunction|Invoke\\*|\\*[\"'])"
+       },
+       {
+        "path": [
+         "properties",
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?i)(function:\\*|[\"']Resource[\"']: ?\\[?[\"']\\*[\"'])"
+       }
+      ]
+     },
+     "to": "sfn"
+    },
+    {
+     "kind": "attr",
+     "select": "sfn",
+     "cond": {
+      "path": [
+       "inline_policy",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?i)lambda:(InvokeFunction|Invoke\\*|\\*[\"'])"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?i)(function:\\*|[\"']Resource[\"']: ?\\[?[\"']\\*[\"'])"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "sfn_glue",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "start any Glue job run in the account and region",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_role_policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?i)glue:(StartJobRun|Start\\*|\\*[\"'])"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?i)(job/\\*|[\"']Resource[\"']: ?\\[?[\"']\\*[\"'])"
+       }
+      ]
+     },
+     "to": "sfn"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_iam_role_policy"
+       },
+       {
+        "path": [
+         "properties",
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?i)glue:(StartJobRun|Start\\*|\\*[\"'])"
+       },
+       {
+        "path": [
+         "properties",
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?i)(job/\\*|[\"']Resource[\"']: ?\\[?[\"']\\*[\"'])"
+       }
+      ]
+     },
+     "to": "sfn"
+    },
+    {
+     "kind": "attr",
+     "select": "sfn",
+     "cond": {
+      "path": [
+       "inline_policy",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?i)glue:(StartJobRun|Start\\*|\\*[\"'])"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?i)(job/\\*|[\"']Resource[\"']: ?\\[?[\"']\\*[\"'])"
+       }
+      ]
+     }
+    }
+   ]
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

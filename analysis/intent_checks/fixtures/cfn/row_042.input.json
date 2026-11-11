@@ -1,0 +1,291 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "60e60ac0a6fc26c8579c5041bbe7fcf221c4aa1943b267fe48080fb34428ad03",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "IdempotencyTable",
+   "cfg": "IdempotencyTable",
+   "type": "AWS::DynamoDB::Table",
+   "values": {
+    "TableName": "fsxn-s3ap-idempotency-store",
+    "BillingMode": "PAY_PER_REQUEST",
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "pk",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "sk",
+      "AttributeType": "S"
+     }
+    ],
+    "KeySchema": [
+     {
+      "AttributeName": "pk",
+      "KeyType": "HASH"
+     },
+     {
+      "AttributeName": "sk",
+      "KeyType": "RANGE"
+     }
+    ],
+    "TimeToLiveSpecification": {
+     "AttributeName": "ttl",
+     "Enabled": true
+    },
+    "PointInTimeRecoverySpecification": {
+     "PointInTimeRecoveryEnabled": true
+    },
+    "Tags": [
+     {
+      "Key": "Component",
+      "Value": "idempotency-store"
+     },
+     {
+      "Key": "Phase",
+      "Value": "11"
+     },
+     {
+      "Key": "UseCase",
+      "Value": "hybrid-mode-deduplication"
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "IdempotencyAccessPolicy",
+   "cfg": "IdempotencyAccessPolicy",
+   "type": "AWS::IAM::ManagedPolicy",
+   "values": {
+    "ManagedPolicyName": "fsxn-s3ap-idempotency-access",
+    "Description": "Allow Lambda functions to read/write the Idempotency Store",
+    "PolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Sid": "DynamoDBAccess",
+       "Effect": "Allow",
+       "Action": [
+        "dynamodb:GetItem",
+        "dynamodb:PutItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:Query"
+       ],
+       "Resource": [
+        {
+         "ref": "IdempotencyTable",
+         "attr": "Arn"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "refs": [
+    "IdempotencyTable"
+   ]
+  },
+  {
+   "id": "__parameter__.ProjectPrefix",
+   "cfg": "__parameter__.ProjectPrefix",
+   "type": "__parameter__",
+   "values": {
+    "name": "ProjectPrefix",
+    "type": "String",
+    "default": "fsxn-s3ap",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.TtlDays",
+   "cfg": "__parameter__.TtlDays",
+   "type": "__parameter__",
+   "values": {
+    "name": "TtlDays",
+    "type": "Number",
+    "default": 7,
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.EnablePointInTimeRecovery",
+   "cfg": "__parameter__.EnablePointInTimeRecovery",
+   "type": "__parameter__",
+   "values": {
+    "name": "EnablePointInTimeRecovery",
+    "type": "String",
+    "default": "true",
+    "allowed_values": [
+     "true",
+     "false"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.TableName",
+   "cfg": "__output__.TableName",
+   "type": "__output__",
+   "values": {
+    "name": "TableName",
+    "value": {
+     "ref": "IdempotencyTable"
+    },
+    "description": "Idempotency Store \u30c6\u30fc\u30d6\u30eb\u540d",
+    "export": "stack-TableName"
+   },
+   "refs": [
+    "IdempotencyTable"
+   ]
+  },
+  {
+   "id": "__output__.TableArn",
+   "cfg": "__output__.TableArn",
+   "type": "__output__",
+   "values": {
+    "name": "TableArn",
+    "value": {
+     "ref": "IdempotencyTable",
+     "attr": "Arn"
+    },
+    "description": "Idempotency Store \u30c6\u30fc\u30d6\u30eb ARN",
+    "export": "stack-TableArn"
+   },
+   "refs": [
+    "IdempotencyTable"
+   ]
+  },
+  {
+   "id": "__output__.AccessPolicyArn",
+   "cfg": "__output__.AccessPolicyArn",
+   "type": "__output__",
+   "values": {
+    "name": "AccessPolicyArn",
+    "value": {
+     "ref": "IdempotencyAccessPolicy"
+    },
+    "description": "Idempotency Store \u30a2\u30af\u30bb\u30b9\u30dd\u30ea\u30b7\u30fc ARN",
+    "export": "stack-AccessPolicyArn"
+   },
+   "refs": [
+    "IdempotencyAccessPolicy"
+   ]
+  },
+  {
+   "id": "__output__.KeySchema",
+   "cfg": "__output__.KeySchema",
+   "type": "__output__",
+   "values": {
+    "name": "KeySchema",
+    "value": "pk=uc#path, sk=op#ts_bucket",
+    "description": "\u30ad\u30fc\u30b9\u30ad\u30fc\u30de:\n  pk = \"{uc_name}#{file_path}\" (\u30d1\u30fc\u30c6\u30a3\u30b7\u30e7\u30f3\u30ad\u30fc)\n  sk = \"{operation_type}#{timestamp_bucket}\" (\u30bd\u30fc\u30c8\u30ad\u30fc)\ntimestamp_bucket \u306f 5 \u5206\u5358\u4f4d\u306b\u4e38\u3081\u305f\u5024\uff08\u540c\u4e00\u30d5\u30a1\u30a4\u30eb\u306e\u8fd1\u63a5\u30a4\u30d9\u30f3\u30c8\u3092\u91cd\u8907\u3068\u307f\u306a\u3059\uff09\n",
+    "export": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__declared__.AWS::DynamoDB::Table.IdempotencyTable",
+   "cfg": "IdempotencyTable",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::DynamoDB::Table",
+    "name": "IdempotencyTable",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "TableName": "fsxn-s3ap-idempotency-store",
+     "BillingMode": "PAY_PER_REQUEST",
+     "AttributeDefinitions": [
+      {
+       "AttributeName": "pk",
+       "AttributeType": "S"
+      },
+      {
+       "AttributeName": "sk",
+       "AttributeType": "S"
+      }
+     ],
+     "KeySchema": [
+      {
+       "AttributeName": "pk",
+       "KeyType": "HASH"
+      },
+      {
+       "AttributeName": "sk",
+       "KeyType": "RANGE"
+      }
+     ],
+     "TimeToLiveSpecification": {
+      "AttributeName": "ttl",
+      "Enabled": true
+     },
+     "PointInTimeRecoverySpecification": {
+      "PointInTimeRecoveryEnabled": true
+     },
+     "Tags": [
+      {
+       "Key": "Component",
+       "Value": "idempotency-store"
+      },
+      {
+       "Key": "Phase",
+       "Value": "11"
+      },
+      {
+       "Key": "UseCase",
+       "Value": "hybrid-mode-deduplication"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::ManagedPolicy.IdempotencyAccessPolicy",
+   "cfg": "IdempotencyAccessPolicy",
+   "type": "__declared__",
+   "refs": [
+    "IdempotencyTable"
+   ],
+   "values": {
+    "type": "AWS::IAM::ManagedPolicy",
+    "name": "IdempotencyAccessPolicy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ManagedPolicyName": "fsxn-s3ap-idempotency-access",
+     "Description": "Allow Lambda functions to read/write the Idempotency Store",
+     "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Sid": "DynamoDBAccess",
+        "Effect": "Allow",
+        "Action": [
+         "dynamodb:GetItem",
+         "dynamodb:PutItem",
+         "dynamodb:DeleteItem",
+         "dynamodb:Query"
+        ],
+        "Resource": [
+         {
+          "ref": "IdempotencyTable",
+          "attr": "Arn"
+         }
+        ]
+       }
+      ]
+     }
+    }
+   }
+  }
+ ]
+}

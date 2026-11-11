@@ -1,0 +1,635 @@
+package intent.tf.row_038
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {},
+ "checks": [
+  {
+   "id": "api",
+   "tier": "core",
+   "quote": "creates an Amazon API Gateway REST API for testing mock web endpoint responses, using a configurable API name variable that defaults to \"terraform-api-gateway-example\"",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_api_gateway_rest_api"
+    ],
+    "where": [
+     {
+      "path": [
+       "name"
+      ],
+      "op": "eq",
+      "value": "terraform-api-gateway-example"
+     }
+    ]
+   }
+  },
+  {
+   "id": "api_name_var",
+   "tier": "detail",
+   "quote": "a configurable API name variable that defaults to \"terraform-api-gateway-example\"",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": [
+       "default"
+      ],
+      "op": "eq",
+      "value": "terraform-api-gateway-example"
+     }
+    ]
+   }
+  },
+  {
+   "id": "resource",
+   "tier": "core",
+   "quote": "construct a resource path \"movies\"",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_api_gateway_resource"
+    ],
+    "where": [
+     {
+      "path": [
+       "path_part"
+      ],
+      "op": "eq",
+      "value": "movies"
+     }
+    ]
+   }
+  },
+  {
+   "id": "resource_in_api",
+   "tier": "core",
+   "quote": "construct a resource path \"movies\"",
+   "kind": "ref",
+   "from": {
+    "types": [
+     "aws_api_gateway_resource"
+    ],
+    "where": [
+     {
+      "path": [
+       "path_part"
+      ],
+      "op": "eq",
+      "value": "movies"
+     }
+    ]
+   },
+   "to": {
+    "types": [
+     "aws_api_gateway_rest_api"
+    ],
+    "where": [
+     {
+      "path": [
+       "name"
+      ],
+      "op": "eq",
+      "value": "terraform-api-gateway-example"
+     }
+    ]
+   }
+  },
+  {
+   "id": "resource_on_root",
+   "tier": "core",
+   "quote": "off the root resource",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": [
+       "type"
+      ],
+      "op": "eq",
+      "value": "aws_api_gateway_resource"
+     },
+     {
+      "path": [
+       "properties",
+       "path_part"
+      ],
+      "op": "eq",
+      "value": "movies"
+     }
+    ]
+   },
+   "cond": {
+    "path": [
+     "properties",
+     "parent_id"
+    ],
+    "op": "contains",
+    "value": "root_resource_id"
+   }
+  },
+  {
+   "id": "method_get",
+   "tier": "core",
+   "quote": "configured with a GET HTTP method",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_api_gateway_method"
+    ],
+    "where": [
+     {
+      "path": [
+       "http_method"
+      ],
+      "op": "eq",
+      "value": "GET"
+     }
+    ]
+   }
+  },
+  {
+   "id": "method_on_resource",
+   "tier": "core",
+   "quote": "configured with a GET HTTP method",
+   "kind": "ref",
+   "from": {
+    "types": [
+     "aws_api_gateway_method"
+    ],
+    "where": [
+     {
+      "path": [
+       "http_method"
+      ],
+      "op": "eq",
+      "value": "GET"
+     }
+    ]
+   },
+   "to": {
+    "types": [
+     "aws_api_gateway_resource"
+    ],
+    "where": [
+     {
+      "path": [
+       "path_part"
+      ],
+      "op": "eq",
+      "value": "movies"
+     }
+    ]
+   }
+  },
+  {
+   "id": "method_no_auth",
+   "tier": "core",
+   "quote": "configured with a GET HTTP method requiring no authorization",
+   "kind": "ref",
+   "justify": "requiring no authorization means authorization NONE",
+   "from": {
+    "types": [
+     "aws_api_gateway_method"
+    ],
+    "where": [
+     {
+      "path": [
+       "http_method"
+      ],
+      "op": "eq",
+      "value": "GET"
+     },
+     {
+      "path": [
+       "authorization"
+      ],
+      "op": "eq",
+      "value": "NONE"
+     }
+    ]
+   },
+   "to": {
+    "types": [
+     "aws_api_gateway_resource"
+    ],
+    "where": [
+     {
+      "path": [
+       "path_part"
+      ],
+      "op": "eq",
+      "value": "movies"
+     }
+    ]
+   }
+  },
+  {
+   "id": "integration_mock",
+   "tier": "core",
+   "quote": "set up a MOCK integration for the GET method",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_api_gateway_integration"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "MOCK"
+       },
+       {
+        "path": [
+         "http_method"
+        ],
+        "op": "eq",
+        "value": "GET"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_api_gateway_method"
+      ],
+      "where": [
+       {
+        "path": [
+         "http_method"
+        ],
+        "op": "eq",
+        "value": "GET"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_api_gateway_integration"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "MOCK"
+       },
+       {
+        "path": [
+         "http_method"
+        ],
+        "op": "eq",
+        "value": "GET"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_api_gateway_resource"
+      ],
+      "where": [
+       {
+        "path": [
+         "path_part"
+        ],
+        "op": "eq",
+        "value": "movies"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "request_template_200",
+   "tier": "core",
+   "quote": "supplies a JSON request template explicitly setting the status code integer to 200",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_api_gateway_integration"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "MOCK"
+       },
+       {
+        "path": [
+         "http_method"
+        ],
+        "op": "eq",
+        "value": "GET"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "request_templates"
+      ],
+      "op": "regex",
+      "value": "(?i)statuscode\\\\*[\"']?\\s*[:=]\\s*200\\b"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_api_gateway_integration"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "request_templates"
+      ],
+      "op": "regex",
+      "value": "(?i)statuscode\\\\*[\"']?\\s*[:=]\\s*200\\b"
+     }
+    }
+   ]
+  },
+  {
+   "id": "request_template_json",
+   "tier": "detail",
+   "quote": "supplies a JSON request template",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_api_gateway_integration"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "MOCK"
+       },
+       {
+        "path": [
+         "http_method"
+        ],
+        "op": "eq",
+        "value": "GET"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "request_templates"
+      ],
+      "op": "regex",
+      "value": "application/json"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_api_gateway_integration"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "request_templates"
+      ],
+      "op": "regex",
+      "value": "application/json"
+     }
+    }
+   ]
+  },
+  {
+   "id": "method_response_200",
+   "tier": "core",
+   "quote": "configure a 200 method response status",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_api_gateway_method_response"
+    ],
+    "where": [
+     {
+      "path": [
+       "http_method"
+      ],
+      "op": "eq",
+      "value": "GET"
+     },
+     {
+      "path": [
+       "status_code"
+      ],
+      "op": "eq",
+      "value": 200
+     }
+    ]
+   }
+  },
+  {
+   "id": "integration_response_200",
+   "tier": "core",
+   "quote": "attach an integration response for status code 200",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_api_gateway_integration_response"
+    ],
+    "where": [
+     {
+      "path": [
+       "http_method"
+      ],
+      "op": "eq",
+      "value": "GET"
+     },
+     {
+      "path": [
+       "status_code"
+      ],
+      "op": "eq",
+      "value": 200
+     }
+    ]
+   }
+  },
+  {
+   "id": "response_message",
+   "tier": "core",
+   "quote": "returns a JSON response template body with the message \"Hello from the movies API!\"",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_api_gateway_integration_response"
+      ],
+      "where": [
+       {
+        "path": [
+         "http_method"
+        ],
+        "op": "eq",
+        "value": "GET"
+       },
+       {
+        "path": [
+         "status_code"
+        ],
+        "op": "eq",
+        "value": 200
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "response_templates"
+      ],
+      "op": "regex",
+      "value": "Hello from the movies API!"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_api_gateway_integration_response"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "response_templates"
+      ],
+      "op": "regex",
+      "value": "Hello from the movies API!"
+     }
+    }
+   ]
+  },
+  {
+   "id": "response_template_json",
+   "tier": "detail",
+   "quote": "returns a JSON response template body",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_api_gateway_integration_response"
+      ],
+      "where": [
+       {
+        "path": [
+         "http_method"
+        ],
+        "op": "eq",
+        "value": "GET"
+       },
+       {
+        "path": [
+         "status_code"
+        ],
+        "op": "eq",
+        "value": 200
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "response_templates"
+      ],
+      "op": "regex",
+      "value": "application/json"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_api_gateway_integration_response"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "response_templates"
+      ],
+      "op": "regex",
+      "value": "application/json"
+     }
+    }
+   ]
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

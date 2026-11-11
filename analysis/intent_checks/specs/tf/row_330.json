@@ -1,0 +1,111 @@
+{
+  "lang": "tf",
+  "row_number": 330,
+  "source_hash": {
+    "gt": "082096726a5108002dc62d01d57a3481e3fea5666e93d52cdc63af00e754b54e",
+    "prompt": "321c154a45595e7425812b2e0ea717adb48023ef646738f72e9326e828d0e4dc"
+  },
+  "selectors": {
+    "queue": {
+      "types": [
+        "aws_sqs_queue"
+      ],
+      "where": [
+        {
+          "path": "name",
+          "op": "eq",
+          "value": "aggregation-lambda-dead-letter-queue"
+        }
+      ]
+    },
+    "key": {
+      "types": [
+        "aws_kms_key"
+      ],
+      "where": []
+    },
+    "alias": {
+      "types": [
+        "__declared__"
+      ],
+      "where": [
+        {
+          "path": "type",
+          "op": "eq",
+          "value": "aws_kms_alias"
+        },
+        {
+          "path": "properties.target_key_id",
+          "op": "contains",
+          "value": "aws_kms_key."
+        }
+      ]
+    },
+    "any_queue": {
+      "types": [
+        "aws_sqs_queue"
+      ],
+      "where": []
+    }
+  },
+  "checks": [
+    {
+      "id": "queue_named",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "an SQS dead-letter queue named \"aggregation-lambda-dead-letter-queue\"",
+      "select": "queue"
+    },
+    {
+      "id": "retention_14d",
+      "kind": "attr",
+      "tier": "core",
+      "quote": "a 14-day message retention period",
+      "justify": "14 days = 1209600 seconds",
+      "select": "any_queue",
+      "cond": {
+        "path": "message_retention_seconds",
+        "op": "eq",
+        "value": 1209600
+      }
+    },
+    {
+      "id": "cmk_exists",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "a new customer-managed KMS key",
+      "select": "key"
+    },
+    {
+      "id": "key_rotation",
+      "kind": "attr",
+      "tier": "core",
+      "quote": "key rotation enabled",
+      "select": "key",
+      "cond": {
+        "path": "enable_key_rotation",
+        "op": "eq",
+        "value": true
+      }
+    },
+    {
+      "id": "queue_uses_key",
+      "kind": "any_of",
+      "tier": "core",
+      "quote": "encrypted with a new customer-managed KMS key",
+      "checks": [
+        {
+          "kind": "ref",
+          "from": "any_queue",
+          "to": "key"
+        },
+        {
+          "kind": "ref",
+          "from": "any_queue",
+          "to": "alias"
+        }
+      ]
+    }
+  ],
+  "notes": "Retention and encryption are tested on any SQS queue rather than only the one with the stated name, so a wrong name fails queue_named alone. The alias branch of queue_uses_key accepts a queue that references a KMS alias declared for a key created in the template."
+}

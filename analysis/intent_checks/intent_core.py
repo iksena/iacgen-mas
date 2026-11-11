@@ -8,6 +8,7 @@ import re
 import shutil
 import subprocess
 import tempfile
+import threading
 from pathlib import Path
 
 import pandas as pd
@@ -40,7 +41,7 @@ CHECK_KINDS = {'exists', 'attr', 'ref', 'join', 'any_of', 'all_of'}
 LEAF_KINDS = {'exists', 'attr', 'ref', 'join'}
 OPS = {'eq', 'neq', 'in', 'contains', 'regex', 'gte', 'lte', 'present', 'truthy', 'falsy',
        'len_gte', 'len_eq', 'has_kv', 'port_covers', 'absent', 'match', 'none_eq', 'glob_covers'}
-TIERS = {'core', 'detail'}
+TIERS = {'core', 'detail', 'extra'}
 
 
 def tag(lang: str, row: int) -> str:
@@ -409,26 +410,67 @@ def tf_env() -> dict:
     return env
 
 
-def _run(cmd, cwd, timeout):
-    r = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout, env=tf_env())
+def _run(cmd, cwd, timeout, env=None):
+    r = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout, env={**tf_env(), **(env or {})})
     return r.returncode, (r.stdout or '') + (r.stderr or '')
 
 
+_OVERRIDE = 'localstack_providers_override.tf'
+
+
+def _plan_with_trimmed_override(d: str, timeout=900) -> tuple[int, str, list[str]]:
+    _run(['tflocal', 'plan', '-input=false', '-no-color', '-lock=false'], d, 300, {'DRY_RUN': '1'})
+    p = Path(d, _OVERRIDE)
+    if not p.exists():
+        return 1, 'tflocal did not generate its override', ['tflocal']
+    for _ in range(4):
+        rc, log = _run(['terraform', 'plan', '-input=false', '-no-color', '-lock=false', '-out=tfplan'], d, timeout)
+        bad = {int(n) for n in re.findall(rf'on {re.escape(_OVERRIDE)} line (\d+)', log)}
+        if rc == 0 or not bad:
+            return rc, log, ['terraform']
+        lines = p.read_text().splitlines()
+        p.write_text('\n'.join(l for i, l in enumerate(lines, 1) if i not in bad) + '\n')
+    return rc, log, ['terraform']
+
+
+_TF_INIT_LOCK = threading.Lock()
+_SEED_LOCK = threading.Lock()
+_seeded = False
+
+
+def _seed_localstack():
+    global _seeded
+    with _SEED_LOCK:
+        if _seeded:
+            return
+        _seeded = True
+        env = {**tf_env(), 'AWS_ENDPOINT_URL': LOCALSTACK}
+        for name in ('Managed-CachingDisabled', 'Managed-CachingOptimized', 'Managed-CachingOptimizedForUncompressedObjects'):
+            subprocess.run(['aws', 'cloudfront', 'create-cache-policy', '--cache-policy-config',
+                            json.dumps({'Name': name, 'MinTTL': 0})], capture_output=True, env=env, timeout=60)
+
+
 def tf_plan_json(files: dict[str, str]) -> tuple[dict | None, str]:
+    _seed_localstack()
     with tempfile.TemporaryDirectory() as d:
         for n, t in _prepare_tf(files).items():
             Path(d, n).write_text(t, encoding='utf-8')
         try:
-            rc, log = _run(['tflocal', 'init', '-backend=false', '-input=false', '-no-color'], d, 900)
+            with _TF_INIT_LOCK:
+                rc, log = _run(['tflocal', 'init', '-backend=false', '-input=false', '-no-color'], d, 900)
             if rc != 0:
                 return None, 'init: ' + log[-2000:]
             rc, log = _run(['tflocal', 'plan', '-input=false', '-no-color', '-lock=false', '-out=tfplan'], d, 900)
+            tool = ['tflocal']
+            if rc != 0 and _OVERRIDE in log and 'Unsupported argument' in log:
+                rc, log, tool = _plan_with_trimmed_override(d)
             if rc != 0:
-                return None, 'plan: ' + log[-2000:]
-            rc, out = _run(['tflocal', 'show', '-json', 'tfplan'], d, 300)
+                i = log.find('Error:')
+                return None, 'plan: ' + log[i if i >= 0 else -2000:][:2000]
+            rc, out = _run(tool + ['show', '-json', 'tfplan'], d, 300)
             if rc != 0:
                 return None, 'show: ' + out[-2000:]
-            return json.loads(out[out.index('{'):]), ''
+            return json.JSONDecoder().raw_decode(out[out.index('{'):])[0], ''
         except subprocess.TimeoutExpired as e:
             return None, f'timeout: {e.cmd}'
 
@@ -702,6 +744,9 @@ def normalize_tf(files: dict[str, str], allow_static=True) -> dict:
     return out
 
 
+FIXTURE_PATCHES = {('tf', 368): [('main.tf', r'ubuntu-jammy-22\.04-amd64-server-\*', 'ubuntu-xenial-16.04-amd64-server-*')]}
+
+
 def build_fixture(info: dict, force=False) -> tuple[str, str]:
     p = fixture_path(info['lang'], info['row_number'])
     if p.exists() and not force:
@@ -713,7 +758,10 @@ def build_fixture(info: dict, force=False) -> tuple[str, str]:
         if info['lang'] == 'cfn':
             inp = normalize_cfn(next(iter(info['files'].values())))
         else:
-            inp = normalize_tf(info['files'], allow_static=False)
+            files = dict(info['files'])
+            for name, pat, new in FIXTURE_PATCHES.get(('tf', info['row_number']), []):
+                files[name] = re.sub(pat, new, files[name])
+            inp = normalize_tf(files, allow_static=False)
     except Exception as e:
         return 'error', str(e)[:1500]
     inp['meta']['gt_hash'] = info['gt_hash']
@@ -854,7 +902,10 @@ def structural_errors(spec: dict, info: dict) -> list[str]:
         if c.get('tier') not in TIERS:
             errs.append(f'{w}: tier must be core|detail')
         q = _quote_norm(c.get('quote', ''))
-        if not q:
+        if c.get('tier') == 'extra':
+            if q and q not in prompt_norm:
+                errs.append(f'{w}: quote is not a verbatim span of the prompt: {c.get("quote")!r}')
+        elif not q:
             errs.append(f'{w}: missing prompt quote')
         elif q not in prompt_norm:
             errs.append(f'{w}: quote is not a verbatim span of the prompt: {c.get("quote")!r}')
@@ -953,6 +1004,8 @@ def strictness_flags(spec: dict, info: dict) -> list[dict]:
             lint_cond(c, owner, justified)
 
     for c in spec.get('checks', []):
+        if c.get('tier') == 'extra':
+            continue
         justified = bool(str(c.get('justify', '')).strip())
         leaves = c.get('checks', []) if c.get('kind') in ('any_of', 'all_of') else [c]
         for l in leaves:
@@ -1128,6 +1181,7 @@ def validate(lang: str, row: int, info: dict, cross_fixtures: dict[str, dict] | 
     spec = json.loads(spec_path(lang, row).read_text())
     report['n_checks'] = len(spec.get('checks', []))
     report['n_core'] = sum(c.get('tier') == 'core' for c in spec.get('checks', []))
+    report['n_extra'] = sum(c.get('tier') == 'extra' for c in spec.get('checks', []))
     report['structural'] = structural_errors(spec, info)
     report['strictness_flags'] = strictness_flags(spec, info)
     if spec_state(info) != 'ok':
@@ -1207,18 +1261,68 @@ def check_category(c: dict, spec: dict) -> str:
 
 
 def score(spec: dict, results: dict) -> dict:
-    checks = spec['checks']
+    extras = [c for c in spec['checks'] if c['tier'] == 'extra']
+    checks = [c for c in spec['checks'] if c['tier'] != 'extra']
     core = [c for c in checks if c['tier'] == 'core']
     cats = {}
     for c in checks:
         cats.setdefault(check_category(c, spec), []).append(bool(results.get(c['id'])))
     out = {'n_checks': len(checks), 'n_pass': sum(bool(results.get(c['id'])) for c in checks),
-           'n_core': len(core), 'n_core_pass': sum(bool(results.get(c['id'])) for c in core)}
+           'n_core': len(core), 'n_core_pass': sum(bool(results.get(c['id'])) for c in core),
+           'n_extra': len(extras), 'n_extra_pass': sum(bool(results.get(c['id'])) for c in extras)}
     out['intent_strict'] = out['n_core_pass'] == out['n_core']
     out['core_score'] = out['n_core_pass'] / out['n_core'] if out['n_core'] else None
     out['intent_score'] = out['n_pass'] / out['n_checks'] if out['n_checks'] else None
+    out['extra_score'] = out['n_extra_pass'] / out['n_extra'] if out['n_extra'] else None
     for cat in ('resource', 'attribute', 'relationship', 'output'):
         v = cats.get(cat, [])
         out[f'{cat}_score'] = sum(v) / len(v) if v else None
     out['failed_checks'] = [c['id'] for c in checks if not results.get(c['id'])]
+    out['failed_extra'] = [c['id'] for c in extras if not results.get(c['id'])]
     return out
+
+
+_HELPER_TYPE = re.compile(r'^(data\.|__|random_|null_|time_|tls_|local_|archive_|external_|terraform_|Custom::|AWS::CDK::Metadata$|AWS::CloudFormation::CustomResource$)')
+
+
+def _covered_types(spec: dict) -> set[str]:
+    sels = spec.get('selectors') or {}
+    out = set()
+
+    def add(s):
+        s = sels.get(s, {}) if isinstance(s, str) else (s or {})
+        out.update(s.get('types', []))
+        for c in s.get('where', []):
+            if c.get('path') in ('type', ['type']) and c.get('op') in ('eq', 'in'):
+                v = c.get('value')
+                out.update(v if isinstance(v, list) else [v])
+
+    for c in spec['checks']:
+        for l in (c['checks'] if c['kind'] in ('any_of', 'all_of') else [c]):
+            for k in ('select', 'from', 'to'):
+                if k in l:
+                    add(l[k])
+    return out
+
+
+def _extra_id(rtype: str) -> str:
+    return 'extra_type_' + re.sub(r'[^a-z0-9]+', '_', rtype.lower()).strip('_')
+
+
+def add_extra_type_checks(spec: dict, fixture: dict) -> list[str]:
+    covered = _covered_types(spec)
+    planned = {r['type'] for r in fixture['resources']}
+    declared = {r['values'].get('type') for r in fixture['resources'] if r['type'] == '__declared__'}
+    added, ids = [], {c['id'] for c in spec['checks']}
+    for rtype in sorted(planned):
+        if rtype not in covered and not _HELPER_TYPE.match(rtype) and _extra_id(rtype) not in ids:
+            spec['checks'].append({'id': _extra_id(rtype), 'kind': 'exists', 'tier': 'extra',
+                                   'select': {'types': [rtype], 'where': []}})
+            added.append(rtype)
+    for rtype in sorted(t for t in declared - planned if t):
+        if rtype not in covered and not _HELPER_TYPE.match(rtype) and _extra_id(rtype) not in ids:
+            spec['checks'].append({'id': _extra_id(rtype), 'kind': 'exists', 'tier': 'extra',
+                                   'select': {'types': ['__declared__'],
+                                              'where': [{'path': 'type', 'op': 'eq', 'value': rtype}]}})
+            added.append(rtype)
+    return added

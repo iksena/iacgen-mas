@@ -1,0 +1,758 @@
+{
+  "lang": "cfn",
+  "row_number": 185,
+  "source_hash": {
+    "gt": "410d804037825c5bccc7e3f5484683047b99e5461f6569323c03c852fe8d7ba2",
+    "prompt": "a95848bc8ff1256f543e75bd72a0a03e2599fac040a80d645a272152660a2379"
+  },
+  "selectors": {
+    "sm": {
+      "types": [
+        "AWS::StepFunctions::StateMachine"
+      ]
+    },
+    "ver": {
+      "types": [
+        "AWS::StepFunctions::StateMachineVersion"
+      ]
+    },
+    "alias": {
+      "types": [
+        "AWS::StepFunctions::StateMachineAlias"
+      ]
+    },
+    "api": {
+      "types": [
+        "AWS::ApiGateway::RestApi"
+      ]
+    },
+    "term": {
+      "types": [
+        "AWS::Events::Rule"
+      ],
+      "where": [
+        {
+          "path": "EventPattern",
+          "op": "regex",
+          "value": "(?i)(terminated|failed|aborted|timed_out|succeeded)"
+        }
+      ]
+    },
+    "sched": {
+      "types": [
+        "AWS::Events::Rule"
+      ],
+      "where": [
+        {
+          "path": "ScheduleExpression",
+          "op": "regex",
+          "value": "(?i)^\\s*(rate\\(\\s*1\\s+minute\\s*\\)|cron\\(\\s*\\*\\s+\\*\\s+\\*\\s+\\*\\s+[?*]\\s+\\*\\s*\\))\\s*$"
+        }
+      ]
+    },
+    "tag": {
+      "types": [
+        "AWS::Events::Rule"
+      ],
+      "where": [
+        {
+          "path": "EventPattern",
+          "op": "regex",
+          "value": "(?i)aws\\.tag"
+        }
+      ]
+    },
+    "scheduler": {
+      "types": [
+        "AWS::Scheduler::Schedule"
+      ]
+    },
+    "roles": {
+      "types": [
+        "AWS::IAM::Role"
+      ]
+    },
+    "role_se": {
+      "types": [
+        "AWS::IAM::Role"
+      ],
+      "where": [
+        {
+          "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+          "op": "glob_covers",
+          "value": "states:StartExecution"
+        }
+      ]
+    },
+    "pol_se": {
+      "types": [
+        "AWS::IAM::Policy",
+        "AWS::IAM::ManagedPolicy"
+      ],
+      "where": [
+        {
+          "path": "PolicyDocument.Statement.*.Action.*",
+          "op": "glob_covers",
+          "value": "states:StartExecution"
+        }
+      ]
+    },
+    "r_api": {
+      "types": [
+        "AWS::IAM::Role"
+      ],
+      "where": [
+        {
+          "path": "AssumeRolePolicyDocument.Statement.*.Principal.Service.*",
+          "op": "regex",
+          "value": "(?i)^apigateway(\\.[a-z0-9-]+)?\\.amazonaws\\.com$"
+        }
+      ]
+    },
+    "r_ev": {
+      "types": [
+        "AWS::IAM::Role"
+      ],
+      "where": [
+        {
+          "path": "AssumeRolePolicyDocument.Statement.*.Principal.Service.*",
+          "op": "regex",
+          "value": "(?i)^events(\\.[a-z0-9-]+)?\\.amazonaws\\.com$"
+        }
+      ]
+    },
+    "r_sch": {
+      "types": [
+        "AWS::IAM::Role"
+      ],
+      "where": [
+        {
+          "path": "AssumeRolePolicyDocument.Statement.*.Principal.Service.*",
+          "op": "regex",
+          "value": "(?i)^scheduler(\\.[a-z0-9-]+)?\\.amazonaws\\.com$"
+        }
+      ]
+    }
+  },
+  "checks": [
+    {
+      "id": "state_machine",
+      "kind": "exists",
+      "select": "sm",
+      "tier": "core",
+      "quote": "creates a standard Step Functions state machine"
+    },
+    {
+      "id": "standard_type",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "sm",
+          "cond": {
+            "path": "StateMachineType",
+            "op": "eq",
+            "value": "STANDARD"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "sm",
+          "cond": {
+            "path": "StateMachineType",
+            "op": "absent"
+          }
+        }
+      ],
+      "tier": "core",
+      "quote": "a standard Step Functions state machine",
+      "justify": "STANDARD is the default type"
+    },
+    {
+      "id": "pass_state",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "AWS::StepFunctions::StateMachine"
+            ],
+            "where": [
+              {
+                "path": "DefinitionString",
+                "op": "regex",
+                "value": "\"Type\"\\s*:\\s*\"Pass\""
+              },
+              {
+                "path": "DefinitionString",
+                "op": "regex",
+                "value": "(?s)\"States\"\\s*:\\s*\\{\\s*\"[^\"]+\"\\s*:\\s*\\{[^{}]*(\\{[^{}]*\\}[^{}]*)?\\}\\s*\\}"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "AWS::StepFunctions::StateMachine"
+            ],
+            "where": [
+              {
+                "path": "Definition",
+                "op": "regex",
+                "value": "\"Type\"\\s*:\\s*\"Pass\""
+              },
+              {
+                "path": "Definition.States",
+                "op": "len_eq",
+                "value": 1
+              }
+            ]
+          }
+        }
+      ],
+      "tier": "core",
+      "quote": "a single pass state"
+    },
+    {
+      "id": "result_one",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "sm",
+          "cond": {
+            "path": "DefinitionString",
+            "op": "regex",
+            "value": "\"Result\"\\s*:\\s*1([^0-9.]|$)"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "sm",
+          "cond": {
+            "path": "Definition",
+            "op": "regex",
+            "value": "\"Result\"\\s*:\\s*1([^0-9.]|$)"
+          }
+        }
+      ],
+      "tier": "core",
+      "quote": "returns a result of 1"
+    },
+    {
+      "id": "version",
+      "kind": "exists",
+      "select": "ver",
+      "tier": "core",
+      "quote": "along with a version"
+    },
+    {
+      "id": "alias_to_version",
+      "kind": "ref",
+      "from": "alias",
+      "to": "ver",
+      "tier": "core",
+      "quote": "an alias pointing to that version",
+      "bidirectional": false
+    },
+    {
+      "id": "alias",
+      "kind": "exists",
+      "select": "alias",
+      "tier": "core",
+      "quote": "an alias pointing to that version"
+    },
+    {
+      "id": "rest_api",
+      "kind": "exists",
+      "select": "api",
+      "tier": "core",
+      "quote": "an API Gateway REST API"
+    },
+    {
+      "id": "api_get_start_execution",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "api",
+          "cond": {
+            "path": "Body",
+            "op": "regex",
+            "value": "(?is)\"get\"\\s*:.*StartExecution"
+          }
+        },
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "AWS::ApiGateway::Method"
+            ],
+            "where": [
+              {
+                "path": "HttpMethod",
+                "op": "eq",
+                "value": "GET"
+              },
+              {
+                "path": "Integration.Uri",
+                "op": "regex",
+                "value": "(?i)StartExecution"
+              }
+            ]
+          },
+          "to": {
+            "types": [
+              "AWS::ApiGateway::Resource"
+            ]
+          }
+        }
+      ],
+      "tier": "core",
+      "quote": "an API Gateway REST API with a GET method on a path that starts an execution"
+    },
+    {
+      "id": "api_alias",
+      "kind": "any_of",
+      "tier": "core",
+      "quote": "integrates the alias with various event-driven triggers including an API Gateway REST API",
+      "checks": [
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "AWS::ApiGateway::Method"
+            ],
+            "where": [
+              {
+                "path": "HttpMethod",
+                "op": "eq",
+                "value": "GET"
+              }
+            ]
+          },
+          "to": "alias"
+        },
+        {
+          "kind": "ref",
+          "from": "api",
+          "to": "alias"
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "AWS::ApiGateway::Method"
+            ],
+            "where": [
+              {
+                "path": "HttpMethod",
+                "op": "eq",
+                "value": "GET"
+              }
+            ]
+          },
+          "cond": {
+            "path": "Integration.RequestTemplates",
+            "op": "regex",
+            "value": ":stateMachine:[^:\"\\s]+:[^:\"\\s0-9][^:\"\\s]*"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "api",
+          "cond": {
+            "path": "Body",
+            "op": "regex",
+            "value": ":stateMachine:[^:\"\\s]+:[^:\"\\s0-9][^:\"\\s]*"
+          }
+        }
+      ]
+    },
+    {
+      "id": "terminated_rule",
+      "kind": "exists",
+      "select": "term",
+      "tier": "core",
+      "quote": "an EventBridge rule that matches terminated state changes",
+      "justify": "terminal Step Functions execution statuses are an accepted reading of terminated state changes"
+    },
+    {
+      "id": "terminated_rule_alias",
+      "kind": "any_of",
+      "tier": "core",
+      "quote": "integrates the alias with various event-driven triggers",
+      "checks": [
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "AWS::Events::Rule"
+            ],
+            "where": [
+              {
+                "path": "EventPattern",
+                "op": "regex",
+                "value": "(?i)(terminated|failed|aborted|timed_out|succeeded)"
+              }
+            ]
+          },
+          "to": "alias"
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "AWS::Events::Rule"
+            ],
+            "where": [
+              {
+                "path": "EventPattern",
+                "op": "regex",
+                "value": "(?i)(terminated|failed|aborted|timed_out|succeeded)"
+              }
+            ]
+          },
+          "cond": {
+            "path": "Targets.*.Arn",
+            "op": "regex",
+            "value": ":stateMachine:[^:\"\\s]+:[^:\"\\s0-9][^:\"\\s]*"
+          }
+        }
+      ]
+    },
+    {
+      "id": "minute_rule",
+      "kind": "exists",
+      "select": "sched",
+      "tier": "core",
+      "quote": "a scheduled EventBridge rule that runs every minute"
+    },
+    {
+      "id": "minute_rule_disabled",
+      "kind": "attr",
+      "select": "sched",
+      "cond": {
+        "path": "State",
+        "op": "eq",
+        "value": "DISABLED"
+      },
+      "tier": "core",
+      "quote": "but is initially disabled"
+    },
+    {
+      "id": "minute_rule_alias",
+      "kind": "any_of",
+      "tier": "core",
+      "quote": "integrates the alias with various event-driven triggers",
+      "checks": [
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "AWS::Events::Rule"
+            ],
+            "where": [
+              {
+                "path": "ScheduleExpression",
+                "op": "regex",
+                "value": "(?i)^\\s*(rate\\(\\s*1\\s+minute\\s*\\)|cron\\(\\s*\\*\\s+\\*\\s+\\*\\s+\\*\\s+[?*]\\s+\\*\\s*\\))\\s*$"
+              }
+            ]
+          },
+          "to": "alias"
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "AWS::Events::Rule"
+            ],
+            "where": [
+              {
+                "path": "ScheduleExpression",
+                "op": "regex",
+                "value": "(?i)^\\s*(rate\\(\\s*1\\s+minute\\s*\\)|cron\\(\\s*\\*\\s+\\*\\s+\\*\\s+\\*\\s+[?*]\\s+\\*\\s*\\))\\s*$"
+              }
+            ]
+          },
+          "cond": {
+            "path": "Targets.*.Arn",
+            "op": "regex",
+            "value": ":stateMachine:[^:\"\\s]+:[^:\"\\s0-9][^:\"\\s]*"
+          }
+        }
+      ]
+    },
+    {
+      "id": "tag_rule",
+      "kind": "exists",
+      "select": "tag",
+      "tier": "core",
+      "quote": "an EventBridge rule that responds to tag events from the AWS Tag service"
+    },
+    {
+      "id": "tag_rule_alias",
+      "kind": "any_of",
+      "tier": "core",
+      "quote": "integrates the alias with various event-driven triggers",
+      "checks": [
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "AWS::Events::Rule"
+            ],
+            "where": [
+              {
+                "path": "EventPattern",
+                "op": "regex",
+                "value": "(?i)aws\\.tag"
+              }
+            ]
+          },
+          "to": "alias"
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "AWS::Events::Rule"
+            ],
+            "where": [
+              {
+                "path": "EventPattern",
+                "op": "regex",
+                "value": "(?i)aws\\.tag"
+              }
+            ]
+          },
+          "cond": {
+            "path": "Targets.*.Arn",
+            "op": "regex",
+            "value": ":stateMachine:[^:\"\\s]+:[^:\"\\s0-9][^:\"\\s]*"
+          }
+        }
+      ]
+    },
+    {
+      "id": "scheduler",
+      "kind": "exists",
+      "select": "scheduler",
+      "tier": "core",
+      "quote": "an EventBridge Scheduler schedule"
+    },
+    {
+      "id": "scheduler_every_minute",
+      "kind": "attr",
+      "select": "scheduler",
+      "cond": {
+        "path": "ScheduleExpression",
+        "op": "regex",
+        "value": "(?i)^\\s*(rate\\(\\s*1\\s+minute\\s*\\)|cron\\(\\s*\\*\\s+\\*\\s+\\*\\s+\\*\\s+[?*]\\s+\\*\\s*\\))\\s*$"
+      },
+      "tier": "core",
+      "quote": "that runs every minute"
+    },
+    {
+      "id": "scheduler_flexible_off",
+      "kind": "attr",
+      "select": "scheduler",
+      "cond": {
+        "path": "FlexibleTimeWindow.Mode",
+        "op": "eq",
+        "value": "OFF"
+      },
+      "tier": "core",
+      "quote": "with flexible time windows disabled",
+      "justify": "disabled flexible time window means Mode OFF"
+    },
+    {
+      "id": "scheduler_alias",
+      "kind": "any_of",
+      "tier": "core",
+      "quote": "integrates the alias with various event-driven triggers",
+      "checks": [
+        {
+          "kind": "ref",
+          "from": "scheduler",
+          "to": "alias"
+        },
+        {
+          "kind": "attr",
+          "select": "scheduler",
+          "cond": {
+            "path": "Target.Arn",
+            "op": "regex",
+            "value": ":stateMachine:[^:\"\\s]+:[^:\"\\s0-9][^:\"\\s]*"
+          }
+        }
+      ]
+    },
+    {
+      "id": "own_roles",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "with each trigger requiring its own IAM role",
+      "justify": "three EventBridge rules, each with its own role",
+      "min": 3,
+      "distinct_path": "Targets.*.RoleArn",
+      "select": {
+        "types": [
+          "AWS::Events::Rule"
+        ]
+      }
+    },
+    {
+      "id": "api_role",
+      "kind": "any_of",
+      "tier": "core",
+      "quote": "with each trigger requiring its own IAM role",
+      "checks": [
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "AWS::ApiGateway::Method"
+            ]
+          },
+          "to": "r_api"
+        },
+        {
+          "kind": "ref",
+          "from": "api",
+          "to": "r_api"
+        }
+      ]
+    },
+    {
+      "id": "events_roles",
+      "kind": "exists",
+      "select": "r_ev",
+      "tier": "core",
+      "quote": "with each trigger requiring its own IAM role",
+      "justify": "three EventBridge rules, each with its own role",
+      "min": 3
+    },
+    {
+      "id": "scheduler_role",
+      "kind": "ref",
+      "tier": "core",
+      "quote": "with each trigger requiring its own IAM role",
+      "from": "scheduler",
+      "to": "r_sch"
+    },
+    {
+      "id": "start_execution_permissions",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "exists",
+          "select": "role_se",
+          "min": 5
+        },
+        {
+          "kind": "exists",
+          "select": "pol_se",
+          "min": 5
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "AWS::IAM::Role"
+            ],
+            "where": [
+              {
+                "path": "ManagedPolicyArns",
+                "op": "regex",
+                "value": "(?i)StepFunctionsFullAccess"
+              }
+            ]
+          },
+          "min": 5
+        }
+      ],
+      "tier": "core",
+      "quote": "with the necessary permissions to start executions on the alias",
+      "justify": "five triggers each need start-execution permission"
+    },
+    {
+      "id": "permissions_on_alias",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "ref",
+          "from": "role_se",
+          "to": "alias",
+          "bidirectional": true
+        },
+        {
+          "kind": "ref",
+          "from": "pol_se",
+          "to": "alias",
+          "bidirectional": true
+        },
+        {
+          "kind": "attr",
+          "select": "role_se",
+          "cond": {
+            "path": "Policies.*.PolicyDocument.Statement.*",
+            "op": "match",
+            "value": [
+              {
+                "path": "Action.*",
+                "op": "glob_covers",
+                "value": "states:StartExecution"
+              },
+              {
+                "path": "Resource.*",
+                "op": "regex",
+                "value": ":stateMachine:[^:\"\\s]+:[^:\"\\s0-9][^:\"\\s]*"
+              }
+            ]
+          }
+        }
+      ],
+      "tier": "detail",
+      "quote": "permissions to start executions on the alias"
+    },
+    {
+      "id": "x_alias_all_at_once",
+      "kind": "attr",
+      "select": "alias",
+      "cond": {
+        "path": "DeploymentPreference.Type",
+        "op": "eq",
+        "value": "ALL_AT_ONCE"
+      },
+      "tier": "extra"
+    },
+    {
+      "id": "extra_type_aws_apigateway_deployment",
+      "kind": "exists",
+      "tier": "extra",
+      "select": {
+        "types": [
+          "AWS::ApiGateway::Deployment"
+        ],
+        "where": []
+      }
+    },
+    {
+      "id": "extra_type_aws_apigateway_stage",
+      "kind": "exists",
+      "tier": "extra",
+      "select": {
+        "types": [
+          "AWS::ApiGateway::Stage"
+        ],
+        "where": []
+      }
+    }
+  ],
+  "notes": "Specs run against SAM-expanded types (state machine, alias, rules, scheduler, API Gateway REST API). API method/path are matched in the REST API Body or Method resources; the path name is not stated by the prompt so it is not checked. The ground truth's role ARN placeholder (doesNotExist) is not tested. A literal alias ARN (stateMachine:name:qualifier) is accepted wherever a reference to the alias is. A Result of {\"value\": 1} fails result_one because the prompt says a result of 1. api_role and scheduler_role require the API integration (Method credentials or REST API Body) and the schedule target to reference a role trusted by that service, not merely that such a role exists. Scored on 5 real candidates: GLM53F returns {\"value\": 1} (fails result_one) and Gemini38F shares one role across its three EventBridge rules (fails own_roles, events_roles, start_execution_permissions); both contradict the prompt, so the checks stay."
+}

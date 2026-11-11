@@ -1,0 +1,306 @@
+{
+ "meta": {
+  "lang": "tf",
+  "mode": "plan",
+  "warnings": [],
+  "gt_hash": "73e7222be35fa894fcbee3e42dff9706bac6054f0a89431c27d7429bd7fcace5",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "aws_kms_key.this",
+   "cfg": "aws_kms_key.this",
+   "type": "aws_kms_key",
+   "values": {
+    "bypass_policy_lockout_safety_check": false,
+    "custom_key_store_id": null,
+    "customer_master_key_spec": "SYMMETRIC_DEFAULT",
+    "deletion_window_in_days": 7,
+    "description": "CMK for the auto-generated S3 bucket",
+    "enable_key_rotation": true,
+    "is_enabled": true,
+    "key_usage": "ENCRYPT_DECRYPT",
+    "region": "us-east-1",
+    "tags": null,
+    "timeouts": null,
+    "xks_key_id": null
+   },
+   "refs": []
+  },
+  {
+   "id": "aws_s3_bucket.this",
+   "cfg": "aws_s3_bucket.this",
+   "type": "aws_s3_bucket",
+   "values": {
+    "force_destroy": false,
+    "object_lock_enabled": false,
+    "region": "us-east-1",
+    "tags": null,
+    "timeouts": null
+   },
+   "refs": []
+  },
+  {
+   "id": "aws_s3_bucket_public_access_block.this",
+   "cfg": "aws_s3_bucket_public_access_block.this",
+   "type": "aws_s3_bucket_public_access_block",
+   "values": {
+    "block_public_acls": true,
+    "block_public_policy": true,
+    "ignore_public_acls": true,
+    "region": "us-east-1",
+    "restrict_public_buckets": true,
+    "skip_destroy": null
+   },
+   "refs": [
+    "aws_s3_bucket.this"
+   ]
+  },
+  {
+   "id": "aws_s3_bucket_server_side_encryption_configuration.this",
+   "cfg": "aws_s3_bucket_server_side_encryption_configuration.this",
+   "type": "aws_s3_bucket_server_side_encryption_configuration",
+   "values": {
+    "expected_bucket_owner": null,
+    "region": "us-east-1",
+    "rule": [
+     {
+      "apply_server_side_encryption_by_default": [
+       {
+        "sse_algorithm": "aws:kms"
+       }
+      ]
+     }
+    ]
+   },
+   "refs": [
+    "aws_kms_key.this",
+    "aws_s3_bucket.this"
+   ]
+  },
+  {
+   "id": "__parameter__.bucket",
+   "cfg": "__parameter__.bucket",
+   "type": "__parameter__",
+   "values": {
+    "name": "bucket",
+    "default": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.bucket_force_destroy",
+   "cfg": "__parameter__.bucket_force_destroy",
+   "type": "__parameter__",
+   "values": {
+    "name": "bucket_force_destroy",
+    "default": false
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.bucket_object_lock_enabled",
+   "cfg": "__parameter__.bucket_object_lock_enabled",
+   "type": "__parameter__",
+   "values": {
+    "name": "bucket_object_lock_enabled",
+    "default": false
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.bucket_policies",
+   "cfg": "__parameter__.bucket_policies",
+   "type": "__parameter__",
+   "values": {
+    "name": "bucket_policies",
+    "default": {}
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.tags",
+   "cfg": "__parameter__.tags",
+   "type": "__parameter__",
+   "values": {
+    "name": "tags",
+    "default": {}
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.bucket_arn",
+   "cfg": "__output__.bucket_arn",
+   "type": "__output__",
+   "values": {
+    "name": "bucket_arn",
+    "value": null,
+    "description": "ARN of the bucket."
+   },
+   "refs": [
+    "aws_s3_bucket.this"
+   ]
+  },
+  {
+   "id": "__output__.bucket_id",
+   "cfg": "__output__.bucket_id",
+   "type": "__output__",
+   "values": {
+    "name": "bucket_id",
+    "value": null,
+    "description": "Name of the bucket."
+   },
+   "refs": [
+    "aws_s3_bucket.this"
+   ]
+  },
+  {
+   "id": "__declared__.aws_s3_bucket.this",
+   "cfg": "aws_s3_bucket.this",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_s3_bucket",
+    "name": "this",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "bucket": "${var.bucket}",
+     "force_destroy": false,
+     "object_lock_enabled": false,
+     "tags": [
+      {}
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_s3_bucket_public_access_block.this",
+   "cfg": "aws_s3_bucket_public_access_block.this",
+   "type": "__declared__",
+   "refs": [
+    "aws_s3_bucket.this"
+   ],
+   "values": {
+    "type": "aws_s3_bucket_public_access_block",
+    "name": "this",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "bucket": "${aws_s3_bucket.this.id}",
+     "block_public_acls": true,
+     "block_public_policy": true,
+     "ignore_public_acls": true,
+     "restrict_public_buckets": true
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_kms_key.this",
+   "cfg": "aws_kms_key.this",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_kms_key",
+    "name": "this",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "description": "${\"CMK for the ${coalesce(var.bucket, \"auto-generated\")} S3 bucket\"}",
+     "deletion_window_in_days": 7,
+     "enable_key_rotation": true
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_s3_bucket_server_side_encryption_configuration.this",
+   "cfg": "aws_s3_bucket_server_side_encryption_configuration.this",
+   "type": "__declared__",
+   "refs": [
+    "aws_kms_key.this",
+    "aws_s3_bucket.this"
+   ],
+   "values": {
+    "type": "aws_s3_bucket_server_side_encryption_configuration",
+    "name": "this",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "bucket": "${aws_s3_bucket.this.id}",
+     "rule": [
+      {
+       "apply_server_side_encryption_by_default": [
+        {
+         "sse_algorithm": "aws:kms",
+         "kms_master_key_id": "${aws_kms_key.this.arn}"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.data.aws_iam_policy_document.this",
+   "cfg": "data.aws_iam_policy_document.this",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "data.aws_iam_policy_document",
+    "name": "this",
+    "gated": true,
+    "gate": "local.create_s3_bucket_policy ? var.bucket_policies : {}",
+    "properties": {
+     "for_each": "${local.create_s3_bucket_policy ? var.bucket_policies : {}}",
+     "policy_id": "${each.value.id}",
+     "version": "${each.value.version}",
+     "dynamic": {
+      "statement": {
+       "for_each": "${each.value.statements}",
+       "content": [
+        {
+         "sid": "${statement.value.sid}",
+         "actions": "${statement.value.actions}",
+         "effect": "${statement.value.effect}",
+         "resources": "${statement.value.resources}",
+         "dynamic": {
+          "principals": {
+           "for_each": "${statement.value.principals}",
+           "iterator": "${principal}",
+           "content": [
+            {
+             "identifiers": "${principal.value.identifiers}",
+             "type": "${principal.value.type}"
+            }
+           ]
+          }
+         }
+        }
+       ]
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_s3_bucket_policy.this",
+   "cfg": "aws_s3_bucket_policy.this",
+   "type": "__declared__",
+   "refs": [
+    "aws_s3_bucket.this",
+    "data.aws_iam_policy_document.this"
+   ],
+   "values": {
+    "type": "aws_s3_bucket_policy",
+    "name": "this",
+    "gated": true,
+    "gate": "local.create_s3_bucket_policy ? data.aws_iam_policy_document.this : {}",
+    "properties": {
+     "for_each": "${local.create_s3_bucket_policy ? data.aws_iam_policy_document.this : {}}",
+     "bucket": "${aws_s3_bucket.this.id}",
+     "policy": "${each.value.json}"
+    }
+   }
+  }
+ ]
+}

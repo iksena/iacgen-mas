@@ -1,0 +1,379 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "b795f23bf3eee30cb758e04abdc5a5eee475b3eca9b7cbb897c9ec1c603d312a",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "IAMRoleForDLM",
+   "cfg": "IAMRoleForDLM",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "dlm.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Description": "A role required for DLM.",
+    "Policies": [
+     {
+      "PolicyName": "EC2Access",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "ec2:CreateSnapshot",
+          "ec2:CreateSnapshots",
+          "ec2:DeleteSnapshot",
+          "ec2:DescribeVolumes",
+          "ec2:DescribeInstances",
+          "ec2:DescribeSnapshots"
+         ],
+         "Resource": [
+          "*"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "ec2:CreateTags"
+         ],
+         "Resource": [
+          "arn:aws:ec2:*::snapshot/*"
+         ]
+        }
+       ]
+      }
+     }
+    ],
+    "RoleName": "WebServers-DataLifecycleManager-us-east-1",
+    "Tags": [
+     {
+      "Key": "environment",
+      "Value": "production"
+     },
+     {
+      "Key": "createdby",
+      "Value": "aws-cloudformation-templates"
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "DataLifecycleManager",
+   "cfg": "DataLifecycleManager",
+   "type": "AWS::DLM::LifecyclePolicy",
+   "values": {
+    "Description": "Lifecycle Policy",
+    "ExecutionRoleArn": {
+     "ref": "IAMRoleForDLM",
+     "attr": "Arn"
+    },
+    "PolicyDetails": {
+     "ResourceTypes": [
+      "VOLUME"
+     ],
+     "Schedules": [
+      {
+       "CopyTags": true,
+       "CreateRule": {
+        "Interval": 24,
+        "IntervalUnit": "HOURS",
+        "Times": [
+         "17:00"
+        ]
+       },
+       "Name": "Daily Snapshots",
+       "RetainRule": {
+        "Count": 7
+       }
+      }
+     ],
+     "TargetTags": [
+      {
+       "Key": "environment",
+       "Value": "production"
+      },
+      {
+       "Key": "createdby",
+       "Value": "aws-cloudformation-templates"
+      }
+     ]
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "policy-WebServers-us-east-1"
+     },
+     {
+      "Key": "environment",
+      "Value": "production"
+     },
+     {
+      "Key": "createdby",
+      "Value": "aws-cloudformation-templates"
+     }
+    ],
+    "State": "ENABLED"
+   },
+   "refs": [
+    "IAMRoleForDLM"
+   ]
+  },
+  {
+   "id": "__parameter__.DailySnapshotScheduledAt",
+   "cfg": "__parameter__.DailySnapshotScheduledAt",
+   "type": "__parameter__",
+   "values": {
+    "name": "DailySnapshotScheduledAt",
+    "type": "String",
+    "default": "17:00",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.SnapshotInterval",
+   "cfg": "__parameter__.SnapshotInterval",
+   "type": "__parameter__",
+   "values": {
+    "name": "SnapshotInterval",
+    "type": "Number",
+    "default": 24,
+    "allowed_values": [
+     2,
+     3,
+     4,
+     6,
+     8,
+     12,
+     24
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.SnapshotRetainRule",
+   "cfg": "__parameter__.SnapshotRetainRule",
+   "type": "__parameter__",
+   "values": {
+    "name": "SnapshotRetainRule",
+    "type": "Number",
+    "default": 7,
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.LogicalName",
+   "cfg": "__parameter__.LogicalName",
+   "type": "__parameter__",
+   "values": {
+    "name": "LogicalName",
+    "type": "String",
+    "default": "WebServers",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.Environment",
+   "cfg": "__parameter__.Environment",
+   "type": "__parameter__",
+   "values": {
+    "name": "Environment",
+    "type": "String",
+    "default": "production",
+    "allowed_values": [
+     "production",
+     "test",
+     "development"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.TagKey",
+   "cfg": "__parameter__.TagKey",
+   "type": "__parameter__",
+   "values": {
+    "name": "TagKey",
+    "type": "String",
+    "default": "createdby",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.TagValue",
+   "cfg": "__parameter__.TagValue",
+   "type": "__parameter__",
+   "values": {
+    "name": "TagValue",
+    "type": "String",
+    "default": "aws-cloudformation-templates",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.IAMRoleForDLM",
+   "cfg": "IAMRoleForDLM",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "IAMRoleForDLM",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "dlm.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Description": "A role required for DLM.",
+     "Policies": [
+      {
+       "PolicyName": "EC2Access",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "ec2:CreateSnapshot",
+           "ec2:CreateSnapshots",
+           "ec2:DeleteSnapshot",
+           "ec2:DescribeVolumes",
+           "ec2:DescribeInstances",
+           "ec2:DescribeSnapshots"
+          ],
+          "Resource": [
+           "*"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "ec2:CreateTags"
+          ],
+          "Resource": [
+           "arn:aws:ec2:*::snapshot/*"
+          ]
+         }
+        ]
+       }
+      }
+     ],
+     "RoleName": "WebServers-DataLifecycleManager-us-east-1",
+     "Tags": [
+      {
+       "Key": "environment",
+       "Value": "production"
+      },
+      {
+       "Key": "createdby",
+       "Value": "aws-cloudformation-templates"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::DLM::LifecyclePolicy.DataLifecycleManager",
+   "cfg": "DataLifecycleManager",
+   "type": "__declared__",
+   "refs": [
+    "IAMRoleForDLM"
+   ],
+   "values": {
+    "type": "AWS::DLM::LifecyclePolicy",
+    "name": "DataLifecycleManager",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Description": "Lifecycle Policy",
+     "ExecutionRoleArn": {
+      "ref": "IAMRoleForDLM",
+      "attr": "Arn"
+     },
+     "PolicyDetails": {
+      "ResourceTypes": [
+       "VOLUME"
+      ],
+      "Schedules": [
+       {
+        "CopyTags": true,
+        "CreateRule": {
+         "Interval": 24,
+         "IntervalUnit": "HOURS",
+         "Times": [
+          "17:00"
+         ]
+        },
+        "Name": "Daily Snapshots",
+        "RetainRule": {
+         "Count": 7
+        }
+       }
+      ],
+      "TargetTags": [
+       {
+        "Key": "environment",
+        "Value": "production"
+       },
+       {
+        "Key": "createdby",
+        "Value": "aws-cloudformation-templates"
+       }
+      ]
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "policy-WebServers-us-east-1"
+      },
+      {
+       "Key": "environment",
+       "Value": "production"
+      },
+      {
+       "Key": "createdby",
+       "Value": "aws-cloudformation-templates"
+      }
+     ],
+     "State": "ENABLED"
+    }
+   }
+  }
+ ]
+}

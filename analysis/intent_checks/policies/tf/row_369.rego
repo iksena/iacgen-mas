@@ -226,7 +226,7 @@ spec := {
        "bucket"
       ],
       "op": "regex",
-      "value": "^log[12][ab]\\.veerum-replica1-\\d{12}$"
+      "value": "^log[12][ab]\\.veerum-(\\d{12}-)?replica1-\\d{12}$"
      }
     ]
    },
@@ -248,7 +248,7 @@ spec := {
        "bucket"
       ],
       "op": "regex",
-      "value": "^log[12][ab]\\.veerum-replica2-\\d{12}$"
+      "value": "^log[12][ab]\\.veerum-(\\d{12}-)?replica2-\\d{12}$"
      }
     ]
    },
@@ -736,31 +736,33 @@ spec := {
   },
   {
    "id": "replica_reencryption_key",
-   "kind": "any_of",
+   "kind": "attr",
    "tier": "detail",
    "quote": "re-encrypting with that region's replica key",
-   "checks": [
-    {
-     "kind": "ref",
-     "from": "src",
-     "to": {
-      "types": [
-       "aws_kms_key"
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": [
+       "type"
       ],
-      "where": []
+      "op": "in",
+      "value": [
+       "aws_s3_bucket",
+       "aws_s3_bucket_replication_configuration"
+      ]
      }
-    },
-    {
-     "kind": "ref",
-     "from": "repl_cfg",
-     "to": {
-      "types": [
-       "aws_kms_key"
-      ],
-      "where": []
-     }
-    }
-   ]
+    ]
+   },
+   "cond": {
+    "path": [
+     "properties"
+    ],
+    "op": "contains",
+    "value": "replica_kms_key_id"
+   }
   },
   {
    "id": "replication_role_s3_trust",
@@ -889,7 +891,7 @@ spec := {
          "policy"
         ],
         "op": "regex",
-        "value": "(?i)s3:(\\*|Get\\*|GetObjectVersion\\*?|GetObjectVersionForReplication)\\b"
+        "value": "(?i)s3:(\\*|Get\\*|GetObjectVersion\\*?|GetObjectVersionForReplication)([^A-Za-z0-9_]|$)"
        }
       ]
      }
@@ -945,7 +947,7 @@ spec := {
          "policy"
         ],
         "op": "regex",
-        "value": "(?i)s3:(\\*|Replicate\\*|ReplicateObject)\\b"
+        "value": "(?i)s3:(\\*|Replicate\\*|ReplicateObject)([^A-Za-z0-9_]|$)"
        },
        {
         "path": [
@@ -953,7 +955,7 @@ spec := {
          "policy"
         ],
         "op": "regex",
-        "value": "(?i)s3:(\\*|Replicate\\*|ReplicateDelete)\\b"
+        "value": "(?i)s3:(\\*|Replicate\\*|ReplicateDelete)([^A-Za-z0-9_]|$)"
        }
       ]
      }
@@ -1019,7 +1021,7 @@ spec := {
          "policy"
         ],
         "op": "regex",
-        "value": "(?i)kms:(\\*|Decrypt)\\b"
+        "value": "(?i)kms:(\\*|Decrypt)([^A-Za-z0-9_]|$)"
        },
        {
         "path": [
@@ -1027,7 +1029,7 @@ spec := {
          "policy"
         ],
         "op": "regex",
-        "value": "(?i)kms:(\\*|Encrypt)\\b"
+        "value": "(?i)kms:(\\*|Encrypt)([^A-Za-z0-9_]|$)"
        }
       ]
      }

@@ -1,0 +1,639 @@
+{
+ "lang": "tf",
+ "row_number": 93,
+ "source_hash": {
+  "gt": "71544722fa7d50911aeefd5835bcb315519e8f683b7e2c3d5048fd1fb5a5342d",
+  "prompt": "7451c349b329bb2f83a922d5196103fe938dd057cd057a101eaa0e9878e29428"
+ },
+ "selectors": {},
+ "checks": [
+  {
+   "id": "vpc_cidr",
+   "tier": "core",
+   "quote": "a VPC CIDR defaulting to \"10.0.0.0/16\"",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_vpc"
+    ]
+   },
+   "cond": {
+    "path": "cidr_block",
+    "op": "eq",
+    "value": "10.0.0.0/16"
+   }
+  },
+  {
+   "id": "vpc_name",
+   "tier": "core",
+   "quote": "The VPC must be named using the environment tag value followed by \"-vpc\"",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_vpc"
+    ]
+   },
+   "cond": {
+    "path": "tags.Name",
+    "op": "eq",
+    "value": "test-vpc"
+   },
+   "justify": "env tag defaults to test"
+  },
+  {
+   "id": "region_variable",
+   "tier": "detail",
+   "quote": "input variables for an AWS region defaulting to \"us-east-1\"",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": "default",
+      "op": "eq",
+      "value": "us-east-1"
+     }
+    ]
+   }
+  },
+  {
+   "id": "env_variable",
+   "tier": "detail",
+   "quote": "an environment tag (\"env\") defaulting to \"test\"",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": "name",
+      "op": "eq",
+      "value": "env"
+     }
+    ]
+   },
+   "cond": {
+    "path": "default",
+    "op": "eq",
+    "value": "test"
+   }
+  },
+  {
+   "id": "common_tags",
+   "tier": "detail",
+   "quote": "common tags containing an Owner of \"Valerii Vasianovych\" and Project of \"Terraform AWS\"",
+   "kind": "all_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_vpc"
+      ]
+     },
+     "cond": {
+      "path": "tags.Owner",
+      "op": "eq",
+      "value": "Valerii Vasianovych"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_vpc"
+      ]
+     },
+     "cond": {
+      "path": "tags.Project",
+      "op": "eq",
+      "value": "Terraform AWS"
+     }
+    }
+   ]
+  },
+  {
+   "id": "vpc_region_tag",
+   "tier": "detail",
+   "quote": "carry a custom tag recording the current AWS region merged with the common tags",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_vpc"
+    ]
+   },
+   "cond": {
+    "path": "tags",
+    "op": "regex",
+    "value": "us-east-1"
+   },
+   "justify": "region default us-east-1"
+  },
+  {
+   "id": "igw_attached",
+   "tier": "core",
+   "quote": "attach an Internet Gateway",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_internet_gateway"
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_vpc"
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_internet_gateway_attachment"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "igw_name",
+   "tier": "detail",
+   "quote": "an Internet Gateway named using the environment tag value followed by \"-igw\"",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_internet_gateway"
+    ]
+   },
+   "cond": {
+    "path": "tags.Name",
+    "op": "eq",
+    "value": "test-igw"
+   },
+   "justify": "env tag defaults to test"
+  },
+  {
+   "id": "public_cidrs",
+   "tier": "core",
+   "quote": "public subnet CIDRs defaulting to [\"10.0.10.0/24\", \"10.0.11.0/24\"]",
+   "kind": "all_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": "cidr_block",
+        "op": "eq",
+        "value": "10.0.10.0/24"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": "cidr_block",
+        "op": "eq",
+        "value": "10.0.11.0/24"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "private_cidrs",
+   "tier": "core",
+   "quote": "private subnet CIDRs defaulting to [\"10.0.20.0/24\", \"10.0.21.0/24\"]",
+   "kind": "all_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": "cidr_block",
+        "op": "eq",
+        "value": "10.0.20.0/24"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": "cidr_block",
+        "op": "eq",
+        "value": "10.0.21.0/24"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "public_no_public_ip",
+   "tier": "core",
+   "quote": "Public subnets must not map public IPs on launch",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_subnet"
+    ],
+    "where": [
+     {
+      "path": "cidr_block",
+      "op": "in",
+      "value": [
+       "10.0.10.0/24",
+       "10.0.11.0/24"
+      ]
+     }
+    ]
+   },
+   "cond": {
+    "path": "map_public_ip_on_launch",
+    "op": "falsy"
+   },
+   "quantifier": "all"
+  },
+  {
+   "id": "public_multi_az",
+   "tier": "core",
+   "quote": "be spread across the available availability zones in the region",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_subnet"
+    ],
+    "where": [
+     {
+      "path": "cidr_block",
+      "op": "in",
+      "value": [
+       "10.0.10.0/24",
+       "10.0.11.0/24"
+      ]
+     }
+    ]
+   },
+   "min": 2,
+   "distinct_path": "availability_zone",
+   "justify": "two public subnets in different AZs"
+  },
+  {
+   "id": "public_subnet_names",
+   "tier": "detail",
+   "quote": "be named using the environment tag value followed by \"-public-subnet-\" and a sequential index",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_subnet"
+    ],
+    "where": [
+     {
+      "path": "tags.Name",
+      "op": "regex",
+      "value": "^test-public-subnet-[0-9]+$"
+     }
+    ]
+   },
+   "min": 2,
+   "justify": "two public subnets, env defaults to test"
+  },
+  {
+   "id": "private_subnet_names",
+   "tier": "detail",
+   "quote": "private subnets named using the environment tag value followed by \"-private-subnet-\" plus a sequential index",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_subnet"
+    ],
+    "where": [
+     {
+      "path": "tags.Name",
+      "op": "regex",
+      "value": "^test-private-subnet-[0-9]+$"
+     }
+    ]
+   },
+   "min": 2,
+   "justify": "two private subnets, env defaults to test"
+  },
+  {
+   "id": "public_rt_default_route",
+   "tier": "core",
+   "quote": "route default internet traffic (\"0.0.0.0/0\") through a single shared public route table",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route_table"
+      ],
+      "where": [
+       {
+        "path": "route.*.cidr_block",
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_internet_gateway"
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route"
+      ],
+      "where": [
+       {
+        "path": "destination_cidr_block",
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_internet_gateway"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "public_rt_name",
+   "tier": "detail",
+   "quote": "a single shared public route table named using the environment tag value followed by \"-route-public-subnets\"",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_route_table"
+    ],
+    "where": [
+     {
+      "path": "tags.Name",
+      "op": "eq",
+      "value": "test-route-public-subnets"
+     }
+    ]
+   }
+  },
+  {
+   "id": "public_rt_assoc",
+   "tier": "detail",
+   "quote": "route default internet traffic (\"0.0.0.0/0\") through a single shared public route table",
+   "kind": "ref",
+   "from": {
+    "types": [
+     "aws_route_table_association"
+    ]
+   },
+   "to": {
+    "types": [
+     "aws_route_table"
+    ],
+    "where": [
+     {
+      "path": "tags.Name",
+      "op": "eq",
+      "value": "test-route-public-subnets"
+     }
+    ]
+   }
+  },
+  {
+   "id": "eips",
+   "tier": "core",
+   "quote": "dedicated Elastic IPs and NAT Gateways matching the count of private subnets",
+   "kind": "all_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_eip"
+      ]
+     },
+     "min": 2
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_nat_gateway"
+      ]
+     },
+     "min": 2
+    }
+   ],
+   "justify": "two private subnets by default"
+  },
+  {
+   "id": "eip_nat_names",
+   "tier": "detail",
+   "quote": "named using the environment tag value followed by \"-nat-eip-\" and \"-nat-gw-\" plus a sequential index",
+   "kind": "all_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_eip"
+      ],
+      "where": [
+       {
+        "path": "tags.Name",
+        "op": "regex",
+        "value": "^test-nat-eip-[0-9]+$"
+       }
+      ]
+     },
+     "min": 2
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_nat_gateway"
+      ],
+      "where": [
+       {
+        "path": "tags.Name",
+        "op": "regex",
+        "value": "^test-nat-gw-[0-9]+$"
+       }
+      ]
+     },
+     "min": 2
+    }
+   ],
+   "justify": "two NATs and EIPs, env defaults to test"
+  },
+  {
+   "id": "nat_in_public",
+   "tier": "core",
+   "quote": "placed inside the corresponding public subnets",
+   "kind": "ref",
+   "from": {
+    "types": [
+     "aws_nat_gateway"
+    ]
+   },
+   "to": {
+    "types": [
+     "aws_subnet"
+    ],
+    "where": [
+     {
+      "path": "cidr_block",
+      "op": "in",
+      "value": [
+       "10.0.10.0/24",
+       "10.0.11.0/24"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "nat_uses_eip",
+   "tier": "detail",
+   "quote": "dedicated Elastic IPs and NAT Gateways",
+   "kind": "ref",
+   "from": {
+    "types": [
+     "aws_nat_gateway"
+    ]
+   },
+   "to": {
+    "types": [
+     "aws_eip"
+    ]
+   }
+  },
+  {
+   "id": "private_rts",
+   "tier": "detail",
+   "quote": "separate private route tables named using the environment tag value followed by \"-route-private-subnets-\" plus a sequential index",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_route_table"
+    ],
+    "where": [
+     {
+      "path": "tags.Name",
+      "op": "regex",
+      "value": "^test-route-private-subnets-[0-9]+$"
+     }
+    ]
+   },
+   "min": 2,
+   "justify": "two private route tables"
+  },
+  {
+   "id": "private_rt_nat_route",
+   "tier": "core",
+   "quote": "that route outbound traffic to their respective NAT Gateway",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route_table"
+      ],
+      "where": [
+       {
+        "path": "tags.Name",
+        "op": "regex",
+        "value": "^test-route-private-subnets-[0-9]+$"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_nat_gateway"
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route"
+      ],
+      "where": [
+       {
+        "path": "destination_cidr_block",
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_nat_gateway"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "private_rt_assoc",
+   "tier": "detail",
+   "quote": "separate private route tables",
+   "kind": "ref",
+   "from": {
+    "types": [
+     "aws_route_table_association"
+    ]
+   },
+   "to": {
+    "types": [
+     "aws_route_table"
+    ],
+    "where": [
+     {
+      "path": "tags.Name",
+      "op": "regex",
+      "value": "^test-route-private-subnets-[0-9]+$"
+     }
+    ]
+   }
+  }
+ ],
+ "notes": "Region input variable checked by its default only (the prompt does not name it)."
+}

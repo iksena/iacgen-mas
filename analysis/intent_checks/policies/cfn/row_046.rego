@@ -1,0 +1,426 @@
+package intent.cfn.row_046
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {
+  "sm": {
+   "types": [
+    "AWS::StepFunctions::StateMachine"
+   ],
+   "where": []
+  },
+  "fn": {
+   "types": [
+    "AWS::Lambda::Function"
+   ],
+   "where": []
+  },
+  "role": {
+   "types": [
+    "AWS::IAM::Role"
+   ],
+   "where": []
+  },
+  "fn_term": {
+   "types": [
+    "AWS::Lambda::Function"
+   ],
+   "where": [
+    {
+     "path": [
+      "Code",
+      "ZipFile"
+     ],
+     "op": "regex",
+     "value": "(?i)terminate_?instances"
+    }
+   ]
+  },
+  "fn_health": {
+   "types": [
+    "AWS::Lambda::Function"
+   ],
+   "where": [
+    {
+     "path": [
+      "Code",
+      "ZipFile"
+     ],
+     "op": "regex",
+     "value": "(?i)describe_?services|describe_?tasks|list_?tasks"
+    }
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "sm",
+   "tier": "core",
+   "quote": "a chaos engineering workflow using Step Functions",
+   "kind": "exists",
+   "select": "sm"
+  },
+  {
+   "id": "wait_300",
+   "tier": "core",
+   "quote": "wait 300 seconds",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "sm",
+     "cond": {
+      "path": [
+       "DefinitionString"
+      ],
+      "op": "regex",
+      "value": "(?s)\"?Seconds\"?\\s*:\\s*300\\b"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "sm",
+     "cond": {
+      "path": [
+       "Definition"
+      ],
+      "op": "regex",
+      "value": "(?s)\"?Seconds\"?\\s*:\\s*300\\b"
+     }
+    }
+   ]
+  },
+  {
+   "id": "wait_between_tasks",
+   "tier": "detail",
+   "quote": "terminate a specific EC2 instance, wait 300 seconds, then check the health",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "sm",
+     "cond": {
+      "path": [
+       "DefinitionString"
+      ],
+      "op": "regex",
+      "value": "(?s)\"?Type\"?\\s*:\\s*\"?Task.*\"?Type\"?\\s*:\\s*\"?Wait.*\"?Type\"?\\s*:\\s*\"?Task"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "sm",
+     "cond": {
+      "path": [
+       "Definition"
+      ],
+      "op": "regex",
+      "value": "\"?Type\"?\\s*:\\s*\"?Wait"
+     }
+    }
+   ],
+   "justify": "the prompt orders the steps: a task, the wait, then a task"
+  },
+  {
+   "id": "two_fns",
+   "tier": "core",
+   "quote": "two Lambda functions",
+   "kind": "exists",
+   "select": "fn",
+   "min": 2
+  },
+  {
+   "id": "terminate_fn",
+   "tier": "core",
+   "quote": "one to terminate the instance",
+   "kind": "exists",
+   "select": "fn_term"
+  },
+  {
+   "id": "health_fn",
+   "tier": "core",
+   "quote": "one to perform the health check",
+   "kind": "exists",
+   "select": "fn_health"
+  },
+  {
+   "id": "alert_publish",
+   "tier": "core",
+   "quote": "perform the health check and publish the alert",
+   "kind": "attr",
+   "select": "fn_health",
+   "cond": {
+    "path": [
+     "Code",
+     "ZipFile"
+    ],
+    "op": "regex",
+    "value": "(?i)publish"
+   }
+  },
+  {
+   "id": "sm_refs_terminate",
+   "tier": "core",
+   "quote": "the Step Functions state machine must reference the Lambda functions",
+   "kind": "ref",
+   "from": "sm",
+   "to": "fn_term"
+  },
+  {
+   "id": "sm_refs_health",
+   "tier": "core",
+   "quote": "the Step Functions state machine must reference the Lambda functions",
+   "kind": "ref",
+   "from": "sm",
+   "to": "fn_health"
+  },
+  {
+   "id": "roles",
+   "tier": "detail",
+   "quote": "appropriate IAM roles",
+   "kind": "exists",
+   "select": "role",
+   "min": 2,
+   "justify": "roles plural: one for the functions and one for the state machine"
+  },
+  {
+   "id": "sm_role",
+   "tier": "detail",
+   "quote": "appropriate IAM roles",
+   "kind": "ref",
+   "from": "sm",
+   "to": "role"
+  },
+  {
+   "id": "fn_role",
+   "tier": "detail",
+   "quote": "appropriate IAM roles",
+   "kind": "ref",
+   "from": "fn",
+   "to": "role"
+  },
+  {
+   "id": "lambda_terminate_perm",
+   "tier": "extra",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "role",
+     "cond": {
+      "path": [
+       "Policies",
+       "*",
+       "PolicyDocument",
+       "Statement",
+       "*",
+       "Action",
+       "*"
+      ],
+      "op": "glob_covers",
+      "value": "ec2:TerminateInstances"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "AWS::IAM::ManagedPolicy",
+       "AWS::IAM::Policy"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "PolicyDocument",
+       "Statement",
+       "*",
+       "Action",
+       "*"
+      ],
+      "op": "glob_covers",
+      "value": "ec2:TerminateInstances"
+     }
+    }
+   ]
+  },
+  {
+   "id": "lambda_ecs_perm",
+   "tier": "extra",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "role",
+     "cond": {
+      "path": [
+       "Policies",
+       "*",
+       "PolicyDocument",
+       "Statement",
+       "*",
+       "Action",
+       "*"
+      ],
+      "op": "glob_covers",
+      "value": "ecs:DescribeServices"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "AWS::IAM::ManagedPolicy",
+       "AWS::IAM::Policy"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "PolicyDocument",
+       "Statement",
+       "*",
+       "Action",
+       "*"
+      ],
+      "op": "glob_covers",
+      "value": "ecs:DescribeServices"
+     }
+    }
+   ]
+  },
+  {
+   "id": "lambda_sns_perm",
+   "tier": "extra",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "role",
+     "cond": {
+      "path": [
+       "Policies",
+       "*",
+       "PolicyDocument",
+       "Statement",
+       "*",
+       "Action",
+       "*"
+      ],
+      "op": "glob_covers",
+      "value": "sns:Publish"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "AWS::IAM::ManagedPolicy",
+       "AWS::IAM::Policy"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "PolicyDocument",
+       "Statement",
+       "*",
+       "Action",
+       "*"
+      ],
+      "op": "glob_covers",
+      "value": "sns:Publish"
+     }
+    }
+   ]
+  },
+  {
+   "id": "sfn_invoke_perm",
+   "tier": "extra",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "role",
+     "cond": {
+      "path": [
+       "Policies",
+       "*",
+       "PolicyDocument",
+       "Statement",
+       "*",
+       "Action",
+       "*"
+      ],
+      "op": "glob_covers",
+      "value": "lambda:InvokeFunction"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "AWS::IAM::ManagedPolicy",
+       "AWS::IAM::Policy"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "PolicyDocument",
+       "Statement",
+       "*",
+       "Action",
+       "*"
+      ],
+      "op": "glob_covers",
+      "value": "lambda:InvokeFunction"
+     }
+    }
+   ]
+  },
+  {
+   "id": "sfn_trust",
+   "tier": "extra",
+   "kind": "attr",
+   "select": "role",
+   "cond": {
+    "path": [
+     "AssumeRolePolicyDocument",
+     "Statement",
+     "*",
+     "Principal",
+     "Service",
+     "*"
+    ],
+    "op": "eq",
+    "value": "states.amazonaws.com"
+   }
+  },
+  {
+   "id": "lambda_trust",
+   "tier": "extra",
+   "kind": "attr",
+   "select": "role",
+   "cond": {
+    "path": [
+     "AssumeRolePolicyDocument",
+     "Statement",
+     "*",
+     "Principal",
+     "Service",
+     "*"
+    ],
+    "op": "eq",
+    "value": "lambda.amazonaws.com"
+   }
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

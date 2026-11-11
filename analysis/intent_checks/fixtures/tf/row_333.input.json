@@ -1,0 +1,219 @@
+{
+ "meta": {
+  "lang": "tf",
+  "mode": "plan",
+  "warnings": [],
+  "gt_hash": "f34496fa6ab87aea3594b0d5bdc7e5a8f5b45a82229655894eb81fe1d7b65e74",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "aws_iam_role.main",
+   "cfg": "aws_iam_role.main",
+   "type": "aws_iam_role",
+   "values": {
+    "assume_role_policy": "{\"Statement\":[{\"Action\":\"sts:AssumeRole\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"eks.amazonaws.com\"}}],\"Version\":\"2012-10-17\"}",
+    "description": null,
+    "force_detach_policies": false,
+    "max_session_duration": 3600,
+    "name": "eks-cluster-sadcloud-example",
+    "path": "/",
+    "permissions_boundary": null,
+    "tags": null
+   },
+   "refs": []
+  },
+  {
+   "id": "aws_iam_role_policy_attachment.example-AmazonEKSClusterPolicy",
+   "cfg": "aws_iam_role_policy_attachment.example-AmazonEKSClusterPolicy",
+   "type": "aws_iam_role_policy_attachment",
+   "values": {
+    "policy_arn": "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy",
+    "role": "eks-cluster-sadcloud-example"
+   },
+   "refs": [
+    "aws_iam_role.main"
+   ]
+  },
+  {
+   "id": "aws_iam_role_policy_attachment.example-AmazonEKSServicePolicy",
+   "cfg": "aws_iam_role_policy_attachment.example-AmazonEKSServicePolicy",
+   "type": "aws_iam_role_policy_attachment",
+   "values": {
+    "policy_arn": "arn:aws:iam::aws:policy/AmazonEKSServicePolicy",
+    "role": "eks-cluster-sadcloud-example"
+   },
+   "refs": [
+    "aws_iam_role.main"
+   ]
+  },
+  {
+   "id": "__parameter__.globally_accessible",
+   "cfg": "__parameter__.globally_accessible",
+   "type": "__parameter__",
+   "values": {
+    "name": "globally_accessible",
+    "default": "false"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.main_subnet_id",
+   "cfg": "__parameter__.main_subnet_id",
+   "type": "__parameter__",
+   "values": {
+    "name": "main_subnet_id",
+    "default": "default_main_subnet_id"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.name",
+   "cfg": "__parameter__.name",
+   "type": "__parameter__",
+   "values": {
+    "name": "name",
+    "default": "sadcloud"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.no_logs",
+   "cfg": "__parameter__.no_logs",
+   "type": "__parameter__",
+   "values": {
+    "name": "no_logs",
+    "default": "false"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.out_of_date",
+   "cfg": "__parameter__.out_of_date",
+   "type": "__parameter__",
+   "values": {
+    "name": "out_of_date",
+    "default": "false"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.publicly_accessible",
+   "cfg": "__parameter__.publicly_accessible",
+   "type": "__parameter__",
+   "values": {
+    "name": "publicly_accessible",
+    "default": "false"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.secondary_subnet_id",
+   "cfg": "__parameter__.secondary_subnet_id",
+   "type": "__parameter__",
+   "values": {
+    "name": "secondary_subnet_id",
+    "default": "default_secondary_subnet_id"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.vpc_id",
+   "cfg": "__parameter__.vpc_id",
+   "type": "__parameter__",
+   "values": {
+    "name": "vpc_id",
+    "default": "default_vpc_id"
+   },
+   "refs": []
+  },
+  {
+   "id": "__declared__.aws_eks_cluster.example",
+   "cfg": "aws_eks_cluster.example",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_role.main",
+    "aws_iam_role_policy_attachment.example-AmazonEKSClusterPolicy",
+    "aws_iam_role_policy_attachment.example-AmazonEKSServicePolicy"
+   ],
+   "values": {
+    "type": "aws_eks_cluster",
+    "name": "example",
+    "gated": true,
+    "gate": "(var.out_of_date || var.no_logs || var.publicly_accessible || var.globally_accessible) ? 1 : 0",
+    "properties": {
+     "name": "example",
+     "role_arn": "${aws_iam_role.main.arn}",
+     "version": "${var.out_of_date ? \"1.14\" : None}",
+     "vpc_config": [
+      {
+       "subnet_ids": [
+        "default_main_subnet_id",
+        "default_secondary_subnet_id"
+       ],
+       "endpoint_public_access": false
+      }
+     ],
+     "enabled_cluster_log_types": "${var.no_logs ? [] : ['api', 'audit', 'authenticator', 'controllerManager', 'scheduler']}",
+     "depends_on": [
+      "${aws_iam_role_policy_attachment.example-AmazonEKSClusterPolicy}",
+      "${aws_iam_role_policy_attachment.example-AmazonEKSServicePolicy}"
+     ],
+     "count": "${var.out_of_date || var.no_logs || var.publicly_accessible || var.globally_accessible ? 1 : 0}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role.main",
+   "cfg": "aws_iam_role.main",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_iam_role",
+    "name": "main",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "eks-cluster-sadcloud-example",
+     "assume_role_policy": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Principal\": {\n        \"Service\": \"eks.amazonaws.com\"\n      },\n      \"Action\": \"sts:AssumeRole\"\n    }\n  ]\n}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role_policy_attachment.example-AmazonEKSClusterPolicy",
+   "cfg": "aws_iam_role_policy_attachment.example-AmazonEKSClusterPolicy",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_role.main"
+   ],
+   "values": {
+    "type": "aws_iam_role_policy_attachment",
+    "name": "example-AmazonEKSClusterPolicy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "policy_arn": "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy",
+     "role": "${aws_iam_role.main.name}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role_policy_attachment.example-AmazonEKSServicePolicy",
+   "cfg": "aws_iam_role_policy_attachment.example-AmazonEKSServicePolicy",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_role.main"
+   ],
+   "values": {
+    "type": "aws_iam_role_policy_attachment",
+    "name": "example-AmazonEKSServicePolicy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "policy_arn": "arn:aws:iam::aws:policy/AmazonEKSServicePolicy",
+     "role": "${aws_iam_role.main.name}"
+    }
+   }
+  }
+ ]
+}

@@ -1,0 +1,1066 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "sam_expanded",
+  "warnings": [],
+  "gt_hash": "f6481fde5aded20439f08e52f84f499db5e069773517e9d3817bc1f6c2d18786",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "WebSocketApi",
+   "cfg": "WebSocketApi",
+   "type": "AWS::ApiGatewayV2::Api",
+   "values": {
+    "Name": "stack-WebSocketApi",
+    "ProtocolType": "WEBSOCKET",
+    "RouteSelectionExpression": "$request.body.action"
+   },
+   "refs": []
+  },
+  {
+   "id": "Deployment",
+   "cfg": "Deployment",
+   "type": "AWS::ApiGatewayV2::Deployment",
+   "values": {
+    "ApiId": {
+     "ref": "WebSocketApi"
+    },
+    "__resource__": {
+     "DependsOn": [
+      "DefaultRoute"
+     ]
+    }
+   },
+   "refs": [
+    "WebSocketApi"
+   ]
+  },
+  {
+   "id": "Stage",
+   "cfg": "Stage",
+   "type": "AWS::ApiGatewayV2::Stage",
+   "values": {
+    "StageName": "api",
+    "DeploymentId": {
+     "ref": "Deployment"
+    },
+    "ApiId": {
+     "ref": "WebSocketApi"
+    }
+   },
+   "refs": [
+    "Deployment",
+    "WebSocketApi"
+   ]
+  },
+  {
+   "id": "DefaultRouteFunctionPermission",
+   "cfg": "DefaultRouteFunctionPermission",
+   "type": "AWS::Lambda::Permission",
+   "values": {
+    "Action": "lambda:InvokeFunction",
+    "FunctionName": {
+     "ref": "DefaultRouteFunction"
+    },
+    "Principal": "apigateway.amazonaws.com"
+   },
+   "refs": [
+    "DefaultRouteFunction"
+   ]
+  },
+  {
+   "id": "DefaultRoute",
+   "cfg": "DefaultRoute",
+   "type": "AWS::ApiGatewayV2::Route",
+   "values": {
+    "ApiId": {
+     "ref": "WebSocketApi"
+    },
+    "RouteKey": "$default",
+    "AuthorizationType": "NONE",
+    "OperationName": "DefaultRoute",
+    "Target": {
+     "Fn::Join": [
+      "/",
+      [
+       "integrations",
+       {
+        "ref": "DefaultRouteIntegration"
+       }
+      ]
+     ]
+    }
+   },
+   "refs": [
+    "DefaultRouteIntegration",
+    "WebSocketApi"
+   ]
+  },
+  {
+   "id": "DefaultRouteIntegration",
+   "cfg": "DefaultRouteIntegration",
+   "type": "AWS::ApiGatewayV2::Integration",
+   "values": {
+    "ApiId": {
+     "ref": "WebSocketApi"
+    },
+    "IntegrationType": "AWS_PROXY",
+    "IntegrationUri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/${DefaultRouteFunction.Arn}/invocations"
+   },
+   "refs": [
+    "DefaultRouteFunction",
+    "WebSocketApi"
+   ]
+  },
+  {
+   "id": "DefaultRouteResponse",
+   "cfg": "DefaultRouteResponse",
+   "type": "AWS::ApiGatewayV2::RouteResponse",
+   "values": {
+    "RouteId": {
+     "ref": "DefaultRoute"
+    },
+    "ApiId": {
+     "ref": "WebSocketApi"
+    },
+    "RouteResponseKey": "$default"
+   },
+   "refs": [
+    "DefaultRoute",
+    "WebSocketApi"
+   ]
+  },
+  {
+   "id": "DefaultRouteIntegrationResponse",
+   "cfg": "DefaultRouteIntegrationResponse",
+   "type": "AWS::ApiGatewayV2::IntegrationResponse",
+   "values": {
+    "ApiId": {
+     "ref": "WebSocketApi"
+    },
+    "IntegrationId": {
+     "ref": "DefaultRouteIntegration"
+    },
+    "IntegrationResponseKey": "$default"
+   },
+   "refs": [
+    "DefaultRouteIntegration",
+    "WebSocketApi"
+   ]
+  },
+  {
+   "id": "ConnectRoute",
+   "cfg": "ConnectRoute",
+   "type": "AWS::ApiGatewayV2::Route",
+   "values": {
+    "ApiId": {
+     "ref": "WebSocketApi"
+    },
+    "RouteKey": "$connect",
+    "AuthorizationType": "NONE",
+    "OperationName": "ConnectRoute",
+    "Target": {
+     "Fn::Join": [
+      "/",
+      [
+       "integrations",
+       {
+        "ref": "ConnectRouteIntegration"
+       }
+      ]
+     ]
+    }
+   },
+   "refs": [
+    "ConnectRouteIntegration",
+    "WebSocketApi"
+   ]
+  },
+  {
+   "id": "ConnectRouteIntegration",
+   "cfg": "ConnectRouteIntegration",
+   "type": "AWS::ApiGatewayV2::Integration",
+   "values": {
+    "ApiId": {
+     "ref": "WebSocketApi"
+    },
+    "IntegrationType": "AWS",
+    "IntegrationMethod": "POST",
+    "IntegrationUri": "arn:aws:apigateway:us-east-1:dynamodb:action/PutItem",
+    "CredentialsArn": "${SessionsTableAccessRole.Arn}",
+    "TemplateSelectionExpression": "\\$default",
+    "RequestTemplates": {
+     "$default": "#set($ttl = $context.requestTimeEpoch + 86400) {\n    \"TableName\": \"${SessionsTable}\",\n    \"Item\": {\n  \"connectionid\": {\n            \"S\": \"$context.connectionId\"\n            },\n  \"headers\": {\n            \"S\": \"$input.params().get('header')\"\n            },\n  \"querystring\": {\n            \"S\": \"$input.params().get('querystring')\"\n            },\n  \"ttl\": {\n            \"N\": \"$ttl\"\n            }\n    }\n}\n"
+    }
+   },
+   "refs": [
+    "SessionsTable",
+    "SessionsTableAccessRole",
+    "WebSocketApi"
+   ]
+  },
+  {
+   "id": "ConnectRouteResponse",
+   "cfg": "ConnectRouteResponse",
+   "type": "AWS::ApiGatewayV2::RouteResponse",
+   "values": {
+    "RouteId": {
+     "ref": "ConnectRoute"
+    },
+    "ApiId": {
+     "ref": "WebSocketApi"
+    },
+    "RouteResponseKey": "$default"
+   },
+   "refs": [
+    "ConnectRoute",
+    "WebSocketApi"
+   ]
+  },
+  {
+   "id": "ConnectRouteIntegrationResponse",
+   "cfg": "ConnectRouteIntegrationResponse",
+   "type": "AWS::ApiGatewayV2::IntegrationResponse",
+   "values": {
+    "ApiId": {
+     "ref": "WebSocketApi"
+    },
+    "IntegrationId": {
+     "ref": "ConnectRouteIntegration"
+    },
+    "IntegrationResponseKey": "/200/",
+    "TemplateSelectionExpression": "\\$default"
+   },
+   "refs": [
+    "ConnectRouteIntegration",
+    "WebSocketApi"
+   ]
+  },
+  {
+   "id": "DisconnectRoute",
+   "cfg": "DisconnectRoute",
+   "type": "AWS::ApiGatewayV2::Route",
+   "values": {
+    "ApiId": {
+     "ref": "WebSocketApi"
+    },
+    "RouteKey": "$disconnect",
+    "AuthorizationType": "NONE",
+    "OperationName": "DisconnectRoute",
+    "Target": {
+     "Fn::Join": [
+      "/",
+      [
+       "integrations",
+       {
+        "ref": "DisconnectRouteIntegration"
+       }
+      ]
+     ]
+    }
+   },
+   "refs": [
+    "DisconnectRouteIntegration",
+    "WebSocketApi"
+   ]
+  },
+  {
+   "id": "DisconnectRouteIntegration",
+   "cfg": "DisconnectRouteIntegration",
+   "type": "AWS::ApiGatewayV2::Integration",
+   "values": {
+    "ApiId": {
+     "ref": "WebSocketApi"
+    },
+    "IntegrationType": "AWS",
+    "IntegrationMethod": "POST",
+    "IntegrationUri": "arn:aws:apigateway:us-east-1:dynamodb:action/DeleteItem",
+    "CredentialsArn": "${SessionsTableAccessRole.Arn}",
+    "TemplateSelectionExpression": "\\$default",
+    "RequestTemplates": {
+     "$default": "{\n    \"TableName\": \"${SessionsTable}\",\n    \"Key\": {\n  \"connectionid\": {\n            \"S\": \"$context.connectionId\"\n            }\n    }\n}\n"
+    }
+   },
+   "refs": [
+    "SessionsTable",
+    "SessionsTableAccessRole",
+    "WebSocketApi"
+   ]
+  },
+  {
+   "id": "DisconnectRouteResponse",
+   "cfg": "DisconnectRouteResponse",
+   "type": "AWS::ApiGatewayV2::RouteResponse",
+   "values": {
+    "RouteId": {
+     "ref": "DisconnectRoute"
+    },
+    "ApiId": {
+     "ref": "WebSocketApi"
+    },
+    "RouteResponseKey": "$default"
+   },
+   "refs": [
+    "DisconnectRoute",
+    "WebSocketApi"
+   ]
+  },
+  {
+   "id": "DisconnectRouteIntegrationResponse",
+   "cfg": "DisconnectRouteIntegrationResponse",
+   "type": "AWS::ApiGatewayV2::IntegrationResponse",
+   "values": {
+    "ApiId": {
+     "ref": "WebSocketApi"
+    },
+    "IntegrationId": {
+     "ref": "DisconnectRouteIntegration"
+    },
+    "IntegrationResponseKey": "/200/",
+    "TemplateSelectionExpression": "\\$default"
+   },
+   "refs": [
+    "DisconnectRouteIntegration",
+    "WebSocketApi"
+   ]
+  },
+  {
+   "id": "SessionsTable",
+   "cfg": "SessionsTable",
+   "type": "AWS::DynamoDB::Table",
+   "values": {
+    "TableName": "stack-Sessions",
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "connectionid",
+      "AttributeType": "S"
+     }
+    ],
+    "KeySchema": [
+     {
+      "AttributeName": "connectionid",
+      "KeyType": "HASH"
+     }
+    ],
+    "TimeToLiveSpecification": {
+     "AttributeName": "ttl",
+     "Enabled": true
+    },
+    "BillingMode": "PAY_PER_REQUEST"
+   },
+   "refs": []
+  },
+  {
+   "id": "SessionsTableAccessRole",
+   "cfg": "SessionsTableAccessRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "apigateway.amazonaws.com"
+        ]
+       }
+      }
+     ]
+    },
+    "Path": "/",
+    "Policies": [
+     {
+      "PolicyName": "DynamoDBAccess",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "dynamodb:DeleteItem",
+          "dynamodb:PutItem"
+         ],
+         "Resource": [
+          "arn:aws:dynamodb:us-east-1:123456789012:table/${SessionsTable}"
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": [
+    "SessionsTable"
+   ]
+  },
+  {
+   "id": "DefaultRouteFunction",
+   "cfg": "DefaultRouteFunction",
+   "type": "AWS::Lambda::Function",
+   "values": {
+    "Code": {
+     "ZipFile": "exports.handler = async (event) => {return {statusCode: 200, body: JSON.stringify(event)}}"
+    },
+    "Handler": "index.handler",
+    "Role": {
+     "ref": "DefaultRouteFunctionRole",
+     "attr": "Arn"
+    },
+    "Runtime": "nodejs24.x",
+    "Tags": [
+     {
+      "Key": "lambda:createdBy",
+      "Value": "SAM"
+     }
+    ]
+   },
+   "refs": [
+    "DefaultRouteFunctionRole"
+   ]
+  },
+  {
+   "id": "DefaultRouteFunctionRole",
+   "cfg": "DefaultRouteFunctionRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       }
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+    ],
+    "Tags": [
+     {
+      "Key": "lambda:createdBy",
+      "Value": "SAM"
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.ApiStageName",
+   "cfg": "__parameter__.ApiStageName",
+   "type": "__parameter__",
+   "values": {
+    "name": "ApiStageName",
+    "type": "String",
+    "default": "api",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.APIEndpoint",
+   "cfg": "__output__.APIEndpoint",
+   "type": "__output__",
+   "values": {
+    "name": "APIEndpoint",
+    "value": "wss://${WebSocketApi}.execute-api.us-east-1.amazonaws.com/api",
+    "description": "API Gateway WebSocket endpoint URL",
+    "export": null
+   },
+   "refs": [
+    "WebSocketApi"
+   ]
+  },
+  {
+   "id": "__output__.SessionsTable",
+   "cfg": "__output__.SessionsTable",
+   "type": "__output__",
+   "values": {
+    "name": "SessionsTable",
+    "value": {
+     "ref": "SessionsTable"
+    },
+    "description": "DynamoDB sessions table for WebSocket API connection ID tracking",
+    "export": null
+   },
+   "refs": [
+    "SessionsTable"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::ApiGatewayV2::Api.WebSocketApi",
+   "cfg": "WebSocketApi",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::ApiGatewayV2::Api",
+    "name": "WebSocketApi",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "stack-WebSocketApi",
+     "ProtocolType": "WEBSOCKET",
+     "RouteSelectionExpression": "$request.body.action"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGatewayV2::Deployment.Deployment",
+   "cfg": "Deployment",
+   "type": "__declared__",
+   "refs": [
+    "WebSocketApi"
+   ],
+   "values": {
+    "type": "AWS::ApiGatewayV2::Deployment",
+    "name": "Deployment",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "WebSocketApi"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGatewayV2::Stage.Stage",
+   "cfg": "Stage",
+   "type": "__declared__",
+   "refs": [
+    "Deployment",
+    "WebSocketApi"
+   ],
+   "values": {
+    "type": "AWS::ApiGatewayV2::Stage",
+    "name": "Stage",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "StageName": "api",
+     "DeploymentId": {
+      "ref": "Deployment"
+     },
+     "ApiId": {
+      "ref": "WebSocketApi"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Permission.DefaultRouteFunctionPermission",
+   "cfg": "DefaultRouteFunctionPermission",
+   "type": "__declared__",
+   "refs": [
+    "DefaultRouteFunction"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Permission",
+    "name": "DefaultRouteFunctionPermission",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Action": "lambda:InvokeFunction",
+     "FunctionName": {
+      "ref": "DefaultRouteFunction"
+     },
+     "Principal": "apigateway.amazonaws.com"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGatewayV2::Route.DefaultRoute",
+   "cfg": "DefaultRoute",
+   "type": "__declared__",
+   "refs": [
+    "DefaultRouteIntegration",
+    "WebSocketApi"
+   ],
+   "values": {
+    "type": "AWS::ApiGatewayV2::Route",
+    "name": "DefaultRoute",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "WebSocketApi"
+     },
+     "RouteKey": "$default",
+     "AuthorizationType": "NONE",
+     "OperationName": "DefaultRoute",
+     "Target": {
+      "Fn::Join": [
+       "/",
+       [
+        "integrations",
+        {
+         "ref": "DefaultRouteIntegration"
+        }
+       ]
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGatewayV2::Integration.DefaultRouteIntegration",
+   "cfg": "DefaultRouteIntegration",
+   "type": "__declared__",
+   "refs": [
+    "DefaultRouteFunction",
+    "WebSocketApi"
+   ],
+   "values": {
+    "type": "AWS::ApiGatewayV2::Integration",
+    "name": "DefaultRouteIntegration",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "WebSocketApi"
+     },
+     "IntegrationType": "AWS_PROXY",
+     "IntegrationUri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/${DefaultRouteFunction.Arn}/invocations"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGatewayV2::RouteResponse.DefaultRouteResponse",
+   "cfg": "DefaultRouteResponse",
+   "type": "__declared__",
+   "refs": [
+    "DefaultRoute",
+    "WebSocketApi"
+   ],
+   "values": {
+    "type": "AWS::ApiGatewayV2::RouteResponse",
+    "name": "DefaultRouteResponse",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RouteId": {
+      "ref": "DefaultRoute"
+     },
+     "ApiId": {
+      "ref": "WebSocketApi"
+     },
+     "RouteResponseKey": "$default"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGatewayV2::IntegrationResponse.DefaultRouteIntegrationResponse",
+   "cfg": "DefaultRouteIntegrationResponse",
+   "type": "__declared__",
+   "refs": [
+    "DefaultRouteIntegration",
+    "WebSocketApi"
+   ],
+   "values": {
+    "type": "AWS::ApiGatewayV2::IntegrationResponse",
+    "name": "DefaultRouteIntegrationResponse",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "WebSocketApi"
+     },
+     "IntegrationId": {
+      "ref": "DefaultRouteIntegration"
+     },
+     "IntegrationResponseKey": "$default"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGatewayV2::Route.ConnectRoute",
+   "cfg": "ConnectRoute",
+   "type": "__declared__",
+   "refs": [
+    "ConnectRouteIntegration",
+    "WebSocketApi"
+   ],
+   "values": {
+    "type": "AWS::ApiGatewayV2::Route",
+    "name": "ConnectRoute",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "WebSocketApi"
+     },
+     "RouteKey": "$connect",
+     "AuthorizationType": "NONE",
+     "OperationName": "ConnectRoute",
+     "Target": {
+      "Fn::Join": [
+       "/",
+       [
+        "integrations",
+        {
+         "ref": "ConnectRouteIntegration"
+        }
+       ]
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGatewayV2::Integration.ConnectRouteIntegration",
+   "cfg": "ConnectRouteIntegration",
+   "type": "__declared__",
+   "refs": [
+    "SessionsTable",
+    "SessionsTableAccessRole",
+    "WebSocketApi"
+   ],
+   "values": {
+    "type": "AWS::ApiGatewayV2::Integration",
+    "name": "ConnectRouteIntegration",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "WebSocketApi"
+     },
+     "IntegrationType": "AWS",
+     "IntegrationMethod": "POST",
+     "IntegrationUri": "arn:aws:apigateway:us-east-1:dynamodb:action/PutItem",
+     "CredentialsArn": "${SessionsTableAccessRole.Arn}",
+     "TemplateSelectionExpression": "\\$default",
+     "RequestTemplates": {
+      "$default": "#set($ttl = $context.requestTimeEpoch + 86400) {\n    \"TableName\": \"${SessionsTable}\",\n    \"Item\": {\n  \"connectionid\": {\n            \"S\": \"$context.connectionId\"\n            },\n  \"headers\": {\n            \"S\": \"$input.params().get('header')\"\n            },\n  \"querystring\": {\n            \"S\": \"$input.params().get('querystring')\"\n            },\n  \"ttl\": {\n            \"N\": \"$ttl\"\n            }\n    }\n}\n"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGatewayV2::RouteResponse.ConnectRouteResponse",
+   "cfg": "ConnectRouteResponse",
+   "type": "__declared__",
+   "refs": [
+    "ConnectRoute",
+    "WebSocketApi"
+   ],
+   "values": {
+    "type": "AWS::ApiGatewayV2::RouteResponse",
+    "name": "ConnectRouteResponse",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RouteId": {
+      "ref": "ConnectRoute"
+     },
+     "ApiId": {
+      "ref": "WebSocketApi"
+     },
+     "RouteResponseKey": "$default"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGatewayV2::IntegrationResponse.ConnectRouteIntegrationResponse",
+   "cfg": "ConnectRouteIntegrationResponse",
+   "type": "__declared__",
+   "refs": [
+    "ConnectRouteIntegration",
+    "WebSocketApi"
+   ],
+   "values": {
+    "type": "AWS::ApiGatewayV2::IntegrationResponse",
+    "name": "ConnectRouteIntegrationResponse",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "WebSocketApi"
+     },
+     "IntegrationId": {
+      "ref": "ConnectRouteIntegration"
+     },
+     "IntegrationResponseKey": "/200/",
+     "TemplateSelectionExpression": "\\$default"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGatewayV2::Route.DisconnectRoute",
+   "cfg": "DisconnectRoute",
+   "type": "__declared__",
+   "refs": [
+    "DisconnectRouteIntegration",
+    "WebSocketApi"
+   ],
+   "values": {
+    "type": "AWS::ApiGatewayV2::Route",
+    "name": "DisconnectRoute",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "WebSocketApi"
+     },
+     "RouteKey": "$disconnect",
+     "AuthorizationType": "NONE",
+     "OperationName": "DisconnectRoute",
+     "Target": {
+      "Fn::Join": [
+       "/",
+       [
+        "integrations",
+        {
+         "ref": "DisconnectRouteIntegration"
+        }
+       ]
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGatewayV2::Integration.DisconnectRouteIntegration",
+   "cfg": "DisconnectRouteIntegration",
+   "type": "__declared__",
+   "refs": [
+    "SessionsTable",
+    "SessionsTableAccessRole",
+    "WebSocketApi"
+   ],
+   "values": {
+    "type": "AWS::ApiGatewayV2::Integration",
+    "name": "DisconnectRouteIntegration",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "WebSocketApi"
+     },
+     "IntegrationType": "AWS",
+     "IntegrationMethod": "POST",
+     "IntegrationUri": "arn:aws:apigateway:us-east-1:dynamodb:action/DeleteItem",
+     "CredentialsArn": "${SessionsTableAccessRole.Arn}",
+     "TemplateSelectionExpression": "\\$default",
+     "RequestTemplates": {
+      "$default": "{\n    \"TableName\": \"${SessionsTable}\",\n    \"Key\": {\n  \"connectionid\": {\n            \"S\": \"$context.connectionId\"\n            }\n    }\n}\n"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGatewayV2::RouteResponse.DisconnectRouteResponse",
+   "cfg": "DisconnectRouteResponse",
+   "type": "__declared__",
+   "refs": [
+    "DisconnectRoute",
+    "WebSocketApi"
+   ],
+   "values": {
+    "type": "AWS::ApiGatewayV2::RouteResponse",
+    "name": "DisconnectRouteResponse",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RouteId": {
+      "ref": "DisconnectRoute"
+     },
+     "ApiId": {
+      "ref": "WebSocketApi"
+     },
+     "RouteResponseKey": "$default"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGatewayV2::IntegrationResponse.DisconnectRouteIntegrationResponse",
+   "cfg": "DisconnectRouteIntegrationResponse",
+   "type": "__declared__",
+   "refs": [
+    "DisconnectRouteIntegration",
+    "WebSocketApi"
+   ],
+   "values": {
+    "type": "AWS::ApiGatewayV2::IntegrationResponse",
+    "name": "DisconnectRouteIntegrationResponse",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "WebSocketApi"
+     },
+     "IntegrationId": {
+      "ref": "DisconnectRouteIntegration"
+     },
+     "IntegrationResponseKey": "/200/",
+     "TemplateSelectionExpression": "\\$default"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::DynamoDB::Table.SessionsTable",
+   "cfg": "SessionsTable",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::DynamoDB::Table",
+    "name": "SessionsTable",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "TableName": "stack-Sessions",
+     "AttributeDefinitions": [
+      {
+       "AttributeName": "connectionid",
+       "AttributeType": "S"
+      }
+     ],
+     "KeySchema": [
+      {
+       "AttributeName": "connectionid",
+       "KeyType": "HASH"
+      }
+     ],
+     "TimeToLiveSpecification": {
+      "AttributeName": "ttl",
+      "Enabled": true
+     },
+     "BillingMode": "PAY_PER_REQUEST"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.SessionsTableAccessRole",
+   "cfg": "SessionsTableAccessRole",
+   "type": "__declared__",
+   "refs": [
+    "SessionsTable"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "SessionsTableAccessRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "apigateway.amazonaws.com"
+         ]
+        }
+       }
+      ]
+     },
+     "Path": "/",
+     "Policies": [
+      {
+       "PolicyName": "DynamoDBAccess",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "dynamodb:DeleteItem",
+           "dynamodb:PutItem"
+          ],
+          "Resource": [
+           "arn:aws:dynamodb:us-east-1:123456789012:table/${SessionsTable}"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Function.DefaultRouteFunction",
+   "cfg": "DefaultRouteFunction",
+   "type": "__declared__",
+   "refs": [
+    "DefaultRouteFunctionRole"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Function",
+    "name": "DefaultRouteFunction",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Code": {
+      "ZipFile": "exports.handler = async (event) => {return {statusCode: 200, body: JSON.stringify(event)}}"
+     },
+     "Handler": "index.handler",
+     "Role": {
+      "ref": "DefaultRouteFunctionRole",
+      "attr": "Arn"
+     },
+     "Runtime": "nodejs24.x",
+     "Tags": [
+      {
+       "Key": "lambda:createdBy",
+       "Value": "SAM"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.DefaultRouteFunctionRole",
+   "cfg": "DefaultRouteFunctionRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "DefaultRouteFunctionRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        }
+       }
+      ]
+     },
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+     ],
+     "Tags": [
+      {
+       "Key": "lambda:createdBy",
+       "Value": "SAM"
+      }
+     ]
+    }
+   }
+  }
+ ]
+}

@@ -1,0 +1,400 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "d393f0f63197bf113b1e158820f950b7d3ec14e7abbd433ade8a3a1fa9ff8c4b",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "Cluster",
+   "cfg": "Cluster",
+   "type": "AWS::Route53RecoveryControl::Cluster",
+   "values": {
+    "Name": "Dynamo59-Cluster"
+   },
+   "refs": []
+  },
+  {
+   "id": "ControlPanel",
+   "cfg": "ControlPanel",
+   "type": "AWS::Route53RecoveryControl::ControlPanel",
+   "values": {
+    "Name": "Dynamo59-ControlPanel",
+    "ClusterArn": {
+     "ref": "Cluster"
+    }
+   },
+   "refs": [
+    "Cluster"
+   ]
+  },
+  {
+   "id": "RoutingControlCell1",
+   "cfg": "RoutingControlCell1",
+   "type": "AWS::Route53RecoveryControl::RoutingControl",
+   "values": {
+    "Name": "Dynamo59-Cell1-us-east-1",
+    "ClusterArn": {
+     "ref": "Cluster"
+    },
+    "ControlPanelArn": {
+     "ref": "ControlPanel"
+    }
+   },
+   "refs": [
+    "Cluster",
+    "ControlPanel"
+   ]
+  },
+  {
+   "id": "RoutingControlCell2",
+   "cfg": "RoutingControlCell2",
+   "type": "AWS::Route53RecoveryControl::RoutingControl",
+   "values": {
+    "Name": "Dynamo59-Cell2-us-west-2",
+    "ClusterArn": {
+     "ref": "Cluster"
+    },
+    "ControlPanelArn": {
+     "ref": "ControlPanel"
+    }
+   },
+   "refs": [
+    "Cluster",
+    "ControlPanel"
+   ]
+  },
+  {
+   "id": "SafetyRuleMinCellsActive",
+   "cfg": "SafetyRuleMinCellsActive",
+   "type": "AWS::Route53RecoveryControl::SafetyRule",
+   "values": {
+    "Name": "Dynamo59-MinCellsActive",
+    "ControlPanelArn": {
+     "ref": "ControlPanel"
+    },
+    "AssertionRule": {
+     "WaitPeriodMs": 5000,
+     "AssertedControls": [
+      {
+       "ref": "RoutingControlCell1"
+      },
+      {
+       "ref": "RoutingControlCell2"
+      }
+     ]
+    },
+    "RuleConfig": {
+     "Type": "ATLEAST",
+     "Threshold": 1,
+     "Inverted": false
+    }
+   },
+   "refs": [
+    "ControlPanel",
+    "RoutingControlCell1",
+    "RoutingControlCell2"
+   ]
+  },
+  {
+   "id": "HealthCheckCell1",
+   "cfg": "HealthCheckCell1",
+   "type": "AWS::Route53::HealthCheck",
+   "values": {
+    "HealthCheckConfig": {
+     "Type": "RECOVERY_CONTROL",
+     "RoutingControlArn": {
+      "ref": "RoutingControlCell1"
+     }
+    }
+   },
+   "refs": [
+    "RoutingControlCell1"
+   ]
+  },
+  {
+   "id": "HealthCheckCell2",
+   "cfg": "HealthCheckCell2",
+   "type": "AWS::Route53::HealthCheck",
+   "values": {
+    "HealthCheckConfig": {
+     "Type": "RECOVERY_CONTROL",
+     "RoutingControlArn": {
+      "ref": "RoutingControlCell2"
+     }
+    }
+   },
+   "refs": [
+    "RoutingControlCell2"
+   ]
+  },
+  {
+   "id": "__parameter__.Region1",
+   "cfg": "__parameter__.Region1",
+   "type": "__parameter__",
+   "values": {
+    "name": "Region1",
+    "type": "String",
+    "default": "us-east-1",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.Region2",
+   "cfg": "__parameter__.Region2",
+   "type": "__parameter__",
+   "values": {
+    "name": "Region2",
+    "type": "String",
+    "default": "us-west-2",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.ProjectId",
+   "cfg": "__parameter__.ProjectId",
+   "type": "__parameter__",
+   "values": {
+    "name": "ProjectId",
+    "type": "String",
+    "default": "Dynamo59",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.ClusterArn",
+   "cfg": "__output__.ClusterArn",
+   "type": "__output__",
+   "values": {
+    "name": "ClusterArn",
+    "value": {
+     "ref": "Cluster"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "Cluster"
+   ]
+  },
+  {
+   "id": "__output__.ControlPanelArn",
+   "cfg": "__output__.ControlPanelArn",
+   "type": "__output__",
+   "values": {
+    "name": "ControlPanelArn",
+    "value": {
+     "ref": "ControlPanel",
+     "attr": "ControlPanelArn"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "ControlPanel"
+   ]
+  },
+  {
+   "id": "__output__.HealthCheckIdEast",
+   "cfg": "__output__.HealthCheckIdEast",
+   "type": "__output__",
+   "values": {
+    "name": "HealthCheckIdEast",
+    "value": {
+     "ref": "HealthCheckCell1"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "HealthCheckCell1"
+   ]
+  },
+  {
+   "id": "__output__.HealthCheckIdWest",
+   "cfg": "__output__.HealthCheckIdWest",
+   "type": "__output__",
+   "values": {
+    "name": "HealthCheckIdWest",
+    "value": {
+     "ref": "HealthCheckCell2"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "HealthCheckCell2"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::Route53RecoveryControl::Cluster.Cluster",
+   "cfg": "Cluster",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Route53RecoveryControl::Cluster",
+    "name": "Cluster",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "Dynamo59-Cluster"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Route53RecoveryControl::ControlPanel.ControlPanel",
+   "cfg": "ControlPanel",
+   "type": "__declared__",
+   "refs": [
+    "Cluster"
+   ],
+   "values": {
+    "type": "AWS::Route53RecoveryControl::ControlPanel",
+    "name": "ControlPanel",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "Dynamo59-ControlPanel",
+     "ClusterArn": {
+      "ref": "Cluster"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Route53RecoveryControl::RoutingControl.RoutingControlCell1",
+   "cfg": "RoutingControlCell1",
+   "type": "__declared__",
+   "refs": [
+    "Cluster",
+    "ControlPanel"
+   ],
+   "values": {
+    "type": "AWS::Route53RecoveryControl::RoutingControl",
+    "name": "RoutingControlCell1",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "Dynamo59-Cell1-us-east-1",
+     "ClusterArn": {
+      "ref": "Cluster"
+     },
+     "ControlPanelArn": {
+      "ref": "ControlPanel"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Route53RecoveryControl::RoutingControl.RoutingControlCell2",
+   "cfg": "RoutingControlCell2",
+   "type": "__declared__",
+   "refs": [
+    "Cluster",
+    "ControlPanel"
+   ],
+   "values": {
+    "type": "AWS::Route53RecoveryControl::RoutingControl",
+    "name": "RoutingControlCell2",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "Dynamo59-Cell2-us-west-2",
+     "ClusterArn": {
+      "ref": "Cluster"
+     },
+     "ControlPanelArn": {
+      "ref": "ControlPanel"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Route53RecoveryControl::SafetyRule.SafetyRuleMinCellsActive",
+   "cfg": "SafetyRuleMinCellsActive",
+   "type": "__declared__",
+   "refs": [
+    "ControlPanel",
+    "RoutingControlCell1",
+    "RoutingControlCell2"
+   ],
+   "values": {
+    "type": "AWS::Route53RecoveryControl::SafetyRule",
+    "name": "SafetyRuleMinCellsActive",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "Dynamo59-MinCellsActive",
+     "ControlPanelArn": {
+      "ref": "ControlPanel"
+     },
+     "AssertionRule": {
+      "WaitPeriodMs": 5000,
+      "AssertedControls": [
+       {
+        "ref": "RoutingControlCell1"
+       },
+       {
+        "ref": "RoutingControlCell2"
+       }
+      ]
+     },
+     "RuleConfig": {
+      "Type": "ATLEAST",
+      "Threshold": 1,
+      "Inverted": false
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Route53::HealthCheck.HealthCheckCell1",
+   "cfg": "HealthCheckCell1",
+   "type": "__declared__",
+   "refs": [
+    "RoutingControlCell1"
+   ],
+   "values": {
+    "type": "AWS::Route53::HealthCheck",
+    "name": "HealthCheckCell1",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "HealthCheckConfig": {
+      "Type": "RECOVERY_CONTROL",
+      "RoutingControlArn": {
+       "ref": "RoutingControlCell1"
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Route53::HealthCheck.HealthCheckCell2",
+   "cfg": "HealthCheckCell2",
+   "type": "__declared__",
+   "refs": [
+    "RoutingControlCell2"
+   ],
+   "values": {
+    "type": "AWS::Route53::HealthCheck",
+    "name": "HealthCheckCell2",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "HealthCheckConfig": {
+      "Type": "RECOVERY_CONTROL",
+      "RoutingControlArn": {
+       "ref": "RoutingControlCell2"
+      }
+     }
+    }
+   }
+  }
+ ]
+}

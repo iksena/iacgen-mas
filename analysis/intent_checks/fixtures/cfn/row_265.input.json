@@ -1,0 +1,1228 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "e4857594e4aa7dd08cc269706bca13dd315aa07dd8b3cbddfa2ec5a636b79b11",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "EncryptionKey",
+   "cfg": "EncryptionKey",
+   "type": "AWS::KMS::Key",
+   "values": {
+    "Description": "KMS key for kitchen-agent-dev encryption at rest",
+    "KeyPolicy": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Sid": "Enable IAM User Permissions",
+       "Effect": "Allow",
+       "Principal": {
+        "AWS": [
+         "arn:aws:iam::123456789012:root"
+        ]
+       },
+       "Action": [
+        "kms:*"
+       ],
+       "Resource": [
+        "*"
+       ]
+      },
+      {
+       "Sid": "Allow DynamoDB to use the key",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "dynamodb.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "kms:Decrypt",
+        "kms:DescribeKey",
+        "kms:CreateGrant"
+       ],
+       "Resource": [
+        "*"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "kms:ViaService": "dynamodb.us-east-1.amazonaws.com"
+        }
+       }
+      },
+      {
+       "Sid": "Allow S3 to use the key",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "s3.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "kms:Decrypt",
+        "kms:GenerateDataKey"
+       ],
+       "Resource": [
+        "*"
+       ]
+      },
+      {
+       "Sid": "Allow Lambda to use the key",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "kms:Decrypt",
+        "kms:DescribeKey"
+       ],
+       "Resource": [
+        "*"
+       ]
+      }
+     ]
+    },
+    "EnableKeyRotation": true,
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "kitchen-agent-dev-encryption-key"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "Project",
+      "Value": "kitchen-agent"
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "EncryptionKeyAlias",
+   "cfg": "EncryptionKeyAlias",
+   "type": "AWS::KMS::Alias",
+   "values": {
+    "AliasName": "alias/kitchen-agent-dev-encryption",
+    "TargetKeyId": {
+     "ref": "EncryptionKey"
+    }
+   },
+   "refs": [
+    "EncryptionKey"
+   ]
+  },
+  {
+   "id": "SessionsTable",
+   "cfg": "SessionsTable",
+   "type": "AWS::DynamoDB::Table",
+   "values": {
+    "TableName": "kitchen-agent-sessions-dev",
+    "BillingMode": "PAY_PER_REQUEST",
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "session_id",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "data_type",
+      "AttributeType": "S"
+     }
+    ],
+    "KeySchema": [
+     {
+      "AttributeName": "session_id",
+      "KeyType": "HASH"
+     },
+     {
+      "AttributeName": "data_type",
+      "KeyType": "RANGE"
+     }
+    ],
+    "SSESpecification": {
+     "SSEEnabled": true,
+     "SSEType": "KMS",
+     "KMSMasterKeyId": {
+      "ref": "EncryptionKey"
+     }
+    },
+    "TimeToLiveSpecification": {
+     "AttributeName": "expiry_timestamp",
+     "Enabled": true
+    },
+    "PointInTimeRecoverySpecification": {
+     "PointInTimeRecoveryEnabled": true
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "kitchen-agent-sessions-dev"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "Project",
+      "Value": "kitchen-agent"
+     }
+    ]
+   },
+   "refs": [
+    "EncryptionKey"
+   ]
+  },
+  {
+   "id": "MarketPricesTable",
+   "cfg": "MarketPricesTable",
+   "type": "AWS::DynamoDB::Table",
+   "values": {
+    "TableName": "kitchen-agent-market-prices-dev",
+    "BillingMode": "PAY_PER_REQUEST",
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "ingredient_name",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "market_name",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "last_updated",
+      "AttributeType": "S"
+     }
+    ],
+    "KeySchema": [
+     {
+      "AttributeName": "ingredient_name",
+      "KeyType": "HASH"
+     },
+     {
+      "AttributeName": "market_name",
+      "KeyType": "RANGE"
+     }
+    ],
+    "GlobalSecondaryIndexes": [
+     {
+      "IndexName": "LastUpdatedIndex",
+      "KeySchema": [
+       {
+        "AttributeName": "ingredient_name",
+        "KeyType": "HASH"
+       },
+       {
+        "AttributeName": "last_updated",
+        "KeyType": "RANGE"
+       }
+      ],
+      "Projection": {
+       "ProjectionType": "ALL"
+      }
+     }
+    ],
+    "SSESpecification": {
+     "SSEEnabled": true,
+     "SSEType": "KMS",
+     "KMSMasterKeyId": {
+      "ref": "EncryptionKey"
+     }
+    },
+    "PointInTimeRecoverySpecification": {
+     "PointInTimeRecoveryEnabled": true
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "kitchen-agent-market-prices-dev"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "Project",
+      "Value": "kitchen-agent"
+     }
+    ]
+   },
+   "refs": [
+    "EncryptionKey"
+   ]
+  },
+  {
+   "id": "RemindersTable",
+   "cfg": "RemindersTable",
+   "type": "AWS::DynamoDB::Table",
+   "values": {
+    "TableName": "kitchen-agent-reminders-dev",
+    "BillingMode": "PAY_PER_REQUEST",
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "session_id",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "reminder_id",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "status",
+      "AttributeType": "S"
+     }
+    ],
+    "KeySchema": [
+     {
+      "AttributeName": "session_id",
+      "KeyType": "HASH"
+     },
+     {
+      "AttributeName": "reminder_id",
+      "KeyType": "RANGE"
+     }
+    ],
+    "GlobalSecondaryIndexes": [
+     {
+      "IndexName": "StatusIndex",
+      "KeySchema": [
+       {
+        "AttributeName": "session_id",
+        "KeyType": "HASH"
+       },
+       {
+        "AttributeName": "status",
+        "KeyType": "RANGE"
+       }
+      ],
+      "Projection": {
+       "ProjectionType": "ALL"
+      }
+     }
+    ],
+    "SSESpecification": {
+     "SSEEnabled": true,
+     "SSEType": "KMS",
+     "KMSMasterKeyId": {
+      "ref": "EncryptionKey"
+     }
+    },
+    "TimeToLiveSpecification": {
+     "AttributeName": "expiry_timestamp",
+     "Enabled": true
+    },
+    "PointInTimeRecoverySpecification": {
+     "PointInTimeRecoveryEnabled": true
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "kitchen-agent-reminders-dev"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "Project",
+      "Value": "kitchen-agent"
+     }
+    ]
+   },
+   "refs": [
+    "EncryptionKey"
+   ]
+  },
+  {
+   "id": "RateLimitsTable",
+   "cfg": "RateLimitsTable",
+   "type": "AWS::DynamoDB::Table",
+   "values": {
+    "TableName": "kitchen-agent-rate-limits-dev",
+    "BillingMode": "PAY_PER_REQUEST",
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "session_id",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "endpoint",
+      "AttributeType": "S"
+     }
+    ],
+    "KeySchema": [
+     {
+      "AttributeName": "session_id",
+      "KeyType": "HASH"
+     },
+     {
+      "AttributeName": "endpoint",
+      "KeyType": "RANGE"
+     }
+    ],
+    "SSESpecification": {
+     "SSEEnabled": true,
+     "SSEType": "KMS",
+     "KMSMasterKeyId": {
+      "ref": "EncryptionKey"
+     }
+    },
+    "TimeToLiveSpecification": {
+     "AttributeName": "ttl",
+     "Enabled": true
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "kitchen-agent-rate-limits-dev"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "Project",
+      "Value": "kitchen-agent"
+     }
+    ]
+   },
+   "refs": [
+    "EncryptionKey"
+   ]
+  },
+  {
+   "id": "ImageBucket",
+   "cfg": "ImageBucket",
+   "type": "AWS::S3::Bucket",
+   "values": {
+    "BucketName": "kitchen-agent-images-dev-123456789012",
+    "BucketEncryption": {
+     "ServerSideEncryptionConfiguration": [
+      {
+       "ServerSideEncryptionByDefault": {
+        "SSEAlgorithm": "aws:kms",
+        "KMSMasterKeyID": {
+         "ref": "EncryptionKey"
+        }
+       },
+       "BucketKeyEnabled": true
+      }
+     ]
+    },
+    "PublicAccessBlockConfiguration": {
+     "BlockPublicAcls": true,
+     "BlockPublicPolicy": true,
+     "IgnorePublicAcls": true,
+     "RestrictPublicBuckets": true
+    },
+    "VersioningConfiguration": {
+     "Status": "Enabled"
+    },
+    "LifecycleConfiguration": {
+     "Rules": [
+      {
+       "Id": "DeleteAfter24Hours",
+       "Status": "Enabled",
+       "ExpirationInDays": 1,
+       "NoncurrentVersionExpirationInDays": 1
+      }
+     ]
+    },
+    "LoggingConfiguration": {
+     "DestinationBucketName": {
+      "ref": "LoggingBucket"
+     },
+     "LogFilePrefix": "image-bucket-logs/"
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "kitchen-agent-images-dev"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "Project",
+      "Value": "kitchen-agent"
+     }
+    ]
+   },
+   "refs": [
+    "EncryptionKey",
+    "LoggingBucket"
+   ]
+  },
+  {
+   "id": "LoggingBucket",
+   "cfg": "LoggingBucket",
+   "type": "AWS::S3::Bucket",
+   "values": {
+    "BucketName": "kitchen-agent-logs-dev-123456789012",
+    "BucketEncryption": {
+     "ServerSideEncryptionConfiguration": [
+      {
+       "ServerSideEncryptionByDefault": {
+        "SSEAlgorithm": "aws:kms",
+        "KMSMasterKeyID": {
+         "ref": "EncryptionKey"
+        }
+       },
+       "BucketKeyEnabled": true
+      }
+     ]
+    },
+    "PublicAccessBlockConfiguration": {
+     "BlockPublicAcls": true,
+     "BlockPublicPolicy": true,
+     "IgnorePublicAcls": true,
+     "RestrictPublicBuckets": true
+    },
+    "LifecycleConfiguration": {
+     "Rules": [
+      {
+       "Id": "DeleteAfter90Days",
+       "Status": "Enabled",
+       "ExpirationInDays": 90
+      }
+     ]
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "kitchen-agent-logs-dev"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     },
+     {
+      "Key": "Project",
+      "Value": "kitchen-agent"
+     }
+    ]
+   },
+   "refs": [
+    "EncryptionKey"
+   ]
+  },
+  {
+   "id": "__parameter__.Environment",
+   "cfg": "__parameter__.Environment",
+   "type": "__parameter__",
+   "values": {
+    "name": "Environment",
+    "type": "String",
+    "default": "dev",
+    "allowed_values": [
+     "dev",
+     "staging",
+     "prod"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.ProjectName",
+   "cfg": "__parameter__.ProjectName",
+   "type": "__parameter__",
+   "values": {
+    "name": "ProjectName",
+    "type": "String",
+    "default": "kitchen-agent",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.EncryptionKeyId",
+   "cfg": "__output__.EncryptionKeyId",
+   "type": "__output__",
+   "values": {
+    "name": "EncryptionKeyId",
+    "value": {
+     "ref": "EncryptionKey"
+    },
+    "description": "KMS Key ID for encryption",
+    "export": "kitchen-agent-dev-encryption-key-id"
+   },
+   "refs": [
+    "EncryptionKey"
+   ]
+  },
+  {
+   "id": "__output__.EncryptionKeyArn",
+   "cfg": "__output__.EncryptionKeyArn",
+   "type": "__output__",
+   "values": {
+    "name": "EncryptionKeyArn",
+    "value": {
+     "ref": "EncryptionKey",
+     "attr": "Arn"
+    },
+    "description": "KMS Key ARN for encryption",
+    "export": "kitchen-agent-dev-encryption-key-arn"
+   },
+   "refs": [
+    "EncryptionKey"
+   ]
+  },
+  {
+   "id": "__output__.SessionsTableName",
+   "cfg": "__output__.SessionsTableName",
+   "type": "__output__",
+   "values": {
+    "name": "SessionsTableName",
+    "value": {
+     "ref": "SessionsTable"
+    },
+    "description": "Sessions DynamoDB table name",
+    "export": "kitchen-agent-dev-sessions-table"
+   },
+   "refs": [
+    "SessionsTable"
+   ]
+  },
+  {
+   "id": "__output__.MarketPricesTableName",
+   "cfg": "__output__.MarketPricesTableName",
+   "type": "__output__",
+   "values": {
+    "name": "MarketPricesTableName",
+    "value": {
+     "ref": "MarketPricesTable"
+    },
+    "description": "Market Prices DynamoDB table name",
+    "export": "kitchen-agent-dev-market-prices-table"
+   },
+   "refs": [
+    "MarketPricesTable"
+   ]
+  },
+  {
+   "id": "__output__.RemindersTableName",
+   "cfg": "__output__.RemindersTableName",
+   "type": "__output__",
+   "values": {
+    "name": "RemindersTableName",
+    "value": {
+     "ref": "RemindersTable"
+    },
+    "description": "Reminders DynamoDB table name",
+    "export": "kitchen-agent-dev-reminders-table"
+   },
+   "refs": [
+    "RemindersTable"
+   ]
+  },
+  {
+   "id": "__output__.RateLimitsTableName",
+   "cfg": "__output__.RateLimitsTableName",
+   "type": "__output__",
+   "values": {
+    "name": "RateLimitsTableName",
+    "value": {
+     "ref": "RateLimitsTable"
+    },
+    "description": "Rate Limits DynamoDB table name",
+    "export": "kitchen-agent-dev-rate-limits-table"
+   },
+   "refs": [
+    "RateLimitsTable"
+   ]
+  },
+  {
+   "id": "__output__.ImageBucketName",
+   "cfg": "__output__.ImageBucketName",
+   "type": "__output__",
+   "values": {
+    "name": "ImageBucketName",
+    "value": {
+     "ref": "ImageBucket"
+    },
+    "description": "S3 bucket for images",
+    "export": "kitchen-agent-dev-image-bucket"
+   },
+   "refs": [
+    "ImageBucket"
+   ]
+  },
+  {
+   "id": "__output__.LoggingBucketName",
+   "cfg": "__output__.LoggingBucketName",
+   "type": "__output__",
+   "values": {
+    "name": "LoggingBucketName",
+    "value": {
+     "ref": "LoggingBucket"
+    },
+    "description": "S3 bucket for logs",
+    "export": "kitchen-agent-dev-logging-bucket"
+   },
+   "refs": [
+    "LoggingBucket"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::KMS::Key.EncryptionKey",
+   "cfg": "EncryptionKey",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::KMS::Key",
+    "name": "EncryptionKey",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Description": "KMS key for kitchen-agent-dev encryption at rest",
+     "KeyPolicy": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Sid": "Enable IAM User Permissions",
+        "Effect": "Allow",
+        "Principal": {
+         "AWS": [
+          "arn:aws:iam::123456789012:root"
+         ]
+        },
+        "Action": [
+         "kms:*"
+        ],
+        "Resource": [
+         "*"
+        ]
+       },
+       {
+        "Sid": "Allow DynamoDB to use the key",
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "dynamodb.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "kms:Decrypt",
+         "kms:DescribeKey",
+         "kms:CreateGrant"
+        ],
+        "Resource": [
+         "*"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "kms:ViaService": "dynamodb.us-east-1.amazonaws.com"
+         }
+        }
+       },
+       {
+        "Sid": "Allow S3 to use the key",
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "s3.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "kms:Decrypt",
+         "kms:GenerateDataKey"
+        ],
+        "Resource": [
+         "*"
+        ]
+       },
+       {
+        "Sid": "Allow Lambda to use the key",
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "kms:Decrypt",
+         "kms:DescribeKey"
+        ],
+        "Resource": [
+         "*"
+        ]
+       }
+      ]
+     },
+     "EnableKeyRotation": true,
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "kitchen-agent-dev-encryption-key"
+      },
+      {
+       "Key": "Environment",
+       "Value": "dev"
+      },
+      {
+       "Key": "Project",
+       "Value": "kitchen-agent"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::KMS::Alias.EncryptionKeyAlias",
+   "cfg": "EncryptionKeyAlias",
+   "type": "__declared__",
+   "refs": [
+    "EncryptionKey"
+   ],
+   "values": {
+    "type": "AWS::KMS::Alias",
+    "name": "EncryptionKeyAlias",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AliasName": "alias/kitchen-agent-dev-encryption",
+     "TargetKeyId": {
+      "ref": "EncryptionKey"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::DynamoDB::Table.SessionsTable",
+   "cfg": "SessionsTable",
+   "type": "__declared__",
+   "refs": [
+    "EncryptionKey"
+   ],
+   "values": {
+    "type": "AWS::DynamoDB::Table",
+    "name": "SessionsTable",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "TableName": "kitchen-agent-sessions-dev",
+     "BillingMode": "PAY_PER_REQUEST",
+     "AttributeDefinitions": [
+      {
+       "AttributeName": "session_id",
+       "AttributeType": "S"
+      },
+      {
+       "AttributeName": "data_type",
+       "AttributeType": "S"
+      }
+     ],
+     "KeySchema": [
+      {
+       "AttributeName": "session_id",
+       "KeyType": "HASH"
+      },
+      {
+       "AttributeName": "data_type",
+       "KeyType": "RANGE"
+      }
+     ],
+     "SSESpecification": {
+      "SSEEnabled": true,
+      "SSEType": "KMS",
+      "KMSMasterKeyId": {
+       "ref": "EncryptionKey"
+      }
+     },
+     "TimeToLiveSpecification": {
+      "AttributeName": "expiry_timestamp",
+      "Enabled": true
+     },
+     "PointInTimeRecoverySpecification": {
+      "PointInTimeRecoveryEnabled": true
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "kitchen-agent-sessions-dev"
+      },
+      {
+       "Key": "Environment",
+       "Value": "dev"
+      },
+      {
+       "Key": "Project",
+       "Value": "kitchen-agent"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::DynamoDB::Table.MarketPricesTable",
+   "cfg": "MarketPricesTable",
+   "type": "__declared__",
+   "refs": [
+    "EncryptionKey"
+   ],
+   "values": {
+    "type": "AWS::DynamoDB::Table",
+    "name": "MarketPricesTable",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "TableName": "kitchen-agent-market-prices-dev",
+     "BillingMode": "PAY_PER_REQUEST",
+     "AttributeDefinitions": [
+      {
+       "AttributeName": "ingredient_name",
+       "AttributeType": "S"
+      },
+      {
+       "AttributeName": "market_name",
+       "AttributeType": "S"
+      },
+      {
+       "AttributeName": "last_updated",
+       "AttributeType": "S"
+      }
+     ],
+     "KeySchema": [
+      {
+       "AttributeName": "ingredient_name",
+       "KeyType": "HASH"
+      },
+      {
+       "AttributeName": "market_name",
+       "KeyType": "RANGE"
+      }
+     ],
+     "GlobalSecondaryIndexes": [
+      {
+       "IndexName": "LastUpdatedIndex",
+       "KeySchema": [
+        {
+         "AttributeName": "ingredient_name",
+         "KeyType": "HASH"
+        },
+        {
+         "AttributeName": "last_updated",
+         "KeyType": "RANGE"
+        }
+       ],
+       "Projection": {
+        "ProjectionType": "ALL"
+       }
+      }
+     ],
+     "SSESpecification": {
+      "SSEEnabled": true,
+      "SSEType": "KMS",
+      "KMSMasterKeyId": {
+       "ref": "EncryptionKey"
+      }
+     },
+     "PointInTimeRecoverySpecification": {
+      "PointInTimeRecoveryEnabled": true
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "kitchen-agent-market-prices-dev"
+      },
+      {
+       "Key": "Environment",
+       "Value": "dev"
+      },
+      {
+       "Key": "Project",
+       "Value": "kitchen-agent"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::DynamoDB::Table.RemindersTable",
+   "cfg": "RemindersTable",
+   "type": "__declared__",
+   "refs": [
+    "EncryptionKey"
+   ],
+   "values": {
+    "type": "AWS::DynamoDB::Table",
+    "name": "RemindersTable",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "TableName": "kitchen-agent-reminders-dev",
+     "BillingMode": "PAY_PER_REQUEST",
+     "AttributeDefinitions": [
+      {
+       "AttributeName": "session_id",
+       "AttributeType": "S"
+      },
+      {
+       "AttributeName": "reminder_id",
+       "AttributeType": "S"
+      },
+      {
+       "AttributeName": "status",
+       "AttributeType": "S"
+      }
+     ],
+     "KeySchema": [
+      {
+       "AttributeName": "session_id",
+       "KeyType": "HASH"
+      },
+      {
+       "AttributeName": "reminder_id",
+       "KeyType": "RANGE"
+      }
+     ],
+     "GlobalSecondaryIndexes": [
+      {
+       "IndexName": "StatusIndex",
+       "KeySchema": [
+        {
+         "AttributeName": "session_id",
+         "KeyType": "HASH"
+        },
+        {
+         "AttributeName": "status",
+         "KeyType": "RANGE"
+        }
+       ],
+       "Projection": {
+        "ProjectionType": "ALL"
+       }
+      }
+     ],
+     "SSESpecification": {
+      "SSEEnabled": true,
+      "SSEType": "KMS",
+      "KMSMasterKeyId": {
+       "ref": "EncryptionKey"
+      }
+     },
+     "TimeToLiveSpecification": {
+      "AttributeName": "expiry_timestamp",
+      "Enabled": true
+     },
+     "PointInTimeRecoverySpecification": {
+      "PointInTimeRecoveryEnabled": true
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "kitchen-agent-reminders-dev"
+      },
+      {
+       "Key": "Environment",
+       "Value": "dev"
+      },
+      {
+       "Key": "Project",
+       "Value": "kitchen-agent"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::DynamoDB::Table.RateLimitsTable",
+   "cfg": "RateLimitsTable",
+   "type": "__declared__",
+   "refs": [
+    "EncryptionKey"
+   ],
+   "values": {
+    "type": "AWS::DynamoDB::Table",
+    "name": "RateLimitsTable",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "TableName": "kitchen-agent-rate-limits-dev",
+     "BillingMode": "PAY_PER_REQUEST",
+     "AttributeDefinitions": [
+      {
+       "AttributeName": "session_id",
+       "AttributeType": "S"
+      },
+      {
+       "AttributeName": "endpoint",
+       "AttributeType": "S"
+      }
+     ],
+     "KeySchema": [
+      {
+       "AttributeName": "session_id",
+       "KeyType": "HASH"
+      },
+      {
+       "AttributeName": "endpoint",
+       "KeyType": "RANGE"
+      }
+     ],
+     "SSESpecification": {
+      "SSEEnabled": true,
+      "SSEType": "KMS",
+      "KMSMasterKeyId": {
+       "ref": "EncryptionKey"
+      }
+     },
+     "TimeToLiveSpecification": {
+      "AttributeName": "ttl",
+      "Enabled": true
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "kitchen-agent-rate-limits-dev"
+      },
+      {
+       "Key": "Environment",
+       "Value": "dev"
+      },
+      {
+       "Key": "Project",
+       "Value": "kitchen-agent"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::S3::Bucket.ImageBucket",
+   "cfg": "ImageBucket",
+   "type": "__declared__",
+   "refs": [
+    "EncryptionKey",
+    "LoggingBucket"
+   ],
+   "values": {
+    "type": "AWS::S3::Bucket",
+    "name": "ImageBucket",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "BucketName": "kitchen-agent-images-dev-123456789012",
+     "BucketEncryption": {
+      "ServerSideEncryptionConfiguration": [
+       {
+        "ServerSideEncryptionByDefault": {
+         "SSEAlgorithm": "aws:kms",
+         "KMSMasterKeyID": {
+          "ref": "EncryptionKey"
+         }
+        },
+        "BucketKeyEnabled": true
+       }
+      ]
+     },
+     "PublicAccessBlockConfiguration": {
+      "BlockPublicAcls": true,
+      "BlockPublicPolicy": true,
+      "IgnorePublicAcls": true,
+      "RestrictPublicBuckets": true
+     },
+     "VersioningConfiguration": {
+      "Status": "Enabled"
+     },
+     "LifecycleConfiguration": {
+      "Rules": [
+       {
+        "Id": "DeleteAfter24Hours",
+        "Status": "Enabled",
+        "ExpirationInDays": 1,
+        "NoncurrentVersionExpirationInDays": 1
+       }
+      ]
+     },
+     "LoggingConfiguration": {
+      "DestinationBucketName": {
+       "ref": "LoggingBucket"
+      },
+      "LogFilePrefix": "image-bucket-logs/"
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "kitchen-agent-images-dev"
+      },
+      {
+       "Key": "Environment",
+       "Value": "dev"
+      },
+      {
+       "Key": "Project",
+       "Value": "kitchen-agent"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::S3::Bucket.LoggingBucket",
+   "cfg": "LoggingBucket",
+   "type": "__declared__",
+   "refs": [
+    "EncryptionKey"
+   ],
+   "values": {
+    "type": "AWS::S3::Bucket",
+    "name": "LoggingBucket",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "BucketName": "kitchen-agent-logs-dev-123456789012",
+     "BucketEncryption": {
+      "ServerSideEncryptionConfiguration": [
+       {
+        "ServerSideEncryptionByDefault": {
+         "SSEAlgorithm": "aws:kms",
+         "KMSMasterKeyID": {
+          "ref": "EncryptionKey"
+         }
+        },
+        "BucketKeyEnabled": true
+       }
+      ]
+     },
+     "PublicAccessBlockConfiguration": {
+      "BlockPublicAcls": true,
+      "BlockPublicPolicy": true,
+      "IgnorePublicAcls": true,
+      "RestrictPublicBuckets": true
+     },
+     "LifecycleConfiguration": {
+      "Rules": [
+       {
+        "Id": "DeleteAfter90Days",
+        "Status": "Enabled",
+        "ExpirationInDays": 90
+       }
+      ]
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "kitchen-agent-logs-dev"
+      },
+      {
+       "Key": "Environment",
+       "Value": "dev"
+      },
+      {
+       "Key": "Project",
+       "Value": "kitchen-agent"
+      }
+     ]
+    }
+   }
+  }
+ ]
+}

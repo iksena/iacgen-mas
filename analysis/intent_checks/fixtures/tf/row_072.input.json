@@ -1,0 +1,519 @@
+{
+ "meta": {
+  "lang": "tf",
+  "mode": "plan",
+  "warnings": [],
+  "gt_hash": "46e0e970a0654f9e2d3de2edd1506a7824716cebfd4375e1deabf10d322560d4",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "aws_eip.web",
+   "cfg": "aws_eip.web",
+   "type": "aws_eip",
+   "values": {
+    "address": null,
+    "associate_with_private_ip": null,
+    "customer_owned_ipv4_pool": null,
+    "domain": "vpc",
+    "region": "us-east-1",
+    "tags": {
+     "Name": "demo-WebServer-IP",
+     "Owner": "Denis Astahov"
+    },
+    "tags_all": {
+     "Name": "demo-WebServer-IP",
+     "Owner": "Denis Astahov"
+    },
+    "timeouts": null
+   },
+   "refs": [
+    "aws_instance.web"
+   ]
+  },
+  {
+   "id": "aws_instance.web",
+   "cfg": "aws_instance.web",
+   "type": "aws_instance",
+   "values": {
+    "ami": "ami-04681a1dbd79675a5",
+    "associate_public_ip_address": true,
+    "credit_specification": [],
+    "force_destroy": false,
+    "get_password_data": false,
+    "hibernation": null,
+    "instance_type": "t3.micro",
+    "launch_template": [],
+    "metadata_options": [
+     {
+      "http_endpoint": "enabled",
+      "http_protocol_ipv6": "disabled",
+      "http_tokens": "required"
+     }
+    ],
+    "region": "us-east-1",
+    "root_block_device": [
+     {
+      "delete_on_termination": true,
+      "encrypted": true,
+      "tags": null
+     }
+    ],
+    "source_dest_check": true,
+    "tags": {
+     "Name": "demo-WebServer",
+     "Owner": "Denis Astahov"
+    },
+    "tags_all": {
+     "Name": "demo-WebServer",
+     "Owner": "Denis Astahov"
+    },
+    "timeouts": null,
+    "user_data": "#!/bin/bash\nyum -y update\nyum -y install httpd\nmyip=`curl http://169.254.169.254/latest/meta-data/local-ipv4`\necho \"<h2>demo-WebServer with IP: $myip</h2><br>Build by Terraform!\"  >  /var/www/html/index.html\nsudo service httpd start\nchkconfig httpd on\n",
+    "user_data_replace_on_change": false,
+    "volume_tags": null
+   },
+   "refs": [
+    "aws_security_group.web",
+    "aws_subnet.web",
+    "data.aws_ami.latest_amazon_linux"
+   ]
+  },
+  {
+   "id": "aws_internet_gateway.web",
+   "cfg": "aws_internet_gateway.web",
+   "type": "aws_internet_gateway",
+   "values": {
+    "region": "us-east-1",
+    "tags": null,
+    "timeouts": null
+   },
+   "refs": [
+    "aws_vpc.web"
+   ]
+  },
+  {
+   "id": "aws_route_table.web",
+   "cfg": "aws_route_table.web",
+   "type": "aws_route_table",
+   "values": {
+    "region": "us-east-1",
+    "route": [
+     {
+      "carrier_gateway_id": "",
+      "cidr_block": "0.0.0.0/0",
+      "core_network_arn": "",
+      "destination_prefix_list_id": "",
+      "egress_only_gateway_id": "",
+      "ipv6_cidr_block": "",
+      "local_gateway_id": "",
+      "nat_gateway_id": "",
+      "network_interface_id": "",
+      "odb_network_arn": "",
+      "transit_gateway_id": "",
+      "vpc_endpoint_id": "",
+      "vpc_peering_connection_id": ""
+     }
+    ],
+    "tags": null,
+    "timeouts": null
+   },
+   "refs": [
+    "aws_internet_gateway.web",
+    "aws_vpc.web"
+   ]
+  },
+  {
+   "id": "aws_route_table_association.web",
+   "cfg": "aws_route_table_association.web",
+   "type": "aws_route_table_association",
+   "values": {
+    "gateway_id": null,
+    "region": "us-east-1",
+    "timeouts": null
+   },
+   "refs": [
+    "aws_route_table.web",
+    "aws_subnet.web"
+   ]
+  },
+  {
+   "id": "aws_security_group.web",
+   "cfg": "aws_security_group.web",
+   "type": "aws_security_group",
+   "values": {
+    "description": "Managed by Terraform",
+    "egress": [
+     {
+      "cidr_blocks": [
+       "10.0.0.0/16"
+      ],
+      "description": "",
+      "from_port": 0,
+      "ipv6_cidr_blocks": [],
+      "prefix_list_ids": [],
+      "protocol": "-1",
+      "security_groups": [],
+      "self": false,
+      "to_port": 0
+     }
+    ],
+    "ingress": [
+     {
+      "cidr_blocks": [
+       "0.0.0.0/0"
+      ],
+      "description": "",
+      "from_port": 80,
+      "ipv6_cidr_blocks": [],
+      "prefix_list_ids": [],
+      "protocol": "tcp",
+      "security_groups": [],
+      "self": false,
+      "to_port": 80
+     }
+    ],
+    "name_prefix": "demo-WebServer-SG",
+    "region": "us-east-1",
+    "revoke_rules_on_delete": false,
+    "tags": {
+     "Name": "demo-WebServer SecurityGroup",
+     "Owner": "Denis Astahov"
+    },
+    "tags_all": {
+     "Name": "demo-WebServer SecurityGroup",
+     "Owner": "Denis Astahov"
+    },
+    "timeouts": null
+   },
+   "refs": [
+    "aws_vpc.web"
+   ]
+  },
+  {
+   "id": "aws_subnet.web",
+   "cfg": "aws_subnet.web",
+   "type": "aws_subnet",
+   "values": {
+    "assign_ipv6_address_on_creation": false,
+    "availability_zone": "us-east-1a",
+    "cidr_block": "10.0.0.0/24",
+    "customer_owned_ipv4_pool": null,
+    "enable_dns64": false,
+    "enable_lni_at_device_index": null,
+    "enable_resource_name_dns_a_record_on_launch": false,
+    "enable_resource_name_dns_aaaa_record_on_launch": false,
+    "ipv4_ipam_pool_id": null,
+    "ipv4_netmask_length": null,
+    "ipv6_ipam_pool_id": null,
+    "ipv6_native": false,
+    "ipv6_netmask_length": null,
+    "map_customer_owned_ip_on_launch": null,
+    "map_public_ip_on_launch": false,
+    "outpost_arn": null,
+    "region": "us-east-1",
+    "tags": null,
+    "timeouts": null
+   },
+   "refs": [
+    "aws_vpc.web",
+    "data.aws_availability_zones.available"
+   ]
+  },
+  {
+   "id": "aws_vpc.web",
+   "cfg": "aws_vpc.web",
+   "type": "aws_vpc",
+   "values": {
+    "assign_generated_ipv6_cidr_block": null,
+    "cidr_block": "10.0.0.0/16",
+    "enable_dns_hostnames": true,
+    "enable_dns_support": true,
+    "instance_tenancy": "default",
+    "ipv4_ipam_pool_id": null,
+    "ipv4_netmask_length": null,
+    "ipv6_ipam_pool_id": null,
+    "ipv6_netmask_length": null,
+    "region": "us-east-1",
+    "tags": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.server_name",
+   "cfg": "__parameter__.server_name",
+   "type": "__parameter__",
+   "values": {
+    "name": "server_name",
+    "default": "demo"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.server_size",
+   "cfg": "__parameter__.server_size",
+   "type": "__parameter__",
+   "values": {
+    "name": "server_size",
+    "default": "t3.micro"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.web_public_ip",
+   "cfg": "__output__.web_public_ip",
+   "type": "__output__",
+   "values": {
+    "name": "web_public_ip",
+    "value": null,
+    "description": null
+   },
+   "refs": [
+    "aws_eip.web"
+   ]
+  },
+  {
+   "id": "__declared__.data.aws_ami.latest_amazon_linux",
+   "cfg": "data.aws_ami.latest_amazon_linux",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "data.aws_ami",
+    "name": "latest_amazon_linux",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "owners": [
+      "amazon"
+     ],
+     "most_recent": true,
+     "filter": [
+      {
+       "name": "name",
+       "values": [
+        "amzn2-ami-hvm-*-x86_64-gp2"
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.data.aws_availability_zones.available",
+   "cfg": "data.aws_availability_zones.available",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "data.aws_availability_zones",
+    "name": "available",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "state": "available"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_vpc.web",
+   "cfg": "aws_vpc.web",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_vpc",
+    "name": "web",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "cidr_block": "10.0.0.0/16",
+     "enable_dns_support": true,
+     "enable_dns_hostnames": true
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_subnet.web",
+   "cfg": "aws_subnet.web",
+   "type": "__declared__",
+   "refs": [
+    "aws_vpc.web",
+    "data.aws_availability_zones.available"
+   ],
+   "values": {
+    "type": "aws_subnet",
+    "name": "web",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "vpc_id": "${aws_vpc.web.id}",
+     "cidr_block": "10.0.0.0/24",
+     "availability_zone": "${element(data.aws_availability_zones.available.names,0)}",
+     "map_public_ip_on_launch": false
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_internet_gateway.web",
+   "cfg": "aws_internet_gateway.web",
+   "type": "__declared__",
+   "refs": [
+    "aws_vpc.web"
+   ],
+   "values": {
+    "type": "aws_internet_gateway",
+    "name": "web",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "vpc_id": "${aws_vpc.web.id}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_route_table.web",
+   "cfg": "aws_route_table.web",
+   "type": "__declared__",
+   "refs": [
+    "aws_internet_gateway.web",
+    "aws_vpc.web"
+   ],
+   "values": {
+    "type": "aws_route_table",
+    "name": "web",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "vpc_id": "${aws_vpc.web.id}",
+     "route": [
+      {
+       "cidr_block": "0.0.0.0/0",
+       "gateway_id": "${aws_internet_gateway.web.id}"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_route_table_association.web",
+   "cfg": "aws_route_table_association.web",
+   "type": "__declared__",
+   "refs": [
+    "aws_route_table.web",
+    "aws_subnet.web"
+   ],
+   "values": {
+    "type": "aws_route_table_association",
+    "name": "web",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "subnet_id": "${aws_subnet.web.id}",
+     "route_table_id": "${aws_route_table.web.id}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_instance.web",
+   "cfg": "aws_instance.web",
+   "type": "__declared__",
+   "refs": [
+    "aws_security_group.web",
+    "aws_subnet.web",
+    "data.aws_ami.latest_amazon_linux"
+   ],
+   "values": {
+    "type": "aws_instance",
+    "name": "web",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ami": "${data.aws_ami.latest_amazon_linux.id}",
+     "instance_type": "t3.micro",
+     "subnet_id": "${aws_subnet.web.id}",
+     "vpc_security_group_ids": [
+      "${aws_security_group.web.id}"
+     ],
+     "associate_public_ip_address": true,
+     "user_data": "#!/bin/bash\nyum -y update\nyum -y install httpd\nmyip=`curl http://169.254.169.254/latest/meta-data/local-ipv4`\necho \"<h2>${var.server_name}-WebServer with IP: $myip</h2><br>Build by Terraform!\"  >  /var/www/html/index.html\nsudo service httpd start\nchkconfig httpd on",
+     "metadata_options": [
+      {
+       "http_tokens": "required"
+      }
+     ],
+     "root_block_device": [
+      {
+       "encrypted": true
+      }
+     ],
+     "tags": {
+      "Name": "${var.server_name}-WebServer",
+      "Owner": "Denis Astahov"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_security_group.web",
+   "cfg": "aws_security_group.web",
+   "type": "__declared__",
+   "refs": [
+    "aws_vpc.web"
+   ],
+   "values": {
+    "type": "aws_security_group",
+    "name": "web",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name_prefix": "${var.server_name}-WebServer-SG",
+     "vpc_id": "${aws_vpc.web.id}",
+     "ingress": [
+      {
+       "from_port": 80,
+       "to_port": 80,
+       "protocol": "tcp",
+       "cidr_blocks": [
+        "0.0.0.0/0"
+       ]
+      }
+     ],
+     "egress": [
+      {
+       "from_port": 0,
+       "to_port": 0,
+       "protocol": "-1",
+       "cidr_blocks": [
+        "${aws_vpc.web.cidr_block}"
+       ]
+      }
+     ],
+     "tags": {
+      "Name": "${var.server_name}-WebServer SecurityGroup",
+      "Owner": "Denis Astahov"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_eip.web",
+   "cfg": "aws_eip.web",
+   "type": "__declared__",
+   "refs": [
+    "aws_instance.web"
+   ],
+   "values": {
+    "type": "aws_eip",
+    "name": "web",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "domain": "vpc",
+     "instance": "${aws_instance.web.id}",
+     "tags": {
+      "Name": "${var.server_name}-WebServer-IP",
+      "Owner": "Denis Astahov"
+     }
+    }
+   }
+  }
+ ]
+}

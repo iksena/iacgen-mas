@@ -1,0 +1,283 @@
+{
+ "lang": "tf",
+ "row_number": 10,
+ "source_hash": {
+  "gt": "a074b67684a5f4f5c3839baa629b15fc9d582518a6b0ab2fa57770bf2e3f48dd",
+  "prompt": "cb2c9f2a08b9eca7ba4ff7fb252cac19c95337e63274f2ab7e9d9b0ddb80ec89"
+ },
+ "selectors": {},
+ "checks": [
+  {
+   "id": "repo_named",
+   "kind": "exists",
+   "tier": "core",
+   "select": {
+    "types": [
+     "aws_ecr_repository"
+    ],
+    "where": [
+     {
+      "path": "name",
+      "op": "eq",
+      "value": "reactjs-app-repo"
+     }
+    ]
+   },
+   "quote": "an Amazon ECR repository named \"reactjs-app-repo\""
+  },
+  {
+   "id": "repo_immutable",
+   "kind": "attr",
+   "tier": "core",
+   "select": {
+    "types": [
+     "aws_ecr_repository"
+    ],
+    "where": [
+     {
+      "path": "name",
+      "op": "eq",
+      "value": "reactjs-app-repo"
+     }
+    ]
+   },
+   "cond": {
+    "path": "image_tag_mutability",
+    "op": "eq",
+    "value": "IMMUTABLE"
+   },
+   "quote": "immutable image tags"
+  },
+  {
+   "id": "repo_scan_on_push",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_ecr_repository"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "eq",
+        "value": "reactjs-app-repo"
+       }
+      ]
+     },
+     "cond": {
+      "path": "image_scanning_configuration.*.scan_on_push",
+      "op": "truthy"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_ecr_registry_scanning_configuration"
+      ]
+     },
+     "cond": {
+      "path": "rule.*.scan_frequency",
+      "op": "eq",
+      "value": "SCAN_ON_PUSH"
+     }
+    }
+   ],
+   "quote": "automatic scanning on push"
+  },
+  {
+   "id": "role_named",
+   "kind": "exists",
+   "tier": "core",
+   "select": {
+    "types": [
+     "aws_iam_role"
+    ],
+    "where": [
+     {
+      "path": "name",
+      "op": "eq",
+      "value": "ecsTaskExecutionRole"
+     }
+    ]
+   },
+   "quote": "an IAM role named \"ecsTaskExecutionRole\""
+  },
+  {
+   "id": "role_assumed_by_ecs",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_iam_role"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "eq",
+        "value": "ecsTaskExecutionRole"
+       }
+      ]
+     },
+     "cond": {
+      "path": "assume_role_policy",
+      "op": "regex",
+      "value": "(?s)\"Action\":\\[?(\"[^\"]*\",)*\"sts:(AssumeRole|\\*)\"(,\"[^\"]*\")*\\]?,(?:\"Condition\":\\{(?:[^{}]|\\{[^{}]*\\})*\\},)?\"Effect\":\"Allow\",\"Principal\":\\{(?:\"AWS\":(?:\"[^\"]*\"|\\[[^\\]]*\\]),)?\"Service\":\\[?(\"[^\"]*\",)*\"ecs-tasks\\.amazonaws\\.com\""
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_role"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "eq",
+        "value": "ecsTaskExecutionRole"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "data.aws_iam_policy_document"
+      ],
+      "where": [
+       {
+        "path": "statement.*",
+        "op": "match",
+        "value": [
+         {
+          "path": "effect",
+          "op": "eq",
+          "value": "Allow"
+         },
+         {
+          "path": "actions.*",
+          "op": "glob_covers",
+          "value": "sts:AssumeRole"
+         },
+         {
+          "path": "principals.*.identifiers.*",
+          "op": "eq",
+          "value": "ecs-tasks.amazonaws.com"
+         }
+        ]
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_iam_role"
+       },
+       {
+        "path": "properties.name",
+        "op": "eq",
+        "value": "ecsTaskExecutionRole"
+       }
+      ]
+     },
+     "cond": {
+      "path": "properties.assume_role_policy",
+      "op": "regex",
+      "value": "(?i)ecs-tasks\\.amazonaws\\.com"
+     }
+    }
+   ],
+   "quote": "allows ECS tasks to assume it"
+  },
+  {
+   "id": "role_policy_attached",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_role_policy_attachment",
+       "aws_iam_policy_attachment"
+      ],
+      "where": [
+       {
+        "path": "policy_arn",
+        "op": "contains",
+        "value": "AmazonECSTaskExecutionRolePolicy"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_iam_role"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "eq",
+        "value": "ecsTaskExecutionRole"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_iam_role"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "eq",
+        "value": "ecsTaskExecutionRole"
+       }
+      ]
+     },
+     "cond": {
+      "path": "managed_policy_arns.*",
+      "op": "contains",
+      "value": "AmazonECSTaskExecutionRolePolicy"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_iam_role_policy_attachment"
+      ],
+      "where": [
+       {
+        "path": "policy_arn",
+        "op": "contains",
+        "value": "AmazonECSTaskExecutionRolePolicy"
+       }
+      ]
+     },
+     "cond": {
+      "path": "role",
+      "op": "eq",
+      "value": "ecsTaskExecutionRole"
+     }
+    }
+   ],
+   "quote": "attached with the AWS-managed AmazonECSTaskExecutionRolePolicy"
+  }
+ ],
+ "notes": "Trust-policy branches bind Allow + sts:AssumeRole + the ecs-tasks principal to one statement (planned JSON is key-sorted) and are tied to the role named ecsTaskExecutionRole; the attachment may reference the role or name it literally."
+}

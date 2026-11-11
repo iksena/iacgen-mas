@@ -1,0 +1,207 @@
+{
+ "meta": {
+  "lang": "tf",
+  "mode": "plan",
+  "warnings": [],
+  "gt_hash": "4c3f3bc5878020dbe6a29c3b745f41fe4177a2ad14fe23cbca57d45f5842bfff",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "aws_iam_group.group",
+   "cfg": "aws_iam_group.group",
+   "type": "aws_iam_group",
+   "values": {
+    "name": "prod-ci-group-",
+    "path": "/"
+   },
+   "refs": []
+  },
+  {
+   "id": "aws_iam_group_policy_attachment.policy_attachment",
+   "cfg": "aws_iam_group_policy_attachment.policy_attachment",
+   "type": "aws_iam_group_policy_attachment",
+   "values": {
+    "group": "prod-ci-group-"
+   },
+   "refs": [
+    "aws_iam_group.group",
+    "aws_iam_policy.policy"
+   ]
+  },
+  {
+   "id": "aws_iam_policy.policy",
+   "cfg": "aws_iam_policy.policy",
+   "type": "aws_iam_policy",
+   "values": {
+    "delay_after_policy_creation_in_ms": null,
+    "description": "Policy allowing users/entities to assume the role",
+    "name": "prod-ci-policy-",
+    "path": "/",
+    "tags": null
+   },
+   "refs": [
+    "aws_iam_role.role"
+   ]
+  },
+  {
+   "id": "aws_iam_role.role",
+   "cfg": "aws_iam_role.role",
+   "type": "aws_iam_role",
+   "values": {
+    "assume_role_policy": "{\"Statement\":[{\"Action\":\"sts:AssumeRole\",\"Effect\":\"Allow\",\"Principal\":{\"AWS\":\"*\"}}],\"Version\":\"2012-10-17\"}",
+    "description": null,
+    "force_detach_policies": false,
+    "max_session_duration": 3600,
+    "name": "prod-ci-role-",
+    "path": "/",
+    "permissions_boundary": null,
+    "tags": null
+   },
+   "refs": []
+  },
+  {
+   "id": "aws_iam_user.user",
+   "cfg": "aws_iam_user.user",
+   "type": "aws_iam_user",
+   "values": {
+    "force_destroy": false,
+    "name": "prod-ci-user-",
+    "path": "/",
+    "permissions_boundary": null,
+    "tags": null
+   },
+   "refs": []
+  },
+  {
+   "id": "aws_iam_user_group_membership.example1",
+   "cfg": "aws_iam_user_group_membership.example1",
+   "type": "aws_iam_user_group_membership",
+   "values": {
+    "groups": [
+     "prod-ci-group-"
+    ],
+    "user": "prod-ci-user-"
+   },
+   "refs": [
+    "aws_iam_group.group",
+    "aws_iam_user.user"
+   ]
+  },
+  {
+   "id": "__parameter__.name_suffix",
+   "cfg": "__parameter__.name_suffix",
+   "type": "__parameter__",
+   "values": {
+    "name": "name_suffix",
+    "default": ""
+   },
+   "refs": []
+  },
+  {
+   "id": "__declared__.aws_iam_role.role",
+   "cfg": "aws_iam_role.role",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_iam_role",
+    "name": "role",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "prod-ci-role-${var.name_suffix}",
+     "assume_role_policy": "${jsonencode({'Version': '2012-10-17', 'Statement': [{'Effect': 'Allow', 'Principal': {'AWS': '*'}, 'Action': 'sts:AssumeRole'}]})}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_policy.policy",
+   "cfg": "aws_iam_policy.policy",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_role.role"
+   ],
+   "values": {
+    "type": "aws_iam_policy",
+    "name": "policy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "prod-ci-policy-${var.name_suffix}",
+     "description": "Policy allowing users/entities to assume the role",
+     "policy": "${jsonencode({'Version': '2012-10-17', 'Statement': [{'Effect': 'Allow', 'Action': 'sts:AssumeRole', 'Resource': '${aws_iam_role.role.arn}'}]})}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_group.group",
+   "cfg": "aws_iam_group.group",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_iam_group",
+    "name": "group",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "prod-ci-group-${var.name_suffix}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_group_policy_attachment.policy_attachment",
+   "cfg": "aws_iam_group_policy_attachment.policy_attachment",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_group.group",
+    "aws_iam_policy.policy"
+   ],
+   "values": {
+    "type": "aws_iam_group_policy_attachment",
+    "name": "policy_attachment",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "group": "${aws_iam_group.group.name}",
+     "policy_arn": "${aws_iam_policy.policy.arn}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_user.user",
+   "cfg": "aws_iam_user.user",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_iam_user",
+    "name": "user",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "prod-ci-user-${var.name_suffix}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_user_group_membership.example1",
+   "cfg": "aws_iam_user_group_membership.example1",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_group.group",
+    "aws_iam_user.user"
+   ],
+   "values": {
+    "type": "aws_iam_user_group_membership",
+    "name": "example1",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "user": "${aws_iam_user.user.name}",
+     "groups": [
+      "${aws_iam_group.group.name}"
+     ]
+    }
+   }
+  }
+ ]
+}

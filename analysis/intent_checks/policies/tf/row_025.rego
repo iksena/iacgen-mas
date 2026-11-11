@@ -1,0 +1,733 @@
+package intent.tf.row_025
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {},
+ "checks": [
+  {
+   "id": "pool",
+   "tier": "core",
+   "quote": "creates an Amazon Cognito User Pool named \"tech-lanches-clientes-pool\"",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_cognito_user_pool"
+    ],
+    "where": [
+     {
+      "path": [
+       "name"
+      ],
+      "op": "eq",
+      "value": "tech-lanches-clientes-pool"
+     }
+    ]
+   }
+  },
+  {
+   "id": "pool_mfa_off",
+   "tier": "core",
+   "quote": "MFA turned off",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_cognito_user_pool"
+    ],
+    "where": [
+     {
+      "path": [
+       "name"
+      ],
+      "op": "eq",
+      "value": "tech-lanches-clientes-pool"
+     }
+    ]
+   },
+   "cond": {
+    "path": [
+     "mfa_configuration"
+    ],
+    "op": "eq",
+    "value": "OFF"
+   }
+  },
+  {
+   "id": "pool_case_insensitive",
+   "tier": "core",
+   "quote": "case-insensitive usernames",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_cognito_user_pool"
+    ],
+    "where": [
+     {
+      "path": [
+       "name"
+      ],
+      "op": "eq",
+      "value": "tech-lanches-clientes-pool"
+     }
+    ]
+   },
+   "cond": {
+    "path": [
+     "username_configuration",
+     "*",
+     "case_sensitive"
+    ],
+    "op": "eq",
+    "value": false
+   }
+  },
+  {
+   "id": "pool_auto_verify_email",
+   "tier": "core",
+   "quote": "auto-verified email attributes",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_cognito_user_pool"
+    ],
+    "where": [
+     {
+      "path": [
+       "name"
+      ],
+      "op": "eq",
+      "value": "tech-lanches-clientes-pool"
+     }
+    ]
+   },
+   "cond": {
+    "path": [
+     "auto_verified_attributes",
+     "*"
+    ],
+    "op": "eq",
+    "value": "email"
+   }
+  },
+  {
+   "id": "pool_alias",
+   "tier": "detail",
+   "quote": "alias attributes for email and preferred username",
+   "kind": "all_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_cognito_user_pool"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "eq",
+        "value": "tech-lanches-clientes-pool"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "alias_attributes",
+       "*"
+      ],
+      "op": "eq",
+      "value": "email"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_cognito_user_pool"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "eq",
+        "value": "tech-lanches-clientes-pool"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "alias_attributes",
+       "*"
+      ],
+      "op": "eq",
+      "value": "preferred_username"
+     }
+    }
+   ]
+  },
+  {
+   "id": "pool_tag",
+   "tier": "detail",
+   "quote": "tagged with a Name of \"tech_lanches_clientes_pool\"",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_cognito_user_pool"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "eq",
+        "value": "tech-lanches-clientes-pool"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "tags",
+       "Name"
+      ],
+      "op": "eq",
+      "value": "tech_lanches_clientes_pool"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_cognito_user_pool"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "eq",
+        "value": "tech-lanches-clientes-pool"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "tags_all",
+       "Name"
+      ],
+      "op": "eq",
+      "value": "tech_lanches_clientes_pool"
+     }
+    }
+   ]
+  },
+  {
+   "id": "client",
+   "tier": "core",
+   "quote": "provision a User Pool Client named \"pool-client\"",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_cognito_user_pool_client"
+    ],
+    "where": [
+     {
+      "path": [
+       "name"
+      ],
+      "op": "eq",
+      "value": "pool-client"
+     }
+    ]
+   }
+  },
+  {
+   "id": "client_attached",
+   "tier": "core",
+   "quote": "Attached to this pool",
+   "kind": "ref",
+   "from": {
+    "types": [
+     "aws_cognito_user_pool_client"
+    ],
+    "where": [
+     {
+      "path": [
+       "name"
+      ],
+      "op": "eq",
+      "value": "pool-client"
+     }
+    ]
+   },
+   "to": {
+    "types": [
+     "aws_cognito_user_pool"
+    ],
+    "where": []
+   }
+  },
+  {
+   "id": "client_flows",
+   "tier": "core",
+   "quote": "supporting the explicit auth flows ALLOW_REFRESH_TOKEN_AUTH, ALLOW_USER_SRP_AUTH, and ALLOW_ADMIN_USER_PASSWORD_AUTH",
+   "kind": "all_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_cognito_user_pool_client"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "eq",
+        "value": "pool-client"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "explicit_auth_flows",
+       "*"
+      ],
+      "op": "eq",
+      "value": "ALLOW_REFRESH_TOKEN_AUTH"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_cognito_user_pool_client"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "eq",
+        "value": "pool-client"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "explicit_auth_flows",
+       "*"
+      ],
+      "op": "eq",
+      "value": "ALLOW_USER_SRP_AUTH"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_cognito_user_pool_client"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "eq",
+        "value": "pool-client"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "explicit_auth_flows",
+       "*"
+      ],
+      "op": "eq",
+      "value": "ALLOW_ADMIN_USER_PASSWORD_AUTH"
+     }
+    }
+   ]
+  },
+  {
+   "id": "secret",
+   "tier": "core",
+   "quote": "an AWS Secrets Manager secret whose name defaults to \"lambda-auth-credentials\"",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_secretsmanager_secret"
+    ],
+    "where": [
+     {
+      "path": [
+       "name"
+      ],
+      "op": "eq",
+      "value": "lambda-auth-credentials"
+     }
+    ]
+   }
+  },
+  {
+   "id": "secret_name_var",
+   "tier": "detail",
+   "quote": "whose name defaults to \"lambda-auth-credentials\"",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": [
+       "default"
+      ],
+      "op": "eq",
+      "value": "lambda-auth-credentials"
+     }
+    ]
+   }
+  },
+  {
+   "id": "secret_recovery",
+   "tier": "core",
+   "quote": "with a recovery window of 0 days",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_secretsmanager_secret"
+    ],
+    "where": [
+     {
+      "path": [
+       "name"
+      ],
+      "op": "eq",
+      "value": "lambda-auth-credentials"
+     }
+    ]
+   },
+   "cond": {
+    "path": [
+     "recovery_window_in_days"
+    ],
+    "op": "eq",
+    "value": 0
+   }
+  },
+  {
+   "id": "secret_version",
+   "tier": "core",
+   "quote": "storing a JSON-encoded payload",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_secretsmanager_secret_version"
+    ],
+    "where": []
+   }
+  },
+  {
+   "id": "secret_version_secret",
+   "tier": "core",
+   "quote": "storing a JSON-encoded payload",
+   "kind": "ref",
+   "from": {
+    "types": [
+     "aws_secretsmanager_secret_version"
+    ],
+    "where": []
+   },
+   "to": {
+    "types": [
+     "aws_secretsmanager_secret"
+    ],
+    "where": [
+     {
+      "path": [
+       "name"
+      ],
+      "op": "eq",
+      "value": "lambda-auth-credentials"
+     }
+    ]
+   }
+  },
+  {
+   "id": "payload_json_encoded",
+   "tier": "core",
+   "quote": "storing a JSON-encoded payload",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": [
+       "type"
+      ],
+      "op": "eq",
+      "value": "aws_secretsmanager_secret_version"
+     }
+    ]
+   },
+   "cond": {
+    "path": [
+     "properties",
+     "secret_string"
+    ],
+    "op": "regex",
+    "value": "(?s)jsonencode|^\\s*\\{|local\\."
+   }
+  },
+  {
+   "id": "payload_pool_id",
+   "tier": "core",
+   "quote": "the User Pool ID",
+   "kind": "ref",
+   "from": {
+    "types": [
+     "aws_secretsmanager_secret_version"
+    ],
+    "where": []
+   },
+   "to": {
+    "types": [
+     "aws_cognito_user_pool"
+    ],
+    "where": []
+   }
+  },
+  {
+   "id": "payload_client_id",
+   "tier": "core",
+   "quote": "the User Pool Client ID",
+   "kind": "ref",
+   "from": {
+    "types": [
+     "aws_secretsmanager_secret_version"
+    ],
+    "where": []
+   },
+   "to": {
+    "types": [
+     "aws_cognito_user_pool_client"
+    ],
+    "where": []
+   }
+  },
+  {
+   "id": "payload_region",
+   "tier": "detail",
+   "quote": "the configured region (defaulting to \"us-east-1\")",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": [
+         "default"
+        ],
+        "op": "eq",
+        "value": "us-east-1"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_secretsmanager_secret_version"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "secret_string"
+      ],
+      "op": "contains",
+      "value": "us-east-1"
+     }
+    }
+   ]
+  },
+  {
+   "id": "payload_username",
+   "tier": "detail",
+   "quote": "a default username (\"techlanches\")",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": [
+         "default"
+        ],
+        "op": "eq",
+        "value": "techlanches"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_secretsmanager_secret_version"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "secret_string"
+      ],
+      "op": "contains",
+      "value": "techlanches"
+     }
+    }
+   ]
+  },
+  {
+   "id": "payload_email",
+   "tier": "detail",
+   "quote": "a default email (\"g12.4soat.fiap@outlook.com\")",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": [
+         "default"
+        ],
+        "op": "eq",
+        "value": "g12.4soat.fiap@outlook.com"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_secretsmanager_secret_version"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "secret_string"
+      ],
+      "op": "contains",
+      "value": "g12.4soat.fiap@outlook.com"
+     }
+    }
+   ]
+  },
+  {
+   "id": "payload_password",
+   "tier": "detail",
+   "quote": "a default password (\"Test1234@\")",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": [
+         "default"
+        ],
+        "op": "eq",
+        "value": "Test1234@"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_secretsmanager_secret_version"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "secret_string"
+      ],
+      "op": "contains",
+      "value": "Test1234@"
+     }
+    }
+   ]
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

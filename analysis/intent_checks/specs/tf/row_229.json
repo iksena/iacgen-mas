@@ -1,0 +1,406 @@
+{
+ "lang": "tf",
+ "row_number": 229,
+ "source_hash": {
+  "gt": "8ee4fc10e5bdeea14d44ef27562943db21b49d2c55797e4b081f501c49ea069e",
+  "prompt": "9ad21120f9accdd12bc2353cc7215ad9efc3bf5150254c7c3f459d0c6c4c64f8"
+ },
+ "selectors": {
+  "test_role": {
+   "types": [
+    "aws_iam_role"
+   ],
+   "where": [
+    {
+     "path": "name",
+     "op": "eq",
+     "value": "test_role"
+    }
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "role_named",
+   "tier": "core",
+   "kind": "attr",
+   "select": "test_role",
+   "cond": {
+    "path": "name",
+    "op": "eq",
+    "value": "test_role"
+   },
+   "quote": "a service-catalog-assumable IAM role named test_role"
+  },
+  {
+   "id": "role_trust_sc",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "test_role",
+     "cond": {
+      "path": "assume_role_policy",
+      "op": "contains",
+      "value": "servicecatalog.amazonaws.com"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_iam_role"
+       }
+      ]
+     },
+     "cond": {
+      "path": "properties.assume_role_policy",
+      "op": "contains",
+      "value": "servicecatalog.amazonaws.com"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "data.aws_iam_policy_document"
+       }
+      ]
+     },
+     "cond": {
+      "path": "properties.statement",
+      "op": "contains",
+      "value": "servicecatalog.amazonaws.com"
+     }
+    }
+   ],
+   "quote": "service-catalog-assumable IAM role",
+   "justify": "Service Catalog assumable means the trust policy names the servicecatalog.amazonaws.com principal"
+  },
+  {
+   "id": "launch_policy",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_iam_policy"
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_iam_role_policy"
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_iam_role"
+       }
+      ]
+     },
+     "cond": {
+      "path": "properties.inline_policy",
+      "op": "present"
+     }
+    }
+   ],
+   "quote": "with a scoped launch-constraint policy"
+  },
+  {
+   "id": "policy_on_role",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_role_policy_attachment"
+      ]
+     },
+     "to": "test_role"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_role_policy"
+      ]
+     },
+     "to": "test_role"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_policy_attachment"
+      ]
+     },
+     "to": "test_role"
+    },
+    {
+     "kind": "attr",
+     "select": "test_role",
+     "cond": {
+      "path": "inline_policy.*.policy",
+      "op": "present"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": "test_role",
+     "to": {
+      "types": [
+       "aws_iam_policy"
+      ]
+     }
+    }
+   ],
+   "quote": "a service-catalog-assumable IAM role named test_role with a scoped launch-constraint policy"
+  },
+  {
+   "id": "group_exists",
+   "tier": "core",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_iam_group"
+    ]
+   },
+   "quote": "plus an IAM group"
+  },
+  {
+   "id": "user_exists",
+   "tier": "core",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_iam_user"
+    ]
+   },
+   "quote": "a console-enabled user"
+  },
+  {
+   "id": "console_login",
+   "tier": "core",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_iam_user_login_profile"
+    ]
+   },
+   "quote": "console-enabled user",
+   "justify": "console access for an IAM user is granted by a login profile"
+  },
+  {
+   "id": "login_for_user",
+   "tier": "detail",
+   "kind": "ref",
+   "from": {
+    "types": [
+     "aws_iam_user_login_profile"
+    ]
+   },
+   "to": {
+    "types": [
+     "aws_iam_user"
+    ]
+   },
+   "quote": "a console-enabled user"
+  },
+  {
+   "id": "member_of_group",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_user_group_membership"
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_iam_group"
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_group_membership"
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_iam_group"
+      ]
+     }
+    }
+   ],
+   "quote": "added as a member of that group"
+  },
+  {
+   "id": "member_of_user",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_user_group_membership"
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_iam_user"
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_group_membership"
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_iam_user"
+      ]
+     }
+    }
+   ],
+   "quote": "a console-enabled user added as a member of that group"
+  },
+  {
+   "id": "x_group_policy",
+   "tier": "extra",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_iam_group_policy_attachment"
+    ]
+   },
+   "cond": {
+    "path": "policy_arn",
+    "op": "contains",
+    "value": "AWSServiceCatalogEndUserFullAccess"
+   }
+  },
+  {
+   "id": "x_launch_sc_actions",
+   "tier": "extra",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_iam_policy",
+       "aws_iam_role_policy",
+       "aws_iam_user_policy",
+       "aws_iam_group_policy"
+      ]
+     },
+     "cond": {
+      "path": "policy",
+      "op": "regex",
+      "value": "servicecatalog:"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "in",
+        "value": [
+         "aws_iam_policy",
+         "aws_iam_role_policy",
+         "aws_iam_user_policy",
+         "aws_iam_group_policy"
+        ]
+       }
+      ]
+     },
+     "cond": {
+      "path": "properties.policy",
+      "op": "regex",
+      "value": "servicecatalog:"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "data.aws_iam_policy_document"
+       }
+      ]
+     },
+     "cond": {
+      "path": "properties.statement",
+      "op": "regex",
+      "value": "servicecatalog:"
+     }
+    }
+   ]
+  },
+  {
+   "id": "x_user_force_destroy",
+   "tier": "extra",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_iam_user"
+    ]
+   },
+   "cond": {
+    "path": "force_destroy",
+    "op": "eq",
+    "value": true
+   }
+  }
+ ],
+ "notes": "Policy contents are not stated by the prompt beyond \"scoped\"; only existence and attachment to the role named test_role are checked (the launch-policy actions are an extra check)."
+}

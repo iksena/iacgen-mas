@@ -1,0 +1,377 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "62164b07a21dad9df5a7155f6f51d66b59477fec2e979b2205bfa5d35b76beb3",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "CleanupFunctionRole",
+   "cfg": "CleanupFunctionRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Policies": [
+     {
+      "PolicyName": "DynamoDBCleanupPolicy",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "dynamodb:Scan",
+          "dynamodb:BatchWriteItem",
+          "dynamodb:DescribeTable"
+         ],
+         "Resource": [
+          "arn:aws:dynamodb:us-east-1:123456789012:table/throttle"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+         ],
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "CleanupLogGroup",
+   "cfg": "CleanupLogGroup",
+   "type": "AWS::Logs::LogGroup",
+   "values": {
+    "LogGroupName": "/aws/lambda/DynamoDBCleanupFunction",
+    "RetentionInDays": 30
+   },
+   "refs": []
+  },
+  {
+   "id": "CleanupLambdaFunction",
+   "cfg": "CleanupLambdaFunction",
+   "type": "AWS::Lambda::Function",
+   "values": {
+    "FunctionName": "DynamoDBCleanupFunction",
+    "Handler": "index.handler",
+    "Runtime": "python3.12",
+    "Role": {
+     "ref": "CleanupFunctionRole",
+     "attr": "Arn"
+    },
+    "Timeout": 300,
+    "Environment": {
+     "Variables": {
+      "TABLE_NAME": "throttle"
+     }
+    },
+    "Code": {
+     "ZipFile": "import os\nimport boto3\nfrom zoneinfo import ZoneInfo\nfrom datetime import datetime, timedelta\n\ndef handler(event, context):\n    table_name = os.environ['TABLE_NAME']\n    dynamodb = boto3.resource('dynamodb')\n    table = dynamodb.Table(table_name)\n    table_keys = {ks[\"KeyType\"]: ks[\"AttributeName\"] for ks in table.key_schema}\n    timestamp = datetime.now(ZoneInfo('UTC')).isoformat()\n\n    deleted = 0\n    with table.batch_writer() as batch:\n        next_page_token = None\n        while True:\n            response = table.scan(Limit=1_000, **(dict(ExclusiveStartKey=next_page_token) if next_page_token else {}))\n            next_page_token = response.get(\"LastEvaluatedKey\")\n            for item in response.get('Items', []):\n                # Replace this condition with your own cleanup logic\n                if item[table_keys[\"RANGE\"]] <= timestamp:\n                    batch.delete_item(Key={k: item[k] for k in table_keys.values()})\n                    deleted += 1\n            if next_page_token is None:\n                break\n\n    print(f\"Deleted {deleted} items.\")\n"
+    },
+    "__resource__": {
+     "DependsOn": [
+      "CleanupLogGroup"
+     ]
+    }
+   },
+   "refs": [
+    "CleanupFunctionRole"
+   ]
+  },
+  {
+   "id": "CleanupSchedule",
+   "cfg": "CleanupSchedule",
+   "type": "AWS::Events::Rule",
+   "values": {
+    "Name": "HourlyCleanupTrigger",
+    "ScheduleExpression": "rate(1 hour)",
+    "State": "ENABLED",
+    "Targets": [
+     {
+      "Arn": {
+       "ref": "CleanupLambdaFunction",
+       "attr": "Arn"
+      },
+      "Id": "LambdaTarget"
+     }
+    ],
+    "__resource__": {
+     "Condition": "IsScheduled"
+    }
+   },
+   "refs": [
+    "CleanupLambdaFunction"
+   ]
+  },
+  {
+   "id": "LambdaInvokePermission",
+   "cfg": "LambdaInvokePermission",
+   "type": "AWS::Lambda::Permission",
+   "values": {
+    "FunctionName": {
+     "ref": "CleanupLambdaFunction"
+    },
+    "Action": "lambda:InvokeFunction",
+    "Principal": "events.amazonaws.com",
+    "SourceArn": {
+     "ref": "CleanupSchedule",
+     "attr": "Arn"
+    },
+    "__resource__": {
+     "Condition": "IsScheduled"
+    }
+   },
+   "refs": [
+    "CleanupLambdaFunction",
+    "CleanupSchedule"
+   ]
+  },
+  {
+   "id": "__parameter__.LambdaName",
+   "cfg": "__parameter__.LambdaName",
+   "type": "__parameter__",
+   "values": {
+    "name": "LambdaName",
+    "type": "String",
+    "default": "DynamoDBCleanupFunction",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.Schedule",
+   "cfg": "__parameter__.Schedule",
+   "type": "__parameter__",
+   "values": {
+    "name": "Schedule",
+    "type": "String",
+    "default": "rate(1 hour)",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.LambdaArn",
+   "cfg": "__output__.LambdaArn",
+   "type": "__output__",
+   "values": {
+    "name": "LambdaArn",
+    "value": {
+     "ref": "CleanupLambdaFunction",
+     "attr": "Arn"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "CleanupLambdaFunction"
+   ]
+  },
+  {
+   "id": "__output__.LambdaName",
+   "cfg": "__output__.LambdaName",
+   "type": "__output__",
+   "values": {
+    "name": "LambdaName",
+    "value": {
+     "ref": "CleanupLambdaFunction"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "CleanupLambdaFunction"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.CleanupFunctionRole",
+   "cfg": "CleanupFunctionRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "CleanupFunctionRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Policies": [
+      {
+       "PolicyName": "DynamoDBCleanupPolicy",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "dynamodb:Scan",
+           "dynamodb:BatchWriteItem",
+           "dynamodb:DescribeTable"
+          ],
+          "Resource": [
+           "arn:aws:dynamodb:us-east-1:123456789012:table/throttle"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "logs:CreateLogGroup",
+           "logs:CreateLogStream",
+           "logs:PutLogEvents"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::LogGroup.CleanupLogGroup",
+   "cfg": "CleanupLogGroup",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Logs::LogGroup",
+    "name": "CleanupLogGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "LogGroupName": "/aws/lambda/DynamoDBCleanupFunction",
+     "RetentionInDays": 30
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Function.CleanupLambdaFunction",
+   "cfg": "CleanupLambdaFunction",
+   "type": "__declared__",
+   "refs": [
+    "CleanupFunctionRole"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Function",
+    "name": "CleanupLambdaFunction",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "FunctionName": "DynamoDBCleanupFunction",
+     "Handler": "index.handler",
+     "Runtime": "python3.12",
+     "Role": {
+      "ref": "CleanupFunctionRole",
+      "attr": "Arn"
+     },
+     "Timeout": 300,
+     "Environment": {
+      "Variables": {
+       "TABLE_NAME": "throttle"
+      }
+     },
+     "Code": {
+      "ZipFile": "import os\nimport boto3\nfrom zoneinfo import ZoneInfo\nfrom datetime import datetime, timedelta\n\ndef handler(event, context):\n    table_name = os.environ['TABLE_NAME']\n    dynamodb = boto3.resource('dynamodb')\n    table = dynamodb.Table(table_name)\n    table_keys = {ks[\"KeyType\"]: ks[\"AttributeName\"] for ks in table.key_schema}\n    timestamp = datetime.now(ZoneInfo('UTC')).isoformat()\n\n    deleted = 0\n    with table.batch_writer() as batch:\n        next_page_token = None\n        while True:\n            response = table.scan(Limit=1_000, **(dict(ExclusiveStartKey=next_page_token) if next_page_token else {}))\n            next_page_token = response.get(\"LastEvaluatedKey\")\n            for item in response.get('Items', []):\n                # Replace this condition with your own cleanup logic\n                if item[table_keys[\"RANGE\"]] <= timestamp:\n                    batch.delete_item(Key={k: item[k] for k in table_keys.values()})\n                    deleted += 1\n            if next_page_token is None:\n                break\n\n    print(f\"Deleted {deleted} items.\")\n"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Events::Rule.CleanupSchedule",
+   "cfg": "CleanupSchedule",
+   "type": "__declared__",
+   "refs": [
+    "CleanupLambdaFunction"
+   ],
+   "values": {
+    "type": "AWS::Events::Rule",
+    "name": "CleanupSchedule",
+    "gated": true,
+    "gate": "IsScheduled",
+    "properties": {
+     "Name": "HourlyCleanupTrigger",
+     "ScheduleExpression": "rate(1 hour)",
+     "State": "ENABLED",
+     "Targets": [
+      {
+       "Arn": {
+        "ref": "CleanupLambdaFunction",
+        "attr": "Arn"
+       },
+       "Id": "LambdaTarget"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Permission.LambdaInvokePermission",
+   "cfg": "LambdaInvokePermission",
+   "type": "__declared__",
+   "refs": [
+    "CleanupLambdaFunction",
+    "CleanupSchedule"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Permission",
+    "name": "LambdaInvokePermission",
+    "gated": true,
+    "gate": "IsScheduled",
+    "properties": {
+     "FunctionName": {
+      "ref": "CleanupLambdaFunction"
+     },
+     "Action": "lambda:InvokeFunction",
+     "Principal": "events.amazonaws.com",
+     "SourceArn": {
+      "ref": "CleanupSchedule",
+      "attr": "Arn"
+     }
+    }
+   }
+  }
+ ]
+}

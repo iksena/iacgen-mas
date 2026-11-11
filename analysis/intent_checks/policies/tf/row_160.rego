@@ -1,0 +1,1435 @@
+package intent.tf.row_160
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {
+  "dlq": {
+   "types": [
+    "__declared__"
+   ],
+   "where": [
+    {
+     "path": [
+      "type"
+     ],
+     "op": "eq",
+     "value": "aws_sqs_queue"
+    },
+    {
+     "path": [
+      "gate"
+     ],
+     "op": "regex",
+     "value": "create_dlq([^_a-z]|$)"
+    }
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "queue",
+   "tier": "core",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_sqs_queue"
+    ],
+    "where": []
+   },
+   "quote": "creates a versatile Amazon SQS messaging infrastructure module"
+  },
+  {
+   "id": "p_create",
+   "tier": "detail",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": [
+       "name"
+      ],
+      "op": "eq",
+      "value": "create"
+     }
+    ]
+   },
+   "cond": {
+    "path": [
+     "default"
+    ],
+    "op": "eq",
+    "value": true
+   },
+   "quote": "boolean create variable defaulting to true"
+  },
+  {
+   "id": "create_gates_queue",
+   "tier": "detail",
+   "kind": "exists",
+   "quote": "Overall module creation must be governed by a boolean create variable",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": [
+       "type"
+      ],
+      "op": "eq",
+      "value": "aws_sqs_queue"
+     },
+     {
+      "path": [
+       "gate"
+      ],
+      "op": "regex",
+      "value": "var\\.create([^_a-z]|$)"
+     }
+    ]
+   }
+  },
+  {
+   "id": "p_prefix",
+   "tier": "detail",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": [
+       "name"
+      ],
+      "op": "eq",
+      "value": "use_name_prefix"
+     }
+    ]
+   },
+   "cond": {
+    "path": [
+     "default"
+    ],
+    "op": "eq",
+    "value": false
+   },
+   "quote": "boolean use_name_prefix variable defaulting to false"
+  },
+  {
+   "id": "p_fifo",
+   "tier": "core",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": [
+       "name"
+      ],
+      "op": "eq",
+      "value": "fifo_queue"
+     }
+    ]
+   },
+   "cond": {
+    "path": [
+     "default"
+    ],
+    "op": "eq",
+    "value": false
+   },
+   "quote": "fifo_queue (defaulting to false)"
+  },
+  {
+   "id": "p_sse",
+   "tier": "core",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": [
+       "name"
+      ],
+      "op": "eq",
+      "value": "sqs_managed_sse_enabled"
+     }
+    ]
+   },
+   "cond": {
+    "path": [
+     "default"
+    ],
+    "op": "eq",
+    "value": true
+   },
+   "quote": "sqs_managed_sse_enabled defaulting to true"
+  },
+  {
+   "id": "p_qpol",
+   "tier": "detail",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": [
+       "name"
+      ],
+      "op": "eq",
+      "value": "create_queue_policy"
+     }
+    ]
+   },
+   "cond": {
+    "path": [
+     "default"
+    ],
+    "op": "eq",
+    "value": false
+   },
+   "quote": "create_queue_policy and create_dlq_queue_policy boolean variables (both defaulting to false)"
+  },
+  {
+   "id": "p_dlqpol",
+   "tier": "detail",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": [
+       "name"
+      ],
+      "op": "eq",
+      "value": "create_dlq_queue_policy"
+     }
+    ]
+   },
+   "cond": {
+    "path": [
+     "default"
+    ],
+    "op": "eq",
+    "value": false
+   },
+   "quote": "create_queue_policy and create_dlq_queue_policy boolean variables (both defaulting to false)"
+  },
+  {
+   "id": "p_dlq",
+   "tier": "core",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": [
+       "name"
+      ],
+      "op": "eq",
+      "value": "create_dlq"
+     }
+    ]
+   },
+   "cond": {
+    "path": [
+     "default"
+    ],
+    "op": "eq",
+    "value": false
+   },
+   "quote": "When create_dlq is set to true (defaulting to false)"
+  },
+  {
+   "id": "p_allow",
+   "tier": "detail",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": [
+       "name"
+      ],
+      "op": "eq",
+      "value": "create_dlq_redrive_allow_policy"
+     }
+    ]
+   },
+   "cond": {
+    "path": [
+     "default"
+    ],
+    "op": "eq",
+    "value": true
+   },
+   "quote": "create_dlq_redrive_allow_policy is true (defaulting to true)"
+  },
+  {
+   "id": "sse_default",
+   "tier": "core",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_sqs_queue"
+    ],
+    "where": []
+   },
+   "cond": {
+    "path": [
+     "sqs_managed_sse_enabled"
+    ],
+    "op": "truthy"
+   },
+   "quote": "Encryption for the primary queue must default to SQS-managed server-side encryption"
+  },
+  {
+   "id": "kms_params",
+   "tier": "core",
+   "kind": "all_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_sqs_queue"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "kms_master_key_id"
+      ],
+      "op": "present"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_sqs_queue"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "kms_data_key_reuse_period_seconds"
+      ],
+      "op": "present"
+     }
+    }
+   ],
+   "quote": "unless a custom kms_master_key_id is provided alongside an optional kms_data_key_reuse_period_seconds"
+  },
+  {
+   "id": "fifo_params",
+   "tier": "core",
+   "kind": "all_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_sqs_queue"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "fifo_queue"
+      ],
+      "op": "present"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_sqs_queue"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "content_based_deduplication"
+      ],
+      "op": "present"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_sqs_queue"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "deduplication_scope"
+      ],
+      "op": "present"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_sqs_queue"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "fifo_throughput_limit"
+      ],
+      "op": "present"
+     }
+    }
+   ],
+   "quote": "The primary queue must support FIFO settings including fifo_queue (defaulting to false), content_based_deduplication, deduplication_scope, and fifo_throughput_limit"
+  },
+  {
+   "id": "std_params",
+   "tier": "detail",
+   "kind": "all_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_sqs_queue"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "delay_seconds"
+      ],
+      "op": "present"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_sqs_queue"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "max_message_size"
+      ],
+      "op": "present"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_sqs_queue"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "message_retention_seconds"
+      ],
+      "op": "present"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_sqs_queue"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "receive_wait_time_seconds"
+      ],
+      "op": "present"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_sqs_queue"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "visibility_timeout_seconds"
+      ],
+      "op": "present"
+     }
+    }
+   ],
+   "quote": "standard queue parameters for delay_seconds, max_message_size, message_retention_seconds, receive_wait_time_seconds, and visibility_timeout_seconds"
+  },
+  {
+   "id": "name_prefix",
+   "tier": "detail",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": [
+       "type"
+      ],
+      "op": "eq",
+      "value": "aws_sqs_queue"
+     }
+    ]
+   },
+   "cond": {
+    "path": [
+     "properties",
+     "name_prefix"
+    ],
+    "op": "present"
+   },
+   "quote": "an option to use the name as a prefix"
+  },
+  {
+   "id": "dlq_declared",
+   "tier": "core",
+   "kind": "all_of",
+   "quote": "optional dead-letter queue (DLQ) provisioning",
+   "justify": "main queue plus a dead-letter queue is two queues",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_sqs_queue"
+       }
+      ]
+     },
+     "min": 2
+    },
+    {
+     "kind": "exists",
+     "select": "dlq"
+    }
+   ]
+  },
+  {
+   "id": "dlq_inherits_fifo",
+   "tier": "detail",
+   "kind": "all_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_sqs_queue"
+       },
+       {
+        "path": [
+         "properties",
+         "fifo_queue"
+        ],
+        "op": "present"
+       }
+      ]
+     },
+     "min": 2
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_sqs_queue"
+       },
+       {
+        "path": [
+         "properties",
+         "fifo_throughput_limit"
+        ],
+        "op": "present"
+       }
+      ]
+     },
+     "min": 2
+    }
+   ],
+   "quote": "inheriting the main queue's FIFO type, throughput limits, and base encryption settings",
+   "justify": "both main and dead-letter queue declare the setting"
+  },
+  {
+   "id": "dlq_inherits_enc",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_sqs_queue"
+       },
+       {
+        "path": [
+         "properties",
+         "sqs_managed_sse_enabled"
+        ],
+        "op": "present"
+       }
+      ]
+     },
+     "min": 2
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_sqs_queue"
+       },
+       {
+        "path": [
+         "properties",
+         "kms_master_key_id"
+        ],
+        "op": "present"
+       }
+      ]
+     },
+     "min": 2
+    }
+   ],
+   "quote": "inheriting the main queue's FIFO type, throughput limits, and base encryption settings",
+   "justify": "both main and dead-letter queue declare the setting"
+  },
+  {
+   "id": "dlq_overrides",
+   "tier": "detail",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": [
+       "name"
+      ],
+      "op": "regex",
+      "value": "(?i)(^dlq_|_dlq$)"
+     },
+     {
+      "path": [
+       "name"
+      ],
+      "op": "regex",
+      "value": "(?i)^([^c]|c[^r])"
+     }
+    ]
+   },
+   "min": 2,
+   "quote": "unless overridden by specific DLQ parameters",
+   "justify": "DLQ-specific override parameters need dlq-named inputs other than the create_dlq toggles; plural 'parameters' means at least two"
+  },
+  {
+   "id": "redrive_maxreceive",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_sqs_queue_redrive_policy"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties"
+      ],
+      "op": "regex",
+      "value": "(?i)maxreceivecount[^0-9]{1,8}5([^0-9]|$)"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_sqs_queue"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "redrive_policy"
+      ],
+      "op": "regex",
+      "value": "(?i)maxreceivecount[^0-9]{1,8}5([^0-9]|$)"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "regex",
+        "value": "(?i)max_?receive_?count"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "default"
+      ],
+      "op": "eq",
+      "value": 5
+     }
+    }
+   ],
+   "quote": "setting maxReceiveCount to 5",
+   "justify": "stated count 5"
+  },
+  {
+   "id": "redrive_target",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_sqs_queue_redrive_policy"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "regex",
+        "value": "(?i)deadlettertargetarn"
+       }
+      ]
+     },
+     "to": "dlq"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_sqs_queue"
+       },
+       {
+        "path": [
+         "properties",
+         "redrive_policy"
+        ],
+        "op": "regex",
+        "value": "(?i)deadlettertargetarn"
+       }
+      ]
+     },
+     "to": "dlq"
+    }
+   ],
+   "quote": "targeting the DLQ",
+   "justify": "a redrive policy targets the DLQ via deadLetterTargetArn"
+  },
+  {
+   "id": "redrive_on_main",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_sqs_queue_redrive_policy"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_sqs_queue"
+       }
+      ]
+     },
+     "bidirectional": false
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_sqs_queue"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "redrive_policy"
+      ],
+      "op": "present"
+     }
+    }
+   ],
+   "quote": "automatically attaching a redrive policy to the main queue"
+  },
+  {
+   "id": "allow_bytqueue",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_sqs_queue_redrive_allow_policy"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties"
+      ],
+      "op": "regex",
+      "value": "(?i)redrivepermission[^a-z]{1,8}byqueue"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_sqs_queue"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "redrive_allow_policy"
+      ],
+      "op": "regex",
+      "value": "(?i)byqueue"
+     }
+    }
+   ],
+   "quote": "restricting redrive permissions to \"byQueue\" for the source queue ARN",
+   "justify": "stated permission value byQueue"
+  },
+  {
+   "id": "allow_source",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_sqs_queue_redrive_allow_policy"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "redrive_allow_policy"
+      ],
+      "op": "regex",
+      "value": "(?i)sourcequeuearns"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_sqs_queue"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "redrive_allow_policy"
+      ],
+      "op": "regex",
+      "value": "(?i)sourcequeuearns"
+     }
+    }
+   ],
+   "quote": "for the source queue ARN"
+  },
+  {
+   "id": "allow_gated",
+   "tier": "detail",
+   "kind": "any_of",
+   "quote": "conditionally attaching a redrive allow policy to the DLQ",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_sqs_queue_redrive_allow_policy"
+       },
+       {
+        "path": [
+         "gate"
+        ],
+        "op": "regex",
+        "value": "create_dlq_redrive_allow_policy"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "dlq",
+     "cond": {
+      "path": [
+       "properties",
+       "redrive_allow_policy"
+      ],
+      "op": "regex",
+      "value": "create_dlq_redrive_allow_policy"
+     }
+    }
+   ]
+  },
+  {
+   "id": "queue_policies",
+   "tier": "core",
+   "kind": "all_of",
+   "quote": "Queue policies for both the main queue and the DLQ must be conditionally created",
+   "justify": "the prompt names create_queue_policy and create_dlq_queue_policy as the gates of the two policies",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_sqs_queue_policy"
+       },
+       {
+        "path": [
+         "gate"
+        ],
+        "op": "regex",
+        "value": "create_queue_policy"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_sqs_queue_policy"
+       },
+       {
+        "path": [
+         "gate"
+        ],
+        "op": "regex",
+        "value": "create_dlq_queue_policy"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "policy_docs",
+   "tier": "detail",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": [
+       "type"
+      ],
+      "op": "eq",
+      "value": "data.aws_iam_policy_document"
+     }
+    ]
+   },
+   "quote": "allowing merged or overridden IAM policy documents and custom statement blocks"
+  },
+  {
+   "id": "policy_merge",
+   "tier": "detail",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": [
+       "type"
+      ],
+      "op": "eq",
+      "value": "data.aws_iam_policy_document"
+     }
+    ]
+   },
+   "cond": {
+    "path": [
+     "properties"
+    ],
+    "op": "regex",
+    "value": "(?i)source_(policy_documents|json)"
+   },
+   "quote": "merged or overridden IAM policy documents"
+  },
+  {
+   "id": "policy_override",
+   "tier": "detail",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": [
+       "type"
+      ],
+      "op": "eq",
+      "value": "data.aws_iam_policy_document"
+     }
+    ]
+   },
+   "cond": {
+    "path": [
+     "properties"
+    ],
+    "op": "regex",
+    "value": "(?i)override_(policy_documents|json)"
+   },
+   "quote": "merged or overridden IAM policy documents"
+  },
+  {
+   "id": "policy_statements",
+   "tier": "detail",
+   "kind": "any_of",
+   "quote": "custom statement blocks",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "data.aws_iam_policy_document"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties"
+      ],
+      "op": "regex",
+      "value": "(?i)dynamic.{0,40}statement|var\\.[a-z_]*statements"
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "regex",
+        "value": "(?i)statements$"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "x_policy_on_queue",
+   "tier": "extra",
+   "kind": "ref",
+   "from": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": [
+       "type"
+      ],
+      "op": "eq",
+      "value": "aws_sqs_queue_policy"
+     }
+    ]
+   },
+   "to": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": [
+       "type"
+      ],
+      "op": "eq",
+      "value": "aws_sqs_queue"
+     }
+    ]
+   }
+  },
+  {
+   "id": "x_allow_dlq",
+   "tier": "extra",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": [
+       "type"
+      ],
+      "op": "eq",
+      "value": "aws_sqs_queue_redrive_allow_policy"
+     }
+    ]
+   },
+   "cond": {
+    "path": [
+     "properties"
+    ],
+    "op": "regex",
+    "value": "(?i)sourcequeuearns"
+   }
+  },
+  {
+   "id": "x_sse_vs_kms",
+   "tier": "extra",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": [
+       "type"
+      ],
+      "op": "eq",
+      "value": "aws_sqs_queue"
+     }
+    ]
+   },
+   "cond": {
+    "path": [
+     "properties",
+     "sqs_managed_sse_enabled"
+    ],
+    "op": "regex",
+    "value": "(?i)kms_master_key_id"
+   }
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

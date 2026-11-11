@@ -1,0 +1,1518 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "67d9cce3254f48db7f06f04d3aa5430d03063681355102feb80b5e32690d4688",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "ConfigTable",
+   "cfg": "ConfigTable",
+   "type": "AWS::DynamoDB::Table",
+   "values": {
+    "TableName": "InResponseConfig",
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "ConfigKey",
+      "AttributeType": "S"
+     }
+    ],
+    "KeySchema": [
+     {
+      "AttributeName": "ConfigKey",
+      "KeyType": "HASH"
+     }
+    ],
+    "ProvisionedThroughput": {
+     "ReadCapacityUnits": 10,
+     "WriteCapacityUnits": 10
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "ServiceTable",
+   "cfg": "ServiceTable",
+   "type": "AWS::DynamoDB::Table",
+   "values": {
+    "TableName": "InResponseService",
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "ServiceId",
+      "AttributeType": "S"
+     }
+    ],
+    "KeySchema": [
+     {
+      "AttributeName": "ServiceId",
+      "KeyType": "HASH"
+     }
+    ],
+    "ProvisionedThroughput": {
+     "ReadCapacityUnits": 10,
+     "WriteCapacityUnits": 10
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "OncallTable",
+   "cfg": "OncallTable",
+   "type": "AWS::DynamoDB::Table",
+   "values": {
+    "TableName": "InResponseOncall",
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "TeamId",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "Day",
+      "AttributeType": "S"
+     }
+    ],
+    "KeySchema": [
+     {
+      "AttributeName": "TeamId",
+      "KeyType": "HASH"
+     },
+     {
+      "AttributeName": "Day",
+      "KeyType": "RANGE"
+     }
+    ],
+    "ProvisionedThroughput": {
+     "ReadCapacityUnits": 10,
+     "WriteCapacityUnits": 10
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "IncidentTable",
+   "cfg": "IncidentTable",
+   "type": "AWS::DynamoDB::Table",
+   "values": {
+    "TableName": "InResponseIncident",
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "IncidentId",
+      "AttributeType": "S"
+     }
+    ],
+    "KeySchema": [
+     {
+      "AttributeName": "IncidentId",
+      "KeyType": "HASH"
+     }
+    ],
+    "ProvisionedThroughput": {
+     "ReadCapacityUnits": 10,
+     "WriteCapacityUnits": 10
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "InResponseLambdaRole",
+   "cfg": "InResponseLambdaRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "InResponseLambdaRole",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Path": "/",
+    "Policies": [
+     {
+      "PolicyName": "AWSLambdaBasicExecutionRole",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+         ],
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "PolicyName": "InResponseDynamoDB",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "dynamodb:ListContributorInsights",
+          "dynamodb:DescribeReservedCapacityOfferings",
+          "dynamodb:ListGlobalTables",
+          "dynamodb:ListTables",
+          "dynamodb:DescribeReservedCapacity",
+          "dynamodb:ListBackups",
+          "dynamodb:PurchaseReservedCapacityOfferings",
+          "dynamodb:DescribeLimits",
+          "dynamodb:ListExports",
+          "dynamodb:ListStreams"
+         ],
+         "Resource": [
+          "*"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "dynamodb:*"
+         ],
+         "Resource": [
+          "arn:aws:dynamodb:*:*:table/InResponse*"
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "PolicyName": "InResponseSES",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "ses:SendEmail",
+          "ses:SendRawEmail"
+         ],
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "PolicyName": "InResponseStepFunctions",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "states:StartExecution",
+          "states:DescribeStateMachine",
+          "states:ListExecutions"
+         ],
+         "Resource": [
+          "arn:aws:states:*:*:stateMachine:InResponse*"
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "PolicyName": "InResponseParamStore",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "ssm:GetParameters",
+          "ssm:GetParameter"
+         ],
+         "Resource": [
+          "arn:aws:ssm:*:123456789012:parameter/inresponse/*"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "ssm:DescribeParameters"
+         ],
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "LambdaIncidentProcessor",
+   "cfg": "LambdaIncidentProcessor",
+   "type": "AWS::Lambda::Function",
+   "values": {
+    "FunctionName": "InResponseIncidentProcessor",
+    "Handler": "processor/lambda_function.lambda_handler",
+    "Role": {
+     "ref": "InResponseLambdaRole",
+     "attr": "Arn"
+    },
+    "Code": {
+     "ZipFile": "def handler(event, context):\n    print event\n"
+    },
+    "Runtime": "python3.9",
+    "__resource__": {
+     "DependsOn": [
+      "InResponseLambdaRole"
+     ]
+    }
+   },
+   "refs": [
+    "InResponseLambdaRole"
+   ]
+  },
+  {
+   "id": "LambdaIncidentNotifier",
+   "cfg": "LambdaIncidentNotifier",
+   "type": "AWS::Lambda::Function",
+   "values": {
+    "FunctionName": "InResponseIncidentNotifier",
+    "Handler": "notifier/lambda_function.lambda_handler",
+    "Role": {
+     "ref": "InResponseLambdaRole",
+     "attr": "Arn"
+    },
+    "Code": {
+     "ZipFile": "def handler(event, context):\n    print event\n"
+    },
+    "Runtime": "python3.9",
+    "__resource__": {
+     "DependsOn": [
+      "InResponseLambdaRole"
+     ]
+    }
+   },
+   "refs": [
+    "InResponseLambdaRole"
+   ]
+  },
+  {
+   "id": "SesSenderEmail",
+   "cfg": "SesSenderEmail",
+   "type": "AWS::SSM::Parameter",
+   "values": {
+    "Name": "/inresponse/senderemail",
+    "Type": "String",
+    "Value": "alerts@inresponse.com"
+   },
+   "refs": []
+  },
+  {
+   "id": "StatesExecutionRole",
+   "cfg": "StatesExecutionRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "InResponse-StepFunctionRole",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "states.us-east-1.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Path": "/",
+    "Policies": [
+     {
+      "PolicyName": "StatesExecutionPolicy",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "lambda:InvokeFunction"
+         ],
+         "Resource": [
+          "arn:aws:lambda:*:*:function:InResponse*",
+          "arn:aws:lambda:*:*:function:InResponse*:*"
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "PolicyName": "CloudwatchLogging",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+         ],
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     }
+    ],
+    "__resource__": {
+     "DependsOn": [
+      "LambdaIncidentNotifier",
+      "LambdaIncidentProcessor"
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "InResponseStateMachine",
+   "cfg": "InResponseStateMachine",
+   "type": "AWS::StepFunctions::StateMachine",
+   "values": {
+    "StateMachineName": "InResponseEscalation",
+    "Definition": {
+     "Comment": "Escalation State Machine",
+     "StartAt": "Parallel",
+     "States": {
+      "Parallel": {
+       "Type": "Parallel",
+       "Branches": [
+        {
+         "StartAt": "oncall",
+         "States": {
+          "oncall": {
+           "Type": "Task",
+           "Resource": "arn:aws:states:::lambda:invoke",
+           "OutputPath": "$.Payload",
+           "Parameters": {
+            "FunctionName": {
+             "ref": "LambdaIncidentNotifier",
+             "attr": "Arn"
+            },
+            "Payload": {
+             "incident.$": "$",
+             "escalationType": "oncall"
+            }
+           },
+           "Retry": [
+            {
+             "ErrorEquals": [
+              "Lambda.ServiceException",
+              "Lambda.AWSLambdaException",
+              "Lambda.SdkClientException"
+             ],
+             "IntervalSeconds": 2,
+             "MaxAttempts": 6,
+             "BackoffRate": 2
+            }
+           ],
+           "End": true
+          }
+         }
+        },
+        {
+         "StartAt": "Wait 5 Minutes",
+         "States": {
+          "Wait 5 Minutes": {
+           "Type": "Wait",
+           "Seconds": 300,
+           "Next": "escalation"
+          },
+          "escalation": {
+           "Type": "Task",
+           "Resource": "arn:aws:states:::lambda:invoke",
+           "OutputPath": "$.Payload",
+           "Parameters": {
+            "FunctionName": {
+             "ref": "LambdaIncidentNotifier",
+             "attr": "Arn"
+            },
+            "Payload": {
+             "incident.$": "$",
+             "escalationType": "escalation"
+            }
+           },
+           "Retry": [
+            {
+             "ErrorEquals": [
+              "Lambda.ServiceException",
+              "Lambda.AWSLambdaException",
+              "Lambda.SdkClientException"
+             ],
+             "IntervalSeconds": 2,
+             "MaxAttempts": 6,
+             "BackoffRate": 2
+            }
+           ],
+           "End": true
+          }
+         }
+        }
+       ],
+       "End": true
+      }
+     }
+    },
+    "RoleArn": {
+     "ref": "StatesExecutionRole",
+     "attr": "Arn"
+    },
+    "__resource__": {
+     "DependsOn": [
+      "StatesExecutionRole"
+     ]
+    }
+   },
+   "refs": [
+    "LambdaIncidentNotifier",
+    "StatesExecutionRole"
+   ]
+  },
+  {
+   "id": "InResponseStateMachineArn",
+   "cfg": "InResponseStateMachineArn",
+   "type": "AWS::SSM::Parameter",
+   "values": {
+    "Name": "/inresponse/statemachinearn",
+    "Type": "String",
+    "Value": {
+     "ref": "InResponseStateMachine",
+     "attr": "Arn"
+    }
+   },
+   "refs": [
+    "InResponseStateMachine"
+   ]
+  },
+  {
+   "id": "InResponseAPI",
+   "cfg": "InResponseAPI",
+   "type": "AWS::ApiGatewayV2::Api",
+   "values": {
+    "Name": "inresponse-http-api",
+    "ProtocolType": "HTTP",
+    "__resource__": {
+     "DependsOn": [
+      "InResponseStateMachine"
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "APIInvokeLambdaPermission",
+   "cfg": "APIInvokeLambdaPermission",
+   "type": "AWS::Lambda::Permission",
+   "values": {
+    "FunctionName": "InResponseIncidentProcessor",
+    "Action": "lambda:InvokeFunction",
+    "Principal": "apigateway.amazonaws.com",
+    "SourceArn": "arn:aws:execute-api:us-east-1:123456789012:${InResponseAPI}/*/*/*",
+    "__resource__": {
+     "DependsOn": [
+      "InResponseAPI",
+      "LambdaIncidentNotifier",
+      "LambdaIncidentProcessor"
+     ]
+    }
+   },
+   "refs": [
+    "InResponseAPI"
+   ]
+  },
+  {
+   "id": "APIIntegration",
+   "cfg": "APIIntegration",
+   "type": "AWS::ApiGatewayV2::Integration",
+   "values": {
+    "ApiId": {
+     "ref": "InResponseAPI"
+    },
+    "IntegrationType": "AWS_PROXY",
+    "PayloadFormatVersion": "2.0",
+    "IntegrationUri": {
+     "ref": "LambdaIncidentProcessor",
+     "attr": "Arn"
+    },
+    "__resource__": {
+     "DependsOn": [
+      "InResponseAPI"
+     ]
+    }
+   },
+   "refs": [
+    "InResponseAPI",
+    "LambdaIncidentProcessor"
+   ]
+  },
+  {
+   "id": "GETRoute",
+   "cfg": "GETRoute",
+   "type": "AWS::ApiGatewayV2::Route",
+   "values": {
+    "ApiId": {
+     "ref": "InResponseAPI"
+    },
+    "RouteKey": "GET /{IncidentId}",
+    "Target": {
+     "Fn::Join": [
+      "/",
+      [
+       "integrations",
+       {
+        "ref": "APIIntegration"
+       }
+      ]
+     ]
+    },
+    "__resource__": {
+     "DependsOn": [
+      "APIIntegration"
+     ]
+    }
+   },
+   "refs": [
+    "APIIntegration",
+    "InResponseAPI"
+   ]
+  },
+  {
+   "id": "POSTRoute",
+   "cfg": "POSTRoute",
+   "type": "AWS::ApiGatewayV2::Route",
+   "values": {
+    "ApiId": {
+     "ref": "InResponseAPI"
+    },
+    "RouteKey": "POST /{IncidentId}",
+    "Target": {
+     "Fn::Join": [
+      "/",
+      [
+       "integrations",
+       {
+        "ref": "APIIntegration"
+       }
+      ]
+     ]
+    },
+    "__resource__": {
+     "DependsOn": [
+      "APIIntegration"
+     ]
+    }
+   },
+   "refs": [
+    "APIIntegration",
+    "InResponseAPI"
+   ]
+  },
+  {
+   "id": "PUTRoute",
+   "cfg": "PUTRoute",
+   "type": "AWS::ApiGatewayV2::Route",
+   "values": {
+    "ApiId": {
+     "ref": "InResponseAPI"
+    },
+    "RouteKey": "PUT /",
+    "Target": {
+     "Fn::Join": [
+      "/",
+      [
+       "integrations",
+       {
+        "ref": "APIIntegration"
+       }
+      ]
+     ]
+    },
+    "__resource__": {
+     "DependsOn": [
+      "APIIntegration"
+     ]
+    }
+   },
+   "refs": [
+    "APIIntegration",
+    "InResponseAPI"
+   ]
+  },
+  {
+   "id": "APILogGroup",
+   "cfg": "APILogGroup",
+   "type": "AWS::Logs::LogGroup",
+   "values": {
+    "LogGroupName": "InResponseApiLogGroup",
+    "RetentionInDays": 7
+   },
+   "refs": []
+  },
+  {
+   "id": "DefaultStage",
+   "cfg": "DefaultStage",
+   "type": "AWS::ApiGatewayV2::Stage",
+   "values": {
+    "ApiId": {
+     "ref": "InResponseAPI"
+    },
+    "AutoDeploy": true,
+    "StageName": "$default",
+    "AccessLogSettings": {
+     "DestinationArn": {
+      "ref": "APILogGroup",
+      "attr": "Arn"
+     },
+     "Format": "$context.identity.sourceIp - - [$context.requestTime] \"$context.httpMethod $context.routeKey $context.protocol\" $context.status $context.responseLength $context.requestId $context.integrationErrorMessage"
+    },
+    "__resource__": {
+     "DependsOn": [
+      "InResponseAPI"
+     ]
+    }
+   },
+   "refs": [
+    "APILogGroup",
+    "InResponseAPI"
+   ]
+  },
+  {
+   "id": "InResponseApiGwArn",
+   "cfg": "InResponseApiGwArn",
+   "type": "AWS::SSM::Parameter",
+   "values": {
+    "Name": "/inresponse/apiendpoint",
+    "Type": "String",
+    "Value": {
+     "ref": "InResponseAPI",
+     "attr": "ApiEndpoint"
+    },
+    "__resource__": {
+     "DependsOn": [
+      "InResponseAPI"
+     ]
+    }
+   },
+   "refs": [
+    "InResponseAPI"
+   ]
+  },
+  {
+   "id": "__parameter__.SenderEmail",
+   "cfg": "__parameter__.SenderEmail",
+   "type": "__parameter__",
+   "values": {
+    "name": "SenderEmail",
+    "type": "String",
+    "default": "alerts@inresponse.com",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__declared__.AWS::DynamoDB::Table.ConfigTable",
+   "cfg": "ConfigTable",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::DynamoDB::Table",
+    "name": "ConfigTable",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "TableName": "InResponseConfig",
+     "AttributeDefinitions": [
+      {
+       "AttributeName": "ConfigKey",
+       "AttributeType": "S"
+      }
+     ],
+     "KeySchema": [
+      {
+       "AttributeName": "ConfigKey",
+       "KeyType": "HASH"
+      }
+     ],
+     "ProvisionedThroughput": {
+      "ReadCapacityUnits": 10,
+      "WriteCapacityUnits": 10
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::DynamoDB::Table.ServiceTable",
+   "cfg": "ServiceTable",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::DynamoDB::Table",
+    "name": "ServiceTable",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "TableName": "InResponseService",
+     "AttributeDefinitions": [
+      {
+       "AttributeName": "ServiceId",
+       "AttributeType": "S"
+      }
+     ],
+     "KeySchema": [
+      {
+       "AttributeName": "ServiceId",
+       "KeyType": "HASH"
+      }
+     ],
+     "ProvisionedThroughput": {
+      "ReadCapacityUnits": 10,
+      "WriteCapacityUnits": 10
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::DynamoDB::Table.OncallTable",
+   "cfg": "OncallTable",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::DynamoDB::Table",
+    "name": "OncallTable",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "TableName": "InResponseOncall",
+     "AttributeDefinitions": [
+      {
+       "AttributeName": "TeamId",
+       "AttributeType": "S"
+      },
+      {
+       "AttributeName": "Day",
+       "AttributeType": "S"
+      }
+     ],
+     "KeySchema": [
+      {
+       "AttributeName": "TeamId",
+       "KeyType": "HASH"
+      },
+      {
+       "AttributeName": "Day",
+       "KeyType": "RANGE"
+      }
+     ],
+     "ProvisionedThroughput": {
+      "ReadCapacityUnits": 10,
+      "WriteCapacityUnits": 10
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::DynamoDB::Table.IncidentTable",
+   "cfg": "IncidentTable",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::DynamoDB::Table",
+    "name": "IncidentTable",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "TableName": "InResponseIncident",
+     "AttributeDefinitions": [
+      {
+       "AttributeName": "IncidentId",
+       "AttributeType": "S"
+      }
+     ],
+     "KeySchema": [
+      {
+       "AttributeName": "IncidentId",
+       "KeyType": "HASH"
+      }
+     ],
+     "ProvisionedThroughput": {
+      "ReadCapacityUnits": 10,
+      "WriteCapacityUnits": 10
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.InResponseLambdaRole",
+   "cfg": "InResponseLambdaRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "InResponseLambdaRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "InResponseLambdaRole",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Path": "/",
+     "Policies": [
+      {
+       "PolicyName": "AWSLambdaBasicExecutionRole",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "logs:CreateLogGroup",
+           "logs:CreateLogStream",
+           "logs:PutLogEvents"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      },
+      {
+       "PolicyName": "InResponseDynamoDB",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "dynamodb:ListContributorInsights",
+           "dynamodb:DescribeReservedCapacityOfferings",
+           "dynamodb:ListGlobalTables",
+           "dynamodb:ListTables",
+           "dynamodb:DescribeReservedCapacity",
+           "dynamodb:ListBackups",
+           "dynamodb:PurchaseReservedCapacityOfferings",
+           "dynamodb:DescribeLimits",
+           "dynamodb:ListExports",
+           "dynamodb:ListStreams"
+          ],
+          "Resource": [
+           "*"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "dynamodb:*"
+          ],
+          "Resource": [
+           "arn:aws:dynamodb:*:*:table/InResponse*"
+          ]
+         }
+        ]
+       }
+      },
+      {
+       "PolicyName": "InResponseSES",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "ses:SendEmail",
+           "ses:SendRawEmail"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      },
+      {
+       "PolicyName": "InResponseStepFunctions",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "states:StartExecution",
+           "states:DescribeStateMachine",
+           "states:ListExecutions"
+          ],
+          "Resource": [
+           "arn:aws:states:*:*:stateMachine:InResponse*"
+          ]
+         }
+        ]
+       }
+      },
+      {
+       "PolicyName": "InResponseParamStore",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "ssm:GetParameters",
+           "ssm:GetParameter"
+          ],
+          "Resource": [
+           "arn:aws:ssm:*:123456789012:parameter/inresponse/*"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "ssm:DescribeParameters"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Function.LambdaIncidentProcessor",
+   "cfg": "LambdaIncidentProcessor",
+   "type": "__declared__",
+   "refs": [
+    "InResponseLambdaRole"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Function",
+    "name": "LambdaIncidentProcessor",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "FunctionName": "InResponseIncidentProcessor",
+     "Handler": "processor/lambda_function.lambda_handler",
+     "Role": {
+      "ref": "InResponseLambdaRole",
+      "attr": "Arn"
+     },
+     "Code": {
+      "ZipFile": "def handler(event, context):\n    print event\n"
+     },
+     "Runtime": "python3.9"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Function.LambdaIncidentNotifier",
+   "cfg": "LambdaIncidentNotifier",
+   "type": "__declared__",
+   "refs": [
+    "InResponseLambdaRole"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Function",
+    "name": "LambdaIncidentNotifier",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "FunctionName": "InResponseIncidentNotifier",
+     "Handler": "notifier/lambda_function.lambda_handler",
+     "Role": {
+      "ref": "InResponseLambdaRole",
+      "attr": "Arn"
+     },
+     "Code": {
+      "ZipFile": "def handler(event, context):\n    print event\n"
+     },
+     "Runtime": "python3.9"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SSM::Parameter.SesSenderEmail",
+   "cfg": "SesSenderEmail",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::SSM::Parameter",
+    "name": "SesSenderEmail",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "/inresponse/senderemail",
+     "Type": "String",
+     "Value": "alerts@inresponse.com"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.StatesExecutionRole",
+   "cfg": "StatesExecutionRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "StatesExecutionRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "InResponse-StepFunctionRole",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "states.us-east-1.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Path": "/",
+     "Policies": [
+      {
+       "PolicyName": "StatesExecutionPolicy",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "lambda:InvokeFunction"
+          ],
+          "Resource": [
+           "arn:aws:lambda:*:*:function:InResponse*",
+           "arn:aws:lambda:*:*:function:InResponse*:*"
+          ]
+         }
+        ]
+       }
+      },
+      {
+       "PolicyName": "CloudwatchLogging",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "logs:CreateLogGroup",
+           "logs:CreateLogStream",
+           "logs:PutLogEvents"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::StepFunctions::StateMachine.InResponseStateMachine",
+   "cfg": "InResponseStateMachine",
+   "type": "__declared__",
+   "refs": [
+    "LambdaIncidentNotifier",
+    "StatesExecutionRole"
+   ],
+   "values": {
+    "type": "AWS::StepFunctions::StateMachine",
+    "name": "InResponseStateMachine",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "StateMachineName": "InResponseEscalation",
+     "Definition": {
+      "Comment": "Escalation State Machine",
+      "StartAt": "Parallel",
+      "States": {
+       "Parallel": {
+        "Type": "Parallel",
+        "Branches": [
+         {
+          "StartAt": "oncall",
+          "States": {
+           "oncall": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::lambda:invoke",
+            "OutputPath": "$.Payload",
+            "Parameters": {
+             "FunctionName": {
+              "ref": "LambdaIncidentNotifier",
+              "attr": "Arn"
+             },
+             "Payload": {
+              "incident.$": "$",
+              "escalationType": "oncall"
+             }
+            },
+            "Retry": [
+             {
+              "ErrorEquals": [
+               "Lambda.ServiceException",
+               "Lambda.AWSLambdaException",
+               "Lambda.SdkClientException"
+              ],
+              "IntervalSeconds": 2,
+              "MaxAttempts": 6,
+              "BackoffRate": 2
+             }
+            ],
+            "End": true
+           }
+          }
+         },
+         {
+          "StartAt": "Wait 5 Minutes",
+          "States": {
+           "Wait 5 Minutes": {
+            "Type": "Wait",
+            "Seconds": 300,
+            "Next": "escalation"
+           },
+           "escalation": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::lambda:invoke",
+            "OutputPath": "$.Payload",
+            "Parameters": {
+             "FunctionName": {
+              "ref": "LambdaIncidentNotifier",
+              "attr": "Arn"
+             },
+             "Payload": {
+              "incident.$": "$",
+              "escalationType": "escalation"
+             }
+            },
+            "Retry": [
+             {
+              "ErrorEquals": [
+               "Lambda.ServiceException",
+               "Lambda.AWSLambdaException",
+               "Lambda.SdkClientException"
+              ],
+              "IntervalSeconds": 2,
+              "MaxAttempts": 6,
+              "BackoffRate": 2
+             }
+            ],
+            "End": true
+           }
+          }
+         }
+        ],
+        "End": true
+       }
+      }
+     },
+     "RoleArn": {
+      "ref": "StatesExecutionRole",
+      "attr": "Arn"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SSM::Parameter.InResponseStateMachineArn",
+   "cfg": "InResponseStateMachineArn",
+   "type": "__declared__",
+   "refs": [
+    "InResponseStateMachine"
+   ],
+   "values": {
+    "type": "AWS::SSM::Parameter",
+    "name": "InResponseStateMachineArn",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "/inresponse/statemachinearn",
+     "Type": "String",
+     "Value": {
+      "ref": "InResponseStateMachine",
+      "attr": "Arn"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGatewayV2::Api.InResponseAPI",
+   "cfg": "InResponseAPI",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::ApiGatewayV2::Api",
+    "name": "InResponseAPI",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "inresponse-http-api",
+     "ProtocolType": "HTTP"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Permission.APIInvokeLambdaPermission",
+   "cfg": "APIInvokeLambdaPermission",
+   "type": "__declared__",
+   "refs": [
+    "InResponseAPI"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Permission",
+    "name": "APIInvokeLambdaPermission",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "FunctionName": "InResponseIncidentProcessor",
+     "Action": "lambda:InvokeFunction",
+     "Principal": "apigateway.amazonaws.com",
+     "SourceArn": "arn:aws:execute-api:us-east-1:123456789012:${InResponseAPI}/*/*/*"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGatewayV2::Integration.APIIntegration",
+   "cfg": "APIIntegration",
+   "type": "__declared__",
+   "refs": [
+    "InResponseAPI",
+    "LambdaIncidentProcessor"
+   ],
+   "values": {
+    "type": "AWS::ApiGatewayV2::Integration",
+    "name": "APIIntegration",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "InResponseAPI"
+     },
+     "IntegrationType": "AWS_PROXY",
+     "PayloadFormatVersion": "2.0",
+     "IntegrationUri": {
+      "ref": "LambdaIncidentProcessor",
+      "attr": "Arn"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGatewayV2::Route.GETRoute",
+   "cfg": "GETRoute",
+   "type": "__declared__",
+   "refs": [
+    "APIIntegration",
+    "InResponseAPI"
+   ],
+   "values": {
+    "type": "AWS::ApiGatewayV2::Route",
+    "name": "GETRoute",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "InResponseAPI"
+     },
+     "RouteKey": "GET /{IncidentId}",
+     "Target": {
+      "Fn::Join": [
+       "/",
+       [
+        "integrations",
+        {
+         "ref": "APIIntegration"
+        }
+       ]
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGatewayV2::Route.POSTRoute",
+   "cfg": "POSTRoute",
+   "type": "__declared__",
+   "refs": [
+    "APIIntegration",
+    "InResponseAPI"
+   ],
+   "values": {
+    "type": "AWS::ApiGatewayV2::Route",
+    "name": "POSTRoute",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "InResponseAPI"
+     },
+     "RouteKey": "POST /{IncidentId}",
+     "Target": {
+      "Fn::Join": [
+       "/",
+       [
+        "integrations",
+        {
+         "ref": "APIIntegration"
+        }
+       ]
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGatewayV2::Route.PUTRoute",
+   "cfg": "PUTRoute",
+   "type": "__declared__",
+   "refs": [
+    "APIIntegration",
+    "InResponseAPI"
+   ],
+   "values": {
+    "type": "AWS::ApiGatewayV2::Route",
+    "name": "PUTRoute",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "InResponseAPI"
+     },
+     "RouteKey": "PUT /",
+     "Target": {
+      "Fn::Join": [
+       "/",
+       [
+        "integrations",
+        {
+         "ref": "APIIntegration"
+        }
+       ]
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::LogGroup.APILogGroup",
+   "cfg": "APILogGroup",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Logs::LogGroup",
+    "name": "APILogGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "LogGroupName": "InResponseApiLogGroup",
+     "RetentionInDays": 7
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGatewayV2::Stage.DefaultStage",
+   "cfg": "DefaultStage",
+   "type": "__declared__",
+   "refs": [
+    "APILogGroup",
+    "InResponseAPI"
+   ],
+   "values": {
+    "type": "AWS::ApiGatewayV2::Stage",
+    "name": "DefaultStage",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "InResponseAPI"
+     },
+     "AutoDeploy": true,
+     "StageName": "$default",
+     "AccessLogSettings": {
+      "DestinationArn": {
+       "ref": "APILogGroup",
+       "attr": "Arn"
+      },
+      "Format": "$context.identity.sourceIp - - [$context.requestTime] \"$context.httpMethod $context.routeKey $context.protocol\" $context.status $context.responseLength $context.requestId $context.integrationErrorMessage"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SSM::Parameter.InResponseApiGwArn",
+   "cfg": "InResponseApiGwArn",
+   "type": "__declared__",
+   "refs": [
+    "InResponseAPI"
+   ],
+   "values": {
+    "type": "AWS::SSM::Parameter",
+    "name": "InResponseApiGwArn",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "/inresponse/apiendpoint",
+     "Type": "String",
+     "Value": {
+      "ref": "InResponseAPI",
+      "attr": "ApiEndpoint"
+     }
+    }
+   }
+  }
+ ]
+}

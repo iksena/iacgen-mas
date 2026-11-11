@@ -1,0 +1,925 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "5ef8a95c4cd91d52adb1526123d7802253bf45ce3863473e8c6d8edf08f7ec4a",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "UserPool",
+   "cfg": "UserPool",
+   "type": "AWS::Cognito::UserPool",
+   "values": {
+    "UserPoolName": "CustomerSupportGatewayPool",
+    "MfaConfiguration": "OFF",
+    "UsernameConfiguration": {
+     "CaseSensitive": false
+    },
+    "UsernameAttributes": [
+     "email"
+    ],
+    "AutoVerifiedAttributes": [
+     "email"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "AdminGroup",
+   "cfg": "AdminGroup",
+   "type": "AWS::Cognito::UserPoolGroup",
+   "values": {
+    "GroupName": "admin",
+    "Description": "Administrator group",
+    "UserPoolId": {
+     "ref": "UserPool"
+    },
+    "Precedence": 1
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "CustomerGroup",
+   "cfg": "CustomerGroup",
+   "type": "AWS::Cognito::UserPoolGroup",
+   "values": {
+    "GroupName": "customer",
+    "Description": "Regular customer group",
+    "UserPoolId": {
+     "ref": "UserPool"
+    },
+    "Precedence": 2
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "WebUserPoolClient",
+   "cfg": "WebUserPoolClient",
+   "type": "AWS::Cognito::UserPoolClient",
+   "values": {
+    "ClientName": "CustomerSupportWebClient",
+    "UserPoolId": {
+     "ref": "UserPool"
+    },
+    "GenerateSecret": false,
+    "AllowedOAuthFlows": [
+     "code"
+    ],
+    "AllowedOAuthScopes": [
+     "openid",
+     "email",
+     "profile",
+     "default-m2m-resource-server-id/read"
+    ],
+    "AllowedOAuthFlowsUserPoolClient": true,
+    "CallbackURLs": [
+     "http://localhost:8501/",
+     "https://example.com/auth/callback"
+    ],
+    "LogoutURLs": [
+     "http://localhost:8501/"
+    ],
+    "SupportedIdentityProviders": [
+     "COGNITO"
+    ],
+    "AccessTokenValidity": 60,
+    "IdTokenValidity": 60,
+    "RefreshTokenValidity": 30,
+    "TokenValidityUnits": {
+     "AccessToken": "minutes",
+     "IdToken": "minutes",
+     "RefreshToken": "days"
+    },
+    "EnableTokenRevocation": true,
+    "__resource__": {
+     "DependsOn": [
+      "ResourceServer"
+     ]
+    }
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "MachineUserPoolClient",
+   "cfg": "MachineUserPoolClient",
+   "type": "AWS::Cognito::UserPoolClient",
+   "values": {
+    "ClientName": "CustomerSupportMachineClient",
+    "UserPoolId": {
+     "ref": "UserPool"
+    },
+    "GenerateSecret": true,
+    "ExplicitAuthFlows": [
+     "ALLOW_REFRESH_TOKEN_AUTH"
+    ],
+    "RefreshTokenValidity": 1,
+    "AccessTokenValidity": 60,
+    "IdTokenValidity": 60,
+    "TokenValidityUnits": {
+     "AccessToken": "minutes",
+     "IdToken": "minutes",
+     "RefreshToken": "days"
+    },
+    "AllowedOAuthFlows": [
+     "client_credentials"
+    ],
+    "AllowedOAuthScopes": [
+     "default-m2m-resource-server-id/read"
+    ],
+    "AllowedOAuthFlowsUserPoolClient": true,
+    "SupportedIdentityProviders": [
+     "COGNITO"
+    ],
+    "EnableTokenRevocation": true,
+    "__resource__": {
+     "DependsOn": [
+      "ResourceServer"
+     ]
+    }
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "ResourceServer",
+   "cfg": "ResourceServer",
+   "type": "AWS::Cognito::UserPoolResourceServer",
+   "values": {
+    "UserPoolId": {
+     "ref": "UserPool"
+    },
+    "Identifier": "default-m2m-resource-server-id",
+    "Name": "Default M2M Resource Server -id",
+    "Scopes": [
+     {
+      "ScopeName": "read",
+      "ScopeDescription": "An example scope created by Amazon Cognito quick start"
+     }
+    ]
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "UserPoolDomain",
+   "cfg": "UserPoolDomain",
+   "type": "AWS::Cognito::UserPoolDomain",
+   "values": {
+    "UserPoolId": {
+     "ref": "UserPool"
+    },
+    "Domain": "us-east-1id"
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "PostSignupFunctionRole",
+   "cfg": "PostSignupFunctionRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Policies": [
+     {
+      "PolicyName": "AllowBasicLogs",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+         ],
+         "Resource": [
+          "arn:aws:logs:*:*:*"
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "PolicyName": "Cognito",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "cognito-idp:AdminAddUserToGroup"
+         ],
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "PostSignupFunction",
+   "cfg": "PostSignupFunction",
+   "type": "AWS::Lambda::Function",
+   "values": {
+    "Handler": "index.lambda_handler",
+    "Runtime": "python3.13",
+    "Role": {
+     "ref": "PostSignupFunctionRole",
+     "attr": "Arn"
+    },
+    "Timeout": 10,
+    "Code": {
+     "ZipFile": "import boto3\n\ndef lambda_handler(event, context):\n    user_pool_id = event['userPoolId']\n    username = event['userName']\n    client = boto3.client('cognito-idp')\n\n    # Add user to 'customer' group\n    try:\n        client.admin_add_user_to_group(\n            UserPoolId=user_pool_id,\n            Username=username,\n            GroupName='Customer'\n        )\n        print(f\"User {username} added to 'customer' group.\")\n    except Exception as e:\n        print(f\"Error adding user to group: {e}\")\n\n    return event\n"
+    }
+   },
+   "refs": [
+    "PostSignupFunctionRole"
+   ]
+  },
+  {
+   "id": "CognitoMachineClientIdParameter",
+   "cfg": "CognitoMachineClientIdParameter",
+   "type": "AWS::SSM::Parameter",
+   "values": {
+    "Name": "/app/customersupport/agentcore/machine_client_id",
+    "Type": "String",
+    "Value": {
+     "ref": "MachineUserPoolClient"
+    },
+    "Description": "Machine Cognito client ID",
+    "Tags": {
+     "Application": "CustomerSupport"
+    }
+   },
+   "refs": [
+    "MachineUserPoolClient"
+   ]
+  },
+  {
+   "id": "CognitoWebClientIdParameter",
+   "cfg": "CognitoWebClientIdParameter",
+   "type": "AWS::SSM::Parameter",
+   "values": {
+    "Name": "/app/customersupport/agentcore/web_client_id",
+    "Type": "String",
+    "Value": {
+     "ref": "WebUserPoolClient"
+    },
+    "Description": "Cognito client ID for web app",
+    "Tags": {
+     "Application": "CustomerSuppor"
+    }
+   },
+   "refs": [
+    "WebUserPoolClient"
+   ]
+  },
+  {
+   "id": "UserPoolIdParameter",
+   "cfg": "UserPoolIdParameter",
+   "type": "AWS::SSM::Parameter",
+   "values": {
+    "Name": "/app/customersupport/agentcore/userpool_id",
+    "Type": "String",
+    "Value": {
+     "ref": "UserPool"
+    },
+    "Description": "Cognito client ID",
+    "Tags": {
+     "Application": "CustomerSupport"
+    }
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "CognitoAuthScopeParameter",
+   "cfg": "CognitoAuthScopeParameter",
+   "type": "AWS::SSM::Parameter",
+   "values": {
+    "Name": "/app/customersupport/agentcore/cognito_auth_scope",
+    "Type": "String",
+    "Value": "default-m2m-resource-server-id/read",
+    "Description": "OAuth2 scope for Cognito auth",
+    "Tags": {
+     "Application": "CustomerSupport"
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "CognitoDiscoveryURLParameter",
+   "cfg": "CognitoDiscoveryURLParameter",
+   "type": "AWS::SSM::Parameter",
+   "values": {
+    "Name": "/app/customersupport/agentcore/cognito_discovery_url",
+    "Type": "String",
+    "Value": "https://cognito-idp.us-east-1.amazonaws.com/${UserPool}/.well-known/openid-configuration",
+    "Description": "OAuth2 Discovery URL",
+    "Tags": {
+     "Application": "CustomerSupport"
+    }
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "CognitoTokenURLParameter",
+   "cfg": "CognitoTokenURLParameter",
+   "type": "AWS::SSM::Parameter",
+   "values": {
+    "Name": "/app/customersupport/agentcore/cognito_token_url",
+    "Type": "String",
+    "Value": "https://us-east-1id.auth.us-east-1.amazoncognito.com/oauth2/token",
+    "Description": "OAuth2 Token URL",
+    "Tags": {
+     "Application": "CustomerSupport"
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "CognitoAuthorizeURLParameter",
+   "cfg": "CognitoAuthorizeURLParameter",
+   "type": "AWS::SSM::Parameter",
+   "values": {
+    "Name": "/app/customersupport/agentcore/cognito_auth_url",
+    "Type": "String",
+    "Value": "https://us-east-1id.auth.us-east-1.amazoncognito.com/oauth2/authorize",
+    "Description": "OAuth2 Token URL",
+    "Tags": {
+     "Application": "CustomerSupport"
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "CognitoDomainParameter",
+   "cfg": "CognitoDomainParameter",
+   "type": "AWS::SSM::Parameter",
+   "values": {
+    "Name": "/app/customersupport/agentcore/cognito_domain",
+    "Type": "String",
+    "Value": "https://us-east-1id.auth.us-east-1.amazoncognito.com",
+    "Description": "Cognito hosted domain for OAuth2",
+    "Tags": {
+     "Application": "CustomerSupport"
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.UserPoolName",
+   "cfg": "__parameter__.UserPoolName",
+   "type": "__parameter__",
+   "values": {
+    "name": "UserPoolName",
+    "type": "String",
+    "default": "CustomerSupportGatewayPool",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.MachineAppClientName",
+   "cfg": "__parameter__.MachineAppClientName",
+   "type": "__parameter__",
+   "values": {
+    "name": "MachineAppClientName",
+    "type": "String",
+    "default": "CustomerSupportMachineClient",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.WebAppClientName",
+   "cfg": "__parameter__.WebAppClientName",
+   "type": "__parameter__",
+   "values": {
+    "name": "WebAppClientName",
+    "type": "String",
+    "default": "CustomerSupportWebClient",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPool.UserPool",
+   "cfg": "UserPool",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Cognito::UserPool",
+    "name": "UserPool",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "UserPoolName": "CustomerSupportGatewayPool",
+     "MfaConfiguration": "OFF",
+     "UsernameConfiguration": {
+      "CaseSensitive": false
+     },
+     "UsernameAttributes": [
+      "email"
+     ],
+     "AutoVerifiedAttributes": [
+      "email"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolGroup.AdminGroup",
+   "cfg": "AdminGroup",
+   "type": "__declared__",
+   "refs": [
+    "UserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolGroup",
+    "name": "AdminGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "GroupName": "admin",
+     "Description": "Administrator group",
+     "UserPoolId": {
+      "ref": "UserPool"
+     },
+     "Precedence": 1
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolGroup.CustomerGroup",
+   "cfg": "CustomerGroup",
+   "type": "__declared__",
+   "refs": [
+    "UserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolGroup",
+    "name": "CustomerGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "GroupName": "customer",
+     "Description": "Regular customer group",
+     "UserPoolId": {
+      "ref": "UserPool"
+     },
+     "Precedence": 2
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolClient.WebUserPoolClient",
+   "cfg": "WebUserPoolClient",
+   "type": "__declared__",
+   "refs": [
+    "UserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolClient",
+    "name": "WebUserPoolClient",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ClientName": "CustomerSupportWebClient",
+     "UserPoolId": {
+      "ref": "UserPool"
+     },
+     "GenerateSecret": false,
+     "AllowedOAuthFlows": [
+      "code"
+     ],
+     "AllowedOAuthScopes": [
+      "openid",
+      "email",
+      "profile",
+      "default-m2m-resource-server-id/read"
+     ],
+     "AllowedOAuthFlowsUserPoolClient": true,
+     "CallbackURLs": [
+      "http://localhost:8501/",
+      "https://example.com/auth/callback"
+     ],
+     "LogoutURLs": [
+      "http://localhost:8501/"
+     ],
+     "SupportedIdentityProviders": [
+      "COGNITO"
+     ],
+     "AccessTokenValidity": 60,
+     "IdTokenValidity": 60,
+     "RefreshTokenValidity": 30,
+     "TokenValidityUnits": {
+      "AccessToken": "minutes",
+      "IdToken": "minutes",
+      "RefreshToken": "days"
+     },
+     "EnableTokenRevocation": true
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolClient.MachineUserPoolClient",
+   "cfg": "MachineUserPoolClient",
+   "type": "__declared__",
+   "refs": [
+    "UserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolClient",
+    "name": "MachineUserPoolClient",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ClientName": "CustomerSupportMachineClient",
+     "UserPoolId": {
+      "ref": "UserPool"
+     },
+     "GenerateSecret": true,
+     "ExplicitAuthFlows": [
+      "ALLOW_REFRESH_TOKEN_AUTH"
+     ],
+     "RefreshTokenValidity": 1,
+     "AccessTokenValidity": 60,
+     "IdTokenValidity": 60,
+     "TokenValidityUnits": {
+      "AccessToken": "minutes",
+      "IdToken": "minutes",
+      "RefreshToken": "days"
+     },
+     "AllowedOAuthFlows": [
+      "client_credentials"
+     ],
+     "AllowedOAuthScopes": [
+      "default-m2m-resource-server-id/read"
+     ],
+     "AllowedOAuthFlowsUserPoolClient": true,
+     "SupportedIdentityProviders": [
+      "COGNITO"
+     ],
+     "EnableTokenRevocation": true
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolResourceServer.ResourceServer",
+   "cfg": "ResourceServer",
+   "type": "__declared__",
+   "refs": [
+    "UserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolResourceServer",
+    "name": "ResourceServer",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "UserPoolId": {
+      "ref": "UserPool"
+     },
+     "Identifier": "default-m2m-resource-server-id",
+     "Name": "Default M2M Resource Server -id",
+     "Scopes": [
+      {
+       "ScopeName": "read",
+       "ScopeDescription": "An example scope created by Amazon Cognito quick start"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolDomain.UserPoolDomain",
+   "cfg": "UserPoolDomain",
+   "type": "__declared__",
+   "refs": [
+    "UserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolDomain",
+    "name": "UserPoolDomain",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "UserPoolId": {
+      "ref": "UserPool"
+     },
+     "Domain": "us-east-1id"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.PostSignupFunctionRole",
+   "cfg": "PostSignupFunctionRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "PostSignupFunctionRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Policies": [
+      {
+       "PolicyName": "AllowBasicLogs",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "logs:CreateLogGroup",
+           "logs:CreateLogStream",
+           "logs:PutLogEvents"
+          ],
+          "Resource": [
+           "arn:aws:logs:*:*:*"
+          ]
+         }
+        ]
+       }
+      },
+      {
+       "PolicyName": "Cognito",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "cognito-idp:AdminAddUserToGroup"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Function.PostSignupFunction",
+   "cfg": "PostSignupFunction",
+   "type": "__declared__",
+   "refs": [
+    "PostSignupFunctionRole"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Function",
+    "name": "PostSignupFunction",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Handler": "index.lambda_handler",
+     "Runtime": "python3.13",
+     "Role": {
+      "ref": "PostSignupFunctionRole",
+      "attr": "Arn"
+     },
+     "Timeout": 10,
+     "Code": {
+      "ZipFile": "import boto3\n\ndef lambda_handler(event, context):\n    user_pool_id = event['userPoolId']\n    username = event['userName']\n    client = boto3.client('cognito-idp')\n\n    # Add user to 'customer' group\n    try:\n        client.admin_add_user_to_group(\n            UserPoolId=user_pool_id,\n            Username=username,\n            GroupName='Customer'\n        )\n        print(f\"User {username} added to 'customer' group.\")\n    except Exception as e:\n        print(f\"Error adding user to group: {e}\")\n\n    return event\n"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SSM::Parameter.CognitoMachineClientIdParameter",
+   "cfg": "CognitoMachineClientIdParameter",
+   "type": "__declared__",
+   "refs": [
+    "MachineUserPoolClient"
+   ],
+   "values": {
+    "type": "AWS::SSM::Parameter",
+    "name": "CognitoMachineClientIdParameter",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "/app/customersupport/agentcore/machine_client_id",
+     "Type": "String",
+     "Value": {
+      "ref": "MachineUserPoolClient"
+     },
+     "Description": "Machine Cognito client ID",
+     "Tags": {
+      "Application": "CustomerSupport"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SSM::Parameter.CognitoWebClientIdParameter",
+   "cfg": "CognitoWebClientIdParameter",
+   "type": "__declared__",
+   "refs": [
+    "WebUserPoolClient"
+   ],
+   "values": {
+    "type": "AWS::SSM::Parameter",
+    "name": "CognitoWebClientIdParameter",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "/app/customersupport/agentcore/web_client_id",
+     "Type": "String",
+     "Value": {
+      "ref": "WebUserPoolClient"
+     },
+     "Description": "Cognito client ID for web app",
+     "Tags": {
+      "Application": "CustomerSuppor"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SSM::Parameter.UserPoolIdParameter",
+   "cfg": "UserPoolIdParameter",
+   "type": "__declared__",
+   "refs": [
+    "UserPool"
+   ],
+   "values": {
+    "type": "AWS::SSM::Parameter",
+    "name": "UserPoolIdParameter",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "/app/customersupport/agentcore/userpool_id",
+     "Type": "String",
+     "Value": {
+      "ref": "UserPool"
+     },
+     "Description": "Cognito client ID",
+     "Tags": {
+      "Application": "CustomerSupport"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SSM::Parameter.CognitoAuthScopeParameter",
+   "cfg": "CognitoAuthScopeParameter",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::SSM::Parameter",
+    "name": "CognitoAuthScopeParameter",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "/app/customersupport/agentcore/cognito_auth_scope",
+     "Type": "String",
+     "Value": "default-m2m-resource-server-id/read",
+     "Description": "OAuth2 scope for Cognito auth",
+     "Tags": {
+      "Application": "CustomerSupport"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SSM::Parameter.CognitoDiscoveryURLParameter",
+   "cfg": "CognitoDiscoveryURLParameter",
+   "type": "__declared__",
+   "refs": [
+    "UserPool"
+   ],
+   "values": {
+    "type": "AWS::SSM::Parameter",
+    "name": "CognitoDiscoveryURLParameter",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "/app/customersupport/agentcore/cognito_discovery_url",
+     "Type": "String",
+     "Value": "https://cognito-idp.us-east-1.amazonaws.com/${UserPool}/.well-known/openid-configuration",
+     "Description": "OAuth2 Discovery URL",
+     "Tags": {
+      "Application": "CustomerSupport"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SSM::Parameter.CognitoTokenURLParameter",
+   "cfg": "CognitoTokenURLParameter",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::SSM::Parameter",
+    "name": "CognitoTokenURLParameter",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "/app/customersupport/agentcore/cognito_token_url",
+     "Type": "String",
+     "Value": "https://us-east-1id.auth.us-east-1.amazoncognito.com/oauth2/token",
+     "Description": "OAuth2 Token URL",
+     "Tags": {
+      "Application": "CustomerSupport"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SSM::Parameter.CognitoAuthorizeURLParameter",
+   "cfg": "CognitoAuthorizeURLParameter",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::SSM::Parameter",
+    "name": "CognitoAuthorizeURLParameter",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "/app/customersupport/agentcore/cognito_auth_url",
+     "Type": "String",
+     "Value": "https://us-east-1id.auth.us-east-1.amazoncognito.com/oauth2/authorize",
+     "Description": "OAuth2 Token URL",
+     "Tags": {
+      "Application": "CustomerSupport"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SSM::Parameter.CognitoDomainParameter",
+   "cfg": "CognitoDomainParameter",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::SSM::Parameter",
+    "name": "CognitoDomainParameter",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "/app/customersupport/agentcore/cognito_domain",
+     "Type": "String",
+     "Value": "https://us-east-1id.auth.us-east-1.amazoncognito.com",
+     "Description": "Cognito hosted domain for OAuth2",
+     "Tags": {
+      "Application": "CustomerSupport"
+     }
+    }
+   }
+  }
+ ]
+}

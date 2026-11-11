@@ -1,0 +1,790 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "0042b3c552e5ea21fd5745fd1ea79ff6fe00ecbadf8f9b9f78f32bdb1702a2e5",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "CodeBuildRole728CBADE",
+   "cfg": "CodeBuildRole728CBADE",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "codebuild.amazonaws.com"
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/AWSCodeCommitFullAccess",
+     "arn:aws:iam::aws:policy/CloudWatchLogsFullAccess"
+    ],
+    "__resource__": {
+     "Metadata": {
+      "aws:cdk:path": "PicaPicaStack/CodeBuildRole/Resource"
+     }
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "CodeBuildRoleDefaultPolicy829527DE",
+   "cfg": "CodeBuildRoleDefaultPolicy829527DE",
+   "type": "AWS::IAM::Policy",
+   "values": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::Join": [
+          "",
+          [
+           "arn:",
+           "aws",
+           ":logs:us-west-2:043490748814:log-group:/aws/codebuild/",
+           {
+            "ref": "CodeCommitReplicateProject8E864060"
+           }
+          ]
+         ]
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           "arn:",
+           "aws",
+           ":logs:us-west-2:043490748814:log-group:/aws/codebuild/",
+           {
+            "ref": "CodeCommitReplicateProject8E864060"
+           },
+           ":*"
+          ]
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "codebuild:CreateReportGroup",
+        "codebuild:CreateReport",
+        "codebuild:UpdateReport",
+        "codebuild:BatchPutTestCases",
+        "codebuild:BatchPutCodeCoverages"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::Join": [
+         "",
+         [
+          "arn:",
+          "aws",
+          ":codebuild:us-west-2:043490748814:report-group/",
+          {
+           "ref": "CodeCommitReplicateProject8E864060"
+          },
+          "-*"
+         ]
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "CodeBuildRoleDefaultPolicy829527DE",
+    "Roles": [
+     {
+      "ref": "CodeBuildRole728CBADE"
+     }
+    ],
+    "__resource__": {
+     "Metadata": {
+      "aws:cdk:path": "PicaPicaStack/CodeBuildRole/DefaultPolicy/Resource"
+     }
+    }
+   },
+   "refs": [
+    "CodeBuildRole728CBADE",
+    "CodeCommitReplicateProject8E864060"
+   ]
+  },
+  {
+   "id": "CodeCommitReplicateProject8E864060",
+   "cfg": "CodeCommitReplicateProject8E864060",
+   "type": "AWS::CodeBuild::Project",
+   "values": {
+    "Artifacts": {
+     "Type": "NO_ARTIFACTS"
+    },
+    "Environment": {
+     "ComputeType": "BUILD_GENERAL1_SMALL",
+     "Image": "aws/codebuild/standard:4.0",
+     "ImagePullCredentialsType": "CODEBUILD",
+     "PrivilegedMode": false,
+     "Type": "LINUX_CONTAINER"
+    },
+    "ServiceRole": {
+     "ref": "CodeBuildRole728CBADE",
+     "attr": "Arn"
+    },
+    "Source": {
+     "BuildSpec": "{\n  \"version\": \"0.2\",\n  \"phases\": {\n    \"pre_build\": {\n      \"commands\": [\n        \"pip install git-remote-codecommit\"\n      ]\n    },\n    \"build\": {\n      \"commands\": [\n        \"git clone --mirror codecommit::us-west-2://card-service card-service\",\n        \"cd card-service\",\n        \"git remote set-url --push origin codecommit::ap-northeast-2://card-service\",\n        \"git fetch && git push\",\n        \"cd ..\",\n        \"git clone --mirror codecommit::us-west-2://rule-service rule-service\",\n        \"cd rule-service\",\n        \"git remote set-url --push origin codecommit::ap-northeast-2://rule-service\",\n        \"git fetch && git push\",\n        \"cd ..\",\n        \"git clone --mirror codecommit::us-west-2://ecs-pipeline ecs-pipeline\",\n        \"cd ecs-pipeline\",\n        \"git remote set-url --push origin codecommit::ap-northeast-2://ecs-pipeline\",\n        \"git fetch && git push\",\n        \"cd ..\"\n      ]\n    }\n  }\n}",
+     "Type": "NO_SOURCE"
+    },
+    "EncryptionKey": "alias/aws/s3",
+    "__resource__": {
+     "Metadata": {
+      "aws:cdk:path": "PicaPicaStack/CodeCommitReplicateProject/Resource"
+     }
+    }
+   },
+   "refs": [
+    "CodeBuildRole728CBADE"
+   ]
+  },
+  {
+   "id": "CodeCommitReplicateProjectEventsRoleFB6F0A63",
+   "cfg": "CodeCommitReplicateProjectEventsRoleFB6F0A63",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "events.amazonaws.com"
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "__resource__": {
+     "Metadata": {
+      "aws:cdk:path": "PicaPicaStack/CodeCommitReplicateProject/EventsRole/Resource"
+     }
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "CodeCommitReplicateProjectEventsRoleDefaultPolicy422AD77C",
+   "cfg": "CodeCommitReplicateProjectEventsRoleDefaultPolicy422AD77C",
+   "type": "AWS::IAM::Policy",
+   "values": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "codebuild:StartBuild"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "ref": "CodeCommitReplicateProject8E864060",
+        "attr": "Arn"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "CodeCommitReplicateProjectEventsRoleDefaultPolicy422AD77C",
+    "Roles": [
+     {
+      "ref": "CodeCommitReplicateProjectEventsRoleFB6F0A63"
+     }
+    ],
+    "__resource__": {
+     "Metadata": {
+      "aws:cdk:path": "PicaPicaStack/CodeCommitReplicateProject/EventsRole/DefaultPolicy/Resource"
+     }
+    }
+   },
+   "refs": [
+    "CodeCommitReplicateProject8E864060",
+    "CodeCommitReplicateProjectEventsRoleFB6F0A63"
+   ]
+  },
+  {
+   "id": "cardserviceRepositorycardserviceOnCommit5618799A",
+   "cfg": "cardserviceRepositorycardserviceOnCommit5618799A",
+   "type": "AWS::Events::Rule",
+   "values": {
+    "EventPattern": {
+     "source": [
+      "aws.codecommit"
+     ],
+     "resources": [
+      "arn:aws:codecommit:us-west-2:043490748814:card-service"
+     ],
+     "detail-type": [
+      "CodeCommit Repository State Change"
+     ],
+     "detail": {
+      "event": [
+       "referenceCreated",
+       "referenceUpdated"
+      ],
+      "referenceName": [
+       "mainline"
+      ]
+     }
+    },
+    "State": "ENABLED",
+    "Targets": [
+     {
+      "Arn": {
+       "ref": "CodeCommitReplicateProject8E864060",
+       "attr": "Arn"
+      },
+      "Id": "Target0",
+      "RoleArn": {
+       "ref": "CodeCommitReplicateProjectEventsRoleFB6F0A63",
+       "attr": "Arn"
+      }
+     }
+    ],
+    "__resource__": {
+     "Metadata": {
+      "aws:cdk:path": "PicaPicaStack/card-serviceRepository/card-serviceOnCommit/Resource"
+     }
+    }
+   },
+   "refs": [
+    "CodeCommitReplicateProject8E864060",
+    "CodeCommitReplicateProjectEventsRoleFB6F0A63"
+   ]
+  },
+  {
+   "id": "ruleserviceRepositoryruleserviceOnCommit0E279E9A",
+   "cfg": "ruleserviceRepositoryruleserviceOnCommit0E279E9A",
+   "type": "AWS::Events::Rule",
+   "values": {
+    "EventPattern": {
+     "source": [
+      "aws.codecommit"
+     ],
+     "resources": [
+      "arn:aws:codecommit:us-west-2:043490748814:rule-service"
+     ],
+     "detail-type": [
+      "CodeCommit Repository State Change"
+     ],
+     "detail": {
+      "event": [
+       "referenceCreated",
+       "referenceUpdated"
+      ],
+      "referenceName": [
+       "mainline"
+      ]
+     }
+    },
+    "State": "ENABLED",
+    "Targets": [
+     {
+      "Arn": {
+       "ref": "CodeCommitReplicateProject8E864060",
+       "attr": "Arn"
+      },
+      "Id": "Target0",
+      "RoleArn": {
+       "ref": "CodeCommitReplicateProjectEventsRoleFB6F0A63",
+       "attr": "Arn"
+      }
+     }
+    ],
+    "__resource__": {
+     "Metadata": {
+      "aws:cdk:path": "PicaPicaStack/rule-serviceRepository/rule-serviceOnCommit/Resource"
+     }
+    }
+   },
+   "refs": [
+    "CodeCommitReplicateProject8E864060",
+    "CodeCommitReplicateProjectEventsRoleFB6F0A63"
+   ]
+  },
+  {
+   "id": "ecspipelineRepositoryecspipelineOnCommitDF1BFAF5",
+   "cfg": "ecspipelineRepositoryecspipelineOnCommitDF1BFAF5",
+   "type": "AWS::Events::Rule",
+   "values": {
+    "EventPattern": {
+     "source": [
+      "aws.codecommit"
+     ],
+     "resources": [
+      "arn:aws:codecommit:us-west-2:043490748814:ecs-pipeline"
+     ],
+     "detail-type": [
+      "CodeCommit Repository State Change"
+     ],
+     "detail": {
+      "event": [
+       "referenceCreated",
+       "referenceUpdated"
+      ],
+      "referenceName": [
+       "mainline"
+      ]
+     }
+    },
+    "State": "ENABLED",
+    "Targets": [
+     {
+      "Arn": {
+       "ref": "CodeCommitReplicateProject8E864060",
+       "attr": "Arn"
+      },
+      "Id": "Target0",
+      "RoleArn": {
+       "ref": "CodeCommitReplicateProjectEventsRoleFB6F0A63",
+       "attr": "Arn"
+      }
+     }
+    ],
+    "__resource__": {
+     "Metadata": {
+      "aws:cdk:path": "PicaPicaStack/ecs-pipelineRepository/ecs-pipelineOnCommit/Resource"
+     }
+    }
+   },
+   "refs": [
+    "CodeCommitReplicateProject8E864060",
+    "CodeCommitReplicateProjectEventsRoleFB6F0A63"
+   ]
+  },
+  {
+   "id": "CDKMetadata",
+   "cfg": "CDKMetadata",
+   "type": "AWS::CDK::Metadata",
+   "values": {
+    "Analytics": "v2:deflate64:H4sIAAAAAAAAEzWMSw6DMAxEz8LemKabdlmJC6D0BNRxpfCJpXxAVZS7FwpdvfFY8xQqdcNL9ejXUJMZm0ziGfMz9jSC5iDJE0MrLkSfKEL7dv+2wD7Ktp8xa5n499vZyWTps59HKkBi+JXsZDB3XgY+RGcswAu7GDZLOi0bSyngthkOoVnUHdUVVTUEa2ufXLQzoz74BR2Wl+PDAAAA",
+    "__resource__": {
+     "Metadata": {
+      "aws:cdk:path": "PicaPicaStack/CDKMetadata/Default"
+     }
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.CodeBuildRole728CBADE",
+   "cfg": "CodeBuildRole728CBADE",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "CodeBuildRole728CBADE",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "codebuild.amazonaws.com"
+         ]
+        }
+       }
+      ],
+      "Version": "2012-10-17"
+     },
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/AWSCodeCommitFullAccess",
+      "arn:aws:iam::aws:policy/CloudWatchLogsFullAccess"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Policy.CodeBuildRoleDefaultPolicy829527DE",
+   "cfg": "CodeBuildRoleDefaultPolicy829527DE",
+   "type": "__declared__",
+   "refs": [
+    "CodeBuildRole728CBADE",
+    "CodeCommitReplicateProject8E864060"
+   ],
+   "values": {
+    "type": "AWS::IAM::Policy",
+    "name": "CodeBuildRoleDefaultPolicy829527DE",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "PolicyDocument": {
+      "Statement": [
+       {
+        "Action": [
+         "logs:CreateLogGroup",
+         "logs:CreateLogStream",
+         "logs:PutLogEvents"
+        ],
+        "Effect": "Allow",
+        "Resource": [
+         {
+          "Fn::Join": [
+           "",
+           [
+            "arn:",
+            "aws",
+            ":logs:us-west-2:043490748814:log-group:/aws/codebuild/",
+            {
+             "ref": "CodeCommitReplicateProject8E864060"
+            }
+           ]
+          ]
+         },
+         {
+          "Fn::Join": [
+           "",
+           [
+            "arn:",
+            "aws",
+            ":logs:us-west-2:043490748814:log-group:/aws/codebuild/",
+            {
+             "ref": "CodeCommitReplicateProject8E864060"
+            },
+            ":*"
+           ]
+          ]
+         }
+        ]
+       },
+       {
+        "Action": [
+         "codebuild:CreateReportGroup",
+         "codebuild:CreateReport",
+         "codebuild:UpdateReport",
+         "codebuild:BatchPutTestCases",
+         "codebuild:BatchPutCodeCoverages"
+        ],
+        "Effect": "Allow",
+        "Resource": {
+         "Fn::Join": [
+          "",
+          [
+           "arn:",
+           "aws",
+           ":codebuild:us-west-2:043490748814:report-group/",
+           {
+            "ref": "CodeCommitReplicateProject8E864060"
+           },
+           "-*"
+          ]
+         ]
+        }
+       }
+      ],
+      "Version": "2012-10-17"
+     },
+     "PolicyName": "CodeBuildRoleDefaultPolicy829527DE",
+     "Roles": [
+      {
+       "ref": "CodeBuildRole728CBADE"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::CodeBuild::Project.CodeCommitReplicateProject8E864060",
+   "cfg": "CodeCommitReplicateProject8E864060",
+   "type": "__declared__",
+   "refs": [
+    "CodeBuildRole728CBADE"
+   ],
+   "values": {
+    "type": "AWS::CodeBuild::Project",
+    "name": "CodeCommitReplicateProject8E864060",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Artifacts": {
+      "Type": "NO_ARTIFACTS"
+     },
+     "Environment": {
+      "ComputeType": "BUILD_GENERAL1_SMALL",
+      "Image": "aws/codebuild/standard:4.0",
+      "ImagePullCredentialsType": "CODEBUILD",
+      "PrivilegedMode": false,
+      "Type": "LINUX_CONTAINER"
+     },
+     "ServiceRole": {
+      "ref": "CodeBuildRole728CBADE",
+      "attr": "Arn"
+     },
+     "Source": {
+      "BuildSpec": "{\n  \"version\": \"0.2\",\n  \"phases\": {\n    \"pre_build\": {\n      \"commands\": [\n        \"pip install git-remote-codecommit\"\n      ]\n    },\n    \"build\": {\n      \"commands\": [\n        \"git clone --mirror codecommit::us-west-2://card-service card-service\",\n        \"cd card-service\",\n        \"git remote set-url --push origin codecommit::ap-northeast-2://card-service\",\n        \"git fetch && git push\",\n        \"cd ..\",\n        \"git clone --mirror codecommit::us-west-2://rule-service rule-service\",\n        \"cd rule-service\",\n        \"git remote set-url --push origin codecommit::ap-northeast-2://rule-service\",\n        \"git fetch && git push\",\n        \"cd ..\",\n        \"git clone --mirror codecommit::us-west-2://ecs-pipeline ecs-pipeline\",\n        \"cd ecs-pipeline\",\n        \"git remote set-url --push origin codecommit::ap-northeast-2://ecs-pipeline\",\n        \"git fetch && git push\",\n        \"cd ..\"\n      ]\n    }\n  }\n}",
+      "Type": "NO_SOURCE"
+     },
+     "EncryptionKey": "alias/aws/s3"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.CodeCommitReplicateProjectEventsRoleFB6F0A63",
+   "cfg": "CodeCommitReplicateProjectEventsRoleFB6F0A63",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "CodeCommitReplicateProjectEventsRoleFB6F0A63",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "events.amazonaws.com"
+         ]
+        }
+       }
+      ],
+      "Version": "2012-10-17"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Policy.CodeCommitReplicateProjectEventsRoleDefaultPolicy422AD77C",
+   "cfg": "CodeCommitReplicateProjectEventsRoleDefaultPolicy422AD77C",
+   "type": "__declared__",
+   "refs": [
+    "CodeCommitReplicateProject8E864060",
+    "CodeCommitReplicateProjectEventsRoleFB6F0A63"
+   ],
+   "values": {
+    "type": "AWS::IAM::Policy",
+    "name": "CodeCommitReplicateProjectEventsRoleDefaultPolicy422AD77C",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "PolicyDocument": {
+      "Statement": [
+       {
+        "Action": [
+         "codebuild:StartBuild"
+        ],
+        "Effect": "Allow",
+        "Resource": {
+         "ref": "CodeCommitReplicateProject8E864060",
+         "attr": "Arn"
+        }
+       }
+      ],
+      "Version": "2012-10-17"
+     },
+     "PolicyName": "CodeCommitReplicateProjectEventsRoleDefaultPolicy422AD77C",
+     "Roles": [
+      {
+       "ref": "CodeCommitReplicateProjectEventsRoleFB6F0A63"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Events::Rule.cardserviceRepositorycardserviceOnCommit5618799A",
+   "cfg": "cardserviceRepositorycardserviceOnCommit5618799A",
+   "type": "__declared__",
+   "refs": [
+    "CodeCommitReplicateProject8E864060",
+    "CodeCommitReplicateProjectEventsRoleFB6F0A63"
+   ],
+   "values": {
+    "type": "AWS::Events::Rule",
+    "name": "cardserviceRepositorycardserviceOnCommit5618799A",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "EventPattern": {
+      "source": [
+       "aws.codecommit"
+      ],
+      "resources": [
+       "arn:aws:codecommit:us-west-2:043490748814:card-service"
+      ],
+      "detail-type": [
+       "CodeCommit Repository State Change"
+      ],
+      "detail": {
+       "event": [
+        "referenceCreated",
+        "referenceUpdated"
+       ],
+       "referenceName": [
+        "mainline"
+       ]
+      }
+     },
+     "State": "ENABLED",
+     "Targets": [
+      {
+       "Arn": {
+        "ref": "CodeCommitReplicateProject8E864060",
+        "attr": "Arn"
+       },
+       "Id": "Target0",
+       "RoleArn": {
+        "ref": "CodeCommitReplicateProjectEventsRoleFB6F0A63",
+        "attr": "Arn"
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Events::Rule.ruleserviceRepositoryruleserviceOnCommit0E279E9A",
+   "cfg": "ruleserviceRepositoryruleserviceOnCommit0E279E9A",
+   "type": "__declared__",
+   "refs": [
+    "CodeCommitReplicateProject8E864060",
+    "CodeCommitReplicateProjectEventsRoleFB6F0A63"
+   ],
+   "values": {
+    "type": "AWS::Events::Rule",
+    "name": "ruleserviceRepositoryruleserviceOnCommit0E279E9A",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "EventPattern": {
+      "source": [
+       "aws.codecommit"
+      ],
+      "resources": [
+       "arn:aws:codecommit:us-west-2:043490748814:rule-service"
+      ],
+      "detail-type": [
+       "CodeCommit Repository State Change"
+      ],
+      "detail": {
+       "event": [
+        "referenceCreated",
+        "referenceUpdated"
+       ],
+       "referenceName": [
+        "mainline"
+       ]
+      }
+     },
+     "State": "ENABLED",
+     "Targets": [
+      {
+       "Arn": {
+        "ref": "CodeCommitReplicateProject8E864060",
+        "attr": "Arn"
+       },
+       "Id": "Target0",
+       "RoleArn": {
+        "ref": "CodeCommitReplicateProjectEventsRoleFB6F0A63",
+        "attr": "Arn"
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Events::Rule.ecspipelineRepositoryecspipelineOnCommitDF1BFAF5",
+   "cfg": "ecspipelineRepositoryecspipelineOnCommitDF1BFAF5",
+   "type": "__declared__",
+   "refs": [
+    "CodeCommitReplicateProject8E864060",
+    "CodeCommitReplicateProjectEventsRoleFB6F0A63"
+   ],
+   "values": {
+    "type": "AWS::Events::Rule",
+    "name": "ecspipelineRepositoryecspipelineOnCommitDF1BFAF5",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "EventPattern": {
+      "source": [
+       "aws.codecommit"
+      ],
+      "resources": [
+       "arn:aws:codecommit:us-west-2:043490748814:ecs-pipeline"
+      ],
+      "detail-type": [
+       "CodeCommit Repository State Change"
+      ],
+      "detail": {
+       "event": [
+        "referenceCreated",
+        "referenceUpdated"
+       ],
+       "referenceName": [
+        "mainline"
+       ]
+      }
+     },
+     "State": "ENABLED",
+     "Targets": [
+      {
+       "Arn": {
+        "ref": "CodeCommitReplicateProject8E864060",
+        "attr": "Arn"
+       },
+       "Id": "Target0",
+       "RoleArn": {
+        "ref": "CodeCommitReplicateProjectEventsRoleFB6F0A63",
+        "attr": "Arn"
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::CDK::Metadata.CDKMetadata",
+   "cfg": "CDKMetadata",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::CDK::Metadata",
+    "name": "CDKMetadata",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Analytics": "v2:deflate64:H4sIAAAAAAAAEzWMSw6DMAxEz8LemKabdlmJC6D0BNRxpfCJpXxAVZS7FwpdvfFY8xQqdcNL9ejXUJMZm0ziGfMz9jSC5iDJE0MrLkSfKEL7dv+2wD7Ktp8xa5n499vZyWTps59HKkBi+JXsZDB3XgY+RGcswAu7GDZLOi0bSyngthkOoVnUHdUVVTUEa2ufXLQzoz74BR2Wl+PDAAAA"
+    }
+   }
+  }
+ ]
+}

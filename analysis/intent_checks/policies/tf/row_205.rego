@@ -1,0 +1,614 @@
+package intent.tf.row_205
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {},
+ "checks": [
+  {
+   "id": "vpc",
+   "kind": "exists",
+   "tier": "core",
+   "select": {
+    "types": [
+     "aws_vpc"
+    ],
+    "where": []
+   },
+   "quote": "a VPC configured with a 64.0.0.0/16 CIDR block"
+  },
+  {
+   "id": "vpc_cidr",
+   "kind": "attr",
+   "tier": "core",
+   "select": {
+    "types": [
+     "aws_vpc"
+    ],
+    "where": []
+   },
+   "cond": {
+    "path": [
+     "cidr_block"
+    ],
+    "op": "eq",
+    "value": "64.0.0.0/16"
+   },
+   "quote": "a 64.0.0.0/16 CIDR block"
+  },
+  {
+   "id": "vpc_tenancy",
+   "kind": "attr",
+   "tier": "detail",
+   "select": {
+    "types": [
+     "aws_vpc"
+    ],
+    "where": []
+   },
+   "cond": {
+    "path": [
+     "instance_tenancy"
+    ],
+    "op": "eq",
+    "value": "default"
+   },
+   "quote": "default instance tenancy"
+  },
+  {
+   "id": "vpc_dns_support",
+   "kind": "attr",
+   "tier": "core",
+   "select": {
+    "types": [
+     "aws_vpc"
+    ],
+    "where": []
+   },
+   "cond": {
+    "path": [
+     "enable_dns_support"
+    ],
+    "op": "truthy"
+   },
+   "quote": "DNS support"
+  },
+  {
+   "id": "vpc_dns_hostnames",
+   "kind": "attr",
+   "tier": "core",
+   "select": {
+    "types": [
+     "aws_vpc"
+    ],
+    "where": []
+   },
+   "cond": {
+    "path": [
+     "enable_dns_hostnames"
+    ],
+    "op": "truthy"
+   },
+   "quote": "DNS hostnames"
+  },
+  {
+   "id": "vpc_classiclink_off",
+   "kind": "any_of",
+   "tier": "detail",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_vpc"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "enable_classiclink"
+      ],
+      "op": "falsy"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_vpc"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "enable_classiclink"
+      ],
+      "op": "absent"
+     }
+    }
+   ],
+   "quote": "disabled ClassicLink"
+  },
+  {
+   "id": "env_prefix_default",
+   "kind": "any_of",
+   "tier": "detail",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": [
+         "default"
+        ],
+        "op": "eq",
+        "value": "elluis_codes_limited_network"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_vpc"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "tags",
+       "*"
+      ],
+      "op": "eq",
+      "value": "elluis_codes_limited_network"
+     }
+    }
+   ],
+   "quote": "tagged with an environment prefix defaulting to \"elluis_codes_limited_network\""
+  },
+  {
+   "id": "subnets_public_private",
+   "kind": "exists",
+   "tier": "core",
+   "select": {
+    "types": [
+     "aws_subnet"
+    ],
+    "where": []
+   },
+   "quote": "create public and private subnets",
+   "min": 6,
+   "justify": "three AZs, one public and one private subnet each"
+  },
+  {
+   "id": "subnets_three_azs",
+   "kind": "exists",
+   "tier": "core",
+   "select": {
+    "types": [
+     "aws_subnet"
+    ],
+    "where": []
+   },
+   "quote": "Across a provided map of three availability zones",
+   "min": 3,
+   "distinct_path": [
+    "availability_zone"
+   ]
+  },
+  {
+   "id": "subnets_no_public_ip",
+   "kind": "attr",
+   "tier": "core",
+   "select": {
+    "types": [
+     "aws_subnet"
+    ],
+    "where": []
+   },
+   "cond": {
+    "path": [
+     "map_public_ip_on_launch"
+    ],
+    "op": "none_eq",
+    "value": true
+   },
+   "quote": "subnets that do not auto-assign public IP addresses",
+   "quantifier": "all"
+  },
+  {
+   "id": "subnet_offsets",
+   "kind": "exists",
+   "tier": "core",
+   "select": {
+    "types": [
+     "aws_subnet"
+    ],
+    "where": [
+     {
+      "path": [
+       "cidr_block"
+      ],
+      "op": "regex",
+      "value": "^64\\.0\\.(11|22|33)\\.0/24$"
+     }
+    ]
+   },
+   "quote": "mapped to subnet offset values 11, 22, and 33",
+   "min": 3,
+   "distinct_path": [
+    "cidr_block"
+   ],
+   "justify": "8-bit offsets 11,22,33 of a /16 give 64.0.11.0/24, 64.0.22.0/24, 64.0.33.0/24"
+  },
+  {
+   "id": "subnets_distinct_ranges",
+   "kind": "exists",
+   "tier": "core",
+   "select": {
+    "types": [
+     "aws_subnet"
+    ],
+    "where": []
+   },
+   "quote": "using 8-bit CIDR offsets to calculate distinct subnet ranges",
+   "min": 6,
+   "distinct_path": [
+    "cidr_block"
+   ],
+   "justify": "distinct ranges for the six subnets"
+  },
+  {
+   "id": "igw",
+   "kind": "exists",
+   "tier": "core",
+   "select": {
+    "types": [
+     "aws_internet_gateway"
+    ],
+    "where": []
+   },
+   "quote": "an Internet Gateway attached to the VPC"
+  },
+  {
+   "id": "igw_attached",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_internet_gateway"
+      ],
+      "where": []
+     },
+     "to": {
+      "types": [
+       "aws_vpc"
+      ],
+      "where": []
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_internet_gateway_attachment"
+      ],
+      "where": []
+     },
+     "to": {
+      "types": [
+       "aws_vpc"
+      ],
+      "where": []
+     }
+    }
+   ],
+   "quote": "an Internet Gateway attached to the VPC"
+  },
+  {
+   "id": "public_default_route",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route"
+      ],
+      "where": [
+       {
+        "path": [
+         "destination_cidr_block"
+        ],
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_internet_gateway"
+      ],
+      "where": []
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route_table"
+      ],
+      "where": [
+       {
+        "path": [
+         "route",
+         "*",
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_internet_gateway"
+      ],
+      "where": []
+     }
+    }
+   ],
+   "quote": "public route tables routing all traffic out to the Internet Gateway"
+  },
+  {
+   "id": "eip_per_az",
+   "kind": "exists",
+   "tier": "core",
+   "select": {
+    "types": [
+     "aws_eip"
+    ],
+    "where": []
+   },
+   "quote": "allocate an Elastic IP for every availability zone",
+   "min": 3
+  },
+  {
+   "id": "nat_per_az",
+   "kind": "exists",
+   "tier": "core",
+   "select": {
+    "types": [
+     "aws_nat_gateway"
+    ],
+    "where": []
+   },
+   "quote": "deploy a NAT Gateway into each corresponding public subnet",
+   "min": 3
+  },
+  {
+   "id": "nat_in_subnet",
+   "kind": "ref",
+   "tier": "detail",
+   "from": {
+    "types": [
+     "aws_nat_gateway"
+    ],
+    "where": []
+   },
+   "to": {
+    "types": [
+     "aws_subnet"
+    ],
+    "where": []
+   },
+   "quote": "deploy a NAT Gateway into each corresponding public subnet"
+  },
+  {
+   "id": "nat_uses_eip",
+   "kind": "ref",
+   "tier": "detail",
+   "from": {
+    "types": [
+     "aws_nat_gateway"
+    ],
+    "where": []
+   },
+   "to": {
+    "types": [
+     "aws_eip"
+    ],
+    "where": []
+   },
+   "quote": "allocate an Elastic IP for every availability zone and deploy a NAT Gateway"
+  },
+  {
+   "id": "private_route_tables",
+   "kind": "exists",
+   "tier": "core",
+   "select": {
+    "types": [
+     "aws_route_table"
+    ],
+    "where": []
+   },
+   "quote": "dedicated per-AZ private route tables",
+   "min": 4,
+   "justify": "three private route tables plus a public one"
+  },
+  {
+   "id": "private_default_route_nat",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route"
+      ],
+      "where": [
+       {
+        "path": [
+         "destination_cidr_block"
+        ],
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_nat_gateway"
+      ],
+      "where": []
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route_table"
+      ],
+      "where": [
+       {
+        "path": [
+         "route",
+         "*",
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_nat_gateway"
+      ],
+      "where": []
+     }
+    }
+   ],
+   "quote": "route 0.0.0.0/0 traffic to the NAT Gateways"
+  },
+  {
+   "id": "route_ignore_changes",
+   "kind": "any_of",
+   "tier": "detail",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_route"
+       },
+       {
+        "path": [
+         "properties",
+         "lifecycle"
+        ],
+        "op": "regex",
+        "value": "route_table"
+       },
+       {
+        "path": [
+         "properties",
+         "lifecycle"
+        ],
+        "op": "regex",
+        "value": "nat_gateway"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_route_table"
+       },
+       {
+        "path": [
+         "properties",
+         "lifecycle"
+        ],
+        "op": "regex",
+        "value": "route"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_nat_gateway"
+       },
+       {
+        "path": [
+         "properties",
+         "lifecycle"
+        ],
+        "op": "regex",
+        "value": "subnet_id|allocation_id|\\ball\\b"
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "ignoring future changes to route table and NAT gateway associations"
+  },
+  {
+   "id": "x_assoc",
+   "kind": "exists",
+   "tier": "extra",
+   "select": {
+    "types": [
+     "aws_route_table_association"
+    ],
+    "where": []
+   },
+   "min": 6
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

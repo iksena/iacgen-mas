@@ -1,0 +1,454 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "cd98c7fd2c31d8508ae6ad74e6f1aad18c535253b0079b2c485247f205209540",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "apiGateway",
+   "cfg": "apiGateway",
+   "type": "AWS::ApiGateway::RestApi",
+   "values": {
+    "Description": "API Gateway",
+    "EndpointConfiguration": {
+     "Types": [
+      "REGIONAL"
+     ]
+    },
+    "Name": "ContentModeration"
+   },
+   "refs": []
+  },
+  {
+   "id": "apiGatewayRootMethod",
+   "cfg": "apiGatewayRootMethod",
+   "type": "AWS::ApiGateway::Method",
+   "values": {
+    "AuthorizationType": "NONE",
+    "HttpMethod": "POST",
+    "Integration": {
+     "IntegrationHttpMethod": "POST",
+     "Type": "AWS_PROXY",
+     "Uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/{'ref': 'lambdaFunction', 'attr': 'Arn'}/invocations"
+    },
+    "ResourceId": {
+     "ref": "apiGateway",
+     "attr": "RootResourceId"
+    },
+    "RestApiId": {
+     "ref": "apiGateway"
+    }
+   },
+   "refs": [
+    "apiGateway",
+    "lambdaFunction"
+   ]
+  },
+  {
+   "id": "apiGatewayDeployment",
+   "cfg": "apiGatewayDeployment",
+   "type": "AWS::ApiGateway::Deployment",
+   "values": {
+    "RestApiId": {
+     "ref": "apiGateway"
+    },
+    "StageName": "production",
+    "__resource__": {
+     "DependsOn": [
+      "apiGatewayRootMethod"
+     ]
+    }
+   },
+   "refs": [
+    "apiGateway"
+   ]
+  },
+  {
+   "id": "lambdaFunction",
+   "cfg": "lambdaFunction",
+   "type": "AWS::Lambda::Function",
+   "values": {
+    "Code": {
+     "ZipFile": "import json\nimport boto3\nimport urllib3\nimport io\n\nclient = boto3.client('rekognition')\nmanager = urllib3.PoolManager()\n\ndef getModerationForUrl(url):\n    try:\n        extensions = ['jpg', 'jpeg', 'png']\n        if not any(url.lower().endswith(ext) for ext in extensions):\n            return 400, \"Amazon Rekognition supports only the following image formats: jpg, jpeg, png\"\n\n        response = manager.request('GET', url, preload_content=False)\n        if response.status == 404:\n            return 404, \"Image not found\"\n\n        try:\n            reader = io.BufferedReader(response, 8)\n            readBytes = reader.read()\n        finally:\n            if(reader is not None):\n                reader.close()\n\n        if(len(readBytes) > 5242880):\n            return 400, \"Amazon Rekognition does not support images more than 5MB in this implementation. Use images stored on Amazon S3. See here: https://docs.aws.amazon.com/rekognition/latest/dg/limits.html\"\n\n        response = client.detect_moderation_labels(Image={'Bytes': readBytes}, MinConfidence=60)\n        return 200, response['ModerationLabels']\n\n    except Exception as e:\n        return 503, \"Unexpected error: \" + str(e)\n\ndef lambda_handler(event, context):\n    print(f'event: {json.dumps(event)}')\n\n    body = event.get('body')\n    if body is None:\n        raise KeyError(\"payload is missing\")\n\n    url = json.loads(body)['url']\n\n    if url is None:\n        raise KeyError(\"url is missing from the payload\")\n\n    moderationResponse = getModerationForUrl(url)\n    print(f'returning moderationResponse: {json.dumps(moderationResponse)}')\n\n    return {\n        'statusCode': moderationResponse[0],\n        'body': json.dumps(moderationResponse[1])\n    }\n"
+    },
+    "Description": "Lambda function",
+    "FunctionName": "invokeContentModeration",
+    "Handler": "index.lambda_handler",
+    "Timeout": 35,
+    "MemorySize": 128,
+    "Role": {
+     "ref": "lambdaIAMRole",
+     "attr": "Arn"
+    },
+    "Runtime": "python3.11"
+   },
+   "refs": [
+    "lambdaIAMRole"
+   ]
+  },
+  {
+   "id": "lambdaApiGatewayInvoke",
+   "cfg": "lambdaApiGatewayInvoke",
+   "type": "AWS::Lambda::Permission",
+   "values": {
+    "Action": "lambda:InvokeFunction",
+    "FunctionName": {
+     "ref": "lambdaFunction",
+     "attr": "Arn"
+    },
+    "Principal": "apigateway.amazonaws.com",
+    "SourceArn": "arn:aws:execute-api:us-east-1:123456789012:${apiGateway}/production/POST/"
+   },
+   "refs": [
+    "apiGateway",
+    "lambdaFunction"
+   ]
+  },
+  {
+   "id": "lambdaIAMRole",
+   "cfg": "lambdaIAMRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       }
+      }
+     ]
+    },
+    "Policies": [
+     {
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Action": [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+         ],
+         "Effect": "Allow",
+         "Resource": [
+          "arn:aws:logs:us-east-1:123456789012:log-group:/aws/lambda/invokeContentModeration:*"
+         ]
+        }
+       ]
+      },
+      "PolicyName": "lambdaLogs"
+     },
+     {
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Action": [
+          "rekognition:DetectModerationLabels"
+         ],
+         "Effect": "Allow",
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      },
+      "PolicyName": "lambdaRekognition"
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "lambdaLogGroup",
+   "cfg": "lambdaLogGroup",
+   "type": "AWS::Logs::LogGroup",
+   "values": {
+    "LogGroupName": "/aws/lambda/invokeContentModeration",
+    "RetentionInDays": 90
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.apiGatewayName",
+   "cfg": "__parameter__.apiGatewayName",
+   "type": "__parameter__",
+   "values": {
+    "name": "apiGatewayName",
+    "type": "String",
+    "default": "ContentModeration",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.apiGatewayStageName",
+   "cfg": "__parameter__.apiGatewayStageName",
+   "type": "__parameter__",
+   "values": {
+    "name": "apiGatewayStageName",
+    "type": "String",
+    "default": "production",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.apiGatewayHTTPMethod",
+   "cfg": "__parameter__.apiGatewayHTTPMethod",
+   "type": "__parameter__",
+   "values": {
+    "name": "apiGatewayHTTPMethod",
+    "type": "String",
+    "default": "POST",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.lambdaFunctionName",
+   "cfg": "__parameter__.lambdaFunctionName",
+   "type": "__parameter__",
+   "values": {
+    "name": "lambdaFunctionName",
+    "type": "String",
+    "default": "invokeContentModeration",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.apiGatewayInvokeURL",
+   "cfg": "__output__.apiGatewayInvokeURL",
+   "type": "__output__",
+   "values": {
+    "name": "apiGatewayInvokeURL",
+    "value": "https://${apiGateway}.execute-api.us-east-1.amazonaws.com/production",
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "apiGateway"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::RestApi.apiGateway",
+   "cfg": "apiGateway",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::ApiGateway::RestApi",
+    "name": "apiGateway",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Description": "API Gateway",
+     "EndpointConfiguration": {
+      "Types": [
+       "REGIONAL"
+      ]
+     },
+     "Name": "ContentModeration"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::Method.apiGatewayRootMethod",
+   "cfg": "apiGatewayRootMethod",
+   "type": "__declared__",
+   "refs": [
+    "apiGateway",
+    "lambdaFunction"
+   ],
+   "values": {
+    "type": "AWS::ApiGateway::Method",
+    "name": "apiGatewayRootMethod",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AuthorizationType": "NONE",
+     "HttpMethod": "POST",
+     "Integration": {
+      "IntegrationHttpMethod": "POST",
+      "Type": "AWS_PROXY",
+      "Uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/{'ref': 'lambdaFunction', 'attr': 'Arn'}/invocations"
+     },
+     "ResourceId": {
+      "ref": "apiGateway",
+      "attr": "RootResourceId"
+     },
+     "RestApiId": {
+      "ref": "apiGateway"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::Deployment.apiGatewayDeployment",
+   "cfg": "apiGatewayDeployment",
+   "type": "__declared__",
+   "refs": [
+    "apiGateway"
+   ],
+   "values": {
+    "type": "AWS::ApiGateway::Deployment",
+    "name": "apiGatewayDeployment",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RestApiId": {
+      "ref": "apiGateway"
+     },
+     "StageName": "production"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Function.lambdaFunction",
+   "cfg": "lambdaFunction",
+   "type": "__declared__",
+   "refs": [
+    "lambdaIAMRole"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Function",
+    "name": "lambdaFunction",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Code": {
+      "ZipFile": "import json\nimport boto3\nimport urllib3\nimport io\n\nclient = boto3.client('rekognition')\nmanager = urllib3.PoolManager()\n\ndef getModerationForUrl(url):\n    try:\n        extensions = ['jpg', 'jpeg', 'png']\n        if not any(url.lower().endswith(ext) for ext in extensions):\n            return 400, \"Amazon Rekognition supports only the following image formats: jpg, jpeg, png\"\n\n        response = manager.request('GET', url, preload_content=False)\n        if response.status == 404:\n            return 404, \"Image not found\"\n\n        try:\n            reader = io.BufferedReader(response, 8)\n            readBytes = reader.read()\n        finally:\n            if(reader is not None):\n                reader.close()\n\n        if(len(readBytes) > 5242880):\n            return 400, \"Amazon Rekognition does not support images more than 5MB in this implementation. Use images stored on Amazon S3. See here: https://docs.aws.amazon.com/rekognition/latest/dg/limits.html\"\n\n        response = client.detect_moderation_labels(Image={'Bytes': readBytes}, MinConfidence=60)\n        return 200, response['ModerationLabels']\n\n    except Exception as e:\n        return 503, \"Unexpected error: \" + str(e)\n\ndef lambda_handler(event, context):\n    print(f'event: {json.dumps(event)}')\n\n    body = event.get('body')\n    if body is None:\n        raise KeyError(\"payload is missing\")\n\n    url = json.loads(body)['url']\n\n    if url is None:\n        raise KeyError(\"url is missing from the payload\")\n\n    moderationResponse = getModerationForUrl(url)\n    print(f'returning moderationResponse: {json.dumps(moderationResponse)}')\n\n    return {\n        'statusCode': moderationResponse[0],\n        'body': json.dumps(moderationResponse[1])\n    }\n"
+     },
+     "Description": "Lambda function",
+     "FunctionName": "invokeContentModeration",
+     "Handler": "index.lambda_handler",
+     "Timeout": 35,
+     "MemorySize": 128,
+     "Role": {
+      "ref": "lambdaIAMRole",
+      "attr": "Arn"
+     },
+     "Runtime": "python3.11"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Permission.lambdaApiGatewayInvoke",
+   "cfg": "lambdaApiGatewayInvoke",
+   "type": "__declared__",
+   "refs": [
+    "apiGateway",
+    "lambdaFunction"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Permission",
+    "name": "lambdaApiGatewayInvoke",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Action": "lambda:InvokeFunction",
+     "FunctionName": {
+      "ref": "lambdaFunction",
+      "attr": "Arn"
+     },
+     "Principal": "apigateway.amazonaws.com",
+     "SourceArn": "arn:aws:execute-api:us-east-1:123456789012:${apiGateway}/production/POST/"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.lambdaIAMRole",
+   "cfg": "lambdaIAMRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "lambdaIAMRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        }
+       }
+      ]
+     },
+     "Policies": [
+      {
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Action": [
+           "logs:CreateLogGroup",
+           "logs:CreateLogStream",
+           "logs:PutLogEvents"
+          ],
+          "Effect": "Allow",
+          "Resource": [
+           "arn:aws:logs:us-east-1:123456789012:log-group:/aws/lambda/invokeContentModeration:*"
+          ]
+         }
+        ]
+       },
+       "PolicyName": "lambdaLogs"
+      },
+      {
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Action": [
+           "rekognition:DetectModerationLabels"
+          ],
+          "Effect": "Allow",
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       },
+       "PolicyName": "lambdaRekognition"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::LogGroup.lambdaLogGroup",
+   "cfg": "lambdaLogGroup",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Logs::LogGroup",
+    "name": "lambdaLogGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "LogGroupName": "/aws/lambda/invokeContentModeration",
+     "RetentionInDays": 90
+    }
+   }
+  }
+ ]
+}

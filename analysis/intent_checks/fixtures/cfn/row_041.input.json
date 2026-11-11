@@ -1,0 +1,302 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "1e9d3c8f58502f712846d580741848b7230d22b1d2e5b0607db8e314a2d67acb",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "WaveEcrPolicy",
+   "cfg": "WaveEcrPolicy",
+   "type": "AWS::IAM::ManagedPolicy",
+   "values": {
+    "PolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Sid": "EcrRepositoryActions",
+       "Effect": "Allow",
+       "Action": [
+        "ecr:UntagResource",
+        "ecr:GetDownloadUrlForLayer",
+        "ecr:CompleteLayerUpload",
+        "ecr:DescribeImages",
+        "ecr:TagResource",
+        "ecr:DescribeRepositories",
+        "ecr:ListTagsForResource",
+        "ecr:UploadLayerPart",
+        "ecr:ListImages",
+        "ecr:InitiateLayerUpload",
+        "ecr:PutImage"
+       ],
+       "Resource": [
+        "arn:aws:ecr:*:123456789012:repository/*"
+       ]
+      },
+      {
+       "Sid": "EcrGeneralActions",
+       "Effect": "Allow",
+       "Action": [
+        "ecr:CreateRepository",
+        "ecr:DescribeRegistry",
+        "ecr:GetAuthorizationToken"
+       ],
+       "Resource": [
+        "*"
+       ]
+      }
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "WaveServiceUser",
+   "cfg": "WaveServiceUser",
+   "type": "AWS::IAM::User",
+   "values": {
+    "ManagedPolicyArns": [
+     {
+      "ref": "WaveEcrPolicy"
+     }
+    ]
+   },
+   "refs": [
+    "WaveEcrPolicy"
+   ]
+  },
+  {
+   "id": "WaveServiceUserAccessKey",
+   "cfg": "WaveServiceUserAccessKey",
+   "type": "AWS::IAM::AccessKey",
+   "values": {
+    "UserName": {
+     "ref": "WaveServiceUser"
+    },
+    "Status": "Inactive"
+   },
+   "refs": [
+    "WaveServiceUser"
+   ]
+  },
+  {
+   "id": "WaveServiceUserAccessKeySecret",
+   "cfg": "WaveServiceUserAccessKeySecret",
+   "type": "AWS::SecretsManager::Secret",
+   "values": {
+    "Name": "nextflow/ecr_service_acct",
+    "Description": "The ECR service account credentials for the Wave service (${WaveServiceUser} IAM user)",
+    "SecretString": "{\n  \"username\": \"${WaveServiceUserAccessKey}\",\n  \"password\": \"${WaveServiceUserAccessKey.SecretAccessKey}\"\n}",
+    "KmsKeyId": "alias/aws/secretsmanager"
+   },
+   "refs": [
+    "WaveServiceUser",
+    "WaveServiceUserAccessKey"
+   ]
+  },
+  {
+   "id": "__parameter__.KmsKeyAlias",
+   "cfg": "__parameter__.KmsKeyAlias",
+   "type": "__parameter__",
+   "values": {
+    "name": "KmsKeyAlias",
+    "type": "String",
+    "default": "alias/aws/secretsmanager",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.WaveEcrPolicyArn",
+   "cfg": "__output__.WaveEcrPolicyArn",
+   "type": "__output__",
+   "values": {
+    "name": "WaveEcrPolicyArn",
+    "value": {
+     "ref": "WaveEcrPolicy"
+    },
+    "description": null,
+    "export": "us-east-1-stack-WaveEcrPolicyArn"
+   },
+   "refs": [
+    "WaveEcrPolicy"
+   ]
+  },
+  {
+   "id": "__output__.WaveServiceUser",
+   "cfg": "__output__.WaveServiceUser",
+   "type": "__output__",
+   "values": {
+    "name": "WaveServiceUser",
+    "value": {
+     "ref": "WaveServiceUser"
+    },
+    "description": null,
+    "export": "us-east-1-stack-WaveServiceUser"
+   },
+   "refs": [
+    "WaveServiceUser"
+   ]
+  },
+  {
+   "id": "__output__.WaveServiceUserArn",
+   "cfg": "__output__.WaveServiceUserArn",
+   "type": "__output__",
+   "values": {
+    "name": "WaveServiceUserArn",
+    "value": {
+     "ref": "WaveServiceUser",
+     "attr": "Arn"
+    },
+    "description": null,
+    "export": "us-east-1-stack-WaveServiceUserArn"
+   },
+   "refs": [
+    "WaveServiceUser"
+   ]
+  },
+  {
+   "id": "__output__.WaveServiceUserAccessKeySecret",
+   "cfg": "__output__.WaveServiceUserAccessKeySecret",
+   "type": "__output__",
+   "values": {
+    "name": "WaveServiceUserAccessKeySecret",
+    "value": "stack-TowerProjectConfiguration",
+    "description": null,
+    "export": "us-east-1-stack-WaveServiceUserAccessKeySecret"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.WaveServiceUserAccessKeySecretArn",
+   "cfg": "__output__.WaveServiceUserAccessKeySecretArn",
+   "type": "__output__",
+   "values": {
+    "name": "WaveServiceUserAccessKeySecretArn",
+    "value": {
+     "ref": "WaveServiceUserAccessKeySecret"
+    },
+    "description": null,
+    "export": "us-east-1-stack-WaveServiceUserAccessKeySecretArn"
+   },
+   "refs": [
+    "WaveServiceUserAccessKeySecret"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::IAM::ManagedPolicy.WaveEcrPolicy",
+   "cfg": "WaveEcrPolicy",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::ManagedPolicy",
+    "name": "WaveEcrPolicy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Sid": "EcrRepositoryActions",
+        "Effect": "Allow",
+        "Action": [
+         "ecr:UntagResource",
+         "ecr:GetDownloadUrlForLayer",
+         "ecr:CompleteLayerUpload",
+         "ecr:DescribeImages",
+         "ecr:TagResource",
+         "ecr:DescribeRepositories",
+         "ecr:ListTagsForResource",
+         "ecr:UploadLayerPart",
+         "ecr:ListImages",
+         "ecr:InitiateLayerUpload",
+         "ecr:PutImage"
+        ],
+        "Resource": [
+         "arn:aws:ecr:*:123456789012:repository/*"
+        ]
+       },
+       {
+        "Sid": "EcrGeneralActions",
+        "Effect": "Allow",
+        "Action": [
+         "ecr:CreateRepository",
+         "ecr:DescribeRegistry",
+         "ecr:GetAuthorizationToken"
+        ],
+        "Resource": [
+         "*"
+        ]
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::User.WaveServiceUser",
+   "cfg": "WaveServiceUser",
+   "type": "__declared__",
+   "refs": [
+    "WaveEcrPolicy"
+   ],
+   "values": {
+    "type": "AWS::IAM::User",
+    "name": "WaveServiceUser",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ManagedPolicyArns": [
+      {
+       "ref": "WaveEcrPolicy"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::AccessKey.WaveServiceUserAccessKey",
+   "cfg": "WaveServiceUserAccessKey",
+   "type": "__declared__",
+   "refs": [
+    "WaveServiceUser"
+   ],
+   "values": {
+    "type": "AWS::IAM::AccessKey",
+    "name": "WaveServiceUserAccessKey",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "UserName": {
+      "ref": "WaveServiceUser"
+     },
+     "Status": "Inactive"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SecretsManager::Secret.WaveServiceUserAccessKeySecret",
+   "cfg": "WaveServiceUserAccessKeySecret",
+   "type": "__declared__",
+   "refs": [
+    "WaveServiceUser",
+    "WaveServiceUserAccessKey"
+   ],
+   "values": {
+    "type": "AWS::SecretsManager::Secret",
+    "name": "WaveServiceUserAccessKeySecret",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "nextflow/ecr_service_acct",
+     "Description": "The ECR service account credentials for the Wave service (${WaveServiceUser} IAM user)",
+     "SecretString": "{\n  \"username\": \"${WaveServiceUserAccessKey}\",\n  \"password\": \"${WaveServiceUserAccessKey.SecretAccessKey}\"\n}",
+     "KmsKeyId": "alias/aws/secretsmanager"
+    }
+   }
+  }
+ ]
+}

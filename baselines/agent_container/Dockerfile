@@ -11,9 +11,10 @@ FROM node:22-bookworm-slim
 ARG TARGETARCH
 ARG OPENCODE_VERSION=1.18.30
 ARG CFN_LINT_VERSION=1.48.1
-ARG TERRAFORM_VERSION=1.14.6
-ARG TFLINT_VERSION=0.61.0
-ARG AWS_CLI_VERSION=2.34.3
+ARG YAMLLINT_VERSION=1.38.0
+ARG TERRAFORM_VERSION=1.16.0
+ARG TFLINT_VERSION=0.64.0
+ARG AWS_CLI_VERSION=2.36.34
 ARG TRIVY_VERSION=0.71.2
 # Same checks-bundle pin the scorer uses (tools/validators.py _TRIVY_CHECKS_BUNDLE).
 ARG TRIVY_CHECKS_BUNDLE=mirror.gcr.io/aquasec/trivy-checks:2@sha256:1583562f8b90ed2a071b99f0e5ffff6b57e4ceb6ca3e4796577b4e6a339eb74c
@@ -35,9 +36,9 @@ RUN a="${TARGETARCH:-amd64}" \
  && curl -fsSL "https://github.com/terraform-linters/tflint/releases/download/v${TFLINT_VERSION}/tflint_linux_${a}.zip" -o /tmp/tfl.zip \
  && unzip -q /tmp/tfl.zip -d /usr/local/bin tflint && rm /tmp/tfl.zip
 
-# cfn-lint in its own venv, on PATH.
+# cfn-lint and yamllint in their own venv, on PATH.
 RUN python3 -m venv /opt/venv \
- && /opt/venv/bin/pip install --no-cache-dir "cfn-lint==${CFN_LINT_VERSION}"
+ && /opt/venv/bin/pip install --no-cache-dir "cfn-lint==${CFN_LINT_VERSION}" "yamllint==${YAMLLINT_VERSION}"
 ENV PATH="/opt/venv/bin:${PATH}"
 
 # Trivy, the scorer's security scanner, with the pinned checks bundle baked into a

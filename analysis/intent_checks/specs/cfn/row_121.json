@@ -1,0 +1,604 @@
+{
+  "lang": "cfn",
+  "row_number": 121,
+  "source_hash": {
+    "gt": "19415277a662ab2de8891adfc0f9763ebed2c5a316987b79e1e078386ce6e3bc",
+    "prompt": "23ed9fe63b17620b8333701de9c45a2740663402307caa908d674f4f1cfe6972"
+  },
+  "selectors": {
+    "bucket": {
+      "types": [
+        "AWS::S3::Bucket"
+      ]
+    },
+    "jobs": {
+      "types": [
+        "AWS::Glue::Job"
+      ]
+    },
+    "trig": {
+      "types": [
+        "AWS::Glue::Trigger"
+      ]
+    },
+    "role": {
+      "types": [
+        "AWS::IAM::Role"
+      ]
+    },
+    "out": {
+      "types": [
+        "__output__"
+      ]
+    },
+    "shell": {
+      "types": [
+        "AWS::Glue::Job"
+      ],
+      "where": [
+        {
+          "path": "Command.Name",
+          "op": "eq",
+          "value": "pythonshell"
+        },
+        {
+          "path": "Command.PythonVersion",
+          "op": "eq",
+          "value": "3.9"
+        },
+        {
+          "path": "GlueVersion",
+          "op": "eq",
+          "value": "3.0"
+        }
+      ]
+    },
+    "etl": {
+      "types": [
+        "AWS::Glue::Job"
+      ],
+      "where": [
+        {
+          "path": "Command.Name",
+          "op": "eq",
+          "value": "glueetl"
+        },
+        {
+          "path": "GlueVersion",
+          "op": "eq",
+          "value": "5.0"
+        },
+        {
+          "path": "WorkerType",
+          "op": "eq",
+          "value": "G.1X"
+        }
+      ]
+    },
+    "s3out": {
+      "types": [
+        "__output__"
+      ],
+      "where": [
+        {
+          "path": "value",
+          "op": "regex",
+          "value": "(?i)s3://"
+        }
+      ]
+    },
+    "assume_role": {
+      "types": [
+        "AWS::IAM::Role"
+      ],
+      "where": [
+        {
+          "path": "AssumeRolePolicyDocument.Statement.*.Principal.Service.*",
+          "op": "regex",
+          "value": "(?i)^glue\\.amazonaws\\.com$"
+        },
+        {
+          "path": "AssumeRolePolicyDocument.Statement.*.Principal.Service.*",
+          "op": "regex",
+          "value": "(?i)^cloudformation\\.amazonaws\\.com$"
+        }
+      ]
+    },
+    "policy_res": {
+      "types": [
+        "AWS::IAM::Policy",
+        "AWS::IAM::ManagedPolicy"
+      ]
+    }
+  },
+  "checks": [
+    {
+      "id": "bucket_account_id",
+      "kind": "attr",
+      "tier": "core",
+      "quote": "an S3 bucket with a name incorporating the AWS account ID",
+      "select": "bucket",
+      "cond": {
+        "path": "BucketName",
+        "op": "regex",
+        "value": "123456789012|AWS::AccountId"
+      },
+      "justify": "account ID resolves to pseudo-parameter 123456789012"
+    },
+    {
+      "id": "role_assume",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "an IAM role with permissions to assume roles for Glue and CloudFormation",
+      "select": "assume_role"
+    },
+    {
+      "id": "role_full_iam",
+      "kind": "any_of",
+      "tier": "core",
+      "quote": "full access to IAM, QuickSight, Glue, S3, CloudWatch, and Logs",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "role",
+          "cond": {
+            "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+            "op": "glob_covers",
+            "value": "iam:*"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "policy_res",
+          "cond": {
+            "path": "PolicyDocument.Statement.*.Action.*",
+            "op": "glob_covers",
+            "value": "iam:*"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "role",
+          "cond": {
+            "path": "ManagedPolicyArns.*",
+            "op": "regex",
+            "value": "IAMFullAccess|AdministratorAccess"
+          }
+        }
+      ],
+      "justify": "full access means iam:* or the AWS managed policy granting it"
+    },
+    {
+      "id": "role_full_quicksight",
+      "kind": "any_of",
+      "tier": "core",
+      "quote": "full access to IAM, QuickSight, Glue, S3, CloudWatch, and Logs",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "role",
+          "cond": {
+            "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+            "op": "glob_covers",
+            "value": "quicksight:*"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "policy_res",
+          "cond": {
+            "path": "PolicyDocument.Statement.*.Action.*",
+            "op": "glob_covers",
+            "value": "quicksight:*"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "role",
+          "cond": {
+            "path": "ManagedPolicyArns.*",
+            "op": "regex",
+            "value": "QuickSight\\w*FullAccess|QuickSightAccess|AdministratorAccess"
+          }
+        }
+      ],
+      "justify": "full access means quicksight:* or the AWS managed policy granting it"
+    },
+    {
+      "id": "role_full_glue",
+      "kind": "any_of",
+      "tier": "core",
+      "quote": "full access to IAM, QuickSight, Glue, S3, CloudWatch, and Logs",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "role",
+          "cond": {
+            "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+            "op": "glob_covers",
+            "value": "glue:*"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "policy_res",
+          "cond": {
+            "path": "PolicyDocument.Statement.*.Action.*",
+            "op": "glob_covers",
+            "value": "glue:*"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "role",
+          "cond": {
+            "path": "ManagedPolicyArns.*",
+            "op": "regex",
+            "value": "AWSGlueServiceRole|AWSGlueConsoleFullAccess|AdministratorAccess"
+          }
+        }
+      ],
+      "justify": "full access means glue:* or the AWS managed policy granting it"
+    },
+    {
+      "id": "role_full_s3",
+      "kind": "any_of",
+      "tier": "core",
+      "quote": "full access to IAM, QuickSight, Glue, S3, CloudWatch, and Logs",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "role",
+          "cond": {
+            "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+            "op": "glob_covers",
+            "value": "s3:*"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "policy_res",
+          "cond": {
+            "path": "PolicyDocument.Statement.*.Action.*",
+            "op": "glob_covers",
+            "value": "s3:*"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "role",
+          "cond": {
+            "path": "ManagedPolicyArns.*",
+            "op": "regex",
+            "value": "AmazonS3FullAccess|AdministratorAccess"
+          }
+        }
+      ],
+      "justify": "full access means s3:* or the AWS managed policy granting it"
+    },
+    {
+      "id": "role_full_cloudwatch",
+      "kind": "any_of",
+      "tier": "core",
+      "quote": "full access to IAM, QuickSight, Glue, S3, CloudWatch, and Logs",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "role",
+          "cond": {
+            "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+            "op": "glob_covers",
+            "value": "cloudwatch:*"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "policy_res",
+          "cond": {
+            "path": "PolicyDocument.Statement.*.Action.*",
+            "op": "glob_covers",
+            "value": "cloudwatch:*"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "role",
+          "cond": {
+            "path": "ManagedPolicyArns.*",
+            "op": "regex",
+            "value": "CloudWatchFullAccess|AdministratorAccess"
+          }
+        }
+      ],
+      "justify": "full access means cloudwatch:* or the AWS managed policy granting it"
+    },
+    {
+      "id": "role_full_logs",
+      "kind": "any_of",
+      "tier": "core",
+      "quote": "full access to IAM, QuickSight, Glue, S3, CloudWatch, and Logs",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "role",
+          "cond": {
+            "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+            "op": "glob_covers",
+            "value": "logs:*"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "policy_res",
+          "cond": {
+            "path": "PolicyDocument.Statement.*.Action.*",
+            "op": "glob_covers",
+            "value": "logs:*"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "role",
+          "cond": {
+            "path": "ManagedPolicyArns.*",
+            "op": "regex",
+            "value": "CloudWatchLogsFullAccess|AdministratorAccess"
+          }
+        }
+      ],
+      "justify": "full access means logs:* or the AWS managed policy granting it"
+    },
+    {
+      "id": "glue_jobs",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "five AWS Glue jobs written in Python",
+      "select": "jobs",
+      "min": 5
+    },
+    {
+      "id": "python_shell_jobs",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "some using PythonShell with version 3.9 and Glue version 3.0",
+      "select": "shell",
+      "min": 3,
+      "justify": "five jobs minus the two ETL jobs"
+    },
+    {
+      "id": "etl_jobs",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "two using Glue ETL with Glue version 5.0 and G.1X workers",
+      "select": "etl",
+      "min": 2,
+      "justify": "two ETL jobs"
+    },
+    {
+      "id": "jobs_use_role",
+      "kind": "ref",
+      "tier": "detail",
+      "quote": "an IAM role with permissions to assume roles for Glue",
+      "from": "jobs",
+      "to": "role"
+    },
+    {
+      "id": "jobs_script_s3",
+      "kind": "attr",
+      "tier": "detail",
+      "quote": "that load scripts from a predefined S3 location",
+      "select": "jobs",
+      "cond": {
+        "path": "Command.ScriptLocation",
+        "op": "regex",
+        "value": "(?i)s3://"
+      },
+      "quantifier": "all"
+    },
+    {
+      "id": "triggers",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "each job is triggered by a separate scheduled Glue trigger",
+      "select": "trig",
+      "min": 5,
+      "justify": "one trigger per job"
+    },
+    {
+      "id": "triggers_scheduled",
+      "kind": "attr",
+      "tier": "core",
+      "quote": "scheduled Glue trigger",
+      "select": "trig",
+      "cond": {
+        "path": "Type",
+        "op": "eq",
+        "value": "SCHEDULED"
+      },
+      "quantifier": "all"
+    },
+    {
+      "id": "every_3_hours",
+      "kind": "any_of",
+      "tier": "core",
+      "quote": "set to run every 3 hours",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "trig",
+          "cond": {
+            "path": "Schedule",
+            "op": "regex",
+            "value": "(?i)^cron\\(\\s*[\\d,*/]+\\s+(\\*/3|\\d+/3|0-23/3|0,3,6,9,12,15,18,21)\\s"
+          },
+          "quantifier": "all"
+        },
+        {
+          "kind": "attr",
+          "select": "trig",
+          "cond": {
+            "path": "Schedule",
+            "op": "regex",
+            "value": "(?i)^rate\\(\\s*3\\s+hours\\s*\\)"
+          },
+          "quantifier": "all"
+        }
+      ],
+      "justify": "every 3 hours = */3 in the hour field or rate(3 hours)"
+    },
+    {
+      "id": "trigger_job",
+      "kind": "any_of",
+      "tier": "detail",
+      "quote": "each job is triggered by a separate scheduled Glue trigger",
+      "checks": [
+        {
+          "kind": "ref",
+          "from": "trig",
+          "to": "jobs"
+        },
+        {
+          "kind": "join",
+          "from": "trig",
+          "from_path": "Actions.*.JobName",
+          "to": "jobs",
+          "to_path": "Name"
+        }
+      ]
+    },
+    {
+      "id": "triggers_separate",
+      "kind": "exists",
+      "tier": "detail",
+      "quote": "a separate scheduled Glue trigger",
+      "select": "trig",
+      "distinct_path": "Actions.*.JobName",
+      "min": 5,
+      "justify": "one trigger per job"
+    },
+    {
+      "id": "outputs_named",
+      "kind": "all_of",
+      "tier": "detail",
+      "quote": "the stack must output the S3 paths for group membership, object access, folder assets, folder lookup, folder path, and the cloudtrail log table name and S3 location",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "out",
+          "cond": {
+            "path": "",
+            "op": "regex",
+            "value": "(?i)group.?membership"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "out",
+          "cond": {
+            "path": "",
+            "op": "regex",
+            "value": "(?i)object.?access"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "out",
+          "cond": {
+            "path": "",
+            "op": "regex",
+            "value": "(?i)folder.?assets?"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "out",
+          "cond": {
+            "path": "",
+            "op": "regex",
+            "value": "(?i)folder.?(lookup|lk)"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "out",
+          "cond": {
+            "path": "",
+            "op": "regex",
+            "value": "(?i)folder.?path"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "out",
+          "cond": {
+            "path": "",
+            "op": "regex",
+            "value": "(?is)cloudtrail.{0,30}table.?name|table.?name.{0,30}cloudtrail"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "out",
+          "cond": {
+            "path": "",
+            "op": "regex",
+            "value": "(?is)cloudtrail.{0,200}s3://|s3://.{0,200}cloudtrail"
+          }
+        }
+      ]
+    },
+    {
+      "id": "outputs_s3_paths",
+      "kind": "exists",
+      "tier": "detail",
+      "quote": "output the S3 paths for group membership, object access, folder assets, folder lookup, folder path",
+      "select": "s3out",
+      "min": 5,
+      "justify": "five S3 paths named"
+    },
+    {
+      "id": "x_bucket_pab",
+      "kind": "attr",
+      "tier": "extra",
+      "select": "bucket",
+      "cond": {
+        "path": "PublicAccessBlockConfiguration",
+        "op": "present"
+      }
+    },
+    {
+      "id": "x_bucket_enc",
+      "kind": "attr",
+      "tier": "extra",
+      "select": "bucket",
+      "cond": {
+        "path": "BucketEncryption",
+        "op": "present"
+      }
+    },
+    {
+      "id": "x_trig_start",
+      "kind": "attr",
+      "tier": "extra",
+      "select": "trig",
+      "cond": {
+        "path": "StartOnCreation",
+        "op": "truthy"
+      },
+      "quantifier": "all"
+    },
+    {
+      "id": "x_job_concurrency",
+      "kind": "attr",
+      "tier": "extra",
+      "select": "jobs",
+      "cond": {
+        "path": "ExecutionProperty.MaxConcurrentRuns",
+        "op": "eq",
+        "value": 1
+      },
+      "quantifier": "all"
+    }
+  ],
+  "notes": "'full access' is tested as service-wide actions (or the managed policy granting them): a template with only s3:GetObject and similar does not meet it. AWSGlueServiceRole counts because that policy grants glue:*. Resource scope is not tested. python_shell_jobs: five jobs less the two ETL jobs leaves three."
+}

@@ -1,0 +1,684 @@
+package intent.cfn.row_143
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {
+  "pool": {
+   "types": [
+    "AWS::Cognito::UserPool"
+   ],
+   "where": []
+  },
+  "client": {
+   "types": [
+    "AWS::Cognito::UserPoolClient"
+   ],
+   "where": []
+  },
+  "fn": {
+   "types": [
+    "AWS::Lambda::Function"
+   ],
+   "where": []
+  },
+  "cr": {
+   "types": [
+    "__declared__"
+   ],
+   "where": [
+    {
+     "path": [
+      "type"
+     ],
+     "op": "regex",
+     "value": "^(AWS::CloudFormation::CustomResource|Custom::.+)$"
+    }
+   ]
+  },
+  "src": {
+   "types": [
+    "AWS::Lambda::Function",
+    "__declared__"
+   ],
+   "where": []
+  },
+  "alpha": {
+   "types": [
+    "AWS::Cognito::UserPoolGroup"
+   ],
+   "where": [
+    {
+     "path": [
+      "GroupName"
+     ],
+     "op": "eq",
+     "value": "team-alpha"
+    }
+   ]
+  },
+  "beta": {
+   "types": [
+    "AWS::Cognito::UserPoolGroup"
+   ],
+   "where": [
+    {
+     "path": [
+      "GroupName"
+     ],
+     "op": "eq",
+     "value": "team-beta"
+    }
+   ]
+  },
+  "admin": {
+   "types": [
+    "AWS::Cognito::UserPoolGroup"
+   ],
+   "where": [
+    {
+     "path": [
+      "GroupName"
+     ],
+     "op": "eq",
+     "value": "admin"
+    }
+   ]
+  },
+  "out": {
+   "types": [
+    "__output__"
+   ],
+   "where": []
+  }
+ },
+ "checks": [
+  {
+   "id": "user_pool_name",
+   "kind": "attr",
+   "select": "pool",
+   "cond": {
+    "path": [
+     "UserPoolName"
+    ],
+    "op": "eq",
+    "value": "agentops-ecommerce-users"
+   },
+   "tier": "core",
+   "quote": "The user pool should be named agentops-ecommerce-users"
+  },
+  {
+   "id": "email_verification",
+   "kind": "attr",
+   "select": "pool",
+   "cond": {
+    "path": [
+     "AutoVerifiedAttributes",
+     "*"
+    ],
+    "op": "eq",
+    "value": "email"
+   },
+   "tier": "core",
+   "quote": "supporting email verification"
+  },
+  {
+   "id": "mfa_optional",
+   "kind": "attr",
+   "select": "pool",
+   "cond": {
+    "path": [
+     "MfaConfiguration"
+    ],
+    "op": "eq",
+    "value": "OPTIONAL"
+   },
+   "tier": "core",
+   "quote": "optional MFA via software tokens"
+  },
+  {
+   "id": "mfa_software_token",
+   "kind": "attr",
+   "select": "pool",
+   "cond": {
+    "path": [
+     "EnabledMfas",
+     "*"
+    ],
+    "op": "eq",
+    "value": "SOFTWARE_TOKEN_MFA"
+   },
+   "tier": "core",
+   "quote": "optional MFA via software tokens"
+  },
+  {
+   "id": "password_policy",
+   "kind": "all_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "pool",
+     "cond": {
+      "path": [
+       "Policies",
+       "PasswordPolicy",
+       "MinimumLength"
+      ],
+      "op": "gte",
+      "value": 8
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "pool",
+     "cond": {
+      "path": [
+       "Policies",
+       "PasswordPolicy",
+       "RequireUppercase"
+      ],
+      "op": "truthy"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "pool",
+     "cond": {
+      "path": [
+       "Policies",
+       "PasswordPolicy",
+       "RequireLowercase"
+      ],
+      "op": "truthy"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "pool",
+     "cond": {
+      "path": [
+       "Policies",
+       "PasswordPolicy",
+       "RequireNumbers"
+      ],
+      "op": "truthy"
+     }
+    }
+   ],
+   "tier": "core",
+   "quote": "a password policy requiring at least 8 characters with uppercase, lowercase, and numbers"
+  },
+  {
+   "id": "client_name",
+   "kind": "attr",
+   "select": "client",
+   "cond": {
+    "path": [
+     "ClientName"
+    ],
+    "op": "eq",
+    "value": "agentops-web-client"
+   },
+   "tier": "core",
+   "quote": "the app client agentops-web-client"
+  },
+  {
+   "id": "client_srp",
+   "kind": "attr",
+   "select": "client",
+   "cond": {
+    "path": [
+     "ExplicitAuthFlows",
+     "*"
+    ],
+    "op": "regex",
+    "value": "(?i)^(ALLOW_)?USER_SRP_AUTH$"
+   },
+   "tier": "core",
+   "quote": "a public app client configured for SRP"
+  },
+  {
+   "id": "client_refresh",
+   "kind": "attr",
+   "select": "client",
+   "cond": {
+    "path": [
+     "ExplicitAuthFlows",
+     "*"
+    ],
+    "op": "regex",
+    "value": "(?i)^(ALLOW_)?REFRESH_TOKEN_AUTH$"
+   },
+   "tier": "core",
+   "quote": "refresh token authentication"
+  },
+  {
+   "id": "client_public",
+   "kind": "attr",
+   "select": "client",
+   "cond": {
+    "path": [
+     "GenerateSecret"
+    ],
+    "op": "none_eq",
+    "value": true
+   },
+   "tier": "core",
+   "quote": "a public app client"
+  },
+  {
+   "id": "client_callback",
+   "kind": "attr",
+   "select": "client",
+   "cond": {
+    "path": [
+     "CallbackURLs",
+     "*"
+    ],
+    "op": "eq",
+    "value": "http://localhost:3000/auth/callback"
+   },
+   "tier": "core",
+   "quote": "the OAuth callback URL set to http://localhost:3000/auth/callback"
+  },
+  {
+   "id": "client_in_pool",
+   "kind": "ref",
+   "from": "client",
+   "to": "pool",
+   "tier": "detail",
+   "quote": "a public app client"
+  },
+  {
+   "id": "group_team_alpha",
+   "kind": "attr",
+   "select": "alpha",
+   "cond": {
+    "path": [
+     "Precedence"
+    ],
+    "op": "eq",
+    "value": 10
+   },
+   "tier": "core",
+   "quote": "team-alpha with precedence 10"
+  },
+  {
+   "id": "group_team_beta",
+   "kind": "attr",
+   "select": "beta",
+   "cond": {
+    "path": [
+     "Precedence"
+    ],
+    "op": "eq",
+    "value": 20
+   },
+   "tier": "core",
+   "quote": "team-beta with precedence 20"
+  },
+  {
+   "id": "group_admin",
+   "kind": "attr",
+   "select": "admin",
+   "cond": {
+    "path": [
+     "Precedence"
+    ],
+    "op": "eq",
+    "value": 1
+   },
+   "tier": "core",
+   "quote": "admin with precedence 1"
+  },
+  {
+   "id": "seeder_function",
+   "kind": "exists",
+   "select": "fn",
+   "tier": "core",
+   "quote": "a custom resource Lambda function that seeds six test users"
+  },
+  {
+   "id": "custom_resource_invokes_function",
+   "tier": "core",
+   "quote": "a custom resource Lambda function",
+   "kind": "ref",
+   "from": "cr",
+   "to": "fn"
+  },
+  {
+   "id": "seed_alice",
+   "kind": "attr",
+   "select": "src",
+   "cond": {
+    "path": [],
+    "op": "regex",
+    "value": "(?is)alice@demo\\.local[^@]{0,300}(team-alpha[^@]{0,300}['\\\\\"]member\\\\?['\\\\\"]|['\\\\\"]member\\\\?['\\\\\"][^@]{0,300}team-alpha)|(team-alpha[^@]{0,300}['\\\\\"]member\\\\?['\\\\\"]|['\\\\\"]member\\\\?['\\\\\"][^@]{0,300}team-alpha)[^@]{0,300}alice@demo\\.local"
+   },
+   "tier": "detail",
+   "quote": "alice@demo.local and bob@demo.local in team-alpha with a custom role attribute of member"
+  },
+  {
+   "id": "seed_bob",
+   "kind": "attr",
+   "select": "src",
+   "cond": {
+    "path": [],
+    "op": "regex",
+    "value": "(?is)bob@demo\\.local[^@]{0,300}(team-alpha[^@]{0,300}['\\\\\"]member\\\\?['\\\\\"]|['\\\\\"]member\\\\?['\\\\\"][^@]{0,300}team-alpha)|(team-alpha[^@]{0,300}['\\\\\"]member\\\\?['\\\\\"]|['\\\\\"]member\\\\?['\\\\\"][^@]{0,300}team-alpha)[^@]{0,300}bob@demo\\.local"
+   },
+   "tier": "detail",
+   "quote": "alice@demo.local and bob@demo.local in team-alpha with a custom role attribute of member"
+  },
+  {
+   "id": "seed_charlie",
+   "kind": "attr",
+   "select": "src",
+   "cond": {
+    "path": [],
+    "op": "regex",
+    "value": "(?is)charlie@demo\\.local[^@]{0,300}(team-alpha[^@]{0,300}['\\\\\"]team_admin\\\\?['\\\\\"]|['\\\\\"]team_admin\\\\?['\\\\\"][^@]{0,300}team-alpha)|(team-alpha[^@]{0,300}['\\\\\"]team_admin\\\\?['\\\\\"]|['\\\\\"]team_admin\\\\?['\\\\\"][^@]{0,300}team-alpha)[^@]{0,300}charlie@demo\\.local"
+   },
+   "tier": "detail",
+   "quote": "charlie@demo.local in team-alpha with a custom role attribute of team_admin"
+  },
+  {
+   "id": "seed_dave",
+   "kind": "attr",
+   "select": "src",
+   "cond": {
+    "path": [],
+    "op": "regex",
+    "value": "(?is)dave@demo\\.local[^@]{0,300}(team-beta[^@]{0,300}['\\\\\"]member\\\\?['\\\\\"]|['\\\\\"]member\\\\?['\\\\\"][^@]{0,300}team-beta)|(team-beta[^@]{0,300}['\\\\\"]member\\\\?['\\\\\"]|['\\\\\"]member\\\\?['\\\\\"][^@]{0,300}team-beta)[^@]{0,300}dave@demo\\.local"
+   },
+   "tier": "detail",
+   "quote": "dave@demo.local in team-beta with a custom role attribute of member"
+  },
+  {
+   "id": "seed_eve",
+   "kind": "attr",
+   "select": "src",
+   "cond": {
+    "path": [],
+    "op": "regex",
+    "value": "(?is)eve@demo\\.local[^@]{0,300}(team-beta[^@]{0,300}['\\\\\"]team_admin\\\\?['\\\\\"]|['\\\\\"]team_admin\\\\?['\\\\\"][^@]{0,300}team-beta)|(team-beta[^@]{0,300}['\\\\\"]team_admin\\\\?['\\\\\"]|['\\\\\"]team_admin\\\\?['\\\\\"][^@]{0,300}team-beta)[^@]{0,300}eve@demo\\.local"
+   },
+   "tier": "detail",
+   "quote": "eve@demo.local in team-beta with a custom role attribute of team_admin"
+  },
+  {
+   "id": "seed_admin",
+   "kind": "attr",
+   "select": "src",
+   "cond": {
+    "path": [],
+    "op": "regex",
+    "value": "(?is)admin@demo\\.local[^@]{0,300}['\\\\\"]admin\\\\?['\\\\\"][^@]{0,300}['\\\\\"]admin\\\\?['\\\\\"]|['\\\\\"]admin\\\\?['\\\\\"][^@]{0,300}['\\\\\"]admin\\\\?['\\\\\"][^@]{0,300}admin@demo\\.local"
+   },
+   "tier": "detail",
+   "quote": "and admin@demo.local in the admin group with a custom role attribute of admin"
+  },
+  {
+   "id": "seed_password_hardcoded",
+   "tier": "detail",
+   "quote": "all sharing the same demo password value hardcoded in the seeding logic",
+   "kind": "attr",
+   "select": "fn",
+   "cond": {
+    "path": [],
+    "op": "regex",
+    "value": "(?i)password\\w*\\\\?['\"]?\\s*[:=]\\s*\\\\?['\"][^'\"\\\\ ]{6,}"
+   }
+  },
+  {
+   "id": "seed_role_team_admin",
+   "kind": "attr",
+   "select": "src",
+   "cond": {
+    "path": [],
+    "op": "contains",
+    "value": "team_admin"
+   },
+   "tier": "detail",
+   "quote": "a custom role attribute of team_admin"
+  },
+  {
+   "id": "seed_custom_role_attribute",
+   "kind": "attr",
+   "select": "src",
+   "cond": {
+    "path": [],
+    "op": "contains",
+    "value": "custom:role"
+   },
+   "tier": "detail",
+   "quote": "a custom role attribute of member"
+  },
+  {
+   "id": "pool_role_attribute",
+   "kind": "attr",
+   "select": "pool",
+   "cond": {
+    "path": [
+     "Schema",
+     "*",
+     "Name"
+    ],
+    "op": "regex",
+    "value": "^(custom:)?role$"
+   },
+   "tier": "detail",
+   "quote": "a custom role attribute of member"
+  },
+  {
+   "id": "outputs_five",
+   "kind": "exists",
+   "select": "out",
+   "min": 5,
+   "tier": "detail",
+   "quote": "appropriate outputs for the user pool ID, ARN, client ID, region, and seeder function ARN",
+   "justify": "five outputs are listed"
+  },
+  {
+   "id": "output_pool",
+   "tier": "detail",
+   "quote": "the user pool ID",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__output__"
+      ],
+      "where": [
+       {
+        "path": [
+         "value",
+         "ref"
+        ],
+        "op": "present"
+       },
+       {
+        "path": [
+         "value",
+         "attr"
+        ],
+        "op": "absent"
+       }
+      ]
+     },
+     "to": "pool"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__output__"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "regex",
+        "value": "(?i)pool.?id"
+       }
+      ]
+     },
+     "to": "pool"
+    }
+   ]
+  },
+  {
+   "id": "output_pool_arn",
+   "tier": "detail",
+   "quote": "ARN",
+   "kind": "ref",
+   "from": {
+    "types": [
+     "__output__"
+    ],
+    "where": [
+     {
+      "path": [
+       "value"
+      ],
+      "op": "regex",
+      "value": "(?i)arn"
+     }
+    ]
+   },
+   "to": "pool"
+  },
+  {
+   "id": "output_client",
+   "kind": "ref",
+   "from": "out",
+   "to": "client",
+   "tier": "detail",
+   "quote": "client ID"
+  },
+  {
+   "id": "output_seeder",
+   "tier": "detail",
+   "quote": "seeder function ARN",
+   "kind": "ref",
+   "from": {
+    "types": [
+     "__output__"
+    ],
+    "where": [
+     {
+      "path": [
+       "value"
+      ],
+      "op": "regex",
+      "value": "(?i)arn"
+     }
+    ]
+   },
+   "to": "fn"
+  },
+  {
+   "id": "output_region",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__output__"
+      ],
+      "where": [
+       {
+        "path": [
+         "value"
+        ],
+        "op": "eq",
+        "value": "us-east-1"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__output__"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "regex",
+        "value": "(?i)region"
+       }
+      ]
+     }
+    }
+   ],
+   "tier": "detail",
+   "quote": "region",
+   "justify": "region output resolves to the stack region"
+  },
+  {
+   "id": "x_oauth_code_flow",
+   "kind": "attr",
+   "select": "client",
+   "cond": {
+    "path": [
+     "AllowedOAuthFlows",
+     "*"
+    ],
+    "op": "eq",
+    "value": "code"
+   },
+   "tier": "extra"
+  },
+  {
+   "id": "x_prevent_user_existence",
+   "kind": "attr",
+   "select": "client",
+   "cond": {
+    "path": [
+     "PreventUserExistenceErrors"
+    ],
+    "op": "eq",
+    "value": "ENABLED"
+   },
+   "tier": "extra"
+  },
+  {
+   "id": "x_lambda_python",
+   "kind": "attr",
+   "select": "fn",
+   "cond": {
+    "path": [
+     "Runtime"
+    ],
+    "op": "regex",
+    "value": "^python"
+   },
+   "tier": "extra"
+  },
+  {
+   "id": "extra_type_aws_iam_role",
+   "kind": "exists",
+   "tier": "extra",
+   "select": {
+    "types": [
+     "AWS::IAM::Role"
+    ],
+    "where": []
+   }
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

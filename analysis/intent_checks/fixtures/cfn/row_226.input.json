@@ -1,0 +1,695 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [
+   "DaxSubnetGroup excluded: condition CreateDax false under defaults",
+   "DaxServiceRole excluded: condition CreateDax false under defaults",
+   "DaxCluster excluded: condition CreateDax false under defaults"
+  ],
+  "gt_hash": "7df45168056f338975a61f9d7204c2a90f39f9bdcb54f81638535c69eb8dbeba",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "OrdersTable",
+   "cfg": "OrdersTable",
+   "type": "AWS::DynamoDB::Table",
+   "values": {
+    "TableName": "saa-lab-05-orders",
+    "BillingMode": "PAY_PER_REQUEST",
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "customerId",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "orderId",
+      "AttributeType": "S"
+     }
+    ],
+    "KeySchema": [
+     {
+      "AttributeName": "customerId",
+      "KeyType": "HASH"
+     },
+     {
+      "AttributeName": "orderId",
+      "KeyType": "RANGE"
+     }
+    ],
+    "SSESpecification": {
+     "SSEEnabled": true
+    },
+    "PointInTimeRecoverySpecification": {
+     "PointInTimeRecoveryEnabled": false
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "saa-lab-05-orders"
+     },
+     {
+      "Key": "Project",
+      "Value": "saa-c03-intensive"
+     },
+     {
+      "Key": "Lab",
+      "Value": "05"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CloudFormation"
+     }
+    ],
+    "__resource__": {
+     "DeletionPolicy": "Delete",
+     "UpdateReplacePolicy": "Delete"
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "VPC",
+   "cfg": "VPC",
+   "type": "AWS::EC2::VPC",
+   "values": {
+    "CidrBlock": "10.50.0.0/16",
+    "EnableDnsSupport": true,
+    "EnableDnsHostnames": true,
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "saa-lab-05-vpc"
+     },
+     {
+      "Key": "Project",
+      "Value": "saa-c03-intensive"
+     },
+     {
+      "Key": "Lab",
+      "Value": "05"
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "DaxSubnetA",
+   "cfg": "DaxSubnetA",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "AvailabilityZone": "us-east-1a",
+    "CidrBlock": "10.50.10.0/24",
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "saa-lab-05-dax-a"
+     },
+     {
+      "Key": "Lab",
+      "Value": "05"
+     }
+    ]
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "DaxSubnetB",
+   "cfg": "DaxSubnetB",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "AvailabilityZone": "us-east-1b",
+    "CidrBlock": "10.50.11.0/24",
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "saa-lab-05-dax-b"
+     },
+     {
+      "Key": "Lab",
+      "Value": "05"
+     }
+    ]
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "ClientSecurityGroup",
+   "cfg": "ClientSecurityGroup",
+   "type": "AWS::EC2::SecurityGroup",
+   "values": {
+    "GroupDescription": "Anexe ao cliente DAX autorizado",
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "saa-lab-05-client-sg"
+     },
+     {
+      "Key": "Lab",
+      "Value": "05"
+     }
+    ]
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "DaxSecurityGroup",
+   "cfg": "DaxSecurityGroup",
+   "type": "AWS::EC2::SecurityGroup",
+   "values": {
+    "GroupDescription": "DAX somente a partir do client SG",
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "SecurityGroupIngress": [
+     {
+      "IpProtocol": "tcp",
+      "FromPort": 8111,
+      "ToPort": 8111,
+      "SourceSecurityGroupId": {
+       "ref": "ClientSecurityGroup"
+      },
+      "Description": "Cliente DAX"
+     }
+    ],
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "saa-lab-05-dax-sg"
+     },
+     {
+      "Key": "Lab",
+      "Value": "05"
+     }
+    ]
+   },
+   "refs": [
+    "ClientSecurityGroup",
+    "VPC"
+   ]
+  },
+  {
+   "id": "__parameter__.ProjectName",
+   "cfg": "__parameter__.ProjectName",
+   "type": "__parameter__",
+   "values": {
+    "name": "ProjectName",
+    "type": "String",
+    "default": "saa-lab-05",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.EnableDax",
+   "cfg": "__parameter__.EnableDax",
+   "type": "__parameter__",
+   "values": {
+    "name": "EnableDax",
+    "type": "String",
+    "default": "false",
+    "allowed_values": [
+     "true",
+     "false"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.DaxReplicationFactor",
+   "cfg": "__parameter__.DaxReplicationFactor",
+   "type": "__parameter__",
+   "values": {
+    "name": "DaxReplicationFactor",
+    "type": "Number",
+    "default": 1,
+    "allowed_values": [
+     1,
+     3
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.TableName",
+   "cfg": "__output__.TableName",
+   "type": "__output__",
+   "values": {
+    "name": "TableName",
+    "value": {
+     "ref": "OrdersTable"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "OrdersTable"
+   ]
+  },
+  {
+   "id": "__output__.TableArn",
+   "cfg": "__output__.TableArn",
+   "type": "__output__",
+   "values": {
+    "name": "TableArn",
+    "value": {
+     "ref": "OrdersTable",
+     "attr": "Arn"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "OrdersTable"
+   ]
+  },
+  {
+   "id": "__output__.DaxEnabled",
+   "cfg": "__output__.DaxEnabled",
+   "type": "__output__",
+   "values": {
+    "name": "DaxEnabled",
+    "value": "false",
+    "description": null,
+    "export": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.DaxDiscoveryEndpoint",
+   "cfg": "__output__.DaxDiscoveryEndpoint",
+   "type": "__output__",
+   "values": {
+    "name": "DaxDiscoveryEndpoint",
+    "value": "disabled",
+    "description": null,
+    "export": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.ClientSecurityGroupId",
+   "cfg": "__output__.ClientSecurityGroupId",
+   "type": "__output__",
+   "values": {
+    "name": "ClientSecurityGroupId",
+    "value": {
+     "ref": "ClientSecurityGroup"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "ClientSecurityGroup"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::DynamoDB::Table.OrdersTable",
+   "cfg": "OrdersTable",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::DynamoDB::Table",
+    "name": "OrdersTable",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "TableName": "saa-lab-05-orders",
+     "BillingMode": "PAY_PER_REQUEST",
+     "AttributeDefinitions": [
+      {
+       "AttributeName": "customerId",
+       "AttributeType": "S"
+      },
+      {
+       "AttributeName": "orderId",
+       "AttributeType": "S"
+      }
+     ],
+     "KeySchema": [
+      {
+       "AttributeName": "customerId",
+       "KeyType": "HASH"
+      },
+      {
+       "AttributeName": "orderId",
+       "KeyType": "RANGE"
+      }
+     ],
+     "SSESpecification": {
+      "SSEEnabled": true
+     },
+     "PointInTimeRecoverySpecification": {
+      "PointInTimeRecoveryEnabled": false
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "saa-lab-05-orders"
+      },
+      {
+       "Key": "Project",
+       "Value": "saa-c03-intensive"
+      },
+      {
+       "Key": "Lab",
+       "Value": "05"
+      },
+      {
+       "Key": "ManagedBy",
+       "Value": "CloudFormation"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPC.VPC",
+   "cfg": "VPC",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::VPC",
+    "name": "VPC",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "CidrBlock": "10.50.0.0/16",
+     "EnableDnsSupport": true,
+     "EnableDnsHostnames": true,
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "saa-lab-05-vpc"
+      },
+      {
+       "Key": "Project",
+       "Value": "saa-c03-intensive"
+      },
+      {
+       "Key": "Lab",
+       "Value": "05"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.DaxSubnetA",
+   "cfg": "DaxSubnetA",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "DaxSubnetA",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "AvailabilityZone": "us-east-1a",
+     "CidrBlock": "10.50.10.0/24",
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "saa-lab-05-dax-a"
+      },
+      {
+       "Key": "Lab",
+       "Value": "05"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.DaxSubnetB",
+   "cfg": "DaxSubnetB",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "DaxSubnetB",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "AvailabilityZone": "us-east-1b",
+     "CidrBlock": "10.50.11.0/24",
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "saa-lab-05-dax-b"
+      },
+      {
+       "Key": "Lab",
+       "Value": "05"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SecurityGroup.ClientSecurityGroup",
+   "cfg": "ClientSecurityGroup",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::SecurityGroup",
+    "name": "ClientSecurityGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "GroupDescription": "Anexe ao cliente DAX autorizado",
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "saa-lab-05-client-sg"
+      },
+      {
+       "Key": "Lab",
+       "Value": "05"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SecurityGroup.DaxSecurityGroup",
+   "cfg": "DaxSecurityGroup",
+   "type": "__declared__",
+   "refs": [
+    "ClientSecurityGroup",
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::SecurityGroup",
+    "name": "DaxSecurityGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "GroupDescription": "DAX somente a partir do client SG",
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "SecurityGroupIngress": [
+      {
+       "IpProtocol": "tcp",
+       "FromPort": 8111,
+       "ToPort": 8111,
+       "SourceSecurityGroupId": {
+        "ref": "ClientSecurityGroup"
+       },
+       "Description": "Cliente DAX"
+      }
+     ],
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "saa-lab-05-dax-sg"
+      },
+      {
+       "Key": "Lab",
+       "Value": "05"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::DAX::SubnetGroup.DaxSubnetGroup",
+   "cfg": "DaxSubnetGroup",
+   "type": "__declared__",
+   "refs": [
+    "DaxSubnetA",
+    "DaxSubnetB"
+   ],
+   "values": {
+    "type": "AWS::DAX::SubnetGroup",
+    "name": "DaxSubnetGroup",
+    "gated": true,
+    "gate": "CreateDax",
+    "properties": {
+     "Description": "Sub-redes privadas para DAX",
+     "SubnetGroupName": "saa-lab-05-dax-subnets",
+     "SubnetIds": [
+      {
+       "ref": "DaxSubnetA"
+      },
+      {
+       "ref": "DaxSubnetB"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.DaxServiceRole",
+   "cfg": "DaxServiceRole",
+   "type": "__declared__",
+   "refs": [
+    "OrdersTable"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "DaxServiceRole",
+    "gated": true,
+    "gate": "CreateDax",
+    "properties": {
+     "RoleName": "saa-lab-05-dax-role",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "dax.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Policies": [
+      {
+       "PolicyName": "OrdersTableAccess",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "dynamodb:BatchGetItem",
+           "dynamodb:BatchWriteItem",
+           "dynamodb:ConditionCheckItem",
+           "dynamodb:DeleteItem",
+           "dynamodb:DescribeTable",
+           "dynamodb:GetItem",
+           "dynamodb:PutItem",
+           "dynamodb:Query",
+           "dynamodb:Scan",
+           "dynamodb:UpdateItem"
+          ],
+          "Resource": [
+           {
+            "ref": "OrdersTable",
+            "attr": "Arn"
+           },
+           "${OrdersTable.Arn}/index/*"
+          ]
+         }
+        ]
+       }
+      }
+     ],
+     "Tags": [
+      {
+       "Key": "Project",
+       "Value": "saa-c03-intensive"
+      },
+      {
+       "Key": "Lab",
+       "Value": "05"
+      },
+      {
+       "Key": "ManagedBy",
+       "Value": "CloudFormation"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::DAX::Cluster.DaxCluster",
+   "cfg": "DaxCluster",
+   "type": "__declared__",
+   "refs": [
+    "DaxSecurityGroup",
+    "DaxServiceRole",
+    "DaxSubnetGroup"
+   ],
+   "values": {
+    "type": "AWS::DAX::Cluster",
+    "name": "DaxCluster",
+    "gated": true,
+    "gate": "CreateDax",
+    "properties": {
+     "ClusterName": "saa-lab-05-dax",
+     "IAMRoleARN": {
+      "ref": "DaxServiceRole",
+      "attr": "Arn"
+     },
+     "NodeType": "dax.t3.small",
+     "ReplicationFactor": 1,
+     "SecurityGroupIds": [
+      {
+       "ref": "DaxSecurityGroup"
+      }
+     ],
+     "SubnetGroupName": {
+      "ref": "DaxSubnetGroup"
+     },
+     "SSESpecification": {
+      "SSEEnabled": true
+     },
+     "Tags": {
+      "Project": "saa-c03-intensive",
+      "Lab": "05",
+      "ManagedBy": "CloudFormation"
+     }
+    }
+   }
+  }
+ ]
+}

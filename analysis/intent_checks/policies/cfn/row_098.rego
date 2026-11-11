@@ -1,0 +1,735 @@
+package intent.cfn.row_098
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {
+  "sm": {
+   "types": [
+    "AWS::StepFunctions::StateMachine"
+   ],
+   "where": []
+  },
+  "fn": {
+   "types": [
+    "AWS::Lambda::Function"
+   ],
+   "where": []
+  },
+  "lr": {
+   "types": [
+    "AWS::IAM::Role"
+   ],
+   "where": [
+    {
+     "path": [
+      "AssumeRolePolicyDocument",
+      "Statement",
+      "*",
+      "Principal",
+      "Service",
+      "*"
+     ],
+     "op": "eq",
+     "value": "lambda.amazonaws.com"
+    }
+   ]
+  },
+  "sr": {
+   "types": [
+    "AWS::IAM::Role"
+   ],
+   "where": [
+    {
+     "path": [
+      "AssumeRolePolicyDocument",
+      "Statement",
+      "*",
+      "Principal",
+      "Service",
+      "*"
+     ],
+     "op": "regex",
+     "value": "(?i)^states(\\.[a-z0-9-]+)?\\.amazonaws\\.com$"
+    }
+   ]
+  },
+  "lg": {
+   "types": [
+    "AWS::Logs::LogGroup"
+   ],
+   "where": []
+  },
+  "lg3": {
+   "types": [
+    "AWS::Logs::LogGroup"
+   ],
+   "where": [
+    {
+     "path": [
+      "RetentionInDays"
+     ],
+     "op": "eq",
+     "value": 3
+    }
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "state_machine",
+   "tier": "core",
+   "kind": "attr",
+   "select": "sm",
+   "cond": {
+    "path": [
+     "StateMachineName"
+    ],
+    "op": "eq",
+    "value": "Calculator-StateMachine"
+   },
+   "quote": "a state machine named \"Calculator-StateMachine\""
+  },
+  {
+   "id": "lambda",
+   "tier": "core",
+   "kind": "attr",
+   "select": "fn",
+   "cond": {
+    "path": [
+     "FunctionName"
+    ],
+    "op": "eq",
+    "value": "Calculator"
+   },
+   "quote": "a Lambda function named \"Calculator\""
+  },
+  {
+   "id": "runtime",
+   "tier": "core",
+   "kind": "attr",
+   "select": "fn",
+   "cond": {
+    "path": [
+     "Runtime"
+    ],
+    "op": "regex",
+    "value": "^nodejs(20|22|24)\\.x$"
+   },
+   "quote": "running Node.js 20.x",
+   "justify": "nodejs20.x can no longer be created; accept current Node.js LTS runtimes"
+  },
+  {
+   "id": "inline_code",
+   "tier": "core",
+   "kind": "attr",
+   "select": "fn",
+   "cond": {
+    "path": [
+     "Code",
+     "ZipFile"
+    ],
+    "op": "present"
+   },
+   "quote": "with inline code"
+  },
+  {
+   "id": "lambda_ops",
+   "tier": "detail",
+   "kind": "attr",
+   "select": "fn",
+   "cond": {
+    "path": [
+     "Code",
+     "ZipFile"
+    ],
+    "op": "match",
+    "value": [
+     {
+      "path": [],
+      "op": "regex",
+      "value": "(?i)\\b(add|addition|plus|sum)\\b"
+     },
+     {
+      "path": [],
+      "op": "regex",
+      "value": "(?i)\\b(subtract|subtraction|sub|minus)\\b"
+     },
+     {
+      "path": [],
+      "op": "regex",
+      "value": "(?i)\\b(multiply|multiplication|mul|mult|times)\\b"
+     },
+     {
+      "path": [],
+      "op": "regex",
+      "value": "(?i)\\b(divide|division|div)\\b"
+     },
+     {
+      "path": [],
+      "op": "regex",
+      "value": "operands"
+     },
+     {
+      "path": [],
+      "op": "regex",
+      "value": "operator"
+     }
+    ]
+   },
+   "quote": "performs addition, subtraction, multiplication, or division based on the operator",
+   "justify": "the prompt's four operations, in the usual spellings of each"
+  },
+  {
+   "id": "choice_state",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "sm",
+     "cond": {
+      "path": [
+       "DefinitionString"
+      ],
+      "op": "regex",
+      "value": "\"Type\"\\s*:\\s*\"Choice\""
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "sm",
+     "cond": {
+      "path": [
+       "Definition"
+      ],
+      "op": "regex",
+      "value": "\"Type\"\\s*:\\s*\"Choice\""
+     }
+    }
+   ],
+   "quote": "route through a choice state to the appropriate operation"
+  },
+  {
+   "id": "lambda_invoked",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "sm",
+     "to": "fn"
+    },
+    {
+     "kind": "attr",
+     "select": "sm",
+     "cond": {
+      "path": [
+       "DefinitionString"
+      ],
+      "op": "regex",
+      "value": "(?i)(states:::lambda:invoke|:lambda:[^\"\\s]*:function:)"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "sm",
+     "cond": {
+      "path": [
+       "Definition"
+      ],
+      "op": "regex",
+      "value": "(?i)(states:::lambda:invoke|:lambda:[^\"\\s]*:function:)"
+     }
+    }
+   ],
+   "quote": "invoke the Lambda for supported operators"
+  },
+  {
+   "id": "task_state",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "sm",
+     "cond": {
+      "path": [
+       "DefinitionString"
+      ],
+      "op": "regex",
+      "value": "\"Type\"\\s*:\\s*\"Task\""
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "sm",
+     "cond": {
+      "path": [
+       "Definition"
+      ],
+      "op": "regex",
+      "value": "\"Type\"\\s*:\\s*\"Task\""
+     }
+    }
+   ],
+   "quote": "invoke the Lambda for supported operators",
+   "justify": "invoking a Lambda is a Task state"
+  },
+  {
+   "id": "fail_state",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "sm",
+     "cond": {
+      "path": [
+       "DefinitionString"
+      ],
+      "op": "regex",
+      "value": "\"Type\"\\s*:\\s*\"Fail\""
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "sm",
+     "cond": {
+      "path": [
+       "Definition"
+      ],
+      "op": "regex",
+      "value": "\"Type\"\\s*:\\s*\"Fail\""
+     }
+    }
+   ],
+   "quote": "fail on unknown operators"
+  },
+  {
+   "id": "operators_routed",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "sm",
+     "cond": {
+      "path": [
+       "DefinitionString"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [],
+        "op": "regex",
+        "value": "(?i)\\b(add|addition|plus|sum)\\b"
+       },
+       {
+        "path": [],
+        "op": "regex",
+        "value": "(?i)\\b(subtract|subtraction|sub|minus)\\b"
+       },
+       {
+        "path": [],
+        "op": "regex",
+        "value": "(?i)\\b(multiply|multiplication|mul|mult|times)\\b"
+       },
+       {
+        "path": [],
+        "op": "regex",
+        "value": "(?i)\\b(divide|division|div)\\b"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "sm",
+     "cond": {
+      "path": [
+       "Definition"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [],
+        "op": "regex",
+        "value": "(?i)\\b(add|addition|plus|sum)\\b"
+       },
+       {
+        "path": [],
+        "op": "regex",
+        "value": "(?i)\\b(subtract|subtraction|sub|minus)\\b"
+       },
+       {
+        "path": [],
+        "op": "regex",
+        "value": "(?i)\\b(multiply|multiplication|mul|mult|times)\\b"
+       },
+       {
+        "path": [],
+        "op": "regex",
+        "value": "(?i)\\b(divide|division|div)\\b"
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "route through a choice state to the appropriate operation",
+   "justify": "the prompt's four operations, in the usual spellings of each"
+  },
+  {
+   "id": "lambda_role",
+   "tier": "core",
+   "kind": "exists",
+   "select": "lr",
+   "quote": "the IAM roles needed for the Lambda to write logs"
+  },
+  {
+   "id": "lambda_logs_permission",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy"
+      ],
+      "where": [
+       {
+        "path": [
+         "PolicyDocument",
+         "Statement",
+         "*"
+        ],
+        "op": "match",
+        "value": [
+         {
+          "path": [
+           "Effect"
+          ],
+          "op": "eq",
+          "value": "Allow"
+         },
+         {
+          "path": [
+           "Action",
+           "*"
+          ],
+          "op": "glob_covers",
+          "value": "logs:PutLogEvents"
+         }
+        ]
+       }
+      ]
+     },
+     "to": "lr",
+     "bidirectional": true
+    },
+    {
+     "kind": "attr",
+     "select": "lr",
+     "cond": {
+      "path": [
+       "Policies",
+       "*",
+       "PolicyDocument",
+       "Statement",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "Effect"
+        ],
+        "op": "eq",
+        "value": "Allow"
+       },
+       {
+        "path": [
+         "Action",
+         "*"
+        ],
+        "op": "glob_covers",
+        "value": "logs:PutLogEvents"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "lr",
+     "cond": {
+      "path": [
+       "ManagedPolicyArns",
+       "*"
+      ],
+      "op": "regex",
+      "value": "(?i)(AWSLambdaBasicExecutionRole|AWSLambdaVPCAccessExecutionRole|AWSLambdaExecute|CloudWatchLogsFullAccess)"
+     }
+    }
+   ],
+   "quote": "the IAM roles needed for the Lambda to write logs"
+  },
+  {
+   "id": "sm_role",
+   "tier": "core",
+   "kind": "exists",
+   "select": "sr",
+   "quote": "for the state machine to invoke the Lambda"
+  },
+  {
+   "id": "sm_invoke_permission",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy"
+      ],
+      "where": [
+       {
+        "path": [
+         "PolicyDocument",
+         "Statement",
+         "*"
+        ],
+        "op": "match",
+        "value": [
+         {
+          "path": [
+           "Effect"
+          ],
+          "op": "eq",
+          "value": "Allow"
+         },
+         {
+          "path": [
+           "Action",
+           "*"
+          ],
+          "op": "glob_covers",
+          "value": "lambda:InvokeFunction"
+         }
+        ]
+       }
+      ]
+     },
+     "to": "sr",
+     "bidirectional": true
+    },
+    {
+     "kind": "attr",
+     "select": "sr",
+     "cond": {
+      "path": [
+       "Policies",
+       "*",
+       "PolicyDocument",
+       "Statement",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "Effect"
+        ],
+        "op": "eq",
+        "value": "Allow"
+       },
+       {
+        "path": [
+         "Action",
+         "*"
+        ],
+        "op": "glob_covers",
+        "value": "lambda:InvokeFunction"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "sr",
+     "cond": {
+      "path": [
+       "ManagedPolicyArns",
+       "*"
+      ],
+      "op": "regex",
+      "value": "(?i)(AWSLambdaRole|AWSLambda_FullAccess|AWSLambdaFullAccess)"
+     }
+    }
+   ],
+   "quote": "for the state machine to invoke the Lambda"
+  },
+  {
+   "id": "lambda_role_wired",
+   "tier": "detail",
+   "kind": "ref",
+   "from": "fn",
+   "to": "lr",
+   "quote": "the IAM roles needed for the Lambda to write logs"
+  },
+  {
+   "id": "sm_role_wired",
+   "tier": "detail",
+   "kind": "ref",
+   "from": "sm",
+   "to": "sr",
+   "quote": "for the state machine to invoke the Lambda"
+  },
+  {
+   "id": "log_group",
+   "tier": "core",
+   "kind": "attr",
+   "select": "lg",
+   "cond": {
+    "path": [
+     "RetentionInDays"
+    ],
+    "op": "eq",
+    "value": 3
+   },
+   "quote": "a CloudWatch log group for the Lambda with 3-day retention"
+  },
+  {
+   "id": "log_group_for_lambda",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "lg3",
+     "to": "fn"
+    },
+    {
+     "kind": "attr",
+     "select": "lg3",
+     "cond": {
+      "path": [
+       "LogGroupName"
+      ],
+      "op": "regex",
+      "value": "/aws/lambda/"
+     }
+    }
+   ],
+   "quote": "a CloudWatch log group for the Lambda"
+  },
+  {
+   "id": "sample_input_output",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__output__"
+      ],
+      "where": [
+       {
+        "path": [
+         "value"
+        ],
+        "op": "regex",
+        "value": "operator"
+       },
+       {
+        "path": [
+         "value"
+        ],
+        "op": "regex",
+        "value": "operands"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__output__"
+      ],
+      "where": [
+       {
+        "path": [
+         "description"
+        ],
+        "op": "regex",
+        "value": "operator"
+       },
+       {
+        "path": [
+         "description"
+        ],
+        "op": "regex",
+        "value": "operands"
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "expose the sample input format as an output"
+  },
+  {
+   "id": "x_inline_handler",
+   "tier": "extra",
+   "kind": "attr",
+   "select": "fn",
+   "cond": {
+    "path": [
+     "Handler"
+    ],
+    "op": "regex",
+    "value": "^index\\."
+   }
+  },
+  {
+   "id": "unknown_goes_to_default",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "sm",
+     "cond": {
+      "path": [
+       "DefinitionString"
+      ],
+      "op": "regex",
+      "value": "\"Default\""
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "sm",
+     "cond": {
+      "path": [
+       "Definition"
+      ],
+      "op": "regex",
+      "value": "\"Default\""
+     }
+    }
+   ],
+   "quote": "fail on unknown operators",
+   "justify": "a Choice state's Default branch is what catches an unmatched operator"
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

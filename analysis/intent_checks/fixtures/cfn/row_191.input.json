@@ -1,0 +1,1715 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "5753a906115f2d34c80d14a68c6dcb238f4e551b493ed957e709e1b6ca75f2cb",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "SageMakerVpc",
+   "cfg": "SageMakerVpc",
+   "type": "AWS::EC2::VPC",
+   "values": {
+    "CidrBlock": "10.70.0.0/23",
+    "EnableDnsSupport": true,
+    "EnableDnsHostnames": true
+   },
+   "refs": []
+  },
+  {
+   "id": "SageMakerInternetGateway",
+   "cfg": "SageMakerInternetGateway",
+   "type": "AWS::EC2::InternetGateway",
+   "values": {},
+   "refs": []
+  },
+  {
+   "id": "SageMakerVpcGatewayAttachment",
+   "cfg": "SageMakerVpcGatewayAttachment",
+   "type": "AWS::EC2::VPCGatewayAttachment",
+   "values": {
+    "VpcId": {
+     "ref": "SageMakerVpc"
+    },
+    "InternetGatewayId": {
+     "ref": "SageMakerInternetGateway"
+    }
+   },
+   "refs": [
+    "SageMakerInternetGateway",
+    "SageMakerVpc"
+   ]
+  },
+  {
+   "id": "SageMakerPublicSubnet",
+   "cfg": "SageMakerPublicSubnet",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "VpcId": {
+     "ref": "SageMakerVpc"
+    },
+    "CidrBlock": "10.70.0.0/24",
+    "AvailabilityZone": "us-east-1a"
+   },
+   "refs": [
+    "SageMakerVpc"
+   ]
+  },
+  {
+   "id": "SageMakerSubnet",
+   "cfg": "SageMakerSubnet",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "VpcId": {
+     "ref": "SageMakerVpc"
+    },
+    "CidrBlock": "10.70.1.0/24",
+    "AvailabilityZone": "us-east-1a"
+   },
+   "refs": [
+    "SageMakerVpc"
+   ]
+  },
+  {
+   "id": "SageMakerPublicRouteTable",
+   "cfg": "SageMakerPublicRouteTable",
+   "type": "AWS::EC2::RouteTable",
+   "values": {
+    "VpcId": {
+     "ref": "SageMakerVpc"
+    }
+   },
+   "refs": [
+    "SageMakerVpc"
+   ]
+  },
+  {
+   "id": "SageMakerPublicRoute",
+   "cfg": "SageMakerPublicRoute",
+   "type": "AWS::EC2::Route",
+   "values": {
+    "RouteTableId": {
+     "ref": "SageMakerPublicRouteTable"
+    },
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "GatewayId": {
+     "ref": "SageMakerInternetGateway"
+    },
+    "__resource__": {
+     "DependsOn": [
+      "SageMakerVpcGatewayAttachment"
+     ]
+    }
+   },
+   "refs": [
+    "SageMakerInternetGateway",
+    "SageMakerPublicRouteTable"
+   ]
+  },
+  {
+   "id": "SageMakerPublicSubnetRouteTableAssociation",
+   "cfg": "SageMakerPublicSubnetRouteTableAssociation",
+   "type": "AWS::EC2::SubnetRouteTableAssociation",
+   "values": {
+    "SubnetId": {
+     "ref": "SageMakerPublicSubnet"
+    },
+    "RouteTableId": {
+     "ref": "SageMakerPublicRouteTable"
+    }
+   },
+   "refs": [
+    "SageMakerPublicRouteTable",
+    "SageMakerPublicSubnet"
+   ]
+  },
+  {
+   "id": "SageMakerNatEip",
+   "cfg": "SageMakerNatEip",
+   "type": "AWS::EC2::EIP",
+   "values": {
+    "Domain": "vpc",
+    "__resource__": {
+     "DependsOn": [
+      "SageMakerVpcGatewayAttachment"
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "SageMakerNatGateway",
+   "cfg": "SageMakerNatGateway",
+   "type": "AWS::EC2::NatGateway",
+   "values": {
+    "AllocationId": {
+     "ref": "SageMakerNatEip",
+     "attr": "AllocationId"
+    },
+    "SubnetId": {
+     "ref": "SageMakerPublicSubnet"
+    }
+   },
+   "refs": [
+    "SageMakerNatEip",
+    "SageMakerPublicSubnet"
+   ]
+  },
+  {
+   "id": "SageMakerPrivateRouteTable",
+   "cfg": "SageMakerPrivateRouteTable",
+   "type": "AWS::EC2::RouteTable",
+   "values": {
+    "VpcId": {
+     "ref": "SageMakerVpc"
+    }
+   },
+   "refs": [
+    "SageMakerVpc"
+   ]
+  },
+  {
+   "id": "SageMakerPrivateRoute",
+   "cfg": "SageMakerPrivateRoute",
+   "type": "AWS::EC2::Route",
+   "values": {
+    "RouteTableId": {
+     "ref": "SageMakerPrivateRouteTable"
+    },
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "NatGatewayId": {
+     "ref": "SageMakerNatGateway"
+    }
+   },
+   "refs": [
+    "SageMakerNatGateway",
+    "SageMakerPrivateRouteTable"
+   ]
+  },
+  {
+   "id": "SageMakerSubnetRouteTableAssociation",
+   "cfg": "SageMakerSubnetRouteTableAssociation",
+   "type": "AWS::EC2::SubnetRouteTableAssociation",
+   "values": {
+    "SubnetId": {
+     "ref": "SageMakerSubnet"
+    },
+    "RouteTableId": {
+     "ref": "SageMakerPrivateRouteTable"
+    }
+   },
+   "refs": [
+    "SageMakerPrivateRouteTable",
+    "SageMakerSubnet"
+   ]
+  },
+  {
+   "id": "SageMakerSecurityGroup",
+   "cfg": "SageMakerSecurityGroup",
+   "type": "AWS::EC2::SecurityGroup",
+   "values": {
+    "GroupDescription": "SageMaker Studio VPC-only domain",
+    "VpcId": {
+     "ref": "SageMakerVpc"
+    },
+    "SecurityGroupIngress": [
+     {
+      "IpProtocol": "-1",
+      "CidrIp": "10.70.0.0/23"
+     }
+    ]
+   },
+   "refs": [
+    "SageMakerVpc"
+   ]
+  },
+  {
+   "id": "SageMakerStudioDataScienceRole",
+   "cfg": "SageMakerStudioDataScienceRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "stack-MyExampleDomain-DataScience-Role",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "sagemaker.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Path": "/"
+   },
+   "refs": []
+  },
+  {
+   "id": "SageMakerS3AccessPolicy",
+   "cfg": "SageMakerS3AccessPolicy",
+   "type": "AWS::IAM::Policy",
+   "values": {
+    "PolicyName": "SageMaker_S3Access_Policy",
+    "PolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Action": [
+        "s3:ListBucket"
+       ],
+       "Resource": [
+        "arn:aws:s3:::sagemaker-us-east-1-1234567890"
+       ]
+      },
+      {
+       "Effect": "Allow",
+       "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject"
+       ],
+       "Resource": [
+        "arn:aws:s3:::sagemaker-us-east-1-1234567890/*"
+       ]
+      }
+     ]
+    },
+    "Roles": [
+     {
+      "ref": "SageMakerStudioDataScienceRole"
+     }
+    ]
+   },
+   "refs": [
+    "SageMakerStudioDataScienceRole"
+   ]
+  },
+  {
+   "id": "SageMakerCommonJobManagementPolicy",
+   "cfg": "SageMakerCommonJobManagementPolicy",
+   "type": "AWS::IAM::Policy",
+   "values": {
+    "PolicyName": "SageMaker_CommonJobManagement_Policy",
+    "PolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Action": [
+        "sagemaker:CreateTrainingJob",
+        "sagemaker:CreateTransformJob",
+        "sagemaker:CreateProcessingJob",
+        "sagemaker:CreateAutoMLJob",
+        "sagemaker:CreateHyperParameterTuningJob"
+       ],
+       "Resource": [
+        "arn:aws:sagemaker:*:*:*/**"
+       ]
+      },
+      {
+       "Effect": "Allow",
+       "Action": [
+        "sagemaker:StopTrainingJob",
+        "sagemaker:StopTransformJob",
+        "sagemaker:StopProcessingJob",
+        "sagemaker:StopAutoMLJob",
+        "sagemaker:StopHyperParameterTuningJob",
+        "sagemaker:DescribeTrainingJob",
+        "sagemaker:DescribeTransformJob",
+        "sagemaker:DescribeProcessingJob",
+        "sagemaker:DescribeAutoMLJob",
+        "sagemaker:DescribeHyperParameterTuningJob",
+        "sagemaker:UpdateTrainingJob",
+        "sagemaker:BatchGetMetrics"
+       ],
+       "Resource": [
+        "arn:aws:sagemaker:*:*:*/**"
+       ]
+      },
+      {
+       "Effect": "Allow",
+       "Action": [
+        "sagemaker:Search",
+        "sagemaker:ListTrainingJobs",
+        "sagemaker:ListTransformJobs",
+        "sagemaker:ListProcessingJobs",
+        "sagemaker:ListAutoMLJobs",
+        "sagemaker:ListCandidatesForAutoMLJob",
+        "sagemaker:ListHyperParameterTuningJobs",
+        "sagemaker:ListTrainingJobsForHyperParameterTuningJob"
+       ],
+       "Resource": [
+        "*"
+       ]
+      },
+      {
+       "Effect": "Allow",
+       "Action": [
+        "iam:PassRole"
+       ],
+       "Resource": [
+        {
+         "ref": "SageMakerStudioDataScienceRole",
+         "attr": "Arn"
+        }
+       ],
+       "Condition": {
+        "StringEquals": {
+         "iam:PassedToService": "sagemaker.amazonaws.com"
+        }
+       }
+      }
+     ]
+    },
+    "Roles": [
+     {
+      "ref": "SageMakerStudioDataScienceRole"
+     }
+    ]
+   },
+   "refs": [
+    "SageMakerStudioDataScienceRole"
+   ]
+  },
+  {
+   "id": "SageMakerExperimentManagementandVizPolicy",
+   "cfg": "SageMakerExperimentManagementandVizPolicy",
+   "type": "AWS::IAM::Policy",
+   "values": {
+    "PolicyName": "SageMaker_ExperimentManagementandViz_Policy",
+    "PolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Action": [
+        "sagemaker:AddAssociation",
+        "sagemaker:CreateAction",
+        "sagemaker:CreateArtifact",
+        "sagemaker:CreateContext",
+        "sagemaker:CreateExperiment",
+        "sagemaker:CreateTrial",
+        "sagemaker:CreateTrialComponent",
+        "sagemaker:UpdateAction",
+        "sagemaker:UpdateArtifact",
+        "sagemaker:UpdateContext",
+        "sagemaker:UpdateExperiment",
+        "sagemaker:UpdateTrial",
+        "sagemaker:UpdateTrialComponent",
+        "sagemaker:AssociateTrialComponent",
+        "sagemaker:DisassociateTrialComponent",
+        "sagemaker:DeleteAssociation",
+        "sagemaker:DeleteAction",
+        "sagemaker:DeleteArtifact",
+        "sagemaker:DeleteContext",
+        "sagemaker:DeleteExperiment",
+        "sagemaker:DeleteTrial",
+        "sagemaker:DeleteTrialComponent",
+        "sagemaker:DescribeAction",
+        "sagemaker:DescribeArtifact",
+        "sagemaker:DescribeContext",
+        "sagemaker:DescribeExperiment",
+        "sagemaker:DescribeTrial",
+        "sagemaker:DescribeTrialComponent",
+        "sagemaker:DescribeLineageGroup"
+       ],
+       "Resource": [
+        "arn:aws:sagemaker:*:*:*/*"
+       ]
+      },
+      {
+       "Effect": "Allow",
+       "Action": [
+        "sagemaker:ListAssociations",
+        "sagemaker:ListActions",
+        "sagemaker:ListArtifacts",
+        "sagemaker:ListContexts",
+        "sagemaker:ListExperiments",
+        "sagemaker:ListTrials",
+        "sagemaker:ListTrialComponents",
+        "sagemaker:ListLineageGroups",
+        "sagemaker:GetLineageGroupPolicy",
+        "sagemaker:QueryLineage",
+        "sagemaker:Search",
+        "sagemaker:GetSearchSuggestions"
+       ],
+       "Resource": [
+        "*"
+       ]
+      }
+     ]
+    },
+    "Roles": [
+     {
+      "ref": "SageMakerStudioDataScienceRole"
+     }
+    ]
+   },
+   "refs": [
+    "SageMakerStudioDataScienceRole"
+   ]
+  },
+  {
+   "id": "SageMakerModelManagementPolicy",
+   "cfg": "SageMakerModelManagementPolicy",
+   "type": "AWS::IAM::Policy",
+   "values": {
+    "PolicyName": "SageMaker_ModelManagement_Policy",
+    "PolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Action": [
+        "sagemaker:CreateModel"
+       ],
+       "Resource": [
+        "arn:aws:sagemaker:*:*:*/*"
+       ]
+      },
+      {
+       "Effect": "Allow",
+       "Action": [
+        "sagemaker:CreateModelPackage",
+        "sagemaker:CreateModelPackageGroup",
+        "sagemaker:DescribeModel",
+        "sagemaker:DescribeModelPackage",
+        "sagemaker:DescribeModelPackageGroup",
+        "sagemaker:BatchDescribeModelPackage",
+        "sagemaker:UpdateModelPackage",
+        "sagemaker:DeleteModel",
+        "sagemaker:DeleteModelPackage",
+        "sagemaker:DeleteModelPackageGroup"
+       ],
+       "Resource": [
+        "arn:aws:sagemaker:*:*:*/*"
+       ]
+      },
+      {
+       "Effect": "Allow",
+       "Action": [
+        "sagemaker:ListModels",
+        "sagemaker:ListModelPackages",
+        "sagemaker:ListModelPackageGroups"
+       ],
+       "Resource": [
+        "*"
+       ]
+      },
+      {
+       "Effect": "Allow",
+       "Action": [
+        "iam:PassRole"
+       ],
+       "Resource": [
+        {
+         "ref": "SageMakerStudioDataScienceRole",
+         "attr": "Arn"
+        }
+       ],
+       "Condition": {
+        "StringEquals": {
+         "iam:PassedToService": "sagemaker.amazonaws.com"
+        }
+       }
+      }
+     ]
+    },
+    "Roles": [
+     {
+      "ref": "SageMakerStudioDataScienceRole"
+     }
+    ]
+   },
+   "refs": [
+    "SageMakerStudioDataScienceRole"
+   ]
+  },
+  {
+   "id": "SageMakerStudioAppPermissionPolicy",
+   "cfg": "SageMakerStudioAppPermissionPolicy",
+   "type": "AWS::IAM::Policy",
+   "values": {
+    "PolicyName": "SageMaker_StudioAppPermission_Policy",
+    "PolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Sid": "SMStudioUserProfileAppPermissionsCreateAndDelete",
+       "Effect": "Allow",
+       "Action": [
+        "sagemaker:CreateApp",
+        "sagemaker:DeleteApp"
+       ],
+       "Resource": [
+        "arn:aws:sagemaker:us-east-1:123456789012:app/*"
+       ],
+       "Condition": {
+        "Null": {
+         "sagemaker:OwnerUserProfileArn": "true"
+        }
+       }
+      },
+      {
+       "Sid": "SMStudioCreatePresignedDomainUrlForUserProfile",
+       "Effect": "Allow",
+       "Action": [
+        "sagemaker:CreatePresignedDomainUrl"
+       ],
+       "Resource": [
+        "arn:aws:sagemaker:us-east-1:123456789012:user-profile/${sagemaker:DomainId}/${sagemaker:UserProfileName}"
+       ]
+      },
+      {
+       "Sid": "SMStudioAppPermissionsListAndDescribe",
+       "Effect": "Allow",
+       "Action": [
+        "sagemaker:ListApps",
+        "sagemaker:ListDomains",
+        "sagemaker:ListUserProfiles",
+        "sagemaker:ListSpaces",
+        "sagemaker:DescribeApp",
+        "sagemaker:DescribeDomain",
+        "sagemaker:DescribeUserProfile",
+        "sagemaker:DescribeSpace"
+       ],
+       "Resource": [
+        "*"
+       ]
+      },
+      {
+       "Sid": "SMStudioAppPermissionsTagOnCreate",
+       "Effect": "Allow",
+       "Action": [
+        "sagemaker:AddTags"
+       ],
+       "Resource": [
+        "arn:aws:sagemaker:us-east-1:123456789012:*/*"
+       ],
+       "Condition": {
+        "Null": {
+         "sagemaker:TaggingAction": "false"
+        }
+       }
+      },
+      {
+       "Sid": "SMStudioRestrictSharedSpacesWithoutOwners",
+       "Effect": "Allow",
+       "Action": [
+        "sagemaker:CreateSpace",
+        "sagemaker:UpdateSpace",
+        "sagemaker:DeleteSpace"
+       ],
+       "Resource": [
+        "arn:aws:sagemaker:us-east-1:123456789012:space/${sagemaker:DomainId}/*"
+       ],
+       "Condition": {
+        "Null": {
+         "sagemaker:OwnerUserProfileArn": "true"
+        }
+       }
+      },
+      {
+       "Sid": "SMStudioRestrictSpacesToOwnerUserProfile",
+       "Effect": "Allow",
+       "Action": [
+        "sagemaker:CreateSpace",
+        "sagemaker:UpdateSpace",
+        "sagemaker:DeleteSpace"
+       ],
+       "Resource": [
+        "arn:aws:sagemaker:us-east-1:123456789012:space/${sagemaker:DomainId}/*"
+       ],
+       "Condition": {
+        "ArnLike": {
+         "sagemaker:OwnerUserProfileArn": [
+          "arn:aws:sagemaker:us-east-1:123456789012:user-profile/${sagemaker:DomainId}/*"
+         ]
+        },
+        "StringEquals": {
+         "sagemaker:SpaceSharingType": [
+          "Private",
+          "Shared"
+         ]
+        }
+       }
+      },
+      {
+       "Sid": "SMStudioRestrictCreatePrivateSpaceAppsToOwnerUserProfile",
+       "Effect": "Allow",
+       "Action": [
+        "sagemaker:CreateApp",
+        "sagemaker:DeleteApp"
+       ],
+       "Resource": [
+        "arn:aws:sagemaker:us-east-1:123456789012:app/${sagemaker:DomainId}/*"
+       ],
+       "Condition": {
+        "ArnLike": {
+         "sagemaker:OwnerUserProfileArn": [
+          "arn:aws:sagemaker:us-east-1:123456789012:user-profile/${sagemaker:DomainId}/${sagemaker:UserProfileName}"
+         ]
+        },
+        "StringEquals": {
+         "sagemaker:SpaceSharingType": [
+          "Private"
+         ]
+        }
+       }
+      },
+      {
+       "Sid": "AllowAppActionsForSharedSpaces",
+       "Effect": "Allow",
+       "Action": [
+        "sagemaker:CreateApp",
+        "sagemaker:DeleteApp"
+       ],
+       "Resource": [
+        "arn:aws:sagemaker:*:*:app/${sagemaker:DomainId}/*/*/*"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "sagemaker:SpaceSharingType": [
+          "Shared"
+         ]
+        }
+       }
+      }
+     ]
+    },
+    "Roles": [
+     {
+      "ref": "SageMakerStudioDataScienceRole"
+     }
+    ]
+   },
+   "refs": [
+    "SageMakerStudioDataScienceRole"
+   ]
+  },
+  {
+   "id": "SageMakerStudioVPCOnlyDomain",
+   "cfg": "SageMakerStudioVPCOnlyDomain",
+   "type": "AWS::SageMaker::Domain",
+   "values": {
+    "AppNetworkAccessType": "VpcOnly",
+    "AuthMode": "IAM",
+    "DomainName": "MyExampleDomain",
+    "SubnetIds": [
+     {
+      "ref": "SageMakerSubnet"
+     }
+    ],
+    "VpcId": {
+     "ref": "SageMakerVpc"
+    },
+    "DefaultUserSettings": {
+     "SecurityGroups": [
+      {
+       "ref": "SageMakerSecurityGroup"
+      }
+     ],
+     "ExecutionRole": {
+      "ref": "SageMakerStudioDataScienceRole",
+      "attr": "Arn"
+     }
+    }
+   },
+   "refs": [
+    "SageMakerSecurityGroup",
+    "SageMakerStudioDataScienceRole",
+    "SageMakerSubnet",
+    "SageMakerVpc"
+   ]
+  },
+  {
+   "id": "UserProfile",
+   "cfg": "UserProfile",
+   "type": "AWS::SageMaker::UserProfile",
+   "values": {
+    "DomainId": {
+     "ref": "SageMakerStudioVPCOnlyDomain"
+    },
+    "UserProfileName": "data-scientist",
+    "UserSettings": {
+     "ExecutionRole": {
+      "ref": "SageMakerStudioDataScienceRole",
+      "attr": "Arn"
+     }
+    }
+   },
+   "refs": [
+    "SageMakerStudioDataScienceRole",
+    "SageMakerStudioVPCOnlyDomain"
+   ]
+  },
+  {
+   "id": "__parameter__.DomainName",
+   "cfg": "__parameter__.DomainName",
+   "type": "__parameter__",
+   "values": {
+    "name": "DomainName",
+    "type": "String",
+    "default": "MyExampleDomain",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.StudioUserName",
+   "cfg": "__parameter__.StudioUserName",
+   "type": "__parameter__",
+   "values": {
+    "name": "StudioUserName",
+    "type": "String",
+    "default": "data-scientist",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.RefS3BucketARNforDomain",
+   "cfg": "__parameter__.RefS3BucketARNforDomain",
+   "type": "__parameter__",
+   "values": {
+    "name": "RefS3BucketARNforDomain",
+    "type": "String",
+    "default": "arn:aws:s3:::sagemaker-us-east-1-1234567890",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.NewSageMakerDomain",
+   "cfg": "__output__.NewSageMakerDomain",
+   "type": "__output__",
+   "values": {
+    "name": "NewSageMakerDomain",
+    "value": {
+     "ref": "SageMakerStudioVPCOnlyDomain"
+    },
+    "description": "New Domain Id",
+    "export": null
+   },
+   "refs": [
+    "SageMakerStudioVPCOnlyDomain"
+   ]
+  },
+  {
+   "id": "__output__.NewSageMakerExecutionRole",
+   "cfg": "__output__.NewSageMakerExecutionRole",
+   "type": "__output__",
+   "values": {
+    "name": "NewSageMakerExecutionRole",
+    "value": {
+     "ref": "SageMakerStudioDataScienceRole"
+    },
+    "description": "SageMaker Data Science Role",
+    "export": null
+   },
+   "refs": [
+    "SageMakerStudioDataScienceRole"
+   ]
+  },
+  {
+   "id": "__output__.SageMakerDomainUrl",
+   "cfg": "__output__.SageMakerDomainUrl",
+   "type": "__output__",
+   "values": {
+    "name": "SageMakerDomainUrl",
+    "value": {
+     "Fn::Join": [
+      "",
+      [
+       "https://console.aws.amazon.com/sagemaker/home?region=",
+       "us-east-1",
+       "#/studio/",
+       {
+        "ref": "SageMakerStudioVPCOnlyDomain"
+       }
+      ]
+     ]
+    },
+    "description": "URL to access the SageMaker Domain",
+    "export": null
+   },
+   "refs": [
+    "SageMakerStudioVPCOnlyDomain"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPC.SageMakerVpc",
+   "cfg": "SageMakerVpc",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::VPC",
+    "name": "SageMakerVpc",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "CidrBlock": "10.70.0.0/23",
+     "EnableDnsSupport": true,
+     "EnableDnsHostnames": true
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::InternetGateway.SageMakerInternetGateway",
+   "cfg": "SageMakerInternetGateway",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::InternetGateway",
+    "name": "SageMakerInternetGateway",
+    "gated": false,
+    "gate": null,
+    "properties": {}
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCGatewayAttachment.SageMakerVpcGatewayAttachment",
+   "cfg": "SageMakerVpcGatewayAttachment",
+   "type": "__declared__",
+   "refs": [
+    "SageMakerInternetGateway",
+    "SageMakerVpc"
+   ],
+   "values": {
+    "type": "AWS::EC2::VPCGatewayAttachment",
+    "name": "SageMakerVpcGatewayAttachment",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "SageMakerVpc"
+     },
+     "InternetGatewayId": {
+      "ref": "SageMakerInternetGateway"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.SageMakerPublicSubnet",
+   "cfg": "SageMakerPublicSubnet",
+   "type": "__declared__",
+   "refs": [
+    "SageMakerVpc"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "SageMakerPublicSubnet",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "SageMakerVpc"
+     },
+     "CidrBlock": "10.70.0.0/24",
+     "AvailabilityZone": "us-east-1a"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.SageMakerSubnet",
+   "cfg": "SageMakerSubnet",
+   "type": "__declared__",
+   "refs": [
+    "SageMakerVpc"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "SageMakerSubnet",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "SageMakerVpc"
+     },
+     "CidrBlock": "10.70.1.0/24",
+     "AvailabilityZone": "us-east-1a"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::RouteTable.SageMakerPublicRouteTable",
+   "cfg": "SageMakerPublicRouteTable",
+   "type": "__declared__",
+   "refs": [
+    "SageMakerVpc"
+   ],
+   "values": {
+    "type": "AWS::EC2::RouteTable",
+    "name": "SageMakerPublicRouteTable",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "SageMakerVpc"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Route.SageMakerPublicRoute",
+   "cfg": "SageMakerPublicRoute",
+   "type": "__declared__",
+   "refs": [
+    "SageMakerInternetGateway",
+    "SageMakerPublicRouteTable"
+   ],
+   "values": {
+    "type": "AWS::EC2::Route",
+    "name": "SageMakerPublicRoute",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RouteTableId": {
+      "ref": "SageMakerPublicRouteTable"
+     },
+     "DestinationCidrBlock": "0.0.0.0/0",
+     "GatewayId": {
+      "ref": "SageMakerInternetGateway"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetRouteTableAssociation.SageMakerPublicSubnetRouteTableAssociation",
+   "cfg": "SageMakerPublicSubnetRouteTableAssociation",
+   "type": "__declared__",
+   "refs": [
+    "SageMakerPublicRouteTable",
+    "SageMakerPublicSubnet"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetRouteTableAssociation",
+    "name": "SageMakerPublicSubnetRouteTableAssociation",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "SubnetId": {
+      "ref": "SageMakerPublicSubnet"
+     },
+     "RouteTableId": {
+      "ref": "SageMakerPublicRouteTable"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::EIP.SageMakerNatEip",
+   "cfg": "SageMakerNatEip",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::EIP",
+    "name": "SageMakerNatEip",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Domain": "vpc"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::NatGateway.SageMakerNatGateway",
+   "cfg": "SageMakerNatGateway",
+   "type": "__declared__",
+   "refs": [
+    "SageMakerNatEip",
+    "SageMakerPublicSubnet"
+   ],
+   "values": {
+    "type": "AWS::EC2::NatGateway",
+    "name": "SageMakerNatGateway",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AllocationId": {
+      "ref": "SageMakerNatEip",
+      "attr": "AllocationId"
+     },
+     "SubnetId": {
+      "ref": "SageMakerPublicSubnet"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::RouteTable.SageMakerPrivateRouteTable",
+   "cfg": "SageMakerPrivateRouteTable",
+   "type": "__declared__",
+   "refs": [
+    "SageMakerVpc"
+   ],
+   "values": {
+    "type": "AWS::EC2::RouteTable",
+    "name": "SageMakerPrivateRouteTable",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "SageMakerVpc"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Route.SageMakerPrivateRoute",
+   "cfg": "SageMakerPrivateRoute",
+   "type": "__declared__",
+   "refs": [
+    "SageMakerNatGateway",
+    "SageMakerPrivateRouteTable"
+   ],
+   "values": {
+    "type": "AWS::EC2::Route",
+    "name": "SageMakerPrivateRoute",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RouteTableId": {
+      "ref": "SageMakerPrivateRouteTable"
+     },
+     "DestinationCidrBlock": "0.0.0.0/0",
+     "NatGatewayId": {
+      "ref": "SageMakerNatGateway"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetRouteTableAssociation.SageMakerSubnetRouteTableAssociation",
+   "cfg": "SageMakerSubnetRouteTableAssociation",
+   "type": "__declared__",
+   "refs": [
+    "SageMakerPrivateRouteTable",
+    "SageMakerSubnet"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetRouteTableAssociation",
+    "name": "SageMakerSubnetRouteTableAssociation",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "SubnetId": {
+      "ref": "SageMakerSubnet"
+     },
+     "RouteTableId": {
+      "ref": "SageMakerPrivateRouteTable"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SecurityGroup.SageMakerSecurityGroup",
+   "cfg": "SageMakerSecurityGroup",
+   "type": "__declared__",
+   "refs": [
+    "SageMakerVpc"
+   ],
+   "values": {
+    "type": "AWS::EC2::SecurityGroup",
+    "name": "SageMakerSecurityGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "GroupDescription": "SageMaker Studio VPC-only domain",
+     "VpcId": {
+      "ref": "SageMakerVpc"
+     },
+     "SecurityGroupIngress": [
+      {
+       "IpProtocol": "-1",
+       "CidrIp": "10.70.0.0/23"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.SageMakerStudioDataScienceRole",
+   "cfg": "SageMakerStudioDataScienceRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "SageMakerStudioDataScienceRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "stack-MyExampleDomain-DataScience-Role",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "sagemaker.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Path": "/"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Policy.SageMakerS3AccessPolicy",
+   "cfg": "SageMakerS3AccessPolicy",
+   "type": "__declared__",
+   "refs": [
+    "SageMakerStudioDataScienceRole"
+   ],
+   "values": {
+    "type": "AWS::IAM::Policy",
+    "name": "SageMakerS3AccessPolicy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "PolicyName": "SageMaker_S3Access_Policy",
+     "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Action": [
+         "s3:ListBucket"
+        ],
+        "Resource": [
+         "arn:aws:s3:::sagemaker-us-east-1-1234567890"
+        ]
+       },
+       {
+        "Effect": "Allow",
+        "Action": [
+         "s3:GetObject",
+         "s3:PutObject",
+         "s3:DeleteObject"
+        ],
+        "Resource": [
+         "arn:aws:s3:::sagemaker-us-east-1-1234567890/*"
+        ]
+       }
+      ]
+     },
+     "Roles": [
+      {
+       "ref": "SageMakerStudioDataScienceRole"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Policy.SageMakerCommonJobManagementPolicy",
+   "cfg": "SageMakerCommonJobManagementPolicy",
+   "type": "__declared__",
+   "refs": [
+    "SageMakerStudioDataScienceRole"
+   ],
+   "values": {
+    "type": "AWS::IAM::Policy",
+    "name": "SageMakerCommonJobManagementPolicy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "PolicyName": "SageMaker_CommonJobManagement_Policy",
+     "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Action": [
+         "sagemaker:CreateTrainingJob",
+         "sagemaker:CreateTransformJob",
+         "sagemaker:CreateProcessingJob",
+         "sagemaker:CreateAutoMLJob",
+         "sagemaker:CreateHyperParameterTuningJob"
+        ],
+        "Resource": [
+         "arn:aws:sagemaker:*:*:*/**"
+        ]
+       },
+       {
+        "Effect": "Allow",
+        "Action": [
+         "sagemaker:StopTrainingJob",
+         "sagemaker:StopTransformJob",
+         "sagemaker:StopProcessingJob",
+         "sagemaker:StopAutoMLJob",
+         "sagemaker:StopHyperParameterTuningJob",
+         "sagemaker:DescribeTrainingJob",
+         "sagemaker:DescribeTransformJob",
+         "sagemaker:DescribeProcessingJob",
+         "sagemaker:DescribeAutoMLJob",
+         "sagemaker:DescribeHyperParameterTuningJob",
+         "sagemaker:UpdateTrainingJob",
+         "sagemaker:BatchGetMetrics"
+        ],
+        "Resource": [
+         "arn:aws:sagemaker:*:*:*/**"
+        ]
+       },
+       {
+        "Effect": "Allow",
+        "Action": [
+         "sagemaker:Search",
+         "sagemaker:ListTrainingJobs",
+         "sagemaker:ListTransformJobs",
+         "sagemaker:ListProcessingJobs",
+         "sagemaker:ListAutoMLJobs",
+         "sagemaker:ListCandidatesForAutoMLJob",
+         "sagemaker:ListHyperParameterTuningJobs",
+         "sagemaker:ListTrainingJobsForHyperParameterTuningJob"
+        ],
+        "Resource": [
+         "*"
+        ]
+       },
+       {
+        "Effect": "Allow",
+        "Action": [
+         "iam:PassRole"
+        ],
+        "Resource": [
+         {
+          "ref": "SageMakerStudioDataScienceRole",
+          "attr": "Arn"
+         }
+        ],
+        "Condition": {
+         "StringEquals": {
+          "iam:PassedToService": "sagemaker.amazonaws.com"
+         }
+        }
+       }
+      ]
+     },
+     "Roles": [
+      {
+       "ref": "SageMakerStudioDataScienceRole"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Policy.SageMakerExperimentManagementandVizPolicy",
+   "cfg": "SageMakerExperimentManagementandVizPolicy",
+   "type": "__declared__",
+   "refs": [
+    "SageMakerStudioDataScienceRole"
+   ],
+   "values": {
+    "type": "AWS::IAM::Policy",
+    "name": "SageMakerExperimentManagementandVizPolicy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "PolicyName": "SageMaker_ExperimentManagementandViz_Policy",
+     "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Action": [
+         "sagemaker:AddAssociation",
+         "sagemaker:CreateAction",
+         "sagemaker:CreateArtifact",
+         "sagemaker:CreateContext",
+         "sagemaker:CreateExperiment",
+         "sagemaker:CreateTrial",
+         "sagemaker:CreateTrialComponent",
+         "sagemaker:UpdateAction",
+         "sagemaker:UpdateArtifact",
+         "sagemaker:UpdateContext",
+         "sagemaker:UpdateExperiment",
+         "sagemaker:UpdateTrial",
+         "sagemaker:UpdateTrialComponent",
+         "sagemaker:AssociateTrialComponent",
+         "sagemaker:DisassociateTrialComponent",
+         "sagemaker:DeleteAssociation",
+         "sagemaker:DeleteAction",
+         "sagemaker:DeleteArtifact",
+         "sagemaker:DeleteContext",
+         "sagemaker:DeleteExperiment",
+         "sagemaker:DeleteTrial",
+         "sagemaker:DeleteTrialComponent",
+         "sagemaker:DescribeAction",
+         "sagemaker:DescribeArtifact",
+         "sagemaker:DescribeContext",
+         "sagemaker:DescribeExperiment",
+         "sagemaker:DescribeTrial",
+         "sagemaker:DescribeTrialComponent",
+         "sagemaker:DescribeLineageGroup"
+        ],
+        "Resource": [
+         "arn:aws:sagemaker:*:*:*/*"
+        ]
+       },
+       {
+        "Effect": "Allow",
+        "Action": [
+         "sagemaker:ListAssociations",
+         "sagemaker:ListActions",
+         "sagemaker:ListArtifacts",
+         "sagemaker:ListContexts",
+         "sagemaker:ListExperiments",
+         "sagemaker:ListTrials",
+         "sagemaker:ListTrialComponents",
+         "sagemaker:ListLineageGroups",
+         "sagemaker:GetLineageGroupPolicy",
+         "sagemaker:QueryLineage",
+         "sagemaker:Search",
+         "sagemaker:GetSearchSuggestions"
+        ],
+        "Resource": [
+         "*"
+        ]
+       }
+      ]
+     },
+     "Roles": [
+      {
+       "ref": "SageMakerStudioDataScienceRole"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Policy.SageMakerModelManagementPolicy",
+   "cfg": "SageMakerModelManagementPolicy",
+   "type": "__declared__",
+   "refs": [
+    "SageMakerStudioDataScienceRole"
+   ],
+   "values": {
+    "type": "AWS::IAM::Policy",
+    "name": "SageMakerModelManagementPolicy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "PolicyName": "SageMaker_ModelManagement_Policy",
+     "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Action": [
+         "sagemaker:CreateModel"
+        ],
+        "Resource": [
+         "arn:aws:sagemaker:*:*:*/*"
+        ]
+       },
+       {
+        "Effect": "Allow",
+        "Action": [
+         "sagemaker:CreateModelPackage",
+         "sagemaker:CreateModelPackageGroup",
+         "sagemaker:DescribeModel",
+         "sagemaker:DescribeModelPackage",
+         "sagemaker:DescribeModelPackageGroup",
+         "sagemaker:BatchDescribeModelPackage",
+         "sagemaker:UpdateModelPackage",
+         "sagemaker:DeleteModel",
+         "sagemaker:DeleteModelPackage",
+         "sagemaker:DeleteModelPackageGroup"
+        ],
+        "Resource": [
+         "arn:aws:sagemaker:*:*:*/*"
+        ]
+       },
+       {
+        "Effect": "Allow",
+        "Action": [
+         "sagemaker:ListModels",
+         "sagemaker:ListModelPackages",
+         "sagemaker:ListModelPackageGroups"
+        ],
+        "Resource": [
+         "*"
+        ]
+       },
+       {
+        "Effect": "Allow",
+        "Action": [
+         "iam:PassRole"
+        ],
+        "Resource": [
+         {
+          "ref": "SageMakerStudioDataScienceRole",
+          "attr": "Arn"
+         }
+        ],
+        "Condition": {
+         "StringEquals": {
+          "iam:PassedToService": "sagemaker.amazonaws.com"
+         }
+        }
+       }
+      ]
+     },
+     "Roles": [
+      {
+       "ref": "SageMakerStudioDataScienceRole"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Policy.SageMakerStudioAppPermissionPolicy",
+   "cfg": "SageMakerStudioAppPermissionPolicy",
+   "type": "__declared__",
+   "refs": [
+    "SageMakerStudioDataScienceRole"
+   ],
+   "values": {
+    "type": "AWS::IAM::Policy",
+    "name": "SageMakerStudioAppPermissionPolicy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "PolicyName": "SageMaker_StudioAppPermission_Policy",
+     "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Sid": "SMStudioUserProfileAppPermissionsCreateAndDelete",
+        "Effect": "Allow",
+        "Action": [
+         "sagemaker:CreateApp",
+         "sagemaker:DeleteApp"
+        ],
+        "Resource": [
+         "arn:aws:sagemaker:us-east-1:123456789012:app/*"
+        ],
+        "Condition": {
+         "Null": {
+          "sagemaker:OwnerUserProfileArn": "true"
+         }
+        }
+       },
+       {
+        "Sid": "SMStudioCreatePresignedDomainUrlForUserProfile",
+        "Effect": "Allow",
+        "Action": [
+         "sagemaker:CreatePresignedDomainUrl"
+        ],
+        "Resource": [
+         "arn:aws:sagemaker:us-east-1:123456789012:user-profile/${sagemaker:DomainId}/${sagemaker:UserProfileName}"
+        ]
+       },
+       {
+        "Sid": "SMStudioAppPermissionsListAndDescribe",
+        "Effect": "Allow",
+        "Action": [
+         "sagemaker:ListApps",
+         "sagemaker:ListDomains",
+         "sagemaker:ListUserProfiles",
+         "sagemaker:ListSpaces",
+         "sagemaker:DescribeApp",
+         "sagemaker:DescribeDomain",
+         "sagemaker:DescribeUserProfile",
+         "sagemaker:DescribeSpace"
+        ],
+        "Resource": [
+         "*"
+        ]
+       },
+       {
+        "Sid": "SMStudioAppPermissionsTagOnCreate",
+        "Effect": "Allow",
+        "Action": [
+         "sagemaker:AddTags"
+        ],
+        "Resource": [
+         "arn:aws:sagemaker:us-east-1:123456789012:*/*"
+        ],
+        "Condition": {
+         "Null": {
+          "sagemaker:TaggingAction": "false"
+         }
+        }
+       },
+       {
+        "Sid": "SMStudioRestrictSharedSpacesWithoutOwners",
+        "Effect": "Allow",
+        "Action": [
+         "sagemaker:CreateSpace",
+         "sagemaker:UpdateSpace",
+         "sagemaker:DeleteSpace"
+        ],
+        "Resource": [
+         "arn:aws:sagemaker:us-east-1:123456789012:space/${sagemaker:DomainId}/*"
+        ],
+        "Condition": {
+         "Null": {
+          "sagemaker:OwnerUserProfileArn": "true"
+         }
+        }
+       },
+       {
+        "Sid": "SMStudioRestrictSpacesToOwnerUserProfile",
+        "Effect": "Allow",
+        "Action": [
+         "sagemaker:CreateSpace",
+         "sagemaker:UpdateSpace",
+         "sagemaker:DeleteSpace"
+        ],
+        "Resource": [
+         "arn:aws:sagemaker:us-east-1:123456789012:space/${sagemaker:DomainId}/*"
+        ],
+        "Condition": {
+         "ArnLike": {
+          "sagemaker:OwnerUserProfileArn": [
+           "arn:aws:sagemaker:us-east-1:123456789012:user-profile/${sagemaker:DomainId}/*"
+          ]
+         },
+         "StringEquals": {
+          "sagemaker:SpaceSharingType": [
+           "Private",
+           "Shared"
+          ]
+         }
+        }
+       },
+       {
+        "Sid": "SMStudioRestrictCreatePrivateSpaceAppsToOwnerUserProfile",
+        "Effect": "Allow",
+        "Action": [
+         "sagemaker:CreateApp",
+         "sagemaker:DeleteApp"
+        ],
+        "Resource": [
+         "arn:aws:sagemaker:us-east-1:123456789012:app/${sagemaker:DomainId}/*"
+        ],
+        "Condition": {
+         "ArnLike": {
+          "sagemaker:OwnerUserProfileArn": [
+           "arn:aws:sagemaker:us-east-1:123456789012:user-profile/${sagemaker:DomainId}/${sagemaker:UserProfileName}"
+          ]
+         },
+         "StringEquals": {
+          "sagemaker:SpaceSharingType": [
+           "Private"
+          ]
+         }
+        }
+       },
+       {
+        "Sid": "AllowAppActionsForSharedSpaces",
+        "Effect": "Allow",
+        "Action": [
+         "sagemaker:CreateApp",
+         "sagemaker:DeleteApp"
+        ],
+        "Resource": [
+         "arn:aws:sagemaker:*:*:app/${sagemaker:DomainId}/*/*/*"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "sagemaker:SpaceSharingType": [
+           "Shared"
+          ]
+         }
+        }
+       }
+      ]
+     },
+     "Roles": [
+      {
+       "ref": "SageMakerStudioDataScienceRole"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SageMaker::Domain.SageMakerStudioVPCOnlyDomain",
+   "cfg": "SageMakerStudioVPCOnlyDomain",
+   "type": "__declared__",
+   "refs": [
+    "SageMakerSecurityGroup",
+    "SageMakerStudioDataScienceRole",
+    "SageMakerSubnet",
+    "SageMakerVpc"
+   ],
+   "values": {
+    "type": "AWS::SageMaker::Domain",
+    "name": "SageMakerStudioVPCOnlyDomain",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AppNetworkAccessType": "VpcOnly",
+     "AuthMode": "IAM",
+     "DomainName": "MyExampleDomain",
+     "SubnetIds": [
+      {
+       "ref": "SageMakerSubnet"
+      }
+     ],
+     "VpcId": {
+      "ref": "SageMakerVpc"
+     },
+     "DefaultUserSettings": {
+      "SecurityGroups": [
+       {
+        "ref": "SageMakerSecurityGroup"
+       }
+      ],
+      "ExecutionRole": {
+       "ref": "SageMakerStudioDataScienceRole",
+       "attr": "Arn"
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SageMaker::UserProfile.UserProfile",
+   "cfg": "UserProfile",
+   "type": "__declared__",
+   "refs": [
+    "SageMakerStudioDataScienceRole",
+    "SageMakerStudioVPCOnlyDomain"
+   ],
+   "values": {
+    "type": "AWS::SageMaker::UserProfile",
+    "name": "UserProfile",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "DomainId": {
+      "ref": "SageMakerStudioVPCOnlyDomain"
+     },
+     "UserProfileName": "data-scientist",
+     "UserSettings": {
+      "ExecutionRole": {
+       "ref": "SageMakerStudioDataScienceRole",
+       "attr": "Arn"
+      }
+     }
+    }
+   }
+  }
+ ]
+}

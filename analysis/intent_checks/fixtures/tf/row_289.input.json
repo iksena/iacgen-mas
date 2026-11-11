@@ -1,0 +1,513 @@
+{
+ "meta": {
+  "lang": "tf",
+  "mode": "plan",
+  "warnings": [],
+  "gt_hash": "e770047074b4fca67c74295a0723d17580e5a9f2d06654f6476838349bc5ff8d",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "data.aws_iam_policy_document.this",
+   "cfg": "data.aws_iam_policy_document.this",
+   "type": "data.aws_iam_policy_document",
+   "values": {
+    "override_json": null,
+    "override_policy_documents": null,
+    "policy_id": null,
+    "source_json": null,
+    "source_policy_documents": null,
+    "statement": [
+     {
+      "actions": [
+       "ecs:RunTask"
+      ],
+      "condition": [],
+      "effect": "Allow",
+      "not_actions": null,
+      "not_principals": [],
+      "not_resources": null,
+      "principals": [],
+      "resources": [
+       "*"
+      ],
+      "sid": null
+     },
+     {
+      "actions": [
+       "iam:PassRole"
+      ],
+      "condition": [],
+      "effect": "Allow",
+      "not_actions": null,
+      "not_principals": [],
+      "not_resources": null,
+      "principals": [],
+      "resources": [
+       null
+      ],
+      "sid": null
+     }
+    ],
+    "version": null
+   },
+   "refs": [
+    "aws_iam_role.ecs_tasks"
+   ]
+  },
+  {
+   "id": "aws_iam_policy.events",
+   "cfg": "aws_iam_policy.events",
+   "type": "aws_iam_policy",
+   "values": {
+    "description": "Policy for ECS.",
+    "name": "ecs-policy",
+    "path": "/",
+    "tags": null
+   },
+   "refs": [
+    "data.aws_iam_policy_document.this"
+   ]
+  },
+  {
+   "id": "aws_iam_role.ecs",
+   "cfg": "aws_iam_role.ecs",
+   "type": "aws_iam_role",
+   "values": {
+    "assume_role_policy": "{\"Statement\":[{\"Action\":\"sts:AssumeRole\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"ecs.amazonaws.com\"},\"Sid\":\"\"}],\"Version\":\"2012-10-17\"}",
+    "description": "Role for ECS.",
+    "force_detach_policies": true,
+    "max_session_duration": 3600,
+    "name": "ecs-role",
+    "path": "/",
+    "permissions_boundary": null,
+    "tags": null
+   },
+   "refs": [
+    "data.aws_default_tags.provider"
+   ]
+  },
+  {
+   "id": "aws_iam_role.ecs_tasks",
+   "cfg": "aws_iam_role.ecs_tasks",
+   "type": "aws_iam_role",
+   "values": {
+    "assume_role_policy": "{\"Statement\":[{\"Action\":\"sts:AssumeRole\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"ecs-tasks.amazonaws.com\"},\"Sid\":\"\"}],\"Version\":\"2012-10-17\"}",
+    "description": "Role for ECS Task.",
+    "force_detach_policies": true,
+    "max_session_duration": 3600,
+    "name": "ecs-tasks-role",
+    "path": "/",
+    "permissions_boundary": null,
+    "tags": null
+   },
+   "refs": [
+    "data.aws_default_tags.provider"
+   ]
+  },
+  {
+   "id": "aws_iam_role.events",
+   "cfg": "aws_iam_role.events",
+   "type": "aws_iam_role",
+   "values": {
+    "assume_role_policy": "{\"Statement\":[{\"Action\":\"sts:AssumeRole\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"events.amazonaws.com\"}}],\"Version\":\"2012-10-17\"}",
+    "description": "Role for Events.",
+    "force_detach_policies": true,
+    "max_session_duration": 3600,
+    "name": "events-role",
+    "path": "/",
+    "permissions_boundary": null,
+    "tags": null
+   },
+   "refs": [
+    "data.aws_default_tags.provider"
+   ]
+  },
+  {
+   "id": "aws_iam_role_policy_attachment.cloudwatch_logs",
+   "cfg": "aws_iam_role_policy_attachment.cloudwatch_logs",
+   "type": "aws_iam_role_policy_attachment",
+   "values": {
+    "policy_arn": "arn:aws:iam::aws:policy/CloudWatchLogsFullAccess",
+    "role": "events-role"
+   },
+   "refs": [
+    "aws_iam_role.events"
+   ]
+  },
+  {
+   "id": "aws_iam_role_policy_attachment.ecs",
+   "cfg": "aws_iam_role_policy_attachment.ecs",
+   "type": "aws_iam_role_policy_attachment",
+   "values": {
+    "policy_arn": "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceRole",
+    "role": "ecs-role"
+   },
+   "refs": [
+    "aws_iam_role.ecs"
+   ]
+  },
+  {
+   "id": "aws_iam_role_policy_attachment.ecs_tasks",
+   "cfg": "aws_iam_role_policy_attachment.ecs_tasks",
+   "type": "aws_iam_role_policy_attachment",
+   "values": {
+    "policy_arn": "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy",
+    "role": "ecs-tasks-role"
+   },
+   "refs": [
+    "aws_iam_role.ecs_tasks"
+   ]
+  },
+  {
+   "id": "aws_iam_role_policy_attachment.events",
+   "cfg": "aws_iam_role_policy_attachment.events",
+   "type": "aws_iam_role_policy_attachment",
+   "values": {
+    "role": "events-role"
+   },
+   "refs": [
+    "aws_iam_policy.events",
+    "aws_iam_role.events"
+   ]
+  },
+  {
+   "id": "__parameter__.aws_iam_policy",
+   "cfg": "__parameter__.aws_iam_policy",
+   "type": "__parameter__",
+   "values": {
+    "name": "aws_iam_policy",
+    "default": {
+     "events": {
+      "description": "Policy for ECS.",
+      "name": "ecs-policy",
+      "path": "/"
+     }
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.aws_iam_role",
+   "cfg": "__parameter__.aws_iam_role",
+   "type": "__parameter__",
+   "values": {
+    "name": "aws_iam_role",
+    "default": {
+     "ecs": {
+      "description": "Role for ECS.",
+      "name": "ecs-role",
+      "path": "/"
+     },
+     "ecs_tasks": {
+      "description": "Role for ECS Task.",
+      "name": "ecs-tasks-role",
+      "path": "/"
+     },
+     "events": {
+      "description": "Role for Events.",
+      "name": "events-role",
+      "path": "/"
+     }
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.tags",
+   "cfg": "__parameter__.tags",
+   "type": "__parameter__",
+   "values": {
+    "name": "tags",
+    "default": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.ecs_arn",
+   "cfg": "__output__.ecs_arn",
+   "type": "__output__",
+   "values": {
+    "name": "ecs_arn",
+    "value": null,
+    "description": "Amazon Resource Name (ARN) specifying the role."
+   },
+   "refs": [
+    "aws_iam_role.ecs"
+   ]
+  },
+  {
+   "id": "__output__.ecs_name",
+   "cfg": "__output__.ecs_name",
+   "type": "__output__",
+   "values": {
+    "name": "ecs_name",
+    "value": "ecs-role",
+    "description": "Name of the role."
+   },
+   "refs": [
+    "aws_iam_role.ecs"
+   ]
+  },
+  {
+   "id": "__output__.ecs_tasks_arn",
+   "cfg": "__output__.ecs_tasks_arn",
+   "type": "__output__",
+   "values": {
+    "name": "ecs_tasks_arn",
+    "value": null,
+    "description": "Amazon Resource Name (ARN) specifying the role."
+   },
+   "refs": [
+    "aws_iam_role.ecs_tasks"
+   ]
+  },
+  {
+   "id": "__output__.ecs_tasks_name",
+   "cfg": "__output__.ecs_tasks_name",
+   "type": "__output__",
+   "values": {
+    "name": "ecs_tasks_name",
+    "value": "ecs-tasks-role",
+    "description": "Name of the role."
+   },
+   "refs": [
+    "aws_iam_role.ecs_tasks"
+   ]
+  },
+  {
+   "id": "__output__.events_arn",
+   "cfg": "__output__.events_arn",
+   "type": "__output__",
+   "values": {
+    "name": "events_arn",
+    "value": null,
+    "description": "Amazon Resource Name (ARN) specifying the role."
+   },
+   "refs": [
+    "aws_iam_role.events"
+   ]
+  },
+  {
+   "id": "__output__.events_name",
+   "cfg": "__output__.events_name",
+   "type": "__output__",
+   "values": {
+    "name": "events_name",
+    "value": "events-role",
+    "description": "Name of the role."
+   },
+   "refs": [
+    "aws_iam_role.events"
+   ]
+  },
+  {
+   "id": "__declared__.data.aws_default_tags.provider",
+   "cfg": "data.aws_default_tags.provider",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "data.aws_default_tags",
+    "name": "provider",
+    "gated": false,
+    "gate": null,
+    "properties": {}
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role.ecs",
+   "cfg": "aws_iam_role.ecs",
+   "type": "__declared__",
+   "refs": [
+    "data.aws_default_tags.provider"
+   ],
+   "values": {
+    "type": "aws_iam_role",
+    "name": "ecs",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "description": "${lookup(var.aws_iam_role.ecs,\"description\",None)}",
+     "name": "${lookup(var.aws_iam_role.ecs,\"name\")}",
+     "assume_role_policy": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Action\": \"sts:AssumeRole\",\n      \"Principal\": {\n        \"Service\": \"ecs.amazonaws.com\"\n      },\n      \"Effect\": \"Allow\",\n      \"Sid\": \"\"\n    }\n  ]\n}",
+     "force_detach_policies": true,
+     "path": "${lookup(var.aws_iam_role.ecs,\"path\",\"/\")}",
+     "tags": "${local.tags}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role_policy_attachment.ecs",
+   "cfg": "aws_iam_role_policy_attachment.ecs",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_role.ecs"
+   ],
+   "values": {
+    "type": "aws_iam_role_policy_attachment",
+    "name": "ecs",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "role": "${aws_iam_role.ecs.name}",
+     "policy_arn": "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceRole"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role.ecs_tasks",
+   "cfg": "aws_iam_role.ecs_tasks",
+   "type": "__declared__",
+   "refs": [
+    "data.aws_default_tags.provider"
+   ],
+   "values": {
+    "type": "aws_iam_role",
+    "name": "ecs_tasks",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "description": "${lookup(var.aws_iam_role.ecs_tasks,\"description\",None)}",
+     "name": "${lookup(var.aws_iam_role.ecs_tasks,\"name\")}",
+     "assume_role_policy": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Action\": \"sts:AssumeRole\",\n      \"Principal\": {\n        \"Service\": \"ecs-tasks.amazonaws.com\"\n      },\n      \"Effect\": \"Allow\",\n      \"Sid\": \"\"\n    }\n  ]\n}",
+     "force_detach_policies": true,
+     "path": "${lookup(var.aws_iam_role.ecs_tasks,\"path\",\"/\")}",
+     "tags": "${local.tags}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role_policy_attachment.ecs_tasks",
+   "cfg": "aws_iam_role_policy_attachment.ecs_tasks",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_role.ecs_tasks"
+   ],
+   "values": {
+    "type": "aws_iam_role_policy_attachment",
+    "name": "ecs_tasks",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "role": "${aws_iam_role.ecs_tasks.name}",
+     "policy_arn": "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role.events",
+   "cfg": "aws_iam_role.events",
+   "type": "__declared__",
+   "refs": [
+    "data.aws_default_tags.provider"
+   ],
+   "values": {
+    "type": "aws_iam_role",
+    "name": "events",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "description": "${lookup(var.aws_iam_role.events,\"description\",None)}",
+     "name": "${lookup(var.aws_iam_role.events,\"name\")}",
+     "assume_role_policy": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Action\": \"sts:AssumeRole\",\n      \"Principal\": {\n        \"Service\": \"events.amazonaws.com\"\n      },\n      \"Effect\": \"Allow\"\n    }\n  ]\n}",
+     "force_detach_policies": true,
+     "path": "${lookup(var.aws_iam_role.events,\"path\",\"/\")}",
+     "tags": "${local.tags}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.data.aws_iam_policy_document.this",
+   "cfg": "data.aws_iam_policy_document.this",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_role.ecs_tasks"
+   ],
+   "values": {
+    "type": "data.aws_iam_policy_document",
+    "name": "this",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "statement": [
+      {
+       "effect": "Allow",
+       "actions": [
+        "ecs:RunTask"
+       ],
+       "resources": [
+        "*"
+       ]
+      },
+      {
+       "effect": "Allow",
+       "actions": [
+        "iam:PassRole"
+       ],
+       "resources": [
+        "${aws_iam_role.ecs_tasks.arn}"
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_policy.events",
+   "cfg": "aws_iam_policy.events",
+   "type": "__declared__",
+   "refs": [
+    "data.aws_iam_policy_document.this"
+   ],
+   "values": {
+    "type": "aws_iam_policy",
+    "name": "events",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "description": "${lookup(var.aws_iam_policy.events,\"description\",None)}",
+     "name": "${lookup(var.aws_iam_policy.events,\"name\")}",
+     "path": "${lookup(var.aws_iam_policy.events,\"path\",\"/\")}",
+     "policy": "${data.aws_iam_policy_document.this.json}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role_policy_attachment.events",
+   "cfg": "aws_iam_role_policy_attachment.events",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_policy.events",
+    "aws_iam_role.events"
+   ],
+   "values": {
+    "type": "aws_iam_role_policy_attachment",
+    "name": "events",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "role": "${aws_iam_role.events.name}",
+     "policy_arn": "${aws_iam_policy.events.arn}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role_policy_attachment.cloudwatch_logs",
+   "cfg": "aws_iam_role_policy_attachment.cloudwatch_logs",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_role.events"
+   ],
+   "values": {
+    "type": "aws_iam_role_policy_attachment",
+    "name": "cloudwatch_logs",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "role": "${aws_iam_role.events.name}",
+     "policy_arn": "arn:aws:iam::aws:policy/CloudWatchLogsFullAccess"
+    }
+   }
+  }
+ ]
+}

@@ -1,0 +1,519 @@
+{
+  "lang": "cfn",
+  "row_number": 203,
+  "source_hash": {
+    "gt": "e073064596fef53a50832d50c3716855bc81c5f3a73aaf0444624387190128e5",
+    "prompt": "e28695f35661b86994b21c2726af40135d445f13967aabe42780b038bb39aa67"
+  },
+  "selectors": {
+    "subnets": {
+      "types": [
+        "AWS::EC2::Subnet"
+      ]
+    },
+    "rt": {
+      "types": [
+        "AWS::EC2::RouteTable"
+      ]
+    },
+    "nat_routes": {
+      "types": [
+        "AWS::EC2::Route"
+      ],
+      "where": [
+        {
+          "path": "DestinationCidrBlock",
+          "op": "eq",
+          "value": "0.0.0.0/0"
+        },
+        {
+          "path": "NatGatewayId",
+          "op": "present"
+        }
+      ]
+    },
+    "ep": {
+      "types": [
+        "AWS::EC2::VPCEndpoint"
+      ]
+    },
+    "out": {
+      "types": [
+        "__output__"
+      ]
+    },
+    "sa": {
+      "types": [
+        "AWS::EC2::Subnet"
+      ],
+      "where": [
+        {
+          "path": "CidrBlock",
+          "op": "eq",
+          "value": "10.24.24.0/24"
+        },
+        {
+          "path": "AvailabilityZone",
+          "op": "eq",
+          "value": "us-east-1a"
+        }
+      ]
+    },
+    "sb": {
+      "types": [
+        "AWS::EC2::Subnet"
+      ],
+      "where": [
+        {
+          "path": "CidrBlock",
+          "op": "eq",
+          "value": "10.24.25.0/24"
+        },
+        {
+          "path": "AvailabilityZone",
+          "op": "eq",
+          "value": "us-east-1b"
+        }
+      ]
+    },
+    "sc": {
+      "types": [
+        "AWS::EC2::Subnet"
+      ],
+      "where": [
+        {
+          "path": "CidrBlock",
+          "op": "eq",
+          "value": "10.24.26.0/24"
+        },
+        {
+          "path": "AvailabilityZone",
+          "op": "eq",
+          "value": "us-east-1c"
+        }
+      ]
+    },
+    "priv": {
+      "types": [
+        "AWS::EC2::Subnet"
+      ],
+      "where": [
+        {
+          "path": "CidrBlock",
+          "op": "in",
+          "value": [
+            "10.24.24.0/24",
+            "10.24.25.0/24",
+            "10.24.26.0/24"
+          ]
+        }
+      ]
+    }
+  },
+  "checks": [
+    {
+      "id": "sub_a",
+      "tier": "core",
+      "quote": "(10.24.24.0/24, 10.24.25.0/24, and 10.24.26.0/24) in us-east-1a, us-east-1b, and us-east-1c respectively",
+      "kind": "exists",
+      "select": "sa"
+    },
+    {
+      "id": "sub_b",
+      "tier": "core",
+      "quote": "(10.24.24.0/24, 10.24.25.0/24, and 10.24.26.0/24) in us-east-1a, us-east-1b, and us-east-1c respectively",
+      "kind": "exists",
+      "select": "sb"
+    },
+    {
+      "id": "sub_c",
+      "tier": "core",
+      "quote": "(10.24.24.0/24, 10.24.25.0/24, and 10.24.26.0/24) in us-east-1a, us-east-1b, and us-east-1c respectively",
+      "kind": "exists",
+      "select": "sc"
+    },
+    {
+      "id": "route_tables",
+      "tier": "core",
+      "quote": "Each subnet requires its own route table",
+      "kind": "exists",
+      "select": "rt",
+      "min": 3,
+      "justify": "three subnets, each with its own route table"
+    },
+    {
+      "id": "nat_default_routes",
+      "tier": "core",
+      "quote": "a default route pointing to a NAT gateway",
+      "kind": "exists",
+      "select": "nat_routes",
+      "distinct_path": "RouteTableId",
+      "min": 3,
+      "justify": "one default route per subnet route table"
+    },
+    {
+      "id": "nat_distinct",
+      "tier": "core",
+      "quote": "provided via three specific NAT gateway parameters, one for each AZ",
+      "kind": "exists",
+      "select": "nat_routes",
+      "distinct_path": "NatGatewayId",
+      "min": 3,
+      "justify": "three NAT gateways, one per AZ"
+    },
+    {
+      "id": "rt_assoc",
+      "tier": "core",
+      "quote": "Each subnet requires its own route table",
+      "kind": "all_of",
+      "checks": [
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "AWS::EC2::SubnetRouteTableAssociation"
+            ]
+          },
+          "to": "sa"
+        },
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "AWS::EC2::SubnetRouteTableAssociation"
+            ]
+          },
+          "to": "sb"
+        },
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "AWS::EC2::SubnetRouteTableAssociation"
+            ]
+          },
+          "to": "sc"
+        }
+      ]
+    },
+    {
+      "id": "nacl_assoc",
+      "tier": "core",
+      "quote": "each subnet must be associated with a provided network ACL parameter",
+      "kind": "all_of",
+      "checks": [
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "AWS::EC2::SubnetNetworkAclAssociation"
+            ]
+          },
+          "to": "sa"
+        },
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "AWS::EC2::SubnetNetworkAclAssociation"
+            ]
+          },
+          "to": "sb"
+        },
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "AWS::EC2::SubnetNetworkAclAssociation"
+            ]
+          },
+          "to": "sc"
+        }
+      ]
+    },
+    {
+      "id": "s3_endpoint",
+      "tier": "core",
+      "quote": "provision an S3 VPC endpoint",
+      "kind": "exists",
+      "select": {
+        "types": [
+          "AWS::EC2::VPCEndpoint"
+        ],
+        "where": [
+          {
+            "path": "ServiceName",
+            "op": "regex",
+            "value": "(?i)\\.s3$"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ep_routes",
+      "tier": "core",
+      "quote": "attached to all three route tables",
+      "kind": "attr",
+      "select": "ep",
+      "cond": {
+        "path": "RouteTableIds",
+        "op": "len_gte",
+        "value": 3
+      }
+    },
+    {
+      "id": "ep_policy",
+      "tier": "detail",
+      "quote": "with a full-access policy",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "ep",
+          "cond": {
+            "path": "PolicyDocument.Statement.*.Action.*",
+            "op": "glob_covers",
+            "value": "s3:*"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "ep",
+          "cond": {
+            "path": "PolicyDocument",
+            "op": "absent"
+          }
+        }
+      ],
+      "justify": "full access means every S3 action (s3:* or *); an omitted endpoint policy defaults to full access"
+    },
+    {
+      "id": "out_subnets",
+      "tier": "detail",
+      "quote": "a comma-separated list of the private subnet IDs",
+      "kind": "ref",
+      "from": {
+        "types": [
+          "__output__"
+        ],
+        "where": [
+          {
+            "path": "value",
+            "op": "regex",
+            "value": "(?i)(fn::join|,)"
+          }
+        ]
+      },
+      "to": "subnets",
+      "justify": "a comma-separated list is an Fn::Join or a comma-joined string"
+    },
+    {
+      "id": "out_rts",
+      "tier": "detail",
+      "quote": "the route table IDs",
+      "kind": "ref",
+      "from": {
+        "types": [
+          "__output__"
+        ],
+        "where": [
+          {
+            "path": "value",
+            "op": "regex",
+            "value": "(?i)(fn::join|,)"
+          }
+        ]
+      },
+      "to": "rt",
+      "justify": "a comma-separated list is an Fn::Join or a comma-joined string"
+    },
+    {
+      "id": "out_cidr",
+      "tier": "detail",
+      "quote": "the subnet group CIDR (10.24.24.0/21)",
+      "kind": "attr",
+      "select": "out",
+      "cond": {
+        "path": "value",
+        "op": "eq",
+        "value": "10.24.24.0/21"
+      }
+    },
+    {
+      "id": "exports",
+      "tier": "detail",
+      "quote": "using export names constructed dynamically from the region and stack name",
+      "kind": "exists",
+      "select": {
+        "types": [
+          "__output__"
+        ],
+        "where": [
+          {
+            "path": "export",
+            "op": "present"
+          }
+        ]
+      },
+      "min": 3,
+      "justify": "three exported values"
+    },
+    {
+      "id": "export_names",
+      "tier": "detail",
+      "quote": "using export names constructed dynamically from the region and stack name",
+      "kind": "attr",
+      "select": {
+        "types": [
+          "__output__"
+        ],
+        "where": [
+          {
+            "path": "export",
+            "op": "present"
+          }
+        ]
+      },
+      "quantifier": "all",
+      "cond": {
+        "path": "export",
+        "op": "regex",
+        "value": "(?i)us-east-1.*stack|stack.*us-east-1"
+      },
+      "justify": "export name built from the region and the stack name, whose pseudo-parameter values resolve to us-east-1 and the adapter stack name"
+    },
+    {
+      "id": "tags",
+      "tier": "detail",
+      "quote": "Tag all resources using the stack name and meaningful resource names",
+      "kind": "attr",
+      "select": "priv",
+      "quantifier": "all",
+      "cond": {
+        "path": "Tags.*.Key",
+        "op": "eq",
+        "value": "Name"
+      },
+      "justify": "a meaningful resource name is the Name tag"
+    },
+    {
+      "id": "tags_stack",
+      "tier": "detail",
+      "quote": "Tag all resources using the stack name",
+      "kind": "attr",
+      "select": "priv",
+      "quantifier": "all",
+      "cond": {
+        "path": "Tags.*.Value",
+        "op": "regex",
+        "value": "(?i)\\bstack\\b"
+      },
+      "justify": "AWS::StackName resolves to the adapter stack name 'stack'; the prompt asks for tags using the stack name"
+    },
+    {
+      "id": "x_nopublic",
+      "kind": "attr",
+      "select": "priv",
+      "quantifier": "all",
+      "tier": "extra",
+      "cond": {
+        "path": "MapPublicIpOnLaunch",
+        "op": "none_eq",
+        "value": true
+      }
+    },
+    {
+      "id": "x_endpoint_allow",
+      "kind": "attr",
+      "select": {
+        "types": [
+          "AWS::EC2::VPCEndpoint"
+        ]
+      },
+      "tier": "extra",
+      "cond": {
+        "path": "PolicyDocument.Statement.*.Effect",
+        "op": "eq",
+        "value": "Allow"
+      }
+    },
+    {
+      "id": "extra_type_aws_ec2_eip",
+      "kind": "exists",
+      "tier": "extra",
+      "select": {
+        "types": [
+          "AWS::EC2::EIP"
+        ],
+        "where": []
+      }
+    },
+    {
+      "id": "extra_type_aws_ec2_internetgateway",
+      "kind": "exists",
+      "tier": "extra",
+      "select": {
+        "types": [
+          "AWS::EC2::InternetGateway"
+        ],
+        "where": []
+      }
+    },
+    {
+      "id": "extra_type_aws_ec2_natgateway",
+      "kind": "exists",
+      "tier": "extra",
+      "select": {
+        "types": [
+          "AWS::EC2::NatGateway"
+        ],
+        "where": []
+      }
+    },
+    {
+      "id": "extra_type_aws_ec2_networkacl",
+      "kind": "exists",
+      "tier": "extra",
+      "select": {
+        "types": [
+          "AWS::EC2::NetworkAcl"
+        ],
+        "where": []
+      }
+    },
+    {
+      "id": "extra_type_aws_ec2_networkaclentry",
+      "kind": "exists",
+      "tier": "extra",
+      "select": {
+        "types": [
+          "AWS::EC2::NetworkAclEntry"
+        ],
+        "where": []
+      }
+    },
+    {
+      "id": "extra_type_aws_ec2_vpc",
+      "kind": "exists",
+      "tier": "extra",
+      "select": {
+        "types": [
+          "AWS::EC2::VPC"
+        ],
+        "where": []
+      }
+    },
+    {
+      "id": "extra_type_aws_ec2_vpcgatewayattachment",
+      "kind": "exists",
+      "tier": "extra",
+      "select": {
+        "types": [
+          "AWS::EC2::VPCGatewayAttachment"
+        ],
+        "where": []
+      }
+    }
+  ],
+  "notes": "PROMPT_GT_MISMATCH: the prompt says the VPC ID, three NAT Gateway IDs and Network ACL ID are accepted as parameters, but the ground truth declares no parameters and builds its own VPC, NAT gateways and NACL. No parameter checks are written, and the NAT/NACL/route checks accept either a referenced or a parameter-supplied value. Output shape for export name uses adapter pseudo-parameter values. Route-table and NACL associations are bound to each of the three stated subnets; 'its own route table' is enforced by three distinct route tables holding NAT default routes. Tags are checked on the three private subnets only: the ground truth's own public subnets and route tables carry no stack-name tag. The automatic extra_type_* checks for VPC, NAT gateway, NACL, EIP, IGW and attachment reward the ground truth's self-built network, which the prompt says is supplied as parameters. Candidate review (5 templates): all pass every core check; 4 of 5 build their own VPC/NAT/NACL like the ground truth."
+}

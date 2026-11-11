@@ -1,0 +1,649 @@
+package intent.tf.row_142
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {
+  "users": {
+   "types": [
+    "aws_iam_user"
+   ],
+   "where": []
+  },
+  "keys": {
+   "types": [
+    "aws_iam_access_key"
+   ],
+   "where": []
+  },
+  "policies": {
+   "types": [
+    "aws_iam_user_policy"
+   ],
+   "where": []
+  }
+ },
+ "checks": [
+  {
+   "id": "users_named",
+   "kind": "all_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_iam_user"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "eq",
+        "value": "loadbalancer"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_iam_user"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "eq",
+        "value": "loadbalancer2"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_iam_user"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "eq",
+        "value": "loadbalancer3"
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "three system IAM users named \"loadbalancer\", \"loadbalancer2\", and \"loadbalancer3\""
+  },
+  {
+   "id": "users_path",
+   "kind": "attr",
+   "tier": "core",
+   "select": "users",
+   "cond": {
+    "path": [
+     "path"
+    ],
+    "op": "eq",
+    "value": "/system/"
+   },
+   "quantifier": "all",
+   "quote": "all created under the path \"/system/\""
+  },
+  {
+   "id": "access_keys",
+   "kind": "all_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_iam_access_key"
+      ],
+      "where": [
+       {
+        "path": [
+         "user"
+        ],
+        "op": "eq",
+        "value": "loadbalancer"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_iam_access_key"
+      ],
+      "where": [
+       {
+        "path": [
+         "user"
+        ],
+        "op": "eq",
+        "value": "loadbalancer2"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_iam_access_key"
+      ],
+      "where": [
+       {
+        "path": [
+         "user"
+        ],
+        "op": "eq",
+        "value": "loadbalancer3"
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "equipped with active programmatic access keys"
+  },
+  {
+   "id": "keys_active",
+   "kind": "attr",
+   "tier": "detail",
+   "select": "keys",
+   "cond": {
+    "path": [
+     "status"
+    ],
+    "op": "eq",
+    "value": "Active"
+   },
+   "quantifier": "all",
+   "quote": "equipped with active programmatic access keys"
+  },
+  {
+   "id": "policies_loadbalancer",
+   "kind": "all_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_iam_user_policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "eq",
+        "value": "test"
+       },
+       {
+        "path": [
+         "user"
+        ],
+        "op": "eq",
+        "value": "loadbalancer"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_iam_user_policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "eq",
+        "value": "test2"
+       },
+       {
+        "path": [
+         "user"
+        ],
+        "op": "eq",
+        "value": "loadbalancer"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_iam_user_policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "eq",
+        "value": "test3"
+       },
+       {
+        "path": [
+         "user"
+        ],
+        "op": "eq",
+        "value": "loadbalancer"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_iam_user_policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "eq",
+        "value": "test4"
+       },
+       {
+        "path": [
+         "user"
+        ],
+        "op": "eq",
+        "value": "loadbalancer"
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "user \"loadbalancer\" must have inline policies named \"test\", \"test2\", \"test3\", and \"test4\""
+  },
+  {
+   "id": "policies_loadbalancer2",
+   "kind": "all_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_iam_user_policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "eq",
+        "value": "test2"
+       },
+       {
+        "path": [
+         "user"
+        ],
+        "op": "eq",
+        "value": "loadbalancer2"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_iam_user_policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "eq",
+        "value": "test22"
+       },
+       {
+        "path": [
+         "user"
+        ],
+        "op": "eq",
+        "value": "loadbalancer2"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_iam_user_policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "eq",
+        "value": "test23"
+       },
+       {
+        "path": [
+         "user"
+        ],
+        "op": "eq",
+        "value": "loadbalancer2"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_iam_user_policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "eq",
+        "value": "test24"
+       },
+       {
+        "path": [
+         "user"
+        ],
+        "op": "eq",
+        "value": "loadbalancer2"
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "user \"loadbalancer2\" must have inline policies named \"test2\", \"test22\", \"test23\", and \"test24\""
+  },
+  {
+   "id": "policies_loadbalancer3",
+   "kind": "all_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_iam_user_policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "eq",
+        "value": "test3"
+       },
+       {
+        "path": [
+         "user"
+        ],
+        "op": "eq",
+        "value": "loadbalancer3"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_iam_user_policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "eq",
+        "value": "test32"
+       },
+       {
+        "path": [
+         "user"
+        ],
+        "op": "eq",
+        "value": "loadbalancer3"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_iam_user_policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "eq",
+        "value": "test33"
+       },
+       {
+        "path": [
+         "user"
+        ],
+        "op": "eq",
+        "value": "loadbalancer3"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_iam_user_policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "eq",
+        "value": "test34"
+       },
+       {
+        "path": [
+         "user"
+        ],
+        "op": "eq",
+        "value": "loadbalancer3"
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "user \"loadbalancer3\" must have inline policies named \"test3\", \"test32\", \"test33\", and \"test34\""
+  },
+  {
+   "id": "policy_describe",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "policies",
+     "cond": {
+      "path": [
+       "policy"
+      ],
+      "op": "regex",
+      "value": "(?i)ec2:Describe\\*"
+     },
+     "quantifier": "all"
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_iam_user_policy"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "policy"
+      ],
+      "op": "regex",
+      "value": "(?i)ec2:Describe\\*"
+     },
+     "quantifier": "all"
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "in",
+        "value": [
+         "data.aws_iam_policy_document"
+        ]
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties"
+      ],
+      "op": "regex",
+      "value": "(?i)ec2:Describe\\*"
+     },
+     "quantifier": "all"
+    }
+   ],
+   "quote": "granting \"ec2:Describe*\" permissions"
+  },
+  {
+   "id": "policy_all_resources",
+   "kind": "any_of",
+   "tier": "detail",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "policies",
+     "cond": {
+      "path": [
+       "policy"
+      ],
+      "op": "regex",
+      "value": "(?i)Resource\"?\\s*[:=]\\s*\\[?\\s*\\\\?\"\\*"
+     },
+     "quantifier": "all"
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_iam_user_policy"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "policy"
+      ],
+      "op": "regex",
+      "value": "(?i)Resource\"?\\s*[:=]\\s*\\[?\\s*\\\\?\"\\*"
+     },
+     "quantifier": "all"
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "in",
+        "value": [
+         "data.aws_iam_policy_document"
+        ]
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties"
+      ],
+      "op": "regex",
+      "value": "(?i)resources?\\W{1,6}\\*"
+     },
+     "quantifier": "all"
+    }
+   ],
+   "quote": "across all resources"
+  },
+  {
+   "id": "policies_count",
+   "kind": "exists",
+   "tier": "detail",
+   "select": "policies",
+   "min": 12,
+   "quote": "four individual inline user policies",
+   "justify": "three users with four policies each"
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

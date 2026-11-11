@@ -1,0 +1,1229 @@
+package intent.tf.row_098
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {},
+ "checks": [
+  {
+   "id": "role",
+   "tier": "core",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_iam_role"
+    ],
+    "where": []
+   },
+   "quote": "provision an IAM role prefixed with \"aws-backup-\""
+  },
+  {
+   "id": "role_prefix",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_iam_role"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "name_prefix"
+      ],
+      "op": "regex",
+      "value": "^aws-backup-"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_iam_role"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "name"
+      ],
+      "op": "regex",
+      "value": "^aws-backup-"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_iam_role"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "name_prefix"
+      ],
+      "op": "regex",
+      "value": "^aws-backup-"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_iam_role"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "name"
+      ],
+      "op": "regex",
+      "value": "^aws-backup-"
+     }
+    }
+   ],
+   "quote": "an IAM role prefixed with \"aws-backup-\""
+  },
+  {
+   "id": "role_principal",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_iam_role"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "assume_role_policy"
+      ],
+      "op": "contains",
+      "value": "backup.amazonaws.com"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_iam_role"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "assume_role_policy"
+      ],
+      "op": "contains",
+      "value": "backup.amazonaws.com"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "data.aws_iam_policy_document"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "statement",
+       "*",
+       "principals",
+       "*",
+       "identifiers",
+       "*"
+      ],
+      "op": "eq",
+      "value": "backup.amazonaws.com"
+     }
+    }
+   ],
+   "quote": "assumed by the \"backup.amazonaws.com\" service principal"
+  },
+  {
+   "id": "role_policy",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_role_policy_attachment"
+      ],
+      "where": [
+       {
+        "path": [
+         "policy_arn"
+        ],
+        "op": "contains",
+        "value": "AWSBackupServiceRolePolicyForBackup"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_iam_role"
+      ],
+      "where": []
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_iam_role_policy_attachment"
+       },
+       {
+        "path": [
+         "properties",
+         "policy_arn"
+        ],
+        "op": "contains",
+        "value": "AWSBackupServiceRolePolicyForBackup"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_iam_role"
+      ],
+      "where": []
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_iam_role"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "managed_policy_arns",
+       "*"
+      ],
+      "op": "contains",
+      "value": "AWSBackupServiceRolePolicyForBackup"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_policy_attachment"
+      ],
+      "where": [
+       {
+        "path": [
+         "policy_arn"
+        ],
+        "op": "contains",
+        "value": "AWSBackupServiceRolePolicyForBackup"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_iam_role"
+      ],
+      "where": []
+     }
+    }
+   ],
+   "quote": "attached to the managed AWSBackupServiceRolePolicyForBackup policy"
+  },
+  {
+   "id": "vault",
+   "tier": "core",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_backup_vault"
+    ],
+    "where": []
+   },
+   "quote": "The backup vault must be named"
+  },
+  {
+   "id": "vault_name",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_backup_vault"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "name"
+      ],
+      "op": "regex",
+      "value": "^vault-.*-backup$"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_backup_vault"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "name"
+      ],
+      "op": "regex",
+      "value": "^vault-.*-backup$"
+     }
+    }
+   ],
+   "quote": "named using the prefix \"vault-\" followed by a name value and the suffix \"-backup\""
+  },
+  {
+   "id": "vault_kms",
+   "tier": "detail",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": [
+       "type"
+      ],
+      "op": "eq",
+      "value": "aws_backup_vault"
+     }
+    ]
+   },
+   "cond": {
+    "path": [
+     "properties",
+     "kms_key_arn"
+    ],
+    "op": "present"
+   },
+   "quote": "accept an optional KMS key ARN"
+  },
+  {
+   "id": "vault_job_tag",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_backup_vault"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "tags",
+       "Job"
+      ],
+      "op": "regex",
+      "value": "-backup$"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_backup_vault"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "tags",
+       "Job"
+      ],
+      "op": "regex",
+      "value": "-backup$"
+     }
+    }
+   ],
+   "quote": "tag resources with a Job tag built from the name value followed by \"-backup\""
+  },
+  {
+   "id": "vault_policy",
+   "tier": "core",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": [
+       "type"
+      ],
+      "op": "eq",
+      "value": "aws_backup_vault_policy"
+     },
+     {
+      "path": [
+       "gated"
+      ],
+      "op": "truthy"
+     }
+    ]
+   },
+   "quote": "conditionally attach an access policy document when a vault policy variable is non-empty"
+  },
+  {
+   "id": "plan",
+   "tier": "core",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_backup_plan"
+    ],
+    "where": []
+   },
+   "quote": "The backup plan must be named"
+  },
+  {
+   "id": "plan_name",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_backup_plan"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "name"
+      ],
+      "op": "regex",
+      "value": "^plan-.*-backup$"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_backup_plan"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "name"
+      ],
+      "op": "regex",
+      "value": "^plan-.*-backup$"
+     }
+    }
+   ],
+   "quote": "named using the prefix \"plan-\" followed by the name value and the suffix \"-backup\""
+  },
+  {
+   "id": "plan_job_tag",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_backup_plan"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "tags",
+       "Job"
+      ],
+      "op": "regex",
+      "value": "-backup$"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_backup_plan"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "tags",
+       "Job"
+      ],
+      "op": "regex",
+      "value": "-backup$"
+     }
+    }
+   ],
+   "quote": "tagged with the same Job tag pattern"
+  },
+  {
+   "id": "rule_name",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_backup_plan"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "rule",
+       "*",
+       "rule_name"
+      ],
+      "op": "regex",
+      "value": "^rule-.*-backup$"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_backup_plan"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "rule",
+       "*",
+       "rule_name"
+      ],
+      "op": "regex",
+      "value": "^rule-.*-backup$"
+     }
+    }
+   ],
+   "quote": "a rule named using the prefix \"rule-\" followed by the name value and the suffix \"-backup\""
+  },
+  {
+   "id": "rule_vault",
+   "tier": "core",
+   "kind": "any_of",
+   "quote": "targeting the vault",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_backup_plan"
+      ],
+      "where": []
+     },
+     "to": {
+      "types": [
+       "aws_backup_vault"
+      ],
+      "where": []
+     }
+    },
+    {
+     "kind": "join",
+     "from": {
+      "types": [
+       "aws_backup_plan"
+      ],
+      "where": []
+     },
+     "from_path": [
+      "rule",
+      "*",
+      "target_vault_name"
+     ],
+     "to": {
+      "types": [
+       "aws_backup_vault"
+      ],
+      "where": []
+     },
+     "to_path": [
+      "name"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "start_window",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_backup_plan"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "rule",
+       "*",
+       "start_window"
+      ],
+      "op": "eq",
+      "value": 60
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_backup_plan"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "rule",
+       "*",
+       "start_window"
+      ],
+      "op": "eq",
+      "value": 60
+     }
+    }
+   ],
+   "quote": "start window defaulting to 60 minutes"
+  },
+  {
+   "id": "completion_window",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_backup_plan"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "rule",
+       "*",
+       "completion_window"
+      ],
+      "op": "eq",
+      "value": 120
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_backup_plan"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "rule",
+       "*",
+       "completion_window"
+      ],
+      "op": "eq",
+      "value": 120
+     }
+    }
+   ],
+   "quote": "completion window defaulting to 120 minutes"
+  },
+  {
+   "id": "rule_tags",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_backup_plan"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "rule",
+       "*",
+       "recovery_point_tags",
+       "Job"
+      ],
+      "op": "regex",
+      "value": "-backup$"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_backup_plan"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "rule",
+       "*",
+       "recovery_point_tags",
+       "Job"
+      ],
+      "op": "regex",
+      "value": "-backup$"
+     }
+    }
+   ],
+   "quote": "recovery point tags using the same Job tag pattern"
+  },
+  {
+   "id": "cold_storage",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_backup_plan"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "rule",
+       "*",
+       "lifecycle",
+       "*",
+       "cold_storage_after"
+      ],
+      "op": "eq",
+      "value": 30
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_backup_plan"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "rule",
+       "*",
+       "lifecycle",
+       "*",
+       "cold_storage_after"
+      ],
+      "op": "eq",
+      "value": 30
+     }
+    }
+   ],
+   "quote": "cold storage after 30 days"
+  },
+  {
+   "id": "delete_after",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_backup_plan"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "rule",
+       "*",
+       "lifecycle",
+       "*",
+       "delete_after"
+      ],
+      "op": "eq",
+      "value": 120
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_backup_plan"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "rule",
+       "*",
+       "lifecycle",
+       "*",
+       "delete_after"
+      ],
+      "op": "eq",
+      "value": 120
+     }
+    }
+   ],
+   "quote": "deletion after 120 days"
+  },
+  {
+   "id": "copy_action",
+   "tier": "detail",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": [
+       "type"
+      ],
+      "op": "eq",
+      "value": "aws_backup_plan"
+     }
+    ]
+   },
+   "cond": {
+    "path": [
+     "properties"
+    ],
+    "op": "regex",
+    "value": "\"copy_action\": \\{"
+   },
+   "quote": "dynamic copy actions mapped from a destination vault map variable defaulting to empty"
+  },
+  {
+   "id": "selection",
+   "tier": "core",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_backup_selection"
+    ],
+    "where": []
+   },
+   "quote": "The backup selection must be named"
+  },
+  {
+   "id": "selection_name",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_backup_selection"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "name"
+      ],
+      "op": "regex",
+      "value": "^selection-.*-backup$"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_backup_selection"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "name"
+      ],
+      "op": "regex",
+      "value": "^selection-.*-backup$"
+     }
+    }
+   ],
+   "quote": "named using the prefix \"selection-\" followed by the name value and the suffix \"-backup\""
+  },
+  {
+   "id": "selection_role",
+   "tier": "core",
+   "kind": "ref",
+   "from": {
+    "types": [
+     "aws_backup_selection"
+    ],
+    "where": []
+   },
+   "to": {
+    "types": [
+     "aws_iam_role"
+    ],
+    "where": []
+   },
+   "quote": "linked to the created IAM role and plan"
+  },
+  {
+   "id": "selection_plan",
+   "tier": "core",
+   "kind": "ref",
+   "from": {
+    "types": [
+     "aws_backup_selection"
+    ],
+    "where": []
+   },
+   "to": {
+    "types": [
+     "aws_backup_plan"
+    ],
+    "where": []
+   },
+   "quote": "linked to the created IAM role and plan"
+  },
+  {
+   "id": "selection_condition",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_backup_selection"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "condition"
+      ],
+      "op": "len_gte",
+      "value": 1
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_backup_selection"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "condition"
+      ],
+      "op": "present"
+     }
+    }
+   ],
+   "quote": "containing an empty condition block"
+  },
+  {
+   "id": "selection_tag",
+   "tier": "core",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_backup_selection"
+    ],
+    "where": []
+   },
+   "cond": {
+    "path": [
+     "selection_tag",
+     "*"
+    ],
+    "op": "match",
+    "value": [
+     {
+      "path": [
+       "type"
+      ],
+      "op": "eq",
+      "value": "STRINGEQUALS"
+     },
+     {
+      "path": [
+       "key"
+      ],
+      "op": "eq",
+      "value": "Backup"
+     },
+     {
+      "path": [
+       "value"
+      ],
+      "op": "eq",
+      "value": "true"
+     }
+    ]
+   },
+   "quote": "operation type defaulting to \"STRINGEQUALS\", key defaulting to \"Backup\", and value defaulting to \"true\""
+  },
+  {
+   "id": "notifications",
+   "tier": "core",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": [
+       "type"
+      ],
+      "op": "eq",
+      "value": "aws_backup_vault_notifications"
+     },
+     {
+      "path": [
+       "gated"
+      ],
+      "op": "truthy"
+     }
+    ]
+   },
+   "quote": "the vault must conditionally configure event notifications when an SNS topic ARN variable is non-empty"
+  },
+  {
+   "id": "notify_events",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_backup_vault_notifications"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "backup_vault_events"
+      ],
+      "op": "regex",
+      "value": "(?s)BACKUP_JOB_FAILED.*COPY_JOB_FAILED|COPY_JOB_FAILED.*BACKUP_JOB_FAILED"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "default"
+      ],
+      "op": "regex",
+      "value": "(?s)BACKUP_JOB_FAILED.*COPY_JOB_FAILED|COPY_JOB_FAILED.*BACKUP_JOB_FAILED"
+     }
+    }
+   ],
+   "quote": "defaulting subscribed events to \"BACKUP_JOB_FAILED\" and \"COPY_JOB_FAILED\""
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

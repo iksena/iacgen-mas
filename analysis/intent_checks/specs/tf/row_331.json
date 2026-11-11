@@ -1,0 +1,125 @@
+{
+  "lang": "tf",
+  "row_number": 331,
+  "source_hash": {
+    "gt": "eb97da7204c0581fa37255cd126ecedb675df72c57130f2334a04914ab8ca780",
+    "prompt": "1006380beb5a07955eca9cc1c284a7cc2325127e3f72152e5f98b53a44cb56e2"
+  },
+  "selectors": {
+    "q": {
+      "types": [
+        "aws_sqs_queue"
+      ],
+      "where": []
+    }
+  },
+  "checks": [
+    {
+      "id": "queue_exists",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "a standard (non-FIFO) Amazon SQS queue",
+      "select": "q"
+    },
+    {
+      "id": "not_fifo",
+      "kind": "any_of",
+      "tier": "core",
+      "quote": "standard (non-FIFO)",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "q",
+          "cond": {
+            "path": "fifo_queue",
+            "op": "eq",
+            "value": false
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "q",
+          "cond": {
+            "path": "fifo_queue",
+            "op": "absent"
+          }
+        }
+      ]
+    },
+    {
+      "id": "auto_name",
+      "kind": "attr",
+      "tier": "core",
+      "quote": "an auto-generated name",
+      "justify": "auto-generated means no explicit name is set",
+      "select": "q",
+      "cond": {
+        "path": "name",
+        "op": "absent"
+      }
+    },
+    {
+      "id": "visibility_30",
+      "kind": "attr",
+      "tier": "core",
+      "quote": "a visibility timeout of 30 seconds",
+      "select": "q",
+      "cond": {
+        "path": "visibility_timeout_seconds",
+        "op": "eq",
+        "value": 30
+      }
+    },
+    {
+      "id": "retention",
+      "kind": "attr",
+      "tier": "core",
+      "quote": "a message retention period of 345600 seconds",
+      "select": "q",
+      "cond": {
+        "path": "message_retention_seconds",
+        "op": "eq",
+        "value": 345600
+      }
+    },
+    {
+      "id": "max_size",
+      "kind": "attr",
+      "tier": "core",
+      "quote": "a maximum message size of 262144 bytes",
+      "select": "q",
+      "cond": {
+        "path": "max_message_size",
+        "op": "eq",
+        "value": 262144
+      }
+    },
+    {
+      "id": "no_delay",
+      "kind": "attr",
+      "tier": "core",
+      "quote": "no delivery delay",
+      "justify": "no delay = 0 seconds",
+      "select": "q",
+      "cond": {
+        "path": "delay_seconds",
+        "op": "eq",
+        "value": 0
+      }
+    },
+    {
+      "id": "no_long_poll",
+      "kind": "attr",
+      "tier": "core",
+      "quote": "no long-polling wait time",
+      "justify": "no wait = 0 seconds",
+      "select": "q",
+      "cond": {
+        "path": "receive_wait_time_seconds",
+        "op": "eq",
+        "value": 0
+      }
+    }
+  ],
+  "notes": "All checks are core: the one-sentence prompt is a list of explicit queue settings. The numeric settings are tested on the planned value, so a template that leaves one at the provider default passes when that default equals the stated value. auto_name accepts any queue whose name is not fixed at plan (omitted, name_prefix, or generated)."
+}

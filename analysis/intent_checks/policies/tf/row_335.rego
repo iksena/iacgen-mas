@@ -1,0 +1,239 @@
+package intent.tf.row_335
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {},
+ "checks": [
+  {
+   "id": "log_group_named",
+   "tier": "core",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_cloudwatch_log_group"
+    ],
+    "where": []
+   },
+   "cond": {
+    "path": [
+     "name"
+    ],
+    "op": "eq",
+    "value": "/aws/ssm/automation/executeScript"
+   },
+   "quote": "a CloudWatch log group named \"/aws/ssm/automation/executeScript\""
+  },
+  {
+   "id": "retention_14",
+   "tier": "core",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_cloudwatch_log_group"
+    ],
+    "where": []
+   },
+   "cond": {
+    "path": [
+     "retention_in_days"
+    ],
+    "op": "eq",
+    "value": 14
+   },
+   "quote": "with 14-day retention"
+  },
+  {
+   "id": "script_log_dest",
+   "tier": "core",
+   "kind": "attr",
+   "quote": "so SSM Automation script output is logged to CloudWatch",
+   "justify": "Automation script output reaches CloudWatch only when the customer-script-log-destination service setting is CloudWatch (the default is None)",
+   "select": {
+    "types": [
+     "aws_ssm_service_setting"
+    ],
+    "where": [
+     {
+      "path": [
+       "setting_id"
+      ],
+      "op": "contains",
+      "value": "customer-script-log-destination"
+     }
+    ]
+   },
+   "cond": {
+    "path": [
+     "setting_value"
+    ],
+    "op": "regex",
+    "value": "(?i)cloudwatch"
+   }
+  },
+  {
+   "id": "script_log_group",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_ssm_service_setting"
+      ],
+      "where": [
+       {
+        "path": [
+         "setting_id"
+        ],
+        "op": "contains",
+        "value": "customer-script-log-group-name"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "setting_value"
+      ],
+      "op": "eq",
+      "value": "/aws/ssm/automation/executeScript"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_ssm_service_setting"
+      ],
+      "where": [
+       {
+        "path": [
+         "setting_id"
+        ],
+        "op": "contains",
+        "value": "customer-script-log-group-name"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_cloudwatch_log_group"
+      ],
+      "where": []
+     }
+    }
+   ],
+   "quote": "in that log group",
+   "justify": "the customer-script-log-group-name setting holds the stated log group name"
+  },
+  {
+   "id": "public_sharing_off",
+   "tier": "core",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_ssm_service_setting"
+    ],
+    "where": [
+     {
+      "path": [
+       "setting_id"
+      ],
+      "op": "contains",
+      "value": "public-sharing-permission"
+     }
+    ]
+   },
+   "cond": {
+    "path": [
+     "setting_value"
+    ],
+    "op": "regex",
+    "value": "(?i)disable"
+   },
+   "quote": "disable public sharing of Systems Manager documents"
+  },
+  {
+   "id": "enable_flag_default_on",
+   "tier": "detail",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": [
+       "default"
+      ],
+      "op": "eq",
+      "value": true
+     }
+    ]
+   },
+   "quote": "a single enable flag that defaults to on"
+  },
+  {
+   "id": "gated_by_flag",
+   "tier": "detail",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": [
+       "type"
+      ],
+      "op": "in",
+      "value": [
+       "aws_cloudwatch_log_group",
+       "aws_ssm_service_setting"
+      ]
+     }
+    ]
+   },
+   "cond": {
+    "path": [
+     "gated"
+    ],
+    "op": "truthy"
+   },
+   "quantifier": "all",
+   "quote": "all of this controllable by a single enable flag"
+  },
+  {
+   "id": "x_log_dest_ordering",
+   "tier": "extra",
+   "kind": "ref",
+   "from": {
+    "types": [
+     "aws_ssm_service_setting"
+    ],
+    "where": [
+     {
+      "path": [
+       "setting_id"
+      ],
+      "op": "contains",
+      "value": "customer-script-log-destination"
+     }
+    ]
+   },
+   "to": {
+    "types": [
+     "aws_cloudwatch_log_group"
+    ],
+    "where": []
+   }
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

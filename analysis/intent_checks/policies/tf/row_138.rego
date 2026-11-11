@@ -1,0 +1,1444 @@
+package intent.tf.row_138
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {},
+ "checks": [
+  {
+   "id": "vpc_exists",
+   "tier": "core",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_vpc"
+    ],
+    "where": []
+   },
+   "quote": "falling back to creating a new VPC with enabled DNS hostnames"
+  },
+  {
+   "id": "vpc_cidr",
+   "tier": "core",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_vpc"
+    ],
+    "where": []
+   },
+   "cond": {
+    "path": [
+     "cidr_block"
+    ],
+    "op": "eq",
+    "value": "10.0.0.0/16"
+   },
+   "quote": "a main CIDR block defaulting to \"10.0.0.0/16\""
+  },
+  {
+   "id": "vpc_dns_hostnames",
+   "tier": "core",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_vpc"
+    ],
+    "where": []
+   },
+   "cond": {
+    "path": [
+     "enable_dns_hostnames"
+    ],
+    "op": "truthy"
+   },
+   "quote": "enabled DNS hostnames"
+  },
+  {
+   "id": "existing_vpc_param",
+   "tier": "detail",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": [
+       "name"
+      ],
+      "op": "eq",
+      "value": "existing_vpc_id"
+     }
+    ]
+   },
+   "cond": {
+    "path": [
+     "default"
+    ],
+    "op": "eq",
+    "value": ""
+   },
+   "quote": "an optional existing_vpc_id variable defaulting to an empty string"
+  },
+  {
+   "id": "env_prefix_default",
+   "tier": "detail",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": []
+   },
+   "cond": {
+    "path": [
+     "default"
+    ],
+    "op": "eq",
+    "value": "DEV"
+   },
+   "quote": "an environment prefix defaulting to \"DEV\""
+  },
+  {
+   "id": "public_subnet_1",
+   "tier": "core",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_subnet"
+    ],
+    "where": [
+     {
+      "path": [
+       "cidr_block"
+      ],
+      "op": "eq",
+      "value": "10.0.1.0/24"
+     }
+    ]
+   },
+   "quote": "with CIDRs \"10.0.1.0/24\" and \"10.0.2.0/24\""
+  },
+  {
+   "id": "public_subnet_2",
+   "tier": "core",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_subnet"
+    ],
+    "where": [
+     {
+      "path": [
+       "cidr_block"
+      ],
+      "op": "eq",
+      "value": "10.0.2.0/24"
+     }
+    ]
+   },
+   "quote": "with CIDRs \"10.0.1.0/24\" and \"10.0.2.0/24\""
+  },
+  {
+   "id": "public_subnets_two_azs",
+   "tier": "core",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_subnet"
+    ],
+    "where": [
+     {
+      "path": [
+       "cidr_block"
+      ],
+      "op": "in",
+      "value": [
+       "10.0.1.0/24",
+       "10.0.2.0/24"
+      ]
+     }
+    ]
+   },
+   "distinct_path": [
+    "availability_zone"
+   ],
+   "min": 2,
+   "quote": "two public subnets across two different availability zones in the region"
+  },
+  {
+   "id": "public_subnets_region",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "in",
+        "value": [
+         "10.0.1.0/24",
+         "10.0.2.0/24"
+        ]
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "availability_zone"
+      ],
+      "op": "regex",
+      "value": "^us-east-1"
+     },
+     "quantifier": "all"
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "in",
+        "value": [
+         "10.0.1.0/24",
+         "10.0.2.0/24"
+        ]
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "availability_zone"
+      ],
+      "op": "absent"
+     }
+    }
+   ],
+   "quote": "in region \"us-east-1\""
+  },
+  {
+   "id": "igw_exists",
+   "tier": "core",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_internet_gateway"
+    ],
+    "where": []
+   },
+   "quote": "associated with an internet gateway"
+  },
+  {
+   "id": "public_default_route",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route"
+      ],
+      "where": [
+       {
+        "path": [
+         "destination_cidr_block"
+        ],
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_internet_gateway"
+      ],
+      "where": []
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route_table"
+      ],
+      "where": [
+       {
+        "path": [
+         "route",
+         "*",
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_internet_gateway"
+      ],
+      "where": []
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_route"
+       },
+       {
+        "path": [
+         "properties",
+         "destination_cidr_block"
+        ],
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_internet_gateway"
+      ],
+      "where": []
+     }
+    }
+   ],
+   "quote": "via a public route table routing \"0.0.0.0/0\""
+  },
+  {
+   "id": "public_route_table_assoc",
+   "tier": "detail",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_route_table_association"
+    ],
+    "where": []
+   },
+   "min": 2,
+   "quote": "associated with an internet gateway via a public route table",
+   "justify": "the two public subnets are each associated with the public route table"
+  },
+  {
+   "id": "private_flag_param",
+   "tier": "detail",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": [
+       "name"
+      ],
+      "op": "eq",
+      "value": "craete_private_subnet"
+     }
+    ]
+   },
+   "cond": {
+    "path": [
+     "default"
+    ],
+    "op": "eq",
+    "value": false
+   },
+   "quote": "a boolean flag craete_private_subnet defaulting to false"
+  },
+  {
+   "id": "private_tier_gated",
+   "tier": "detail",
+   "kind": "all_of",
+   "quote": "when enabled, it must create two private subnets",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_nat_gateway"
+       },
+       {
+        "path": [
+         "gated"
+        ],
+        "op": "truthy"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_route_table"
+       },
+       {
+        "path": [
+         "gated"
+        ],
+        "op": "truthy"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_subnet"
+       },
+       {
+        "path": [
+         "gated"
+        ],
+        "op": "truthy"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "private_subnet_1",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "10.0.10.0/24"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_subnet"
+       },
+       {
+        "path": [
+         "properties",
+         "cidr_block"
+        ],
+        "op": "contains",
+        "value": "10.0.10.0/24"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_subnet"
+       },
+       {
+        "path": [
+         "properties",
+         "cidr_block"
+        ],
+        "op": "regex",
+        "value": "(?i)cidrsubnet\\([^)]*,\\s*8\\s*,\\s*(count\\.index\\s*\\+\\s*10|10)\\b"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "default"
+      ],
+      "op": "contains",
+      "value": "10.0.10.0/24"
+     }
+    }
+   ],
+   "quote": "using CIDRs \"10.0.10.0/24\" and \"10.0.11.0/24\"",
+   "justify": "cidrsubnet(main /16, 8, index) is another way to write that /24 under the stated 10.0.0.0/16 main CIDR"
+  },
+  {
+   "id": "private_subnet_2",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "10.0.11.0/24"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_subnet"
+       },
+       {
+        "path": [
+         "properties",
+         "cidr_block"
+        ],
+        "op": "contains",
+        "value": "10.0.11.0/24"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_subnet"
+       },
+       {
+        "path": [
+         "properties",
+         "cidr_block"
+        ],
+        "op": "regex",
+        "value": "(?i)cidrsubnet\\([^)]*,\\s*8\\s*,\\s*(count\\.index\\s*\\+\\s*10|11)\\b"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "default"
+      ],
+      "op": "contains",
+      "value": "10.0.11.0/24"
+     }
+    }
+   ],
+   "quote": "using CIDRs \"10.0.10.0/24\" and \"10.0.11.0/24\"",
+   "justify": "cidrsubnet(main /16, 8, index) is another way to write that /24 under the stated 10.0.0.0/16 main CIDR"
+  },
+  {
+   "id": "private_subnets_two_azs",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_subnet"
+       },
+       {
+        "path": [
+         "properties",
+         "cidr_block"
+        ],
+        "op": "in",
+        "value": [
+         "10.0.10.0/24",
+         "10.0.11.0/24"
+        ]
+       }
+      ]
+     },
+     "distinct_path": [
+      "properties",
+      "availability_zone"
+     ],
+     "min": 2
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "in",
+        "value": [
+         "10.0.10.0/24",
+         "10.0.11.0/24"
+        ]
+       }
+      ]
+     },
+     "distinct_path": [
+      "availability_zone"
+     ],
+     "min": 2
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_subnet"
+       },
+       {
+        "path": [
+         "gate"
+        ],
+        "op": "regex",
+        "value": "\\?\\s*2\\s*:\\s*0"
+       },
+       {
+        "path": [
+         "properties",
+         "availability_zone"
+        ],
+        "op": "regex",
+        "value": "count\\.index"
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "two private subnets across the same two availability zones",
+   "justify": "a count of 2 subnets whose AZ is indexed by count.index places them in two different zones"
+  },
+  {
+   "id": "private_route_table",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_route_table"
+       }
+      ]
+     },
+     "min": 2
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_route_table"
+      ],
+      "where": []
+     },
+     "min": 2
+    }
+   ],
+   "quote": "a private route table",
+   "justify": "a private route table in addition to the public one means at least two route tables"
+  },
+  {
+   "id": "nat_gateway",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_nat_gateway"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_nat_gateway"
+      ],
+      "where": []
+     }
+    }
+   ],
+   "quote": "a single Elastic IP-backed NAT Gateway"
+  },
+  {
+   "id": "nat_single",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_nat_gateway"
+       }
+      ]
+     },
+     "max": 1
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_nat_gateway"
+      ],
+      "where": []
+     },
+     "max": 1
+    }
+   ],
+   "quote": "a single Elastic IP-backed NAT Gateway",
+   "justify": "a single NAT gateway means exactly one"
+  },
+  {
+   "id": "nat_in_first_public_subnet",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_nat_gateway"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "10.0.1.0/24"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_nat_gateway"
+      ],
+      "where": []
+     },
+     "to": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "10.0.1.0/24"
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "a single Elastic IP-backed NAT Gateway in the first public subnet"
+  },
+  {
+   "id": "nat_elastic_ip",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_nat_gateway"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_eip"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_nat_gateway"
+      ],
+      "where": []
+     },
+     "to": {
+      "types": [
+       "aws_eip"
+      ],
+      "where": []
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_nat_gateway"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_eip"
+      ],
+      "where": []
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_nat_gateway"
+      ],
+      "where": []
+     },
+     "to": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_eip"
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "Elastic IP-backed NAT Gateway"
+  },
+  {
+   "id": "eip_private_ip",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_eip"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "associate_with_private_ip"
+      ],
+      "op": "eq",
+      "value": "10.0.0.5"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_eip"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "associate_with_private_ip"
+      ],
+      "op": "eq",
+      "value": "10.0.0.5"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_nat_gateway"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "private_ip"
+      ],
+      "op": "eq",
+      "value": "10.0.0.5"
+     }
+    }
+   ],
+   "quote": "Elastic IP private IP association defaulting to \"10.0.0.5\""
+  },
+  {
+   "id": "private_default_route",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_route"
+       },
+       {
+        "path": [
+         "properties",
+         "destination_cidr_block"
+        ],
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_nat_gateway"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route"
+      ],
+      "where": [
+       {
+        "path": [
+         "destination_cidr_block"
+        ],
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_nat_gateway"
+      ],
+      "where": []
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_route"
+       },
+       {
+        "path": [
+         "properties",
+         "destination_cidr_block"
+        ],
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_nat_gateway"
+      ],
+      "where": []
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route"
+      ],
+      "where": [
+       {
+        "path": [
+         "destination_cidr_block"
+        ],
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_nat_gateway"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_route_table"
+       },
+       {
+        "path": [
+         "properties",
+         "route",
+         "*",
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_nat_gateway"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route_table"
+      ],
+      "where": [
+       {
+        "path": [
+         "route",
+         "*",
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_nat_gateway"
+      ],
+      "where": []
+     }
+    }
+   ],
+   "quote": "routing outbound \"0.0.0.0/0\" traffic for the private subnets"
+  },
+  {
+   "id": "private_subnets_associated",
+   "tier": "detail",
+   "kind": "any_of",
+   "quote": "traffic for the private subnets",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_route_table_association"
+       },
+       {
+        "path": [
+         "gated"
+        ],
+        "op": "truthy"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_subnet"
+       },
+       {
+        "path": [
+         "properties",
+         "cidr_block"
+        ],
+        "op": "in",
+        "value": [
+         "10.0.10.0/24",
+         "10.0.11.0/24"
+        ]
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_route_table_association"
+       },
+       {
+        "path": [
+         "gated"
+        ],
+        "op": "truthy"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_subnet"
+       },
+       {
+        "path": [
+         "gated"
+        ],
+        "op": "truthy"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "x_vpc_dns_support",
+   "tier": "extra",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_vpc"
+    ],
+    "where": []
+   },
+   "cond": {
+    "path": [
+     "enable_dns_support"
+    ],
+    "op": "truthy"
+   }
+  },
+  {
+   "id": "x_eip_domain_vpc",
+   "tier": "extra",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_eip"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "domain"
+      ],
+      "op": "eq",
+      "value": "vpc"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_eip"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "domain"
+      ],
+      "op": "eq",
+      "value": "vpc"
+     }
+    }
+   ]
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

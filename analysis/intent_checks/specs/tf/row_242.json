@@ -1,0 +1,1580 @@
+{
+ "lang": "tf",
+ "row_number": 242,
+ "source_hash": {
+  "gt": "67a82e5edaf84b8b76ee1fdd3e869164ef9fe51db508067354dc79cacccec732",
+  "prompt": "81b2ef249d55f81c41b5b0b06cec93ea919cbd47416f7d308142f2cffabbaf29"
+ },
+ "selectors": {},
+ "checks": [
+  {
+   "id": "buckets",
+   "tier": "core",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_s3_bucket"
+    ]
+   },
+   "min": 4,
+   "quote": "provision two S3 buckets in the primary AWS region (defaulting to us-east-1): one for Terraform state files and one for access logs",
+   "justify": "two primary buckets plus two replication target buckets"
+  },
+  {
+   "id": "primary_region",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_s3_bucket"
+      ],
+      "where": [
+       {
+        "path": "region",
+        "op": "eq",
+        "value": "us-east-1"
+       }
+      ]
+     },
+     "min": 2
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__parameter__"
+      ]
+     },
+     "cond": {
+      "path": "default",
+      "op": "eq",
+      "value": "us-east-1"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_s3_bucket"
+       }
+      ]
+     },
+     "cond": {
+      "path": "properties",
+      "op": "regex",
+      "value": "us-east-1"
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_s3_bucket"
+      ],
+      "where": [
+       {
+        "path": "tags.Region",
+        "op": "eq",
+        "value": "us-east-1"
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "the primary AWS region (defaulting to us-east-1)"
+  },
+  {
+   "id": "secondary_region",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_s3_bucket"
+      ]
+     },
+     "min": 2,
+     "distinct_path": "region"
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_s3_bucket"
+       },
+       {
+        "path": "properties.provider",
+        "op": "present"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_s3_bucket"
+       },
+       {
+        "path": "properties.region",
+        "op": "present"
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "a secondary AWS region",
+   "justify": "a second region implies at least two distinct regions"
+  },
+  {
+   "id": "state_kms",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_s3_bucket_server_side_encryption_configuration"
+      ],
+      "where": [
+       {
+        "path": "rule.*.apply_server_side_encryption_by_default.*.sse_algorithm",
+        "op": "eq",
+        "value": "aws:kms"
+       }
+      ]
+     },
+     "min": 2
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_s3_bucket"
+      ],
+      "where": [
+       {
+        "path": "server_side_encryption_configuration.*.rule.*.apply_server_side_encryption_by_default.*.sse_algorithm",
+        "op": "eq",
+        "value": "aws:kms"
+       }
+      ]
+     },
+     "min": 2
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_s3_bucket_server_side_encryption_configuration"
+       },
+       {
+        "path": "properties.rule",
+        "op": "contains",
+        "value": "aws:kms"
+       }
+      ]
+     },
+     "min": 2
+    }
+   ],
+   "quote": "The state bucket must have server-side encryption using AWS KMS",
+   "justify": "state bucket plus the replica state bucket's own CMK-encrypted configuration"
+  },
+  {
+   "id": "versioning_all",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_s3_bucket_versioning"
+      ],
+      "where": [
+       {
+        "path": "versioning_configuration.*.status",
+        "op": "eq",
+        "value": "Enabled"
+       }
+      ]
+     },
+     "min": 4
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_s3_bucket"
+      ],
+      "where": [
+       {
+        "path": "versioning.*.enabled",
+        "op": "eq",
+        "value": true
+       }
+      ]
+     },
+     "min": 4
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_s3_bucket_versioning"
+       },
+       {
+        "path": "properties.versioning_configuration",
+        "op": "contains",
+        "value": "Enabled"
+       }
+      ]
+     },
+     "min": 4
+    }
+   ],
+   "quote": "versioning enabled",
+   "justify": "state, logs, replica state and replica logs buckets are each versioned"
+  },
+  {
+   "id": "state_logging",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_s3_bucket_logging"
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_s3_bucket"
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_s3_bucket_logging"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_s3_bucket"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_s3_bucket"
+      ],
+      "where": [
+       {
+        "path": "logging.*.target_bucket",
+        "op": "present"
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "logging configured to send access logs to the access logs bucket"
+  },
+  {
+   "id": "lifecycle_glacier",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_s3_bucket_lifecycle_configuration"
+      ],
+      "where": [
+       {
+        "path": "rule.*.transition.*",
+        "op": "match",
+        "value": [
+         {
+          "path": "days",
+          "op": "eq",
+          "value": 7
+         },
+         {
+          "path": "storage_class",
+          "op": "eq",
+          "value": "GLACIER"
+         }
+        ]
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_s3_bucket"
+      ],
+      "where": [
+       {
+        "path": "lifecycle_rule.*.transition.*",
+        "op": "match",
+        "value": [
+         {
+          "path": "days",
+          "op": "eq",
+          "value": 7
+         },
+         {
+          "path": "storage_class",
+          "op": "eq",
+          "value": "GLACIER"
+         }
+        ]
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "a lifecycle rule that transitions objects to Glacier after a configurable number of days (default 7)",
+   "justify": "Glacier is the GLACIER storage class"
+  },
+  {
+   "id": "lifecycle_expire",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_s3_bucket_lifecycle_configuration"
+      ],
+      "where": [
+       {
+        "path": "rule.*.expiration.*.days",
+        "op": "eq",
+        "value": 30
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_s3_bucket"
+      ],
+      "where": [
+       {
+        "path": "lifecycle_rule.*.expiration.*.days",
+        "op": "eq",
+        "value": 30
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "expires them after another configurable number of days (default 30)",
+   "justify": "the days after which objects expire default to 30"
+  },
+  {
+   "id": "lifecycle_days_vars",
+   "tier": "detail",
+   "kind": "all_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": "default",
+        "op": "eq",
+        "value": 7
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": "default",
+        "op": "eq",
+        "value": 30
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "after a configurable number of days (default 7)"
+  },
+  {
+   "id": "acl_log_delivery",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_s3_bucket_acl"
+      ],
+      "where": [
+       {
+        "path": "acl",
+        "op": "eq",
+        "value": "log-delivery-write"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_s3_bucket"
+      ],
+      "where": [
+       {
+        "path": "acl",
+        "op": "eq",
+        "value": "log-delivery-write"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_s3_bucket_acl"
+       },
+       {
+        "path": "properties.acl",
+        "op": "eq",
+        "value": "log-delivery-write"
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "an ACL set to log-delivery-write"
+  },
+  {
+   "id": "pab_all",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_s3_bucket_public_access_block"
+      ],
+      "where": [
+       {
+        "path": "block_public_acls",
+        "op": "eq",
+        "value": true
+       },
+       {
+        "path": "block_public_policy",
+        "op": "eq",
+        "value": true
+       },
+       {
+        "path": "ignore_public_acls",
+        "op": "eq",
+        "value": true
+       },
+       {
+        "path": "restrict_public_buckets",
+        "op": "eq",
+        "value": true
+       }
+      ]
+     },
+     "min": 4
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_s3_bucket_public_access_block"
+       },
+       {
+        "path": "properties.block_public_acls",
+        "op": "eq",
+        "value": true
+       },
+       {
+        "path": "properties.block_public_policy",
+        "op": "eq",
+        "value": true
+       },
+       {
+        "path": "properties.ignore_public_acls",
+        "op": "eq",
+        "value": true
+       },
+       {
+        "path": "properties.restrict_public_buckets",
+        "op": "eq",
+        "value": true
+       }
+      ]
+     },
+     "min": 4
+    }
+   ],
+   "quote": "Both buckets must block all public access",
+   "justify": "both primary buckets and both replica buckets block public access"
+  },
+  {
+   "id": "replica_kms_key",
+   "tier": "core",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_kms_key"
+    ]
+   },
+   "quote": "encrypted with its own customer-managed KMS key with automatic rotation"
+  },
+  {
+   "id": "replica_kms_rotation",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_kms_key"
+      ]
+     },
+     "cond": {
+      "path": "enable_key_rotation",
+      "op": "eq",
+      "value": true
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_kms_key"
+       }
+      ]
+     },
+     "cond": {
+      "path": "properties.enable_key_rotation",
+      "op": "eq",
+      "value": true
+     }
+    }
+   ],
+   "quote": "with automatic rotation"
+  },
+  {
+   "id": "replica_uses_kms",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_s3_bucket_server_side_encryption_configuration"
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_kms_key"
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_s3_bucket_server_side_encryption_configuration"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_kms_key"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_s3_bucket"
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_kms_key"
+      ]
+     }
+    }
+   ],
+   "quote": "encrypted with its own customer-managed KMS key"
+  },
+  {
+   "id": "replica_lifecycle",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_s3_bucket_lifecycle_configuration"
+      ],
+      "where": [
+       {
+        "path": "rule.*.transition.*",
+        "op": "match",
+        "value": [
+         {
+          "path": "days",
+          "op": "eq",
+          "value": 7
+         },
+         {
+          "path": "storage_class",
+          "op": "eq",
+          "value": "GLACIER"
+         }
+        ]
+       },
+       {
+        "path": "rule.*.expiration.*.days",
+        "op": "eq",
+        "value": 30
+       }
+      ]
+     },
+     "min": 2
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_s3_bucket"
+      ],
+      "where": [
+       {
+        "path": "lifecycle_rule.*.transition.*",
+        "op": "match",
+        "value": [
+         {
+          "path": "days",
+          "op": "eq",
+          "value": 7
+         },
+         {
+          "path": "storage_class",
+          "op": "eq",
+          "value": "GLACIER"
+         }
+        ]
+       },
+       {
+        "path": "lifecycle_rule.*.expiration.*.days",
+        "op": "eq",
+        "value": 30
+       }
+      ]
+     },
+     "min": 2
+    }
+   ],
+   "quote": "a versioned replica access logs bucket with the same lifecycle rule",
+   "justify": "state replica excluded; two logs buckets carry the rule"
+  },
+  {
+   "id": "replication_cfg",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_s3_bucket_replication_configuration"
+      ]
+     },
+     "min": 2
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_s3_bucket"
+      ],
+      "where": [
+       {
+        "path": "replication_configuration",
+        "op": "present"
+       }
+      ]
+     },
+     "min": 2
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_s3_bucket_replication_configuration"
+       }
+      ]
+     },
+     "min": 2
+    }
+   ],
+   "quote": "Replication should be enabled for both the state and access logs buckets"
+  },
+  {
+   "id": "replication_enabled",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_s3_bucket_replication_configuration"
+      ]
+     },
+     "cond": {
+      "path": "rule.*.status",
+      "op": "eq",
+      "value": "Enabled"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_s3_bucket"
+      ]
+     },
+     "cond": {
+      "path": "replication_configuration.*.rules.*.status",
+      "op": "eq",
+      "value": "Enabled"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_s3_bucket_replication_configuration"
+       }
+      ]
+     },
+     "cond": {
+      "path": "properties.rule",
+      "op": "contains",
+      "value": "Enabled"
+     }
+    }
+   ],
+   "quote": "Replication should be enabled"
+  },
+  {
+   "id": "delete_markers",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_s3_bucket_replication_configuration"
+      ]
+     },
+     "cond": {
+      "path": "rule.*.delete_marker_replication.*.status",
+      "op": "eq",
+      "value": "Enabled"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_s3_bucket"
+      ]
+     },
+     "cond": {
+      "path": "replication_configuration.*.rules.*.delete_marker_replication_status",
+      "op": "eq",
+      "value": "Enabled"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_s3_bucket_replication_configuration"
+       }
+      ]
+     },
+     "cond": {
+      "path": "properties.rule",
+      "op": "regex",
+      "value": "(?is)delete_marker_replication.{0,60}enabled"
+     }
+    }
+   ],
+   "quote": "including replicating delete markers"
+  },
+  {
+   "id": "replication_role",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_iam_role"
+      ]
+     },
+     "cond": {
+      "path": "assume_role_policy",
+      "op": "regex",
+      "value": "(?is)assumerole.*[^.a-z]s3\\.amazonaws\\.com"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_iam_role"
+       }
+      ]
+     },
+     "cond": {
+      "path": "properties.assume_role_policy",
+      "op": "regex",
+      "value": "(?is)assumerole.*[^.a-z]s3\\.amazonaws\\.com"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "data.aws_iam_policy_document"
+       }
+      ]
+     },
+     "cond": {
+      "path": "properties",
+      "op": "regex",
+      "value": "(?is)assumerole.*[^.a-z]s3\\.amazonaws\\.com"
+     }
+    }
+   ],
+   "quote": "IAM roles and policies that allow the S3 service to assume the role",
+   "justify": "'allow the S3 service to assume the role' = sts:AssumeRole trusted by the s3.amazonaws.com service principal"
+  },
+  {
+   "id": "replication_policy",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_iam_policy"
+      ]
+     },
+     "cond": {
+      "path": "policy",
+      "op": "regex",
+      "value": "(?i)s3:Replicate|s3:\\*"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_iam_role_policy"
+      ]
+     },
+     "cond": {
+      "path": "policy",
+      "op": "regex",
+      "value": "(?i)s3:Replicate|s3:\\*"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "in",
+        "value": [
+         "aws_iam_policy",
+         "aws_iam_role_policy",
+         "data.aws_iam_policy_document"
+        ]
+       }
+      ]
+     },
+     "cond": {
+      "path": "properties",
+      "op": "regex",
+      "value": "(?i)s3:Replicate|s3:\\*"
+     }
+    }
+   ],
+   "quote": "perform replication actions",
+   "justify": "replication actions are s3:Replicate* (or a wildcard)"
+  },
+  {
+   "id": "replication_role_used",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_s3_bucket_replication_configuration"
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_iam_role"
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_s3_bucket_replication_configuration"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_iam_role"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_s3_bucket"
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_iam_role"
+      ]
+     }
+    }
+   ],
+   "quote": "appropriate IAM roles and policies"
+  },
+  {
+   "id": "replication_policy_attached",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_policy_attachment"
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_iam_role"
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_role_policy_attachment"
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_iam_role"
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_role_policy"
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_iam_role"
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_iam_policy_attachment"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_iam_role"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_iam_role_policy_attachment"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_iam_role"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_iam_role_policy"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_iam_role"
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "appropriate IAM roles and policies that allow the S3 service to assume the role and perform replication actions"
+  },
+  {
+   "id": "state_policy_acl",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_s3_bucket_policy"
+      ]
+     },
+     "cond": {
+      "path": "policy",
+      "op": "regex",
+      "value": "(?i)bucket-owner-full-control"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_s3_bucket_policy"
+       }
+      ]
+     },
+     "cond": {
+      "path": "properties.policy",
+      "op": "regex",
+      "value": "(?i)bucket-owner-full-control"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "data.aws_iam_policy_document"
+       }
+      ]
+     },
+     "cond": {
+      "path": "properties",
+      "op": "regex",
+      "value": "(?i)bucket-owner-full-control"
+     }
+    }
+   ],
+   "quote": "include the bucket-owner-full-control ACL condition"
+  },
+  {
+   "id": "state_policy_account",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_s3_bucket_policy"
+      ]
+     },
+     "cond": {
+      "path": "policy",
+      "op": "regex",
+      "value": "(?is)s3:(\\*|[A-Za-z]).*(SourceAccount|PrincipalAccount|account)"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_s3_bucket_policy"
+       }
+      ]
+     },
+     "cond": {
+      "path": "properties.policy",
+      "op": "regex",
+      "value": "(?is)(SourceAccount|PrincipalAccount|account_id|caller_identity)"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "data.aws_iam_policy_document"
+       }
+      ]
+     },
+     "cond": {
+      "path": "properties",
+      "op": "regex",
+      "value": "(?is)(SourceAccount|PrincipalAccount|account_id|caller_identity)"
+     }
+    }
+   ],
+   "quote": "restricts all s3 actions to requests from the same AWS account"
+  },
+  {
+   "id": "state_policy_all_s3",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_s3_bucket_policy"
+      ]
+     },
+     "cond": {
+      "path": "policy",
+      "op": "regex",
+      "value": "(?i)s3:\\*"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_s3_bucket_policy"
+       }
+      ]
+     },
+     "cond": {
+      "path": "properties.policy",
+      "op": "regex",
+      "value": "(?i)s3:\\*"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "data.aws_iam_policy_document"
+       }
+      ]
+     },
+     "cond": {
+      "path": "properties",
+      "op": "regex",
+      "value": "(?i)s3:\\*"
+     }
+    }
+   ],
+   "quote": "restricts all s3 actions"
+  },
+  {
+   "id": "replica_policy",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_s3_bucket_policy"
+      ]
+     },
+     "min": 2
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_s3_bucket_policy"
+       }
+      ]
+     },
+     "min": 2
+    }
+   ],
+   "quote": "carries the same bucket policy",
+   "justify": "primary and replica state buckets each carry the policy"
+  },
+  {
+   "id": "env_var",
+   "tier": "detail",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "__parameter__"
+    ]
+   },
+   "cond": {
+    "path": "default",
+    "op": "eq",
+    "value": "benchmark"
+   },
+   "quote": "a variable for the environment name (defaulting to \"benchmark\")"
+  },
+  {
+   "id": "x_ownership_controls",
+   "tier": "extra",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_s3_bucket_ownership_controls"
+    ]
+   }
+  },
+  {
+   "id": "x_replica_storage_class",
+   "tier": "extra",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_s3_bucket_replication_configuration"
+      ]
+     },
+     "cond": {
+      "path": "rule.*.destination.*.storage_class",
+      "op": "in",
+      "value": [
+       "STANDARD_IA",
+       "STANDARD"
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_s3_bucket_replication_configuration"
+       }
+      ]
+     },
+     "cond": {
+      "path": "properties.rule",
+      "op": "regex",
+      "value": "storage_class"
+     }
+    }
+   ]
+  },
+  {
+   "id": "x_replication_depends_versioning",
+   "tier": "extra",
+   "kind": "ref",
+   "from": {
+    "types": [
+     "aws_s3_bucket_replication_configuration"
+    ]
+   },
+   "to": {
+    "types": [
+     "aws_s3_bucket_versioning"
+    ]
+   }
+  },
+  {
+   "id": "x_sse_uses_cmk_ref",
+   "tier": "extra",
+   "kind": "ref",
+   "from": {
+    "types": [
+     "aws_s3_bucket_server_side_encryption_configuration"
+    ]
+   },
+   "to": {
+    "types": [
+     "aws_kms_key"
+    ]
+   }
+  }
+ ],
+ "notes": "Buckets are not identified by name (not stated). Region split and policy attachment accepted via declared forms since provider-aliased resources and ARN-bearing policies may plan as unknown. secondary_region accepts a declared provider/region meta-argument on a bucket because older plans omit the planned region attribute; that branch cannot prove the aliased provider is in a different region (Partial, kept). Lifecycle checks require the stated 7-day GLACIER transition and 30-day expiration (declared-text branches that accepted any days were removed). delete_markers no longer accepts IAM s3:* text as evidence. Replication role trust requires sts:AssumeRole with the exact s3.amazonaws.com principal (logging.s3.amazonaws.com does not count). env_var is detail (a named configuration variable, not the point of the scenario). Candidate review: GLM53F omits the log-delivery-write ACL (uses a logging.s3 bucket policy instead); kept failing because the prompt states the ACL."
+}

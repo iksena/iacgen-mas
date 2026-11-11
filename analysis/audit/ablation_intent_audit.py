@@ -85,7 +85,14 @@ def normalize_plan_only(lang: str, template) -> dict:
         inp = json.loads(cp.read_text())
         if inp['meta'].get('mode') == 'plan':
             return inp
-    inp = ic.normalize_tf({'main.tf': t}, allow_static=False)
+    try:
+        inp = ic.normalize_tf({'main.tf': t}, allow_static=False)
+    except Exception as e:
+        if 'Cannot import non-existent remote object' not in str(e):
+            raise
+        t_plain = ic._strip_block(t, r'(?m)^[ \t]*import\s*\{')
+        inp = ic.normalize_tf({'main.tf': t_plain}, allow_static=False)
+        inp['meta'].setdefault('warnings', []).append('import blocks removed before planning')
     inp['meta']['cache_key'] = key
     cp.parent.mkdir(parents=True, exist_ok=True)
     cp.write_text(json.dumps(inp, default=str))
@@ -131,13 +138,15 @@ def audit(df: pd.DataFrame, condition: str, lang_override=None, scope='all',
         except Exception as e:
             s = ic.score(spec, {})
             out.append({**rec, 'intent_status': 'unevaluable', 'error': str(e)[:500], **s,
-                        'failed_checks': ';'.join(s['failed_checks'])})
+                        'failed_checks': ';'.join(s['failed_checks']),
+                        'failed_extra': ';'.join(s['failed_extra'])})
             continue
         s = ic.score(spec, results)
         out.append({**rec, 'intent_status': 'evaluated', 'eval_mode': inp['meta']['mode'],
                     'candidate_key': inp['meta'].get('cache_key'),
                     'eval_warnings': ' | '.join(inp['meta'].get('warnings', []))[:500], **s,
-                    'failed_checks': ';'.join(s['failed_checks'])})
+                    'failed_checks': ';'.join(s['failed_checks']),
+                    'failed_extra': ';'.join(s['failed_extra'])})
         print(f"[{condition}] {lang} {row:>3}: {s['n_core_pass']}/{s['n_core']} core, "
               f"{s['n_pass']}/{s['n_checks']} all ({inp['meta']['mode']})", flush=True)
     return pd.DataFrame(out)

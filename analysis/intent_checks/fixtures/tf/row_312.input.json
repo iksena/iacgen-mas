@@ -1,0 +1,1429 @@
+{
+ "meta": {
+  "lang": "tf",
+  "mode": "plan",
+  "warnings": [],
+  "gt_hash": "29d6c1a5f8bfbda95bdae6d4979c77b0df99536dd16acb8b5c285ff80f797686",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "aws_ssm_maintenance_window.install_window[0]",
+   "cfg": "aws_ssm_maintenance_window.install_window",
+   "type": "aws_ssm_maintenance_window",
+   "values": {
+    "allow_unassociated_targets": false,
+    "cutoff": 1,
+    "description": null,
+    "duration": 3,
+    "enabled": true,
+    "end_date": null,
+    "name": "install-window",
+    "region": "us-east-1",
+    "schedule": "cron(0 0 21 ? * WED *)",
+    "schedule_offset": null,
+    "schedule_timezone": null,
+    "start_date": null,
+    "tags": null
+   },
+   "refs": []
+  },
+  {
+   "id": "aws_ssm_maintenance_window.scan_window[0]",
+   "cfg": "aws_ssm_maintenance_window.scan_window",
+   "type": "aws_ssm_maintenance_window",
+   "values": {
+    "allow_unassociated_targets": false,
+    "cutoff": 1,
+    "description": null,
+    "duration": 3,
+    "enabled": true,
+    "end_date": null,
+    "name": "scan-window",
+    "region": "us-east-1",
+    "schedule": "cron(0 0 18 ? * WED *)",
+    "schedule_offset": null,
+    "schedule_timezone": null,
+    "start_date": null,
+    "tags": null
+   },
+   "refs": []
+  },
+  {
+   "id": "aws_ssm_maintenance_window_target.target_install[0]",
+   "cfg": "aws_ssm_maintenance_window_target.target_install",
+   "type": "aws_ssm_maintenance_window_target",
+   "values": {
+    "description": null,
+    "name": null,
+    "owner_information": null,
+    "region": "us-east-1",
+    "resource_type": "INSTANCE",
+    "targets": [
+     {
+      "key": "tag:Patch Group",
+      "values": [
+       "TOPATCH"
+      ]
+     }
+    ]
+   },
+   "refs": [
+    "aws_ssm_maintenance_window.install_window"
+   ]
+  },
+  {
+   "id": "aws_ssm_maintenance_window_target.target_scan[0]",
+   "cfg": "aws_ssm_maintenance_window_target.target_scan",
+   "type": "aws_ssm_maintenance_window_target",
+   "values": {
+    "description": null,
+    "name": null,
+    "owner_information": null,
+    "region": "us-east-1",
+    "resource_type": "INSTANCE",
+    "targets": [
+     {
+      "key": "tag:Patch Group",
+      "values": [
+       "TOSCAN"
+      ]
+     }
+    ]
+   },
+   "refs": [
+    "aws_ssm_maintenance_window.scan_window"
+   ]
+  },
+  {
+   "id": "aws_ssm_maintenance_window_task.task_install_patches[0]",
+   "cfg": "aws_ssm_maintenance_window_task.task_install_patches",
+   "type": "aws_ssm_maintenance_window_task",
+   "values": {
+    "cutoff_behavior": null,
+    "description": null,
+    "max_concurrency": "20",
+    "max_errors": "50",
+    "name": null,
+    "priority": 1,
+    "region": "us-east-1",
+    "targets": [
+     {
+      "key": "WindowTargetIds"
+     }
+    ],
+    "task_arn": "AWS-RunPatchBaseline",
+    "task_invocation_parameters": [
+     {
+      "automation_parameters": [],
+      "lambda_parameters": [],
+      "run_command_parameters": [
+       {
+        "cloudwatch_config": [],
+        "comment": null,
+        "document_hash": null,
+        "document_hash_type": null,
+        "document_version": null,
+        "notification_config": [],
+        "output_s3_bucket": "",
+        "output_s3_key_prefix": "scanning",
+        "parameter": [
+         {
+          "name": "Operation",
+          "values": [
+           "Install"
+          ]
+         },
+         {
+          "name": "RebootOption",
+          "values": [
+           "RebootIfNeeded"
+          ]
+         }
+        ],
+        "service_role_arn": "",
+        "timeout_seconds": null
+       }
+      ],
+      "step_functions_parameters": []
+     }
+    ],
+    "task_type": "RUN_COMMAND"
+   },
+   "refs": [
+    "aws_ssm_maintenance_window.install_window",
+    "aws_ssm_maintenance_window_target.target_install"
+   ]
+  },
+  {
+   "id": "aws_ssm_maintenance_window_task.task_scan_patches[0]",
+   "cfg": "aws_ssm_maintenance_window_task.task_scan_patches",
+   "type": "aws_ssm_maintenance_window_task",
+   "values": {
+    "cutoff_behavior": null,
+    "description": null,
+    "max_concurrency": "20",
+    "max_errors": "50",
+    "name": null,
+    "priority": 1,
+    "region": "us-east-1",
+    "targets": [
+     {
+      "key": "WindowTargetIds"
+     }
+    ],
+    "task_arn": "AWS-RunPatchBaseline",
+    "task_invocation_parameters": [
+     {
+      "automation_parameters": [],
+      "lambda_parameters": [],
+      "run_command_parameters": [
+       {
+        "cloudwatch_config": [],
+        "comment": null,
+        "document_hash": null,
+        "document_hash_type": null,
+        "document_version": null,
+        "notification_config": [],
+        "output_s3_bucket": "",
+        "output_s3_key_prefix": "scanning",
+        "parameter": [
+         {
+          "name": "Operation",
+          "values": [
+           "Scan"
+          ]
+         },
+         {
+          "name": "RebootOption",
+          "values": [
+           "NoReboot"
+          ]
+         }
+        ],
+        "service_role_arn": "",
+        "timeout_seconds": null
+       }
+      ],
+      "step_functions_parameters": []
+     }
+    ],
+    "task_type": "RUN_COMMAND"
+   },
+   "refs": [
+    "aws_ssm_maintenance_window.scan_window",
+    "aws_ssm_maintenance_window_target.target_scan"
+   ]
+  },
+  {
+   "id": "aws_ssm_patch_baseline.baseline[0]",
+   "cfg": "aws_ssm_patch_baseline.baseline",
+   "type": "aws_ssm_patch_baseline",
+   "values": {
+    "approval_rule": [
+     {
+      "approve_after_days": 7,
+      "approve_until_date": null,
+      "compliance_level": "HIGH",
+      "enable_non_security": true,
+      "patch_filter": [
+       {
+        "key": "PRODUCT",
+        "values": [
+         "AmazonLinux2",
+         "AmazonLinux2.0"
+        ]
+       },
+       {
+        "key": "CLASSIFICATION",
+        "values": [
+         "Security",
+         "Bugfix",
+         "Recommended"
+        ]
+       },
+       {
+        "key": "SEVERITY",
+        "values": [
+         "Critical",
+         "Important",
+         "Medium"
+        ]
+       }
+      ]
+     }
+    ],
+    "approved_patches": null,
+    "approved_patches_compliance_level": "HIGH",
+    "approved_patches_enable_non_security": null,
+    "description": "AMAZON_LINUX_2 baseline",
+    "global_filter": [],
+    "name": "-AMAZON_LINUX_2",
+    "operating_system": "AMAZON_LINUX_2",
+    "region": "us-east-1",
+    "rejected_patches": null,
+    "source": [],
+    "tags": null
+   },
+   "refs": []
+  },
+  {
+   "id": "aws_ssm_patch_group.install_patchgroup[0]",
+   "cfg": "aws_ssm_patch_group.install_patchgroup",
+   "type": "aws_ssm_patch_group",
+   "values": {
+    "patch_group": "TOPATCH",
+    "region": "us-east-1"
+   },
+   "refs": [
+    "aws_ssm_patch_baseline.baseline"
+   ]
+  },
+  {
+   "id": "aws_ssm_patch_group.scan_patchgroup[0]",
+   "cfg": "aws_ssm_patch_group.scan_patchgroup",
+   "type": "aws_ssm_patch_group",
+   "values": {
+    "patch_group": "TOSCAN",
+    "region": "us-east-1"
+   },
+   "refs": [
+    "aws_ssm_patch_baseline.baseline"
+   ]
+  },
+  {
+   "id": "__parameter__.additional_tag_map",
+   "cfg": "__parameter__.additional_tag_map",
+   "type": "__parameter__",
+   "values": {
+    "name": "additional_tag_map",
+    "default": {}
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.approved_patches",
+   "cfg": "__parameter__.approved_patches",
+   "type": "__parameter__",
+   "values": {
+    "name": "approved_patches",
+    "default": []
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.approved_patches_compliance_level",
+   "cfg": "__parameter__.approved_patches_compliance_level",
+   "type": "__parameter__",
+   "values": {
+    "name": "approved_patches_compliance_level",
+    "default": "HIGH"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.attributes",
+   "cfg": "__parameter__.attributes",
+   "type": "__parameter__",
+   "values": {
+    "name": "attributes",
+    "default": []
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.bucket_id",
+   "cfg": "__parameter__.bucket_id",
+   "type": "__parameter__",
+   "values": {
+    "name": "bucket_id",
+    "default": []
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.cloudwatch_log_group_name",
+   "cfg": "__parameter__.cloudwatch_log_group_name",
+   "type": "__parameter__",
+   "values": {
+    "name": "cloudwatch_log_group_name",
+    "default": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.cloudwatch_log_output_enabled",
+   "cfg": "__parameter__.cloudwatch_log_output_enabled",
+   "type": "__parameter__",
+   "values": {
+    "name": "cloudwatch_log_output_enabled",
+    "default": false
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.context",
+   "cfg": "__parameter__.context",
+   "type": "__parameter__",
+   "values": {
+    "name": "context",
+    "default": {
+     "additional_tag_map": {},
+     "attributes": [],
+     "delimiter": null,
+     "descriptor_formats": {},
+     "enabled": true,
+     "environment": null,
+     "id_length_limit": null,
+     "label_key_case": null,
+     "label_order": [],
+     "label_value_case": null,
+     "labels_as_tags": [
+      "unset"
+     ],
+     "name": null,
+     "namespace": null,
+     "regex_replace_chars": null,
+     "stage": null,
+     "tags": {},
+     "tenant": null
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.delimiter",
+   "cfg": "__parameter__.delimiter",
+   "type": "__parameter__",
+   "values": {
+    "name": "delimiter",
+    "default": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.descriptor_formats",
+   "cfg": "__parameter__.descriptor_formats",
+   "type": "__parameter__",
+   "values": {
+    "name": "descriptor_formats",
+    "default": {}
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.enabled",
+   "cfg": "__parameter__.enabled",
+   "type": "__parameter__",
+   "values": {
+    "name": "enabled",
+    "default": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.environment",
+   "cfg": "__parameter__.environment",
+   "type": "__parameter__",
+   "values": {
+    "name": "environment",
+    "default": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.id_length_limit",
+   "cfg": "__parameter__.id_length_limit",
+   "type": "__parameter__",
+   "values": {
+    "name": "id_length_limit",
+    "default": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.install_maintenance_window_cutoff",
+   "cfg": "__parameter__.install_maintenance_window_cutoff",
+   "type": "__parameter__",
+   "values": {
+    "name": "install_maintenance_window_cutoff",
+    "default": 1
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.install_maintenance_window_duration",
+   "cfg": "__parameter__.install_maintenance_window_duration",
+   "type": "__parameter__",
+   "values": {
+    "name": "install_maintenance_window_duration",
+    "default": 3
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.install_maintenance_window_schedule",
+   "cfg": "__parameter__.install_maintenance_window_schedule",
+   "type": "__parameter__",
+   "values": {
+    "name": "install_maintenance_window_schedule",
+    "default": "cron(0 0 21 ? * WED *)"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.install_maintenance_windows_targets",
+   "cfg": "__parameter__.install_maintenance_windows_targets",
+   "type": "__parameter__",
+   "values": {
+    "name": "install_maintenance_windows_targets",
+    "default": []
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.install_patch_groups",
+   "cfg": "__parameter__.install_patch_groups",
+   "type": "__parameter__",
+   "values": {
+    "name": "install_patch_groups",
+    "default": [
+     "TOPATCH"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.install_sns_notification_enabled",
+   "cfg": "__parameter__.install_sns_notification_enabled",
+   "type": "__parameter__",
+   "values": {
+    "name": "install_sns_notification_enabled",
+    "default": false
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.label_key_case",
+   "cfg": "__parameter__.label_key_case",
+   "type": "__parameter__",
+   "values": {
+    "name": "label_key_case",
+    "default": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.label_order",
+   "cfg": "__parameter__.label_order",
+   "type": "__parameter__",
+   "values": {
+    "name": "label_order",
+    "default": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.label_value_case",
+   "cfg": "__parameter__.label_value_case",
+   "type": "__parameter__",
+   "values": {
+    "name": "label_value_case",
+    "default": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.labels_as_tags",
+   "cfg": "__parameter__.labels_as_tags",
+   "type": "__parameter__",
+   "values": {
+    "name": "labels_as_tags",
+    "default": [
+     "default"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.max_concurrency",
+   "cfg": "__parameter__.max_concurrency",
+   "type": "__parameter__",
+   "values": {
+    "name": "max_concurrency",
+    "default": 20
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.max_errors",
+   "cfg": "__parameter__.max_errors",
+   "type": "__parameter__",
+   "values": {
+    "name": "max_errors",
+    "default": 50
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.name",
+   "cfg": "__parameter__.name",
+   "type": "__parameter__",
+   "values": {
+    "name": "name",
+    "default": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.namespace",
+   "cfg": "__parameter__.namespace",
+   "type": "__parameter__",
+   "values": {
+    "name": "namespace",
+    "default": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.notification_arn",
+   "cfg": "__parameter__.notification_arn",
+   "type": "__parameter__",
+   "values": {
+    "name": "notification_arn",
+    "default": ""
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.notification_events",
+   "cfg": "__parameter__.notification_events",
+   "type": "__parameter__",
+   "values": {
+    "name": "notification_events",
+    "default": [
+     "All"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.notification_type",
+   "cfg": "__parameter__.notification_type",
+   "type": "__parameter__",
+   "values": {
+    "name": "notification_type",
+    "default": "Command"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.operating_system",
+   "cfg": "__parameter__.operating_system",
+   "type": "__parameter__",
+   "values": {
+    "name": "operating_system",
+    "default": "AMAZON_LINUX_2"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.patch_baseline_approval_rules",
+   "cfg": "__parameter__.patch_baseline_approval_rules",
+   "type": "__parameter__",
+   "values": {
+    "name": "patch_baseline_approval_rules",
+    "default": [
+     {
+      "approve_after_days": 7,
+      "approve_until_date": null,
+      "compliance_level": "HIGH",
+      "enable_non_security": true,
+      "patch_baseline_filters": [
+       {
+        "name": "PRODUCT",
+        "values": [
+         "AmazonLinux2",
+         "AmazonLinux2.0"
+        ]
+       },
+       {
+        "name": "CLASSIFICATION",
+        "values": [
+         "Security",
+         "Bugfix",
+         "Recommended"
+        ]
+       },
+       {
+        "name": "SEVERITY",
+        "values": [
+         "Critical",
+         "Important",
+         "Medium"
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.reboot_option",
+   "cfg": "__parameter__.reboot_option",
+   "type": "__parameter__",
+   "values": {
+    "name": "reboot_option",
+    "default": "RebootIfNeeded"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.regex_replace_chars",
+   "cfg": "__parameter__.regex_replace_chars",
+   "type": "__parameter__",
+   "values": {
+    "name": "regex_replace_chars",
+    "default": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.rejected_patches",
+   "cfg": "__parameter__.rejected_patches",
+   "type": "__parameter__",
+   "values": {
+    "name": "rejected_patches",
+    "default": []
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.s3_bucket_prefix_install_logs",
+   "cfg": "__parameter__.s3_bucket_prefix_install_logs",
+   "type": "__parameter__",
+   "values": {
+    "name": "s3_bucket_prefix_install_logs",
+    "default": "install"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.s3_bucket_prefix_scan_logs",
+   "cfg": "__parameter__.s3_bucket_prefix_scan_logs",
+   "type": "__parameter__",
+   "values": {
+    "name": "s3_bucket_prefix_scan_logs",
+    "default": "scanning"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.s3_log_output_enabled",
+   "cfg": "__parameter__.s3_log_output_enabled",
+   "type": "__parameter__",
+   "values": {
+    "name": "s3_log_output_enabled",
+    "default": true
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.scan_maintenance_window_cutoff",
+   "cfg": "__parameter__.scan_maintenance_window_cutoff",
+   "type": "__parameter__",
+   "values": {
+    "name": "scan_maintenance_window_cutoff",
+    "default": 1
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.scan_maintenance_window_duration",
+   "cfg": "__parameter__.scan_maintenance_window_duration",
+   "type": "__parameter__",
+   "values": {
+    "name": "scan_maintenance_window_duration",
+    "default": 3
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.scan_maintenance_window_schedule",
+   "cfg": "__parameter__.scan_maintenance_window_schedule",
+   "type": "__parameter__",
+   "values": {
+    "name": "scan_maintenance_window_schedule",
+    "default": "cron(0 0 18 ? * WED *)"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.scan_maintenance_windows_targets",
+   "cfg": "__parameter__.scan_maintenance_windows_targets",
+   "type": "__parameter__",
+   "values": {
+    "name": "scan_maintenance_windows_targets",
+    "default": []
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.scan_patch_groups",
+   "cfg": "__parameter__.scan_patch_groups",
+   "type": "__parameter__",
+   "values": {
+    "name": "scan_patch_groups",
+    "default": [
+     "TOSCAN"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.scan_sns_notification_enabled",
+   "cfg": "__parameter__.scan_sns_notification_enabled",
+   "type": "__parameter__",
+   "values": {
+    "name": "scan_sns_notification_enabled",
+    "default": false
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.service_role_arn",
+   "cfg": "__parameter__.service_role_arn",
+   "type": "__parameter__",
+   "values": {
+    "name": "service_role_arn",
+    "default": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.sns_notification_role_arn",
+   "cfg": "__parameter__.sns_notification_role_arn",
+   "type": "__parameter__",
+   "values": {
+    "name": "sns_notification_role_arn",
+    "default": ""
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.ssm_bucket_policy",
+   "cfg": "__parameter__.ssm_bucket_policy",
+   "type": "__parameter__",
+   "values": {
+    "name": "ssm_bucket_policy",
+    "default": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.ssm_bucket_versioning_enable",
+   "cfg": "__parameter__.ssm_bucket_versioning_enable",
+   "type": "__parameter__",
+   "values": {
+    "name": "ssm_bucket_versioning_enable",
+    "default": "true"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.stage",
+   "cfg": "__parameter__.stage",
+   "type": "__parameter__",
+   "values": {
+    "name": "stage",
+    "default": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.tags",
+   "cfg": "__parameter__.tags",
+   "type": "__parameter__",
+   "values": {
+    "name": "tags",
+    "default": {}
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.task_install_priority",
+   "cfg": "__parameter__.task_install_priority",
+   "type": "__parameter__",
+   "values": {
+    "name": "task_install_priority",
+    "default": 1
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.task_scan_priority",
+   "cfg": "__parameter__.task_scan_priority",
+   "type": "__parameter__",
+   "values": {
+    "name": "task_scan_priority",
+    "default": 1
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.tenant",
+   "cfg": "__parameter__.tenant",
+   "type": "__parameter__",
+   "values": {
+    "name": "tenant",
+    "default": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.install_maintenance_window_id",
+   "cfg": "__output__.install_maintenance_window_id",
+   "type": "__output__",
+   "values": {
+    "name": "install_maintenance_window_id",
+    "value": null,
+    "description": "SSM Patch Manager install maintenance window ID"
+   },
+   "refs": [
+    "aws_ssm_maintenance_window.install_window"
+   ]
+  },
+  {
+   "id": "__output__.install_maintenance_window_target_id",
+   "cfg": "__output__.install_maintenance_window_target_id",
+   "type": "__output__",
+   "values": {
+    "name": "install_maintenance_window_target_id",
+    "value": null,
+    "description": "SSM Patch Manager install maintenance window target ID"
+   },
+   "refs": [
+    "aws_ssm_maintenance_window_target.target_install"
+   ]
+  },
+  {
+   "id": "__output__.install_maintenance_window_task_id",
+   "cfg": "__output__.install_maintenance_window_task_id",
+   "type": "__output__",
+   "values": {
+    "name": "install_maintenance_window_task_id",
+    "value": null,
+    "description": "SSM Patch Manager install maintenance windows task ID"
+   },
+   "refs": [
+    "aws_ssm_maintenance_window_task.task_install_patches"
+   ]
+  },
+  {
+   "id": "__output__.install_patch_group_id",
+   "cfg": "__output__.install_patch_group_id",
+   "type": "__output__",
+   "values": {
+    "name": "install_patch_group_id",
+    "value": null,
+    "description": "SSM Patch Manager install patch group ID"
+   },
+   "refs": [
+    "aws_ssm_patch_group.install_patchgroup"
+   ]
+  },
+  {
+   "id": "__output__.patch_baseline_arn",
+   "cfg": "__output__.patch_baseline_arn",
+   "type": "__output__",
+   "values": {
+    "name": "patch_baseline_arn",
+    "value": null,
+    "description": "SSM Patch Manager patch baseline ARN"
+   },
+   "refs": [
+    "aws_ssm_patch_baseline.baseline"
+   ]
+  },
+  {
+   "id": "__output__.scan_maintenance_window_target_id",
+   "cfg": "__output__.scan_maintenance_window_target_id",
+   "type": "__output__",
+   "values": {
+    "name": "scan_maintenance_window_target_id",
+    "value": null,
+    "description": "SSM Patch Manager scan maintenance window target ID"
+   },
+   "refs": [
+    "aws_ssm_maintenance_window_target.target_scan"
+   ]
+  },
+  {
+   "id": "__output__.scan_maintenance_window_task_id",
+   "cfg": "__output__.scan_maintenance_window_task_id",
+   "type": "__output__",
+   "values": {
+    "name": "scan_maintenance_window_task_id",
+    "value": null,
+    "description": "SSM Patch Manager scan maintenance windows task ID"
+   },
+   "refs": [
+    "aws_ssm_maintenance_window_task.task_scan_patches"
+   ]
+  },
+  {
+   "id": "__output__.scan_patch_group_id",
+   "cfg": "__output__.scan_patch_group_id",
+   "type": "__output__",
+   "values": {
+    "name": "scan_patch_group_id",
+    "value": null,
+    "description": "SSM Patch Manager scan patch group ID"
+   },
+   "refs": [
+    "aws_ssm_patch_group.scan_patchgroup"
+   ]
+  },
+  {
+   "id": "__output__.ssm_patch_log_s3_bucket_arn",
+   "cfg": "__output__.ssm_patch_log_s3_bucket_arn",
+   "type": "__output__",
+   "values": {
+    "name": "ssm_patch_log_s3_bucket_arn",
+    "value": "",
+    "description": "SSM Patch Manager s3 log bucket ARN"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.ssm_patch_log_s3_bucket_id",
+   "cfg": "__output__.ssm_patch_log_s3_bucket_id",
+   "type": "__output__",
+   "values": {
+    "name": "ssm_patch_log_s3_bucket_id",
+    "value": "",
+    "description": "SSM Patch Manager s3 log bucket ID"
+   },
+   "refs": []
+  },
+  {
+   "id": "__declared__.data.aws_caller_identity.current",
+   "cfg": "data.aws_caller_identity.current",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "data.aws_caller_identity",
+    "name": "current",
+    "gated": true,
+    "gate": "local.enabled ? 1 : 0",
+    "properties": {
+     "count": "${local.enabled ? 1 : 0}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.data.aws_partition.current",
+   "cfg": "data.aws_partition.current",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "data.aws_partition",
+    "name": "current",
+    "gated": true,
+    "gate": "local.enabled ? 1 : 0",
+    "properties": {
+     "count": "${local.enabled ? 1 : 0}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_ssm_maintenance_window.scan_window",
+   "cfg": "aws_ssm_maintenance_window.scan_window",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_ssm_maintenance_window",
+    "name": "scan_window",
+    "gated": true,
+    "gate": "local.enabled ? 1 : 0",
+    "properties": {
+     "count": "${local.enabled ? 1 : 0}",
+     "name": "${module.scan_window_label.id}",
+     "schedule": "cron(0 0 18 ? * WED *)",
+     "duration": 3,
+     "cutoff": 1
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_ssm_maintenance_window_task.task_scan_patches",
+   "cfg": "aws_ssm_maintenance_window_task.task_scan_patches",
+   "type": "__declared__",
+   "refs": [
+    "aws_ssm_maintenance_window.scan_window",
+    "aws_ssm_maintenance_window_target.target_scan"
+   ],
+   "values": {
+    "type": "aws_ssm_maintenance_window_task",
+    "name": "task_scan_patches",
+    "gated": true,
+    "gate": "local.enabled ? 1 : 0",
+    "properties": {
+     "count": "${local.enabled ? 1 : 0}",
+     "window_id": "${aws_ssm_maintenance_window.scan_window[0].id}",
+     "task_type": "RUN_COMMAND",
+     "task_arn": "AWS-RunPatchBaseline",
+     "priority": 1,
+     "service_role_arn": "${var.service_role_arn}",
+     "max_concurrency": 20,
+     "max_errors": 50,
+     "targets": [
+      {
+       "key": "WindowTargetIds",
+       "values": "${aws_ssm_maintenance_window_target.target_scan[*].id}"
+      }
+     ],
+     "task_invocation_parameters": [
+      {
+       "run_command_parameters": [
+        {
+         "parameter": [
+          {
+           "name": "Operation",
+           "values": [
+            "Scan"
+           ]
+          },
+          {
+           "name": "RebootOption",
+           "values": [
+            "NoReboot"
+           ]
+          }
+         ],
+         "output_s3_bucket": "${var.s3_log_output_enabled ? local.bucket_id : None}",
+         "output_s3_key_prefix": "${var.s3_log_output_enabled ? var.s3_bucket_prefix_scan_logs : None}",
+         "service_role_arn": "",
+         "dynamic": {
+          "notification_config": {
+           "for_each": "${var.scan_sns_notification_enabled ? [1] : []}",
+           "content": [
+            {
+             "notification_arn": "",
+             "notification_events": [
+              "All"
+             ],
+             "notification_type": "Command"
+            }
+           ]
+          },
+          "cloudwatch_config": {
+           "for_each": "${var.cloudwatch_log_output_enabled ? [1] : []}",
+           "content": [
+            {
+             "cloudwatch_output_enabled": false,
+             "cloudwatch_log_group_name": "${var.cloudwatch_log_group_name}"
+            }
+           ]
+          }
+         }
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_ssm_maintenance_window_target.target_scan",
+   "cfg": "aws_ssm_maintenance_window_target.target_scan",
+   "type": "__declared__",
+   "refs": [
+    "aws_ssm_maintenance_window.scan_window"
+   ],
+   "values": {
+    "type": "aws_ssm_maintenance_window_target",
+    "name": "target_scan",
+    "gated": true,
+    "gate": "local.enabled ? 1 : 0",
+    "properties": {
+     "count": "${local.enabled ? 1 : 0}",
+     "window_id": "${aws_ssm_maintenance_window.scan_window[0].id}",
+     "resource_type": "INSTANCE",
+     "dynamic": {
+      "targets": {
+       "for_each": "${length(var.scan_maintenance_windows_targets) == 0 ? [1] : []}",
+       "content": [
+        {
+         "key": "tag:Patch Group",
+         "values": [
+          "TOSCAN"
+         ]
+        }
+       ]
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_ssm_maintenance_window.install_window",
+   "cfg": "aws_ssm_maintenance_window.install_window",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_ssm_maintenance_window",
+    "name": "install_window",
+    "gated": true,
+    "gate": "local.enabled ? 1 : 0",
+    "properties": {
+     "count": "${local.enabled ? 1 : 0}",
+     "name": "${module.install_window_label.id}",
+     "schedule": "cron(0 0 21 ? * WED *)",
+     "duration": 3,
+     "cutoff": 1
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_ssm_maintenance_window_task.task_install_patches",
+   "cfg": "aws_ssm_maintenance_window_task.task_install_patches",
+   "type": "__declared__",
+   "refs": [
+    "aws_ssm_maintenance_window.install_window",
+    "aws_ssm_maintenance_window_target.target_install"
+   ],
+   "values": {
+    "type": "aws_ssm_maintenance_window_task",
+    "name": "task_install_patches",
+    "gated": true,
+    "gate": "local.enabled ? 1 : 0",
+    "properties": {
+     "count": "${local.enabled ? 1 : 0}",
+     "window_id": "${aws_ssm_maintenance_window.install_window[0].id}",
+     "task_type": "RUN_COMMAND",
+     "task_arn": "AWS-RunPatchBaseline",
+     "priority": 1,
+     "service_role_arn": "${var.service_role_arn}",
+     "max_concurrency": 20,
+     "max_errors": 50,
+     "targets": [
+      {
+       "key": "WindowTargetIds",
+       "values": "${aws_ssm_maintenance_window_target.target_install[*].id}"
+      }
+     ],
+     "task_invocation_parameters": [
+      {
+       "run_command_parameters": [
+        {
+         "parameter": [
+          {
+           "name": "Operation",
+           "values": [
+            "Install"
+           ]
+          },
+          {
+           "name": "RebootOption",
+           "values": [
+            "RebootIfNeeded"
+           ]
+          }
+         ],
+         "output_s3_bucket": "${var.s3_log_output_enabled ? local.bucket_id : None}",
+         "output_s3_key_prefix": "${var.s3_log_output_enabled ? var.s3_bucket_prefix_scan_logs : None}",
+         "service_role_arn": "",
+         "dynamic": {
+          "notification_config": {
+           "for_each": "${var.install_sns_notification_enabled ? [1] : []}",
+           "content": [
+            {
+             "notification_arn": "",
+             "notification_events": [
+              "All"
+             ],
+             "notification_type": "Command"
+            }
+           ]
+          },
+          "cloudwatch_config": {
+           "for_each": "${var.cloudwatch_log_output_enabled ? [1] : []}",
+           "content": [
+            {
+             "cloudwatch_output_enabled": false,
+             "cloudwatch_log_group_name": "${var.cloudwatch_log_group_name}"
+            }
+           ]
+          }
+         }
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_ssm_maintenance_window_target.target_install",
+   "cfg": "aws_ssm_maintenance_window_target.target_install",
+   "type": "__declared__",
+   "refs": [
+    "aws_ssm_maintenance_window.install_window"
+   ],
+   "values": {
+    "type": "aws_ssm_maintenance_window_target",
+    "name": "target_install",
+    "gated": true,
+    "gate": "local.enabled ? 1 : 0",
+    "properties": {
+     "count": "${local.enabled ? 1 : 0}",
+     "window_id": "${aws_ssm_maintenance_window.install_window[0].id}",
+     "resource_type": "INSTANCE",
+     "dynamic": {
+      "targets": {
+       "for_each": "${length(var.install_maintenance_windows_targets) == 0 ? [1] : []}",
+       "content": [
+        {
+         "key": "tag:Patch Group",
+         "values": [
+          "TOPATCH"
+         ]
+        }
+       ]
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_ssm_patch_baseline.baseline",
+   "cfg": "aws_ssm_patch_baseline.baseline",
+   "type": "__declared__",
+   "refs": [
+    "approval_rule.value",
+    "patch_filter.value"
+   ],
+   "values": {
+    "type": "aws_ssm_patch_baseline",
+    "name": "baseline",
+    "gated": true,
+    "gate": "local.enabled ? 1 : 0",
+    "properties": {
+     "count": "${local.enabled ? 1 : 0}",
+     "name": "${module.this.id}-${var.operating_system}",
+     "description": "${var.operating_system} baseline",
+     "operating_system": "AMAZON_LINUX_2",
+     "approved_patches": [],
+     "rejected_patches": [],
+     "approved_patches_compliance_level": "HIGH",
+     "dynamic": {
+      "approval_rule": {
+       "for_each": "${toset(var.patch_baseline_approval_rules)}",
+       "content": [
+        {
+         "approve_after_days": "${approval_rule.value.approve_after_days}",
+         "approve_until_date": "${approval_rule.value.approve_until_date}",
+         "compliance_level": "${approval_rule.value.compliance_level}",
+         "enable_non_security": "${approval_rule.value.enable_non_security}",
+         "dynamic": {
+          "patch_filter": {
+           "for_each": "${approval_rule.value.patch_baseline_filters}",
+           "content": [
+            {
+             "key": "${patch_filter.value.name}",
+             "values": "${patch_filter.value.values}"
+            }
+           ]
+          }
+         }
+        }
+       ]
+      }
+     },
+     "tags": "${module.this.tags}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_ssm_patch_group.install_patchgroup",
+   "cfg": "aws_ssm_patch_group.install_patchgroup",
+   "type": "__declared__",
+   "refs": [
+    "aws_ssm_patch_baseline.baseline"
+   ],
+   "values": {
+    "type": "aws_ssm_patch_group",
+    "name": "install_patchgroup",
+    "gated": true,
+    "gate": "(local.enabled ? 1 : 0) * length(var.install_patch_groups)",
+    "properties": {
+     "count": "${local.enabled ? 1 : 0 * length(var.install_patch_groups)}",
+     "baseline_id": "${aws_ssm_patch_baseline.baseline[0].id}",
+     "patch_group": "${element(var.install_patch_groups,count.index)}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_ssm_patch_group.scan_patchgroup",
+   "cfg": "aws_ssm_patch_group.scan_patchgroup",
+   "type": "__declared__",
+   "refs": [
+    "aws_ssm_patch_baseline.baseline"
+   ],
+   "values": {
+    "type": "aws_ssm_patch_group",
+    "name": "scan_patchgroup",
+    "gated": true,
+    "gate": "(local.enabled ? 1 : 0) * length(var.scan_patch_groups)",
+    "properties": {
+     "count": "${local.enabled ? 1 : 0 * length(var.scan_patch_groups)}",
+     "baseline_id": "${aws_ssm_patch_baseline.baseline[0].id}",
+     "patch_group": "${element(var.scan_patch_groups,count.index)}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.data.aws_iam_policy_document.bucket_policy",
+   "cfg": "data.aws_iam_policy_document.bucket_policy",
+   "type": "__declared__",
+   "refs": [
+    "data.aws_caller_identity.current",
+    "data.aws_partition.current"
+   ],
+   "values": {
+    "type": "data.aws_iam_policy_document",
+    "name": "bucket_policy",
+    "gated": true,
+    "gate": "local.create_log_bucket ? 1 : 0",
+    "properties": {
+     "count": "${local.create_log_bucket ? 1 : 0}",
+     "statement": [
+      {
+       "effect": "Allow",
+       "actions": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:PutObjectAcl",
+        "s3:GetEncryptionConfiguration"
+       ],
+       "resources": [
+        "${format(\"arn:%s:s3:::%s\",local.aws_partition,module.this.id)}",
+        "${format(\"arn:%s:s3:::%s/*\",local.aws_partition,module.this.id)}"
+       ],
+       "principals": [
+        {
+         "identifiers": [
+          "${format(\"arn:%s:iam::%s:root\",local.aws_partition,local.account_id)}"
+         ],
+         "type": "AWS"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  }
+ ]
+}

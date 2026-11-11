@@ -1,0 +1,230 @@
+package intent.tf.row_037
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {},
+ "checks": [
+  {
+   "id": "table_basic",
+   "tier": "core",
+   "quote": "The first table must be named \"default-and-alternate-tags-module-basic\"",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_dynamodb_table"
+    ],
+    "where": [
+     {
+      "path": [
+       "name"
+      ],
+      "op": "eq",
+      "value": "default-and-alternate-tags-module-basic"
+     }
+    ]
+   }
+  },
+  {
+   "id": "table_alt",
+   "tier": "core",
+   "quote": "The second table must be named \"default-and-alternate-tags-module-alternate\"",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_dynamodb_table"
+    ],
+    "where": [
+     {
+      "path": [
+       "name"
+      ],
+      "op": "eq",
+      "value": "default-and-alternate-tags-module-alternate"
+     }
+    ]
+   }
+  },
+  {
+   "id": "alt_provider",
+   "tier": "core",
+   "quote": "managed by an alternate AWS provider alias named \"alt-tags\"",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": [
+       "type"
+      ],
+      "op": "eq",
+      "value": "aws_dynamodb_table"
+     },
+     {
+      "path": [
+       "properties",
+       "name"
+      ],
+      "op": "eq",
+      "value": "default-and-alternate-tags-module-alternate"
+     }
+    ]
+   },
+   "cond": {
+    "path": [
+     "properties",
+     "provider"
+    ],
+    "op": "contains",
+    "value": "alt-tags"
+   }
+  },
+  {
+   "id": "billing",
+   "tier": "core",
+   "quote": "Both tables must be configured with PAY_PER_REQUEST billing mode",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_dynamodb_table"
+    ],
+    "where": [
+     {
+      "path": [
+       "name"
+      ],
+      "op": "in",
+      "value": [
+       "default-and-alternate-tags-module-basic",
+       "default-and-alternate-tags-module-alternate"
+      ]
+     }
+    ]
+   },
+   "cond": {
+    "path": [
+     "billing_mode"
+    ],
+    "op": "eq",
+    "value": "PAY_PER_REQUEST"
+   },
+   "quantifier": "all"
+  },
+  {
+   "id": "hash_key",
+   "tier": "core",
+   "quote": "define a single string hash key named \"KeyId\"",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_dynamodb_table"
+    ],
+    "where": [
+     {
+      "path": [
+       "name"
+      ],
+      "op": "in",
+      "value": [
+       "default-and-alternate-tags-module-basic",
+       "default-and-alternate-tags-module-alternate"
+      ]
+     }
+    ]
+   },
+   "cond": {
+    "path": [
+     "hash_key"
+    ],
+    "op": "eq",
+    "value": "KeyId"
+   },
+   "quantifier": "all"
+  },
+  {
+   "id": "single_key_no_range",
+   "tier": "core",
+   "quote": "define a single string hash key named \"KeyId\"",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_dynamodb_table"
+    ],
+    "where": [
+     {
+      "path": [
+       "name"
+      ],
+      "op": "in",
+      "value": [
+       "default-and-alternate-tags-module-basic",
+       "default-and-alternate-tags-module-alternate"
+      ]
+     }
+    ]
+   },
+   "cond": {
+    "path": [
+     "range_key"
+    ],
+    "op": "absent"
+   },
+   "quantifier": "all"
+  },
+  {
+   "id": "hash_key_string",
+   "tier": "core",
+   "quote": "define a single string hash key named \"KeyId\"",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_dynamodb_table"
+    ],
+    "where": [
+     {
+      "path": [
+       "name"
+      ],
+      "op": "in",
+      "value": [
+       "default-and-alternate-tags-module-basic",
+       "default-and-alternate-tags-module-alternate"
+      ]
+     }
+    ]
+   },
+   "cond": {
+    "path": [
+     "attribute",
+     "*"
+    ],
+    "op": "match",
+    "value": [
+     {
+      "path": [
+       "name"
+      ],
+      "op": "eq",
+      "value": "KeyId"
+     },
+     {
+      "path": [
+       "type"
+      ],
+      "op": "eq",
+      "value": "S"
+     }
+    ]
+   },
+   "quantifier": "all"
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

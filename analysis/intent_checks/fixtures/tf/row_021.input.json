@@ -1,0 +1,138 @@
+{
+ "meta": {
+  "lang": "tf",
+  "mode": "plan",
+  "warnings": [],
+  "gt_hash": "93b4de2830e59918a85e365d1d4627ddf7a565dc63c530757769fbf9ce137ee6",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "aws_key_pair.key_pair",
+   "cfg": "aws_key_pair.key_pair",
+   "type": "aws_key_pair",
+   "values": {
+    "region": "us-east-1",
+    "tags": null
+   },
+   "refs": [
+    "random_pet.key_prefix",
+    "tls_private_key.key"
+   ]
+  },
+  {
+   "id": "random_pet.key_prefix",
+   "cfg": "random_pet.key_prefix",
+   "type": "random_pet",
+   "values": {
+    "keepers": null,
+    "length": 2,
+    "prefix": null,
+    "separator": "-"
+   },
+   "refs": []
+  },
+  {
+   "id": "tls_private_key.key",
+   "cfg": "tls_private_key.key",
+   "type": "tls_private_key",
+   "values": {
+    "algorithm": "RSA",
+    "ecdsa_curve": "P224",
+    "rsa_bits": 4096
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.key_prefix",
+   "cfg": "__parameter__.key_prefix",
+   "type": "__parameter__",
+   "values": {
+    "name": "key_prefix",
+    "default": "key"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.key_id",
+   "cfg": "__output__.key_id",
+   "type": "__output__",
+   "values": {
+    "name": "key_id",
+    "value": null,
+    "description": null
+   },
+   "refs": [
+    "aws_key_pair.key_pair"
+   ]
+  },
+  {
+   "id": "__output__.key_name",
+   "cfg": "__output__.key_name",
+   "type": "__output__",
+   "values": {
+    "name": "key_name",
+    "value": null,
+    "description": null
+   },
+   "refs": [
+    "aws_key_pair.key_pair"
+   ]
+  },
+  {
+   "id": "__declared__.tls_private_key.key",
+   "cfg": "tls_private_key.key",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "tls_private_key",
+    "name": "key",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "algorithm": "RSA",
+     "rsa_bits": 4096
+    }
+   }
+  },
+  {
+   "id": "__declared__.random_pet.key_prefix",
+   "cfg": "random_pet.key_prefix",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "random_pet",
+    "name": "key_prefix",
+    "gated": false,
+    "gate": null,
+    "properties": {}
+   }
+  },
+  {
+   "id": "__declared__.aws_key_pair.key_pair",
+   "cfg": "aws_key_pair.key_pair",
+   "type": "__declared__",
+   "refs": [
+    "random_pet.key_prefix",
+    "tls_private_key.key"
+   ],
+   "values": {
+    "type": "aws_key_pair",
+    "name": "key_pair",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "key_name": "${var.key_prefix}-${random_pet.key_prefix.id}",
+     "public_key": "${tls_private_key.key.public_key_openssh}",
+     "provisioner": {
+      "local-exec": {
+       "command": [
+        "echo \"${tls_private_key.key.private_key_pem}\" > ../\"${var.key_prefix}-${random_pet.key_prefix.id}\".pem\nchmod 600 ../\"${var.key_prefix}-${random_pet.key_prefix.id}\".pem"
+       ]
+      }
+     }
+    }
+   }
+  }
+ ]
+}

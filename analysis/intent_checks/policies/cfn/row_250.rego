@@ -1,0 +1,958 @@
+package intent.cfn.row_250
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {
+  "pool": {
+   "types": [
+    "AWS::Cognito::UserPool"
+   ],
+   "where": []
+  },
+  "domain": {
+   "types": [
+    "AWS::Cognito::UserPoolDomain"
+   ],
+   "where": []
+  },
+  "rs": {
+   "types": [
+    "AWS::Cognito::UserPoolResourceServer"
+   ],
+   "where": []
+  },
+  "client": {
+   "types": [
+    "AWS::Cognito::UserPoolClient"
+   ],
+   "where": []
+  },
+  "fn": {
+   "types": [
+    "AWS::Lambda::Function"
+   ],
+   "where": []
+  },
+  "fnrole": {
+   "types": [
+    "AWS::IAM::Role"
+   ],
+   "where": [
+    {
+     "path": [
+      "AssumeRolePolicyDocument",
+      "Statement",
+      "*",
+      "Principal",
+      "Service",
+      "*"
+     ],
+     "op": "eq",
+     "value": "lambda.amazonaws.com"
+    }
+   ]
+  },
+  "cr": {
+   "types": [
+    "__declared__"
+   ],
+   "where": [
+    {
+     "path": [
+      "type"
+     ],
+     "op": "regex",
+     "value": "^(Custom::|AWS::CloudFormation::CustomResource)"
+    }
+   ]
+  },
+  "ssm": {
+   "types": [
+    "AWS::SSM::Parameter"
+   ],
+   "where": [
+    {
+     "path": [
+      "Name"
+     ],
+     "op": "regex",
+     "value": "^/protein-agent/cognito/"
+    }
+   ]
+  },
+  "outs": {
+   "types": [
+    "__output__"
+   ],
+   "where": []
+  }
+ },
+ "checks": [
+  {
+   "id": "pool",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "a user pool named \"agentcore-gateway-pool\"",
+   "select": "pool",
+   "cond": {
+    "path": [
+     "UserPoolName"
+    ],
+    "op": "eq",
+    "value": "agentcore-gateway-pool"
+   }
+  },
+  {
+   "id": "email_username",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "uses email as the username",
+   "select": "pool",
+   "cond": {
+    "path": [
+     "UsernameAttributes",
+     "*"
+    ],
+    "op": "eq",
+    "value": "email"
+   }
+  },
+  {
+   "id": "autoverify",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "auto-verifies email",
+   "select": "pool",
+   "cond": {
+    "path": [
+     "AutoVerifiedAttributes",
+     "*"
+    ],
+    "op": "eq",
+    "value": "email"
+   }
+  },
+  {
+   "id": "mfa_off",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "has MFA turned off",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "pool",
+     "cond": {
+      "path": [
+       "MfaConfiguration"
+      ],
+      "op": "eq",
+      "value": "OFF"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "pool",
+     "cond": {
+      "path": [
+       "MfaConfiguration"
+      ],
+      "op": "absent"
+     }
+    }
+   ]
+  },
+  {
+   "id": "pw_len",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "a minimum length of 12 characters",
+   "select": "pool",
+   "cond": {
+    "path": [
+     "Policies",
+     "PasswordPolicy",
+     "MinimumLength"
+    ],
+    "op": "eq",
+    "value": 12
+   }
+  },
+  {
+   "id": "pw_classes",
+   "kind": "all_of",
+   "tier": "core",
+   "quote": "requiring uppercase, lowercase, numbers, and symbols",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "pool",
+     "cond": {
+      "path": [
+       "Policies",
+       "PasswordPolicy",
+       "RequireUppercase"
+      ],
+      "op": "eq",
+      "value": "true"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "pool",
+     "cond": {
+      "path": [
+       "Policies",
+       "PasswordPolicy",
+       "RequireLowercase"
+      ],
+      "op": "eq",
+      "value": "true"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "pool",
+     "cond": {
+      "path": [
+       "Policies",
+       "PasswordPolicy",
+       "RequireNumbers"
+      ],
+      "op": "eq",
+      "value": "true"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "pool",
+     "cond": {
+      "path": [
+       "Policies",
+       "PasswordPolicy",
+       "RequireSymbols"
+      ],
+      "op": "eq",
+      "value": "true"
+     }
+    }
+   ]
+  },
+  {
+   "id": "symbols_param",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "symbols should be controllable through a true/false parameter",
+   "justify": "a true/false parameter for symbols: a boolean default on a parameter whose name says symbols/special characters",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": [
+       "name"
+      ],
+      "op": "regex",
+      "value": "(?i)(symbol|special)"
+     }
+    ]
+   },
+   "cond": {
+    "path": [
+     "default"
+    ],
+    "op": "regex",
+    "value": "(?i)^(true|false)$"
+   }
+  },
+  {
+   "id": "domain",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "a hosted domain",
+   "select": "domain"
+  },
+  {
+   "id": "domain_pool",
+   "kind": "ref",
+   "tier": "detail",
+   "quote": "Give the pool a hosted domain",
+   "from": "domain",
+   "to": "pool"
+  },
+  {
+   "id": "domain_prefix",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "whose prefix is built from the region name plus a fragment of the stack ID",
+   "select": "domain",
+   "cond": {
+    "path": [
+     "Domain"
+    ],
+    "op": "contains",
+    "value": "us-east-1"
+   },
+   "justify": "the prefix includes the region name; the adapter resolves AWS::Region to us-east-1"
+  },
+  {
+   "id": "rs",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "a resource server with the identifier \"agentcore-gateway\"",
+   "select": "rs"
+  },
+  {
+   "id": "rs_ident",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "a resource server with the identifier \"agentcore-gateway\"",
+   "select": "rs",
+   "cond": {
+    "path": [
+     "Identifier"
+    ],
+    "op": "eq",
+    "value": "agentcore-gateway"
+   }
+  },
+  {
+   "id": "rs_scopes",
+   "kind": "all_of",
+   "tier": "core",
+   "quote": "defines read, write, and admin scopes",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "rs",
+     "cond": {
+      "path": [
+       "Scopes",
+       "*",
+       "ScopeName"
+      ],
+      "op": "eq",
+      "value": "read"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "rs",
+     "cond": {
+      "path": [
+       "Scopes",
+       "*",
+       "ScopeName"
+      ],
+      "op": "eq",
+      "value": "write"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "rs",
+     "cond": {
+      "path": [
+       "Scopes",
+       "*",
+       "ScopeName"
+      ],
+      "op": "eq",
+      "value": "admin"
+     }
+    }
+   ]
+  },
+  {
+   "id": "rs_pool",
+   "kind": "ref",
+   "tier": "detail",
+   "quote": "a resource server with the identifier",
+   "from": "rs",
+   "to": "pool"
+  },
+  {
+   "id": "client",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "a confidential app client named \"agentcore-gateway-client\"",
+   "select": "client",
+   "cond": {
+    "path": [
+     "ClientName"
+    ],
+    "op": "eq",
+    "value": "agentcore-gateway-client"
+   }
+  },
+  {
+   "id": "client_secret",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "generates a secret",
+   "select": "client",
+   "cond": {
+    "path": [
+     "GenerateSecret"
+    ],
+    "op": "eq",
+    "value": "true"
+   }
+  },
+  {
+   "id": "client_flow",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "only allows the client_credentials flow",
+   "select": "client",
+   "quantifier": "all",
+   "cond": {
+    "path": [
+     "AllowedOAuthFlows",
+     "*"
+    ],
+    "op": "eq",
+    "value": "client_credentials",
+    "every": true
+   }
+  },
+  {
+   "id": "client_scopes",
+   "kind": "all_of",
+   "tier": "core",
+   "quote": "is granted all three custom scopes",
+   "justify": "custom scopes are identified as resource-server-identifier/scope (literal, or a Sub on the resource server)",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "client",
+     "cond": {
+      "path": [
+       "AllowedOAuthScopes",
+       "*"
+      ],
+      "op": "regex",
+      "value": "^(agentcore-gateway|\\$\\{[A-Za-z0-9]+\\})/read$"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "client",
+     "cond": {
+      "path": [
+       "AllowedOAuthScopes",
+       "*"
+      ],
+      "op": "regex",
+      "value": "^(agentcore-gateway|\\$\\{[A-Za-z0-9]+\\})/write$"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "client",
+     "cond": {
+      "path": [
+       "AllowedOAuthScopes",
+       "*"
+      ],
+      "op": "regex",
+      "value": "^(agentcore-gateway|\\$\\{[A-Za-z0-9]+\\})/admin$"
+     }
+    }
+   ]
+  },
+  {
+   "id": "client_pool",
+   "kind": "ref",
+   "tier": "detail",
+   "quote": "Add a confidential app client",
+   "from": "client",
+   "to": "pool"
+  },
+  {
+   "id": "lambda_py313",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "Python 3.13 Lambda-backed custom resource",
+   "select": "fn",
+   "cond": {
+    "path": [
+     "Runtime"
+    ],
+    "op": "eq",
+    "value": "python3.13"
+   }
+  },
+  {
+   "id": "lambda_role",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "with its own execution role",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "fn",
+     "to": "fnrole"
+    }
+   ]
+  },
+  {
+   "id": "custom_resource",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "custom resource",
+   "select": "cr"
+  },
+  {
+   "id": "cr_fn",
+   "kind": "ref",
+   "tier": "core",
+   "quote": "Lambda-backed custom resource",
+   "from": "cr",
+   "to": "fn"
+  },
+  {
+   "id": "cr_after_client",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "reads the client secret after the client is created",
+   "justify": "the custom resource is ordered after the client by referencing it",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "cr",
+     "to": "client"
+    }
+   ]
+  },
+  {
+   "id": "fn_reads_secret",
+   "kind": "any_of",
+   "tier": "detail",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "fnrole",
+     "cond": {
+      "path": [
+       "Policies",
+       "*",
+       "PolicyDocument",
+       "Statement",
+       "*",
+       "Action",
+       "*"
+      ],
+      "op": "glob_covers",
+      "value": "cognito-idp:DescribeUserPoolClient"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "PolicyDocument",
+       "Statement",
+       "*",
+       "Action",
+       "*"
+      ],
+      "op": "glob_covers",
+      "value": "cognito-idp:DescribeUserPoolClient"
+     }
+    }
+   ],
+   "quote": "reads the client secret after the client is created",
+   "justify": "reading an app client's secret is cognito-idp:DescribeUserPoolClient"
+  },
+  {
+   "id": "secret_name",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "under the name \"protein-engineering/cognito/client-secret\"",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "cr",
+     "cond": {
+      "path": [
+       "properties"
+      ],
+      "op": "contains",
+      "value": "protein-engineering/cognito/client-secret"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "fn",
+     "cond": {
+      "path": [
+       "Code"
+      ],
+      "op": "contains",
+      "value": "protein-engineering/cognito/client-secret"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "fn",
+     "cond": {
+      "path": [
+       "Environment",
+       "Variables",
+       "*"
+      ],
+      "op": "eq",
+      "value": "protein-engineering/cognito/client-secret"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "AWS::SecretsManager::Secret"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "Name"
+      ],
+      "op": "eq",
+      "value": "protein-engineering/cognito/client-secret"
+     }
+    }
+   ]
+  },
+  {
+   "id": "secret_store",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "stores the client ID, client secret, and user pool ID as a JSON secret in Secrets Manager",
+   "justify": "storing a secret uses the Secrets Manager create/put/update API",
+   "select": "fn",
+   "cond": {
+    "path": [
+     "Code"
+    ],
+    "op": "regex",
+    "value": "(?i)(create_secret|put_secret_value|update_secret)"
+   }
+  },
+  {
+   "id": "secret_force_delete",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "force-deleting it on stack deletion",
+   "justify": "force-delete is the Secrets Manager ForceDeleteWithoutRecovery option",
+   "select": "fn",
+   "cond": {
+    "path": [
+     "Code"
+    ],
+    "op": "regex",
+    "value": "(?i)ForceDeleteWithoutRecovery"
+   }
+  },
+  {
+   "id": "ssm_params",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "as SSM String parameters under the \"/protein-agent/cognito/\" path",
+   "justify": "five values are published: discovery URL, client ID, user pool ID, user pool ARN, domain URL",
+   "select": "ssm",
+   "min": 5
+  },
+  {
+   "id": "ssm_string",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "SSM String parameters",
+   "select": "ssm",
+   "quantifier": "all",
+   "cond": {
+    "path": [
+     "Type"
+    ],
+    "op": "eq",
+    "value": "String"
+   }
+  },
+  {
+   "id": "ssm_client_pool",
+   "kind": "all_of",
+   "tier": "detail",
+   "quote": "client ID, user pool ID, user pool ARN",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "ssm",
+     "to": "client"
+    },
+    {
+     "kind": "ref",
+     "from": "ssm",
+     "to": "pool"
+    }
+   ]
+  },
+  {
+   "id": "ssm_discovery",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "the OIDC discovery URL",
+   "justify": "an OIDC discovery URL ends in /.well-known/openid-configuration",
+   "select": "ssm",
+   "cond": {
+    "path": [
+     "Value"
+    ],
+    "op": "regex",
+    "value": "\\.well-known/openid-configuration"
+   }
+  },
+  {
+   "id": "ssm_arn_domain",
+   "kind": "all_of",
+   "tier": "detail",
+   "quote": "user pool ARN, and hosted domain URL as SSM String parameters",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::SSM::Parameter"
+      ],
+      "where": [
+       {
+        "path": [
+         "Name"
+        ],
+        "op": "regex",
+        "value": "^/protein-agent/cognito/"
+       },
+       {
+        "path": [
+         "Value",
+         "attr"
+        ],
+        "op": "eq",
+        "value": "Arn"
+       }
+      ]
+     },
+     "to": "pool"
+    },
+    {
+     "kind": "attr",
+     "select": "ssm",
+     "cond": {
+      "path": [
+       "Value"
+      ],
+      "op": "regex",
+      "value": "amazoncognito\\.com/?$"
+     }
+    }
+   ],
+   "justify": "the hosted domain URL is https://<prefix>.auth.<region>.amazoncognito.com"
+  },
+  {
+   "id": "outputs_count",
+   "kind": "exists",
+   "tier": "detail",
+   "quote": "export the pool, client, discovery URL, domain and token endpoint URLs, scope list, and parameter and secret names as stack outputs",
+   "justify": "pool, client, discovery URL, domain URL, token endpoint, scope list, parameter names, secret name",
+   "select": "outs",
+   "min": 8
+  },
+  {
+   "id": "out_pool_client",
+   "kind": "all_of",
+   "tier": "detail",
+   "quote": "export the pool, client",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "outs",
+     "to": "pool"
+    },
+    {
+     "kind": "ref",
+     "from": "outs",
+     "to": "client"
+    }
+   ]
+  },
+  {
+   "id": "out_token",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "token endpoint",
+   "select": "outs",
+   "cond": {
+    "path": [
+     "value"
+    ],
+    "op": "regex",
+    "value": "oauth2/token"
+   }
+  },
+  {
+   "id": "out_discovery_domain",
+   "kind": "all_of",
+   "tier": "detail",
+   "quote": "export the pool, client, discovery URL, domain and token endpoint URLs",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "outs",
+     "cond": {
+      "path": [
+       "value"
+      ],
+      "op": "regex",
+      "value": "\\.well-known/openid-configuration"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "outs",
+     "cond": {
+      "path": [
+       "value"
+      ],
+      "op": "regex",
+      "value": "amazoncognito\\.com/?$"
+     }
+    }
+   ],
+   "justify": "an OIDC discovery URL ends in /.well-known/openid-configuration; the domain URL is <prefix>.auth.<region>.amazoncognito.com"
+  },
+  {
+   "id": "out_scopes",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "scope list",
+   "select": "outs",
+   "cond": {
+    "path": [
+     "value"
+    ],
+    "op": "regex",
+    "value": "agentcore-gateway/read"
+   }
+  },
+  {
+   "id": "out_secret",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "secret names",
+   "select": "outs",
+   "cond": {
+    "path": [
+     "value"
+    ],
+    "op": "contains",
+    "value": "protein-engineering/cognito/client-secret"
+   }
+  },
+  {
+   "id": "out_param_names",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "parameter and secret names as stack outputs",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "outs",
+     "cond": {
+      "path": [
+       "value"
+      ],
+      "op": "regex",
+      "value": "^/protein-agent/cognito/"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": "outs",
+     "to": "ssm"
+    }
+   ]
+  },
+  {
+   "id": "project_param",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "for a project named \"protein-engineering\" by default",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": []
+   },
+   "cond": {
+    "path": [
+     "default"
+    ],
+    "op": "eq",
+    "value": "protein-engineering"
+   }
+  },
+  {
+   "id": "x_oauth_enabled",
+   "kind": "attr",
+   "tier": "extra",
+   "select": "client",
+   "cond": {
+    "path": [
+     "AllowedOAuthFlowsUserPoolClient"
+    ],
+    "op": "eq",
+    "value": "true"
+   }
+  },
+  {
+   "id": "x_idp",
+   "kind": "attr",
+   "tier": "extra",
+   "select": "client",
+   "cond": {
+    "path": [
+     "SupportedIdentityProviders",
+     "*"
+    ],
+    "op": "eq",
+    "value": "COGNITO"
+   }
+  },
+  {
+   "id": "x_prevent",
+   "kind": "attr",
+   "tier": "extra",
+   "select": "client",
+   "cond": {
+    "path": [
+     "PreventUserExistenceErrors"
+    ],
+    "op": "eq",
+    "value": "ENABLED"
+   }
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

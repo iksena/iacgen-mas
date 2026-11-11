@@ -1,0 +1,301 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "2660e967c742ff5183771147999225cf10f56c91c6cb3b9e441644093ec278e5",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "ApiSchema",
+   "cfg": "ApiSchema",
+   "type": "AWS::AppSync::GraphQLSchema",
+   "values": {
+    "ApiId": {
+     "ref": "AppSyncApi",
+     "attr": "ApiId"
+    },
+    "Definition": "type Note {\n  NoteId: ID!\n  title: String\n  content: String\n}\ntype Query {\n  getNote(NoteId: ID!): Note\n}\ntype Mutation {\n  saveNote(NoteId: ID!, title: String!, content: String!): Note!\n}\ntype Schema {\n  query: Query\n  mutation: Mutation\n}\n"
+   },
+   "refs": [
+    "AppSyncApi"
+   ]
+  },
+  {
+   "id": "AppSyncApi",
+   "cfg": "AppSyncApi",
+   "type": "AWS::AppSync::GraphQLApi",
+   "values": {
+    "AuthenticationType": "AWS_IAM",
+    "Name": "AppSyncApi"
+   },
+   "refs": []
+  },
+  {
+   "id": "AppSyncEventBusDataSource",
+   "cfg": "AppSyncEventBusDataSource",
+   "type": "AWS::AppSync::DataSource",
+   "values": {
+    "ApiId": {
+     "ref": "AppSyncApi",
+     "attr": "ApiId"
+    },
+    "EventBridgeConfig": {
+     "EventBusArn": {
+      "ref": "EventBus",
+      "attr": "Arn"
+     }
+    },
+    "Name": "MyDataSource",
+    "ServiceRoleArn": {
+     "ref": "EventBridgeRole",
+     "attr": "Arn"
+    },
+    "Type": "AMAZON_EVENTBRIDGE"
+   },
+   "refs": [
+    "AppSyncApi",
+    "EventBridgeRole",
+    "EventBus"
+   ]
+  },
+  {
+   "id": "ConnectorPolicy",
+   "cfg": "ConnectorPolicy",
+   "type": "AWS::IAM::ManagedPolicy",
+   "values": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "events:PutEvents"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "ref": "EventBus",
+         "attr": "Arn"
+        }
+       ]
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "Roles": [
+     {
+      "ref": "EventBridgeRole"
+     }
+    ],
+    "__resource__": {
+     "Metadata": {
+      "aws:sam:connectors": {
+       "Connector": {
+        "Destination": {
+         "Type": "AWS::Events::EventBus"
+        },
+        "Source": {
+         "Type": "AWS::AppSync::DataSource"
+        }
+       }
+      }
+     }
+    }
+   },
+   "refs": [
+    "EventBridgeRole",
+    "EventBus"
+   ]
+  },
+  {
+   "id": "EventBridgeRole",
+   "cfg": "EventBridgeRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "appsync.amazonaws.com"
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "RoleName": "appsync-eventbridge-role"
+   },
+   "refs": []
+  },
+  {
+   "id": "EventBus",
+   "cfg": "EventBus",
+   "type": "AWS::Events::EventBus",
+   "values": {
+    "Name": "stack-EventBus"
+   },
+   "refs": []
+  },
+  {
+   "id": "__declared__.AWS::AppSync::GraphQLSchema.ApiSchema",
+   "cfg": "ApiSchema",
+   "type": "__declared__",
+   "refs": [
+    "AppSyncApi"
+   ],
+   "values": {
+    "type": "AWS::AppSync::GraphQLSchema",
+    "name": "ApiSchema",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "AppSyncApi",
+      "attr": "ApiId"
+     },
+     "Definition": "type Note {\n  NoteId: ID!\n  title: String\n  content: String\n}\ntype Query {\n  getNote(NoteId: ID!): Note\n}\ntype Mutation {\n  saveNote(NoteId: ID!, title: String!, content: String!): Note!\n}\ntype Schema {\n  query: Query\n  mutation: Mutation\n}\n"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::AppSync::GraphQLApi.AppSyncApi",
+   "cfg": "AppSyncApi",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::AppSync::GraphQLApi",
+    "name": "AppSyncApi",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AuthenticationType": "AWS_IAM",
+     "Name": "AppSyncApi"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::AppSync::DataSource.AppSyncEventBusDataSource",
+   "cfg": "AppSyncEventBusDataSource",
+   "type": "__declared__",
+   "refs": [
+    "AppSyncApi",
+    "EventBridgeRole",
+    "EventBus"
+   ],
+   "values": {
+    "type": "AWS::AppSync::DataSource",
+    "name": "AppSyncEventBusDataSource",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "AppSyncApi",
+      "attr": "ApiId"
+     },
+     "EventBridgeConfig": {
+      "EventBusArn": {
+       "ref": "EventBus",
+       "attr": "Arn"
+      }
+     },
+     "Name": "MyDataSource",
+     "ServiceRoleArn": {
+      "ref": "EventBridgeRole",
+      "attr": "Arn"
+     },
+     "Type": "AMAZON_EVENTBRIDGE"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::ManagedPolicy.ConnectorPolicy",
+   "cfg": "ConnectorPolicy",
+   "type": "__declared__",
+   "refs": [
+    "EventBridgeRole",
+    "EventBus"
+   ],
+   "values": {
+    "type": "AWS::IAM::ManagedPolicy",
+    "name": "ConnectorPolicy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "PolicyDocument": {
+      "Statement": [
+       {
+        "Action": [
+         "events:PutEvents"
+        ],
+        "Effect": "Allow",
+        "Resource": [
+         {
+          "ref": "EventBus",
+          "attr": "Arn"
+         }
+        ]
+       }
+      ],
+      "Version": "2012-10-17"
+     },
+     "Roles": [
+      {
+       "ref": "EventBridgeRole"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.EventBridgeRole",
+   "cfg": "EventBridgeRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "EventBridgeRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "appsync.amazonaws.com"
+         ]
+        }
+       }
+      ],
+      "Version": "2012-10-17"
+     },
+     "RoleName": "appsync-eventbridge-role"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Events::EventBus.EventBus",
+   "cfg": "EventBus",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Events::EventBus",
+    "name": "EventBus",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "stack-EventBus"
+    }
+   }
+  }
+ ]
+}

@@ -1,0 +1,525 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "5532fd77e65ceadb50049df31a28db8f045e4db7ca9379157094f49209c4452c",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "Mesh",
+   "cfg": "Mesh",
+   "type": "AWS::AppMesh::Mesh",
+   "values": {
+    "MeshName": "stack"
+   },
+   "refs": []
+  },
+  {
+   "id": "ColorTellerBlueNode",
+   "cfg": "ColorTellerBlueNode",
+   "type": "AWS::AppMesh::VirtualNode",
+   "values": {
+    "MeshName": "stack",
+    "VirtualNodeName": "colorteller-blue-node",
+    "Spec": {
+     "ServiceDiscovery": {
+      "AWSCloudMap": {
+       "ServiceName": "colorteller",
+       "NamespaceName": "stack.local",
+       "Attributes": [
+        {
+         "Key": "ECS_TASK_DEFINITION_FAMILY",
+         "Value": "blue"
+        }
+       ]
+      }
+     },
+     "Listeners": [
+      {
+       "PortMapping": {
+        "Port": 9080,
+        "Protocol": "http"
+       },
+       "HealthCheck": {
+        "Protocol": "http",
+        "Path": "/ping",
+        "HealthyThreshold": 2,
+        "UnhealthyThreshold": 2,
+        "TimeoutMillis": 2000,
+        "IntervalMillis": 5000
+       }
+      }
+     ]
+    },
+    "__resource__": {
+     "DependsOn": [
+      "Mesh"
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "ColorTellerGreenNode",
+   "cfg": "ColorTellerGreenNode",
+   "type": "AWS::AppMesh::VirtualNode",
+   "values": {
+    "MeshName": "stack",
+    "VirtualNodeName": "colorteller-green-node",
+    "Spec": {
+     "ServiceDiscovery": {
+      "AWSCloudMap": {
+       "ServiceName": "colorteller",
+       "NamespaceName": "stack.local",
+       "Attributes": [
+        {
+         "Key": "ECS_TASK_DEFINITION_FAMILY",
+         "Value": "green"
+        }
+       ]
+      }
+     },
+     "Listeners": [
+      {
+       "PortMapping": {
+        "Port": 9080,
+        "Protocol": "http"
+       },
+       "HealthCheck": {
+        "Protocol": "http",
+        "Path": "/ping",
+        "HealthyThreshold": 2,
+        "UnhealthyThreshold": 2,
+        "TimeoutMillis": 2000,
+        "IntervalMillis": 5000
+       }
+      }
+     ]
+    },
+    "__resource__": {
+     "DependsOn": [
+      "Mesh"
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "ColorGateway",
+   "cfg": "ColorGateway",
+   "type": "AWS::AppMesh::VirtualGateway",
+   "values": {
+    "MeshName": "stack",
+    "VirtualGatewayName": "colorgateway",
+    "Spec": {
+     "Listeners": [
+      {
+       "PortMapping": {
+        "Port": 9080,
+        "Protocol": "http"
+       },
+       "HealthCheck": {
+        "Protocol": "http",
+        "Path": "/ping",
+        "HealthyThreshold": 2,
+        "UnhealthyThreshold": 2,
+        "TimeoutMillis": 2000,
+        "IntervalMillis": 5000
+       }
+      }
+     ]
+    },
+    "__resource__": {
+     "DependsOn": [
+      "Mesh"
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "ColorGatewayRoute",
+   "cfg": "ColorGatewayRoute",
+   "type": "AWS::AppMesh::GatewayRoute",
+   "values": {
+    "GatewayRouteName": "gatewayroute",
+    "MeshName": "stack",
+    "Spec": {
+     "HttpRoute": {
+      "Action": {
+       "Target": {
+        "VirtualService": {
+         "VirtualServiceName": {
+          "ref": "ColorTellerService",
+          "attr": "VirtualServiceName"
+         }
+        }
+       }
+      },
+      "Match": {
+       "Prefix": "/"
+      }
+     }
+    },
+    "VirtualGatewayName": "colorgateway",
+    "__resource__": {
+     "DependsOn": [
+      "ColorTellerService",
+      "ColorGateway"
+     ]
+    }
+   },
+   "refs": [
+    "ColorTellerService"
+   ]
+  },
+  {
+   "id": "ColorTellerService",
+   "cfg": "ColorTellerService",
+   "type": "AWS::AppMesh::VirtualService",
+   "values": {
+    "MeshName": "stack",
+    "VirtualServiceName": "colorteller.stack.local",
+    "Spec": {
+     "Provider": {
+      "VirtualRouter": {
+       "VirtualRouterName": "colorteller-virtual-router"
+      }
+     }
+    },
+    "__resource__": {
+     "DependsOn": [
+      "ColorTellerRouter"
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "ColorTellerRouter",
+   "cfg": "ColorTellerRouter",
+   "type": "AWS::AppMesh::VirtualRouter",
+   "values": {
+    "MeshName": "stack",
+    "VirtualRouterName": "colorteller-virtual-router",
+    "Spec": {
+     "Listeners": [
+      {
+       "PortMapping": {
+        "Port": 9080,
+        "Protocol": "http"
+       }
+      }
+     ]
+    },
+    "__resource__": {
+     "DependsOn": [
+      "Mesh"
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "ColorTellerRoute",
+   "cfg": "ColorTellerRoute",
+   "type": "AWS::AppMesh::Route",
+   "values": {
+    "MeshName": "stack",
+    "VirtualRouterName": "colorteller-virtual-router",
+    "RouteName": "colorteller-route",
+    "Spec": {
+     "HttpRoute": {
+      "Match": {
+       "Prefix": "/"
+      },
+      "Action": {
+       "WeightedTargets": [
+        {
+         "VirtualNode": "colorteller-blue-node",
+         "Weight": 50
+        },
+        {
+         "VirtualNode": "colorteller-green-node",
+         "Weight": 50
+        }
+       ]
+      }
+     }
+    },
+    "__resource__": {
+     "DependsOn": [
+      "ColorTellerRouter",
+      "ColorTellerBlueNode",
+      "ColorTellerGreenNode"
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "__declared__.AWS::AppMesh::Mesh.Mesh",
+   "cfg": "Mesh",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::AppMesh::Mesh",
+    "name": "Mesh",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "MeshName": "stack"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::AppMesh::VirtualNode.ColorTellerBlueNode",
+   "cfg": "ColorTellerBlueNode",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::AppMesh::VirtualNode",
+    "name": "ColorTellerBlueNode",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "MeshName": "stack",
+     "VirtualNodeName": "colorteller-blue-node",
+     "Spec": {
+      "ServiceDiscovery": {
+       "AWSCloudMap": {
+        "ServiceName": "colorteller",
+        "NamespaceName": "stack.local",
+        "Attributes": [
+         {
+          "Key": "ECS_TASK_DEFINITION_FAMILY",
+          "Value": "blue"
+         }
+        ]
+       }
+      },
+      "Listeners": [
+       {
+        "PortMapping": {
+         "Port": 9080,
+         "Protocol": "http"
+        },
+        "HealthCheck": {
+         "Protocol": "http",
+         "Path": "/ping",
+         "HealthyThreshold": 2,
+         "UnhealthyThreshold": 2,
+         "TimeoutMillis": 2000,
+         "IntervalMillis": 5000
+        }
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::AppMesh::VirtualNode.ColorTellerGreenNode",
+   "cfg": "ColorTellerGreenNode",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::AppMesh::VirtualNode",
+    "name": "ColorTellerGreenNode",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "MeshName": "stack",
+     "VirtualNodeName": "colorteller-green-node",
+     "Spec": {
+      "ServiceDiscovery": {
+       "AWSCloudMap": {
+        "ServiceName": "colorteller",
+        "NamespaceName": "stack.local",
+        "Attributes": [
+         {
+          "Key": "ECS_TASK_DEFINITION_FAMILY",
+          "Value": "green"
+         }
+        ]
+       }
+      },
+      "Listeners": [
+       {
+        "PortMapping": {
+         "Port": 9080,
+         "Protocol": "http"
+        },
+        "HealthCheck": {
+         "Protocol": "http",
+         "Path": "/ping",
+         "HealthyThreshold": 2,
+         "UnhealthyThreshold": 2,
+         "TimeoutMillis": 2000,
+         "IntervalMillis": 5000
+        }
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::AppMesh::VirtualGateway.ColorGateway",
+   "cfg": "ColorGateway",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::AppMesh::VirtualGateway",
+    "name": "ColorGateway",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "MeshName": "stack",
+     "VirtualGatewayName": "colorgateway",
+     "Spec": {
+      "Listeners": [
+       {
+        "PortMapping": {
+         "Port": 9080,
+         "Protocol": "http"
+        },
+        "HealthCheck": {
+         "Protocol": "http",
+         "Path": "/ping",
+         "HealthyThreshold": 2,
+         "UnhealthyThreshold": 2,
+         "TimeoutMillis": 2000,
+         "IntervalMillis": 5000
+        }
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::AppMesh::GatewayRoute.ColorGatewayRoute",
+   "cfg": "ColorGatewayRoute",
+   "type": "__declared__",
+   "refs": [
+    "ColorTellerService"
+   ],
+   "values": {
+    "type": "AWS::AppMesh::GatewayRoute",
+    "name": "ColorGatewayRoute",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "GatewayRouteName": "gatewayroute",
+     "MeshName": "stack",
+     "Spec": {
+      "HttpRoute": {
+       "Action": {
+        "Target": {
+         "VirtualService": {
+          "VirtualServiceName": {
+           "ref": "ColorTellerService",
+           "attr": "VirtualServiceName"
+          }
+         }
+        }
+       },
+       "Match": {
+        "Prefix": "/"
+       }
+      }
+     },
+     "VirtualGatewayName": "colorgateway"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::AppMesh::VirtualService.ColorTellerService",
+   "cfg": "ColorTellerService",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::AppMesh::VirtualService",
+    "name": "ColorTellerService",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "MeshName": "stack",
+     "VirtualServiceName": "colorteller.stack.local",
+     "Spec": {
+      "Provider": {
+       "VirtualRouter": {
+        "VirtualRouterName": "colorteller-virtual-router"
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::AppMesh::VirtualRouter.ColorTellerRouter",
+   "cfg": "ColorTellerRouter",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::AppMesh::VirtualRouter",
+    "name": "ColorTellerRouter",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "MeshName": "stack",
+     "VirtualRouterName": "colorteller-virtual-router",
+     "Spec": {
+      "Listeners": [
+       {
+        "PortMapping": {
+         "Port": 9080,
+         "Protocol": "http"
+        }
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::AppMesh::Route.ColorTellerRoute",
+   "cfg": "ColorTellerRoute",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::AppMesh::Route",
+    "name": "ColorTellerRoute",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "MeshName": "stack",
+     "VirtualRouterName": "colorteller-virtual-router",
+     "RouteName": "colorteller-route",
+     "Spec": {
+      "HttpRoute": {
+       "Match": {
+        "Prefix": "/"
+       },
+       "Action": {
+        "WeightedTargets": [
+         {
+          "VirtualNode": "colorteller-blue-node",
+          "Weight": 50
+         },
+         {
+          "VirtualNode": "colorteller-green-node",
+          "Weight": 50
+         }
+        ]
+       }
+      }
+     }
+    }
+   }
+  }
+ ]
+}

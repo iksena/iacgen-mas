@@ -1,0 +1,1047 @@
+{
+  "lang": "cfn",
+  "row_number": 162,
+  "source_hash": {
+    "gt": "ceb3f6274cdea7512cbf64c8230a0726d023cc108a416a2d627f72e76e1f0db9",
+    "prompt": "201b74e86a97c2d346b3c4f058ddcb6a1409ccf533edbb0a25d0c17fba914aa3"
+  },
+  "selectors": {
+    "base": {
+      "types": [
+        "AWS::IAM::ManagedPolicy"
+      ],
+      "where": [
+        {
+          "path": "PolicyDocument.Statement.*.Action.*",
+          "op": "glob_covers",
+          "value": "bedrock:InvokeModel"
+        }
+      ]
+    },
+    "role": {
+      "types": [
+        "AWS::IAM::Role"
+      ],
+      "where": [
+        {
+          "path": "AssumeRolePolicyDocument",
+          "op": "contains",
+          "value": "bedrock-agentcore.amazonaws.com"
+        }
+      ]
+    },
+    "pool": {
+      "types": [
+        "AWS::Cognito::UserPool"
+      ]
+    },
+    "domain": {
+      "types": [
+        "AWS::Cognito::UserPoolDomain"
+      ]
+    },
+    "rs": {
+      "types": [
+        "AWS::Cognito::UserPoolResourceServer"
+      ]
+    },
+    "client": {
+      "types": [
+        "AWS::Cognito::UserPoolClient"
+      ]
+    },
+    "out": {
+      "types": [
+        "__output__"
+      ]
+    },
+    "any_managed": {
+      "types": [
+        "AWS::IAM::ManagedPolicy"
+      ]
+    },
+    "role_not_writer": {
+      "types": [
+        "AWS::IAM::Role"
+      ],
+      "where": [
+        {
+          "path": "AssumeRolePolicyDocument",
+          "op": "contains",
+          "value": "bedrock-agentcore.amazonaws.com"
+        },
+        {
+          "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+          "op": "none_eq",
+          "value": "dynamodb:*"
+        },
+        {
+          "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+          "op": "none_eq",
+          "value": "*"
+        },
+        {
+          "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+          "op": "none_eq",
+          "value": "dynamodb:PutItem"
+        },
+        {
+          "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+          "op": "none_eq",
+          "value": "dynamodb:UpdateItem"
+        },
+        {
+          "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+          "op": "none_eq",
+          "value": "dynamodb:DeleteItem"
+        },
+        {
+          "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+          "op": "none_eq",
+          "value": "dynamodb:BatchWriteItem"
+        },
+        {
+          "path": "ManagedPolicyArns.*",
+          "op": "none_eq",
+          "value": "arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess"
+        }
+      ]
+    }
+  },
+  "checks": [
+    {
+      "id": "base_policy",
+      "kind": "exists",
+      "select": "base",
+      "tier": "core",
+      "quote": "shared base IAM managed policy"
+    },
+    {
+      "id": "base_bedrock_invoke",
+      "kind": "attr",
+      "select": "any_managed",
+      "cond": {
+        "path": "PolicyDocument.Statement.*",
+        "op": "match",
+        "value": [
+          {
+            "path": "Action.*",
+            "op": "glob_covers",
+            "value": "bedrock:InvokeModel"
+          }
+        ]
+      },
+      "tier": "core",
+      "quote": "granting Bedrock model invocation"
+    },
+    {
+      "id": "base_logs",
+      "kind": "attr",
+      "select": "base",
+      "cond": {
+        "path": "PolicyDocument.Statement.*",
+        "op": "match",
+        "value": [
+          {
+            "path": "Action.*",
+            "op": "glob_covers",
+            "value": "logs:PutLogEvents"
+          }
+        ]
+      },
+      "tier": "core",
+      "quote": "CloudWatch logging",
+      "justify": "logging means writing log events"
+    },
+    {
+      "id": "base_metrics_namespace",
+      "kind": "attr",
+      "select": "base",
+      "cond": {
+        "path": "PolicyDocument.Statement.*",
+        "op": "match",
+        "value": [
+          {
+            "path": "Action.*",
+            "op": "glob_covers",
+            "value": "cloudwatch:PutMetricData"
+          },
+          {
+            "path": "Condition",
+            "op": "regex",
+            "value": "bedrock-agentcore"
+          }
+        ]
+      },
+      "tier": "core",
+      "quote": "metrics under the bedrock-agentcore namespace"
+    },
+    {
+      "id": "base_xray",
+      "kind": "attr",
+      "select": "base",
+      "cond": {
+        "path": "PolicyDocument.Statement.*",
+        "op": "match",
+        "value": [
+          {
+            "path": "Action.*",
+            "op": "glob_covers",
+            "value": "xray:PutTraceSegments"
+          }
+        ]
+      },
+      "tier": "core",
+      "quote": "X-Ray tracing",
+      "justify": "X-Ray tracing means putting trace segments"
+    },
+    {
+      "id": "base_ssm_student_services",
+      "kind": "attr",
+      "select": "base",
+      "cond": {
+        "path": "PolicyDocument.Statement.*",
+        "op": "match",
+        "value": [
+          {
+            "path": "Action.*",
+            "op": "regex",
+            "value": "(?i)^(\\*|ssm:(\\*|get.*))$"
+          },
+          {
+            "path": "Resource.*",
+            "op": "contains",
+            "value": "student-services"
+          }
+        ]
+      },
+      "tier": "core",
+      "quote": "Systems Manager parameter access for the student-services path"
+    },
+    {
+      "id": "exec_roles",
+      "kind": "exists",
+      "select": "role",
+      "tier": "core",
+      "quote": "its own IAM execution role with least-privilege permissions",
+      "min": 5,
+      "justify": "orchestrator plus four domains each get an execution role"
+    },
+    {
+      "id": "no_gateway_execution_role",
+      "kind": "exists",
+      "select": "role",
+      "min": 1,
+      "max": 5,
+      "tier": "core",
+      "quote": "but no execution role",
+      "justify": "orchestrator plus four domains have a role, so a sixth means the gateway got one"
+    },
+    {
+      "id": "roles_attach_base",
+      "kind": "ref",
+      "from": "role",
+      "to": "base",
+      "tier": "core",
+      "quote": "attach this base policy to every execution role",
+      "bidirectional": true
+    },
+    {
+      "id": "every_role_attaches_managed",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "role",
+          "cond": {
+            "path": "ManagedPolicyArns.*.ref",
+            "op": "present"
+          },
+          "quantifier": "all"
+        },
+        {
+          "kind": "attr",
+          "select": "base",
+          "cond": {
+            "path": "Roles",
+            "op": "len_gte",
+            "value": 5
+          }
+        }
+      ],
+      "tier": "core",
+      "quote": "attach this base policy to every execution role",
+      "justify": "five execution roles, listed on the policy when attached from its side"
+    },
+    {
+      "id": "trust_source_account",
+      "kind": "attr",
+      "select": "role",
+      "cond": {
+        "path": "AssumeRolePolicyDocument",
+        "op": "regex",
+        "value": "(?i)aws:sourceaccount"
+      },
+      "tier": "core",
+      "quote": "with source account and source ARN conditions",
+      "quantifier": "all"
+    },
+    {
+      "id": "trust_source_arn",
+      "kind": "attr",
+      "select": "role",
+      "cond": {
+        "path": "AssumeRolePolicyDocument",
+        "op": "regex",
+        "value": "(?i)aws:sourcearn"
+      },
+      "tier": "core",
+      "quote": "with source account and source ARN conditions",
+      "quantifier": "all"
+    },
+    {
+      "id": "dynamodb_full_access",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "role",
+          "cond": {
+            "path": "ManagedPolicyArns.*",
+            "op": "contains",
+            "value": "AmazonDynamoDBFullAccess"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "role",
+          "cond": {
+            "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+            "op": "glob_covers",
+            "value": "dynamodb:*"
+          }
+        },
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "AWS::IAM::ManagedPolicy",
+              "AWS::IAM::Policy",
+              "AWS::IAM::RolePolicy"
+            ],
+            "where": [
+              {
+                "path": "PolicyDocument.Statement.*.Action.*",
+                "op": "glob_covers",
+                "value": "dynamodb:*"
+              },
+              {
+                "path": "PolicyDocument.Statement.*.Action.*",
+                "op": "none_eq",
+                "value": "bedrock:InvokeModel"
+              }
+            ]
+          },
+          "to": "role",
+          "bidirectional": true
+        }
+      ],
+      "tier": "core",
+      "quote": "includes the base policy plus full DynamoDB access",
+      "justify": "full access means all dynamodb actions"
+    },
+    {
+      "id": "dynamodb_read_only",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "role_not_writer",
+          "cond": {
+            "path": "ManagedPolicyArns.*",
+            "op": "contains",
+            "value": "AmazonDynamoDBReadOnlyAccess"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "role_not_writer",
+          "cond": {
+            "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+            "op": "glob_covers",
+            "value": "dynamodb:GetItem"
+          }
+        },
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "AWS::IAM::ManagedPolicy",
+              "AWS::IAM::Policy",
+              "AWS::IAM::RolePolicy"
+            ],
+            "where": [
+              {
+                "path": "PolicyDocument.Statement.*.Action.*",
+                "op": "glob_covers",
+                "value": "dynamodb:GetItem"
+              },
+              {
+                "path": "PolicyDocument.Statement.*.Action.*",
+                "op": "none_eq",
+                "value": "dynamodb:*"
+              },
+              {
+                "path": "PolicyDocument.Statement.*.Action.*",
+                "op": "none_eq",
+                "value": "*"
+              },
+              {
+                "path": "PolicyDocument.Statement.*.Action.*",
+                "op": "none_eq",
+                "value": "dynamodb:PutItem"
+              },
+              {
+                "path": "PolicyDocument.Statement.*.Action.*",
+                "op": "none_eq",
+                "value": "dynamodb:UpdateItem"
+              },
+              {
+                "path": "PolicyDocument.Statement.*.Action.*",
+                "op": "none_eq",
+                "value": "dynamodb:DeleteItem"
+              },
+              {
+                "path": "PolicyDocument.Statement.*.Action.*",
+                "op": "none_eq",
+                "value": "dynamodb:BatchWriteItem"
+              },
+              {
+                "path": "PolicyDocument.Statement.*.Action.*",
+                "op": "none_eq",
+                "value": "bedrock:InvokeModel"
+              }
+            ]
+          },
+          "to": "role_not_writer",
+          "bidirectional": true
+        }
+      ],
+      "tier": "core",
+      "quote": "base policy plus DynamoDB read-only access",
+      "justify": "read-only means reads such as GetItem and none of the write actions"
+    },
+    {
+      "id": "catalog_bedrock_retrieve",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "role",
+          "cond": {
+            "path": "Policies.*.PolicyDocument.Statement.*",
+            "op": "match",
+            "value": [
+              {
+                "path": "Action.*",
+                "op": "glob_covers",
+                "value": "bedrock:Retrieve"
+              },
+              {
+                "path": "Resource.*",
+                "op": "regex",
+                "value": "(^\\*$|knowledge-base/\\*$)"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "AWS::IAM::Policy",
+              "AWS::IAM::RolePolicy"
+            ],
+            "where": [
+              {
+                "path": "PolicyDocument.Statement.*",
+                "op": "match",
+                "value": [
+                  {
+                    "path": "Action.*",
+                    "op": "glob_covers",
+                    "value": "bedrock:Retrieve"
+                  },
+                  {
+                    "path": "Resource.*",
+                    "op": "regex",
+                    "value": "(^\\*$|knowledge-base/\\*$)"
+                  }
+                ]
+              }
+            ]
+          },
+          "to": "role",
+          "bidirectional": true
+        }
+      ],
+      "tier": "core",
+      "quote": "an inline policy allowing bedrock:Retrieve on any knowledge base",
+      "justify": "any knowledge base means * or knowledge-base/*"
+    },
+    {
+      "id": "loan_sagemaker_invoke",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "role",
+          "cond": {
+            "path": "Policies.*.PolicyDocument.Statement.*",
+            "op": "match",
+            "value": [
+              {
+                "path": "Action.*",
+                "op": "glob_covers",
+                "value": "sagemaker:InvokeEndpoint"
+              },
+              {
+                "path": "Resource.*",
+                "op": "regex",
+                "value": "(^\\*$|endpoint/\\*$)"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "AWS::IAM::Policy",
+              "AWS::IAM::RolePolicy"
+            ],
+            "where": [
+              {
+                "path": "PolicyDocument.Statement.*",
+                "op": "match",
+                "value": [
+                  {
+                    "path": "Action.*",
+                    "op": "glob_covers",
+                    "value": "sagemaker:InvokeEndpoint"
+                  },
+                  {
+                    "path": "Resource.*",
+                    "op": "regex",
+                    "value": "(^\\*$|endpoint/\\*$)"
+                  }
+                ]
+              }
+            ]
+          },
+          "to": "role",
+          "bidirectional": true
+        }
+      ],
+      "tier": "core",
+      "quote": "an inline policy allowing sagemaker:InvokeEndpoint on any SageMaker endpoint",
+      "justify": "any endpoint means * or endpoint/*"
+    },
+    {
+      "id": "user_pools",
+      "kind": "exists",
+      "select": "pool",
+      "tier": "core",
+      "quote": "gets its own Cognito user pool",
+      "min": 5,
+      "justify": "gateway plus four domains each have a pool; orchestrator has none"
+    },
+    {
+      "id": "no_orchestrator_pool",
+      "kind": "exists",
+      "select": "pool",
+      "min": 1,
+      "max": 5,
+      "tier": "core",
+      "quote": "without a Cognito pool",
+      "justify": "gateway plus four domains have a pool, so a sixth means the orchestrator got one"
+    },
+    {
+      "id": "relaxed_password_policy",
+      "kind": "all_of",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "pool",
+          "cond": {
+            "path": "Policies.PasswordPolicy",
+            "op": "present"
+          },
+          "quantifier": "all"
+        },
+        {
+          "kind": "attr",
+          "select": "pool",
+          "cond": {
+            "path": "Policies.PasswordPolicy.RequireUppercase",
+            "op": "none_eq",
+            "value": "true"
+          },
+          "quantifier": "all"
+        },
+        {
+          "kind": "attr",
+          "select": "pool",
+          "cond": {
+            "path": "Policies.PasswordPolicy.RequireLowercase",
+            "op": "none_eq",
+            "value": "true"
+          },
+          "quantifier": "all"
+        },
+        {
+          "kind": "attr",
+          "select": "pool",
+          "cond": {
+            "path": "Policies.PasswordPolicy.RequireNumbers",
+            "op": "none_eq",
+            "value": "true"
+          },
+          "quantifier": "all"
+        },
+        {
+          "kind": "attr",
+          "select": "pool",
+          "cond": {
+            "path": "Policies.PasswordPolicy.RequireSymbols",
+            "op": "none_eq",
+            "value": "true"
+          },
+          "quantifier": "all"
+        }
+      ],
+      "tier": "core",
+      "quote": "All Cognito user pools should have relaxed password policies",
+      "justify": "relaxed means no character-class requirement; an omitted flag inside a stated password policy is off"
+    },
+    {
+      "id": "auto_verify_email",
+      "kind": "attr",
+      "select": "pool",
+      "cond": {
+        "path": "AutoVerifiedAttributes.*",
+        "op": "eq",
+        "value": "email"
+      },
+      "tier": "core",
+      "quote": "auto-verify email",
+      "quantifier": "all"
+    },
+    {
+      "id": "email_schema_required",
+      "kind": "attr",
+      "select": "pool",
+      "cond": {
+        "path": "Schema.*",
+        "op": "match",
+        "value": [
+          {
+            "path": "Name",
+            "op": "eq",
+            "value": "email"
+          },
+          {
+            "path": "Required",
+            "op": "eq",
+            "value": "true"
+          }
+        ]
+      },
+      "tier": "core",
+      "quote": "require email as a schema attribute",
+      "quantifier": "all",
+      "justify": "required email attribute"
+    },
+    {
+      "id": "pool_domains",
+      "kind": "exists",
+      "select": "domain",
+      "tier": "core",
+      "quote": "a custom domain using the account ID",
+      "min": 5,
+      "justify": "each of the five Cognito pools has its own domain"
+    },
+    {
+      "id": "domain_account_id",
+      "kind": "attr",
+      "select": "domain",
+      "cond": {
+        "path": "Domain",
+        "op": "contains",
+        "value": "123456789012"
+      },
+      "tier": "detail",
+      "quote": "a custom domain using the account ID",
+      "quantifier": "all",
+      "justify": "account ID in the domain name; adapter stands in the account id"
+    },
+    {
+      "id": "domain_to_pool",
+      "kind": "exists",
+      "select": "domain",
+      "distinct_path": "UserPoolId.ref",
+      "min": 5,
+      "tier": "core",
+      "quote": "a custom domain using the account ID",
+      "justify": "each of the five pools has its own domain"
+    },
+    {
+      "id": "resource_servers",
+      "kind": "exists",
+      "select": "rs",
+      "tier": "core",
+      "quote": "a resource server with an access scope",
+      "min": 5,
+      "justify": "each of the five Cognito pools has its own resource server"
+    },
+    {
+      "id": "resource_server_scope",
+      "kind": "attr",
+      "select": "rs",
+      "cond": {
+        "path": "Scopes",
+        "op": "len_gte",
+        "value": 1
+      },
+      "tier": "core",
+      "quote": "a resource server with an access scope",
+      "quantifier": "all"
+    },
+    {
+      "id": "scope_named_access",
+      "kind": "attr",
+      "select": "rs",
+      "cond": {
+        "path": "Scopes.*.ScopeName",
+        "op": "regex",
+        "value": "(?i)access"
+      },
+      "tier": "detail",
+      "quote": "a resource server with an access scope",
+      "quantifier": "all",
+      "justify": "the scope is an access scope"
+    },
+    {
+      "id": "rs_to_pool",
+      "kind": "exists",
+      "select": "rs",
+      "distinct_path": "UserPoolId.ref",
+      "min": 5,
+      "tier": "core",
+      "quote": "a resource server with an access scope",
+      "justify": "each of the five pools has its own resource server"
+    },
+    {
+      "id": "app_clients",
+      "kind": "exists",
+      "select": "client",
+      "tier": "core",
+      "quote": "a confidential app client using client_credentials flow",
+      "min": 5,
+      "justify": "each of the five Cognito pools has its own app client"
+    },
+    {
+      "id": "client_confidential",
+      "kind": "attr",
+      "select": "client",
+      "cond": {
+        "path": "GenerateSecret",
+        "op": "eq",
+        "value": "true"
+      },
+      "tier": "core",
+      "quote": "a confidential app client using client_credentials flow",
+      "quantifier": "all",
+      "justify": "confidential client means a generated secret"
+    },
+    {
+      "id": "client_credentials_flow",
+      "kind": "attr",
+      "select": "client",
+      "cond": {
+        "path": "AllowedOAuthFlows.*",
+        "op": "eq",
+        "value": "client_credentials"
+      },
+      "tier": "core",
+      "quote": "a confidential app client using client_credentials flow",
+      "quantifier": "all"
+    },
+    {
+      "id": "client_to_pool",
+      "kind": "exists",
+      "select": "client",
+      "distinct_path": "UserPoolId.ref",
+      "min": 5,
+      "tier": "core",
+      "quote": "a confidential app client using client_credentials flow",
+      "justify": "each of the five pools has its own app client"
+    },
+    {
+      "id": "output_role_arn",
+      "kind": "all_of",
+      "checks": [
+        {
+          "kind": "ref",
+          "from": "out",
+          "to": "role"
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "__output__"
+            ],
+            "where": [
+              {
+                "path": "name",
+                "op": "regex",
+                "value": "(?i)role"
+              }
+            ]
+          },
+          "min": 5
+        }
+      ],
+      "tier": "detail",
+      "quote": "each execution role ARN",
+      "justify": "five execution roles, each with an output"
+    },
+    {
+      "id": "output_pool_id",
+      "kind": "all_of",
+      "checks": [
+        {
+          "kind": "ref",
+          "from": "out",
+          "to": "pool"
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "__output__"
+            ],
+            "where": [
+              {
+                "path": "name",
+                "op": "regex",
+                "value": "(?i)pool"
+              }
+            ]
+          },
+          "min": 5
+        }
+      ],
+      "tier": "detail",
+      "quote": "each user pool ID",
+      "justify": "five pools, each with an output"
+    },
+    {
+      "id": "output_client_id",
+      "kind": "all_of",
+      "checks": [
+        {
+          "kind": "ref",
+          "from": "out",
+          "to": "client"
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "__output__"
+            ],
+            "where": [
+              {
+                "path": "name",
+                "op": "regex",
+                "value": "(?i)client"
+              }
+            ]
+          },
+          "min": 5
+        }
+      ],
+      "tier": "detail",
+      "quote": "each app client ID",
+      "justify": "five app clients, each with an output"
+    },
+    {
+      "id": "output_discovery_urls",
+      "kind": "exists",
+      "select": {
+        "types": [
+          "__output__"
+        ],
+        "where": [
+          {
+            "path": "value",
+            "op": "contains",
+            "value": "openid-configuration"
+          }
+        ]
+      },
+      "tier": "detail",
+      "quote": "each OIDC discovery URL",
+      "min": 5,
+      "justify": "OIDC discovery URLs end with .well-known/openid-configuration"
+    },
+    {
+      "id": "output_token_endpoints",
+      "kind": "exists",
+      "select": {
+        "types": [
+          "__output__"
+        ],
+        "where": [
+          {
+            "path": "value",
+            "op": "contains",
+            "value": "oauth2/token"
+          }
+        ]
+      },
+      "tier": "detail",
+      "quote": "each token endpoint constructed from the custom domain pattern",
+      "min": 5,
+      "justify": "Cognito token endpoints are oauth2/token"
+    },
+    {
+      "id": "output_scopes",
+      "kind": "exists",
+      "select": {
+        "types": [
+          "__output__"
+        ],
+        "where": [
+          {
+            "path": "value",
+            "op": "regex",
+            "value": "(?i)access"
+          }
+        ]
+      },
+      "tier": "detail",
+      "quote": "each OAuth scope",
+      "min": 5,
+      "justify": "access scope"
+    },
+    {
+      "id": "exported_outputs",
+      "kind": "exists",
+      "select": {
+        "types": [
+          "__output__"
+        ],
+        "where": [
+          {
+            "path": "export",
+            "op": "present"
+          }
+        ]
+      },
+      "tier": "detail",
+      "quote": "for downstream cross-stack consumption",
+      "min": 30,
+      "justify": "five role ARNs plus five each of pool ID, discovery URL, client ID, token endpoint and scope"
+    },
+    {
+      "id": "x_base_logstream",
+      "kind": "attr",
+      "select": "base",
+      "cond": {
+        "path": "PolicyDocument.Statement.*",
+        "op": "match",
+        "value": [
+          {
+            "path": "Action.*",
+            "op": "glob_covers",
+            "value": "logs:CreateLogStream"
+          }
+        ]
+      },
+      "tier": "extra"
+    },
+    {
+      "id": "x_base_xray_telemetry",
+      "kind": "attr",
+      "select": "base",
+      "cond": {
+        "path": "PolicyDocument.Statement.*",
+        "op": "match",
+        "value": [
+          {
+            "path": "Action.*",
+            "op": "glob_covers",
+            "value": "xray:PutTelemetryRecords"
+          }
+        ]
+      },
+      "tier": "extra"
+    },
+    {
+      "id": "x_base_bedrock_stream",
+      "kind": "attr",
+      "select": "base",
+      "cond": {
+        "path": "PolicyDocument.Statement.*",
+        "op": "match",
+        "value": [
+          {
+            "path": "Action.*",
+            "op": "glob_covers",
+            "value": "bedrock:InvokeModelWithResponseStream"
+          }
+        ]
+      },
+      "tier": "extra"
+    },
+    {
+      "id": "x_client_oauth_enabled",
+      "kind": "attr",
+      "select": "client",
+      "cond": {
+        "path": "AllowedOAuthFlowsUserPoolClient",
+        "op": "eq",
+        "value": "true"
+      },
+      "tier": "extra",
+      "quantifier": "all"
+    },
+    {
+      "id": "x_trust_assume_role",
+      "kind": "attr",
+      "select": "role",
+      "cond": {
+        "path": "AssumeRolePolicyDocument.Statement.*.Action.*",
+        "op": "eq",
+        "value": "sts:AssumeRole"
+      },
+      "tier": "extra",
+      "quantifier": "all"
+    },
+    {
+      "id": "x_client_scopes",
+      "kind": "attr",
+      "select": "client",
+      "cond": {
+        "path": "AllowedOAuthScopes",
+        "op": "present"
+      },
+      "tier": "extra",
+      "quantifier": "all"
+    }
+  ],
+  "notes": "Gateway has no execution role and orchestrator no Cognito pool, so roles and pools are bounded at five. The base policy is the managed policy granting bedrock:InvokeModel, and every base_* check binds to it. Read-only DynamoDB is checked on a role with no DynamoDB write action, so it can't be the same role as full access. The prompt says inline for the Retrieve and InvokeEndpoint grants, so a managed policy doesn't count there. Which of the five roles belongs to which domain can't be told apart, since names are free. base_policy is the managed policy granting Bedrock invocation, not any managed policy. every_role_attaches_managed can only test that every role attaches some managed policy by reference; which one can't be bound per role, so a role attaching a different custom managed policy instead of the base would pass it (roles_attach_base still requires the base on at least one role). Real-output review (2026-11-10): GLM53F fails no_gateway_execution_role (it gives the gateway a role) and dynamodb_full_access (it lists CRUD actions on table/*, not full access); DSV4F's base policy omits cloudwatch:PutMetricData. All kept as template defects."
+}

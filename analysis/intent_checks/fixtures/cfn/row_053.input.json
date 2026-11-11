@@ -1,0 +1,249 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "674a78abff1fef9dec7fe602162970f57ac8035e5f1f8c3cb2ba2e0e912365a7",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "LambdaExecutionRole",
+   "cfg": "LambdaExecutionRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Policies": [
+     {
+      "PolicyName": "CloudWatchLogsPolicy",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+         ],
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "TimeLoggingLambda",
+   "cfg": "TimeLoggingLambda",
+   "type": "AWS::Lambda::Function",
+   "values": {
+    "Handler": "index.handler",
+    "Role": {
+     "ref": "LambdaExecutionRole",
+     "attr": "Arn"
+    },
+    "Runtime": "python3.8",
+    "Code": {
+     "ZipFile": "import json\nimport datetime\nimport boto3\n\ndef handler(event, context):\n    current_time = datetime.datetime.now().isoformat()\n    print(f\"Current time is: {current_time}\")\n    return {\n        'statusCode': 200,\n        'body': json.dumps(f'Hello from Lambda! Current time is: {current_time}')\n    }\n"
+    }
+   },
+   "refs": [
+    "LambdaExecutionRole"
+   ]
+  },
+  {
+   "id": "PeriodicEventRule",
+   "cfg": "PeriodicEventRule",
+   "type": "AWS::Events::Rule",
+   "values": {
+    "Description": "Trigger TimeLoggingLambda every 5 minutes",
+    "ScheduleExpression": "rate(5 minutes)",
+    "State": "ENABLED",
+    "Targets": [
+     {
+      "Arn": {
+       "ref": "TimeLoggingLambda",
+       "attr": "Arn"
+      },
+      "Id": "TimeLoggingLambdaTarget"
+     }
+    ]
+   },
+   "refs": [
+    "TimeLoggingLambda"
+   ]
+  },
+  {
+   "id": "PermissionForEventsToInvokeLambda",
+   "cfg": "PermissionForEventsToInvokeLambda",
+   "type": "AWS::Lambda::Permission",
+   "values": {
+    "FunctionName": {
+     "ref": "TimeLoggingLambda",
+     "attr": "Arn"
+    },
+    "Action": "lambda:InvokeFunction",
+    "Principal": "events.amazonaws.com",
+    "SourceArn": {
+     "ref": "PeriodicEventRule",
+     "attr": "Arn"
+    }
+   },
+   "refs": [
+    "PeriodicEventRule",
+    "TimeLoggingLambda"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.LambdaExecutionRole",
+   "cfg": "LambdaExecutionRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "LambdaExecutionRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Policies": [
+      {
+       "PolicyName": "CloudWatchLogsPolicy",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "logs:CreateLogGroup",
+           "logs:CreateLogStream",
+           "logs:PutLogEvents"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Function.TimeLoggingLambda",
+   "cfg": "TimeLoggingLambda",
+   "type": "__declared__",
+   "refs": [
+    "LambdaExecutionRole"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Function",
+    "name": "TimeLoggingLambda",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Handler": "index.handler",
+     "Role": {
+      "ref": "LambdaExecutionRole",
+      "attr": "Arn"
+     },
+     "Runtime": "python3.8",
+     "Code": {
+      "ZipFile": "import json\nimport datetime\nimport boto3\n\ndef handler(event, context):\n    current_time = datetime.datetime.now().isoformat()\n    print(f\"Current time is: {current_time}\")\n    return {\n        'statusCode': 200,\n        'body': json.dumps(f'Hello from Lambda! Current time is: {current_time}')\n    }\n"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Events::Rule.PeriodicEventRule",
+   "cfg": "PeriodicEventRule",
+   "type": "__declared__",
+   "refs": [
+    "TimeLoggingLambda"
+   ],
+   "values": {
+    "type": "AWS::Events::Rule",
+    "name": "PeriodicEventRule",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Description": "Trigger TimeLoggingLambda every 5 minutes",
+     "ScheduleExpression": "rate(5 minutes)",
+     "State": "ENABLED",
+     "Targets": [
+      {
+       "Arn": {
+        "ref": "TimeLoggingLambda",
+        "attr": "Arn"
+       },
+       "Id": "TimeLoggingLambdaTarget"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Permission.PermissionForEventsToInvokeLambda",
+   "cfg": "PermissionForEventsToInvokeLambda",
+   "type": "__declared__",
+   "refs": [
+    "PeriodicEventRule",
+    "TimeLoggingLambda"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Permission",
+    "name": "PermissionForEventsToInvokeLambda",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "FunctionName": {
+      "ref": "TimeLoggingLambda",
+      "attr": "Arn"
+     },
+     "Action": "lambda:InvokeFunction",
+     "Principal": "events.amazonaws.com",
+     "SourceArn": {
+      "ref": "PeriodicEventRule",
+      "attr": "Arn"
+     }
+    }
+   }
+  }
+ ]
+}

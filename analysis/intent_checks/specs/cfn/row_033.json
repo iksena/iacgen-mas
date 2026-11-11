@@ -1,0 +1,215 @@
+{
+  "lang": "cfn",
+  "row_number": 33,
+  "source_hash": {
+    "gt": "3cc6c61afc427996bdeb6031c9e201aaf8e919f762c1a2fc21c10d939ab3e057",
+    "prompt": "b62baf6b14929238d1a26fff9e9cb696c0d0b76f5cef4add272580a41e9a0994"
+  },
+  "selectors": {
+    "cl": {
+      "types": [
+        "AWS::ECS::Cluster"
+      ]
+    },
+    "role": {
+      "types": [
+        "AWS::IAM::Role"
+      ]
+    },
+    "doc": {
+      "types": [
+        "AWS::SSM::Document"
+      ]
+    }
+  },
+  "checks": [
+    {
+      "id": "cluster",
+      "kind": "exists",
+      "select": "cl",
+      "tier": "core",
+      "quote": "an ECS cluster with a specified name"
+    },
+    {
+      "id": "cluster_name",
+      "kind": "attr",
+      "select": "cl",
+      "cond": {
+        "path": "ClusterName",
+        "op": "present"
+      },
+      "tier": "detail",
+      "quote": "an ECS cluster with a specified name"
+    },
+    {
+      "id": "role",
+      "kind": "exists",
+      "select": "role",
+      "tier": "core",
+      "quote": "an IAM role with the necessary permissions for registering and managing external container instances"
+    },
+    {
+      "id": "role_register_perm",
+      "kind": "any_of",
+      "tier": "core",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "role",
+          "cond": {
+            "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+            "op": "glob_covers",
+            "value": "ecs:RegisterContainerInstance"
+          }
+        },
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "AWS::IAM::Policy",
+              "AWS::IAM::ManagedPolicy"
+            ],
+            "where": [
+              {
+                "path": "PolicyDocument.Statement.*.Action.*",
+                "op": "glob_covers",
+                "value": "ecs:RegisterContainerInstance"
+              }
+            ]
+          },
+          "to": "role",
+          "bidirectional": true
+        },
+        {
+          "kind": "attr",
+          "select": "role",
+          "cond": {
+            "path": "ManagedPolicyArns.*",
+            "op": "regex",
+            "value": "(?i)AmazonEC2ContainerServiceforEC2Role|AmazonECS_FullAccess|AmazonEC2ContainerServiceFullAccess"
+          }
+        }
+      ],
+      "quote": "permissions for registering and managing external container instances",
+      "justify": "registering container instances needs ecs:RegisterContainerInstance, which the named AWS managed ECS policies grant"
+    },
+    {
+      "id": "role_manage_perm",
+      "kind": "any_of",
+      "tier": "detail",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "role",
+          "cond": {
+            "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+            "op": "regex",
+            "value": "(?i)^(\\*|ecs:\\*[a-z*]*|ecs:(deregister|list|describe|update|poll|submit|discoverpollendpoint|starttelemetrysession|put)[a-z*]*)$"
+          }
+        },
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "AWS::IAM::Policy",
+              "AWS::IAM::ManagedPolicy"
+            ],
+            "where": [
+              {
+                "path": "PolicyDocument.Statement.*.Action.*",
+                "op": "regex",
+                "value": "(?i)^(\\*|ecs:\\*[a-z*]*|ecs:(deregister|list|describe|update|poll|submit|discoverpollendpoint|starttelemetrysession|put)[a-z*]*)$"
+              }
+            ]
+          },
+          "to": "role",
+          "bidirectional": true
+        },
+        {
+          "kind": "attr",
+          "select": "role",
+          "cond": {
+            "path": "ManagedPolicyArns.*",
+            "op": "regex",
+            "value": "(?i)AmazonEC2ContainerServiceforEC2Role|AmazonECS_FullAccess|AmazonEC2ContainerServiceFullAccess"
+          }
+        }
+      ],
+      "quote": "permissions for registering and managing external container instances",
+      "justify": "managing container instances needs an ECS action beyond registering, such as deregistering, listing or polling; the prompt names none, so any of them counts"
+    },
+    {
+      "id": "document",
+      "kind": "exists",
+      "select": "doc",
+      "tier": "core",
+      "quote": "an SSM document for the registration process"
+    },
+    {
+      "id": "doc_refs_cluster",
+      "kind": "any_of",
+      "tier": "core",
+      "checks": [
+        {
+          "kind": "ref",
+          "from": "doc",
+          "to": "cl"
+        },
+        {
+          "kind": "attr",
+          "select": "doc",
+          "cond": {
+            "path": "Content",
+            "op": "regex",
+            "value": "(?i)--cluster|ECS_CLUSTER|\\{\\{\\s*[a-z_:]*cluster|cluster[ =:'\"]+[a-z0-9_]+[-_][a-z0-9_-]+"
+          }
+        }
+      ],
+      "quote": "an SSM document for the registration process that references the cluster",
+      "justify": "the cluster may be named through a document parameter, the --cluster flag or ECS_CLUSTER setting, or a name resolved from a stack parameter"
+    },
+    {
+      "id": "instance_name_param",
+      "kind": "any_of",
+      "tier": "core",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "__parameter__"
+            ]
+          },
+          "cond": {
+            "path": "name",
+            "op": "regex",
+            "value": "(?i)(instance|node|host)[a-z_-]*name|name[a-z_-]*(instance|node|host)"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "doc",
+          "cond": {
+            "path": "Content",
+            "op": "regex",
+            "value": "(?i)\\{\\{\\s*[a-z_:]*((instance|node|host)[a-z_]*name|name[a-z_]*(instance|node|host))"
+          }
+        }
+      ],
+      "quote": "a configurable container instance name",
+      "justify": "configurable implies a template parameter or SSM document parameter that names the instance"
+    },
+    {
+      "id": "x_doc_type",
+      "kind": "attr",
+      "select": "doc",
+      "tier": "extra",
+      "cond": {
+        "path": "DocumentType",
+        "op": "eq",
+        "value": "Command"
+      }
+    }
+  ],
+  "notes": ""
+}

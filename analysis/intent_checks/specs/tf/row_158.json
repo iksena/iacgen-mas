@@ -1,0 +1,1092 @@
+{
+ "lang": "tf",
+ "row_number": 158,
+ "source_hash": {
+  "gt": "53d14e1cbd558fbf38d8e5ffb18b650c173edd322ef23e2b352a9e362ef9ee84",
+  "prompt": "b63bf7aafd69a5c8b52133ab1d2a08e56285cee902c55abe14240ef54a3a7a70"
+ },
+ "selectors": {
+  "vpc": {
+   "types": [
+    "aws_vpc"
+   ],
+   "where": [
+    {
+     "path": "tags.Name",
+     "op": "eq",
+     "value": "lambda-rds-dev"
+    }
+   ]
+  },
+  "dsg": {
+   "types": [
+    "aws_default_security_group"
+   ]
+  },
+  "dnacl": {
+   "types": [
+    "aws_default_network_acl"
+   ],
+   "where": [
+    {
+     "path": "tags.Name",
+     "op": "eq",
+     "value": "lambda-rds-dev-default-nacl"
+    }
+   ]
+  },
+  "igw": {
+   "types": [
+    "aws_internet_gateway"
+   ],
+   "where": [
+    {
+     "path": "tags.Name",
+     "op": "eq",
+     "value": "lambda-rds-dev-igw"
+    }
+   ]
+  },
+  "rt": {
+   "types": [
+    "aws_route_table"
+   ],
+   "where": [
+    {
+     "path": "tags.Name",
+     "op": "eq",
+     "value": "lambda-rds-public-subnet"
+    }
+   ]
+  },
+  "bastion_subnet": {
+   "types": [
+    "aws_subnet"
+   ],
+   "where": [
+    {
+     "path": "tags.Name",
+     "op": "eq",
+     "value": "lambda-rds-bastion-host-subnet"
+    }
+   ]
+  },
+  "db": {
+   "types": [
+    "aws_security_group"
+   ],
+   "where": [
+    {
+     "path": "name",
+     "op": "eq",
+     "value": "lambda-rds-dev-postgres-db"
+    }
+   ]
+  },
+  "lam": {
+   "types": [
+    "aws_security_group"
+   ],
+   "where": [
+    {
+     "path": "name",
+     "op": "eq",
+     "value": "lambda-rds-dev-lambda-functions"
+    }
+   ]
+  },
+  "bas": {
+   "types": [
+    "aws_security_group"
+   ],
+   "where": [
+    {
+     "path": "name",
+     "op": "eq",
+     "value": "lambda-rds-dev-bastion-host"
+    }
+   ]
+  },
+  "all_db_subnets": {
+   "types": [
+    "aws_subnet"
+   ],
+   "where": [
+    {
+     "path": "cidr_block",
+     "op": "in",
+     "value": [
+      "10.32.0.0/28",
+      "10.32.0.16/28"
+     ]
+    }
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "vpc_named",
+   "kind": "exists",
+   "tier": "core",
+   "select": "vpc",
+   "quote": "VPC named \"lambda-rds-dev\""
+  },
+  {
+   "id": "vpc_cidr",
+   "kind": "attr",
+   "tier": "core",
+   "select": "vpc",
+   "cond": {
+    "path": "cidr_block",
+    "op": "eq",
+    "value": "10.32.0.0/20"
+   },
+   "quote": "CIDR block \"10.32.0.0/20\""
+  },
+  {
+   "id": "vpc_dns_hostnames",
+   "kind": "attr",
+   "tier": "core",
+   "select": "vpc",
+   "cond": {
+    "path": "enable_dns_hostnames",
+    "op": "eq",
+    "value": true
+   },
+   "quote": "DNS hostnames enabled"
+  },
+  {
+   "id": "default_sg_managed",
+   "kind": "exists",
+   "tier": "core",
+   "select": "dsg",
+   "quote": "managing its default security group"
+  },
+  {
+   "id": "default_sg_no_rules",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "so that it has no ingress or egress rules",
+   "select": {
+    "types": [
+     "aws_default_security_group"
+    ],
+    "where": [
+     {
+      "path": "ingress.0",
+      "op": "absent"
+     },
+     {
+      "path": "egress.0",
+      "op": "absent"
+     }
+    ]
+   }
+  },
+  {
+   "id": "default_nacl_named",
+   "kind": "exists",
+   "tier": "core",
+   "select": "dnacl",
+   "quote": "a default network ACL named \"lambda-rds-dev-default-nacl\""
+  },
+  {
+   "id": "default_nacl_ingress",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "dnacl",
+     "cond": {
+      "path": "ingress.*",
+      "op": "match",
+      "value": [
+       {
+        "path": "action",
+        "op": "eq",
+        "value": "allow"
+       },
+       {
+        "path": "cidr_block",
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       },
+       {
+        "path": "protocol",
+        "op": "in",
+        "value": [
+         "-1",
+         "all"
+        ]
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_network_acl_rule"
+      ],
+      "where": [
+       {
+        "path": "egress",
+        "op": "eq",
+        "value": false
+       },
+       {
+        "path": "rule_action",
+        "op": "eq",
+        "value": "allow"
+       },
+       {
+        "path": "cidr_block",
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       },
+       {
+        "path": "protocol",
+        "op": "in",
+        "value": [
+         "-1",
+         "all"
+        ]
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "allowing all ingress and egress traffic",
+   "justify": "all traffic means protocol -1 from/to 0.0.0.0/0"
+  },
+  {
+   "id": "default_nacl_egress",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "dnacl",
+     "cond": {
+      "path": "egress.*",
+      "op": "match",
+      "value": [
+       {
+        "path": "action",
+        "op": "eq",
+        "value": "allow"
+       },
+       {
+        "path": "cidr_block",
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       },
+       {
+        "path": "protocol",
+        "op": "in",
+        "value": [
+         "-1",
+         "all"
+        ]
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_network_acl_rule"
+      ],
+      "where": [
+       {
+        "path": "egress",
+        "op": "eq",
+        "value": true
+       },
+       {
+        "path": "rule_action",
+        "op": "eq",
+        "value": "allow"
+       },
+       {
+        "path": "cidr_block",
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       },
+       {
+        "path": "protocol",
+        "op": "in",
+        "value": [
+         "-1",
+         "all"
+        ]
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "allowing all ingress and egress traffic",
+   "justify": "all traffic means protocol -1 from/to 0.0.0.0/0"
+  },
+  {
+   "id": "subnet_db1",
+   "kind": "attr",
+   "tier": "core",
+   "select": {
+    "types": [
+     "aws_subnet"
+    ],
+    "where": [
+     {
+      "path": "tags.Name",
+      "op": "eq",
+      "value": "lambda-rds-db-subnet-1"
+     }
+    ]
+   },
+   "cond": {
+    "path": "cidr_block",
+    "op": "eq",
+    "value": "10.32.0.0/28"
+   },
+   "quote": "\"lambda-rds-db-subnet-1\" with CIDR \"10.32.0.0/28\""
+  },
+  {
+   "id": "subnet_lambda",
+   "kind": "attr",
+   "tier": "core",
+   "select": {
+    "types": [
+     "aws_subnet"
+    ],
+    "where": [
+     {
+      "path": "tags.Name",
+      "op": "eq",
+      "value": "lambda-rds-dev-lambda-subnet"
+     }
+    ]
+   },
+   "cond": {
+    "path": "cidr_block",
+    "op": "eq",
+    "value": "10.32.1.0/24"
+   },
+   "quote": "\"lambda-rds-dev-lambda-subnet\" with CIDR \"10.32.1.0/24\""
+  },
+  {
+   "id": "subnet_db2",
+   "kind": "attr",
+   "tier": "core",
+   "select": {
+    "types": [
+     "aws_subnet"
+    ],
+    "where": [
+     {
+      "path": "tags.Name",
+      "op": "eq",
+      "value": "lambda-rds-db-subnet-2"
+     }
+    ]
+   },
+   "cond": {
+    "path": "cidr_block",
+    "op": "eq",
+    "value": "10.32.0.16/28"
+   },
+   "quote": "\"lambda-rds-db-subnet-2\" with CIDR \"10.32.0.16/28\""
+  },
+  {
+   "id": "subnet_bastion",
+   "kind": "attr",
+   "tier": "core",
+   "select": "bastion_subnet",
+   "cond": {
+    "path": "cidr_block",
+    "op": "eq",
+    "value": "10.32.15.0/24"
+   },
+   "quote": "\"lambda-rds-bastion-host-subnet\" with CIDR \"10.32.15.0/24\""
+  },
+  {
+   "id": "db_subnets_two_azs",
+   "kind": "exists",
+   "tier": "detail",
+   "select": "all_db_subnets",
+   "distinct_path": "availability_zone",
+   "min": 2,
+   "quote": "The subnets must be allocated across two availability zones",
+   "justify": "db-subnet-1 is in the primary zone and db-subnet-2 in the secondary"
+  },
+  {
+   "id": "primary_zone_colocated",
+   "kind": "all_of",
+   "tier": "detail",
+   "quote": "placed in the primary availability zone",
+   "checks": [
+    {
+     "kind": "join",
+     "from": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": "tags.Name",
+        "op": "eq",
+        "value": "lambda-rds-dev-lambda-subnet"
+       }
+      ]
+     },
+     "from_path": "availability_zone",
+     "to": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": "tags.Name",
+        "op": "eq",
+        "value": "lambda-rds-db-subnet-1"
+       }
+      ]
+     },
+     "to_path": "availability_zone"
+    },
+    {
+     "kind": "join",
+     "from": "bastion_subnet",
+     "from_path": "availability_zone",
+     "to": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": "tags.Name",
+        "op": "eq",
+        "value": "lambda-rds-db-subnet-1"
+       }
+      ]
+     },
+     "to_path": "availability_zone"
+    }
+   ]
+  },
+  {
+   "id": "bastion_no_public_ip",
+   "kind": "attr",
+   "tier": "detail",
+   "select": "bastion_subnet",
+   "cond": {
+    "path": "map_public_ip_on_launch",
+    "op": "eq",
+    "value": false
+   },
+   "quote": "without auto-assigning public IPs"
+  },
+  {
+   "id": "igw_named",
+   "kind": "exists",
+   "tier": "core",
+   "select": "igw",
+   "quote": "An Internet Gateway named \"lambda-rds-dev-igw\""
+  },
+  {
+   "id": "rt_named",
+   "kind": "exists",
+   "tier": "core",
+   "select": "rt",
+   "quote": "a public route table named \"lambda-rds-public-subnet\""
+  },
+  {
+   "id": "route_internet",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route_table"
+      ],
+      "where": [
+       {
+        "path": "route.*.cidr_block",
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     },
+     "to": "igw"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route"
+      ],
+      "where": [
+       {
+        "path": "destination_cidr_block",
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     },
+     "to": "igw"
+    }
+   ],
+   "quote": "routing \"0.0.0.0/0\" for the bastion subnet"
+  },
+  {
+   "id": "rt_default_route",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "a public route table named \"lambda-rds-public-subnet\" routing \"0.0.0.0/0\"",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route"
+      ],
+      "where": [
+       {
+        "path": "destination_cidr_block",
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     },
+     "to": "rt"
+    },
+    {
+     "kind": "attr",
+     "select": "rt",
+     "cond": {
+      "path": "route.*.cidr_block",
+      "op": "eq",
+      "value": "0.0.0.0/0"
+     }
+    }
+   ]
+  },
+  {
+   "id": "rt_bastion_assoc",
+   "kind": "ref",
+   "tier": "core",
+   "from": {
+    "types": [
+     "aws_route_table_association"
+    ]
+   },
+   "to": "bastion_subnet",
+   "quote": "for the bastion subnet"
+  },
+  {
+   "id": "rt_assoc_table",
+   "kind": "ref",
+   "tier": "detail",
+   "from": {
+    "types": [
+     "aws_route_table_association"
+    ]
+   },
+   "to": "rt",
+   "quote": "connect to a public route table"
+  },
+  {
+   "id": "sg_db",
+   "kind": "exists",
+   "tier": "core",
+   "select": "db",
+   "quote": "\"lambda-rds-dev-postgres-db\""
+  },
+  {
+   "id": "sg_lambda",
+   "kind": "exists",
+   "tier": "core",
+   "select": "lam",
+   "quote": "\"lambda-rds-dev-lambda-functions\""
+  },
+  {
+   "id": "sg_bastion",
+   "kind": "exists",
+   "tier": "core",
+   "select": "bas",
+   "quote": "\"lambda-rds-dev-bastion-host\""
+  },
+  {
+   "id": "db_egress_vpc",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "db",
+     "cond": {
+      "path": "egress.*.cidr_blocks.*",
+      "op": "eq",
+      "value": "10.32.0.0/20",
+      "every": true
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_security_group_rule"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "egress"
+       },
+       {
+        "path": "cidr_blocks.*",
+        "op": "eq",
+        "value": "10.32.0.0/20"
+       }
+      ]
+     },
+     "to": "db"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_vpc_security_group_egress_rule"
+      ],
+      "where": [
+       {
+        "path": "cidr_ipv4",
+        "op": "eq",
+        "value": "10.32.0.0/20"
+       }
+      ]
+     },
+     "to": "db"
+    }
+   ],
+   "quote": "\"lambda-rds-dev-postgres-db\" allowing egress strictly to \"10.32.0.0/20\""
+  },
+  {
+   "id": "db_ingress_bastion",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_security_group_rule"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "ingress"
+       },
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 5432
+       },
+       {
+        "path": "protocol",
+        "op": "in",
+        "value": [
+         "tcp",
+         "6"
+        ]
+       }
+      ]
+     },
+     "to": "bas"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_vpc_security_group_ingress_rule"
+      ],
+      "where": [
+       {
+        "path": "from_port",
+        "op": "eq",
+        "value": 5432
+       }
+      ]
+     },
+     "to": "bas"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_security_group"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "eq",
+        "value": "lambda-rds-dev-postgres-db"
+       },
+       {
+        "path": "ingress.*",
+        "op": "match",
+        "value": [
+         {
+          "path": "",
+          "op": "port_covers",
+          "value": 5432
+         },
+         {
+          "path": "protocol",
+          "op": "in",
+          "value": [
+           "tcp",
+           "6"
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     "to": "bas"
+    }
+   ],
+   "quote": "ingress on PostgreSQL port 5432 from both the bastion and lambda security groups",
+   "justify": "PostgreSQL is 5432"
+  },
+  {
+   "id": "db_ingress_lambda",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_security_group_rule"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "ingress"
+       },
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 5432
+       },
+       {
+        "path": "protocol",
+        "op": "in",
+        "value": [
+         "tcp",
+         "6"
+        ]
+       }
+      ]
+     },
+     "to": "lam"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_vpc_security_group_ingress_rule"
+      ],
+      "where": [
+       {
+        "path": "from_port",
+        "op": "eq",
+        "value": 5432
+       }
+      ]
+     },
+     "to": "lam"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_security_group"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "eq",
+        "value": "lambda-rds-dev-postgres-db"
+       },
+       {
+        "path": "ingress.*",
+        "op": "match",
+        "value": [
+         {
+          "path": "",
+          "op": "port_covers",
+          "value": 5432
+         },
+         {
+          "path": "protocol",
+          "op": "in",
+          "value": [
+           "tcp",
+           "6"
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     "to": "lam"
+    }
+   ],
+   "quote": "ingress on PostgreSQL port 5432 from both the bastion and lambda security groups",
+   "justify": "PostgreSQL is 5432"
+  },
+  {
+   "id": "lambda_egress_vpc",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "lam",
+     "cond": {
+      "path": "egress.*.cidr_blocks.*",
+      "op": "eq",
+      "value": "10.32.0.0/20",
+      "every": true
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_security_group_rule"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "egress"
+       },
+       {
+        "path": "cidr_blocks.*",
+        "op": "eq",
+        "value": "10.32.0.0/20"
+       }
+      ]
+     },
+     "to": "lam"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_vpc_security_group_egress_rule"
+      ],
+      "where": [
+       {
+        "path": "cidr_ipv4",
+        "op": "eq",
+        "value": "10.32.0.0/20"
+       }
+      ]
+     },
+     "to": "lam"
+    }
+   ],
+   "quote": "\"lambda-rds-dev-lambda-functions\" allowing egress strictly to \"10.32.0.0/20\""
+  },
+  {
+   "id": "bastion_ssh_vpc",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "bas",
+     "cond": {
+      "path": "ingress.*",
+      "op": "match",
+      "value": [
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 22
+       },
+       {
+        "path": "cidr_blocks.*",
+        "op": "eq",
+        "value": "10.32.0.0/20"
+       },
+       {
+        "path": "protocol",
+        "op": "in",
+        "value": [
+         "tcp",
+         "6"
+        ]
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_security_group_rule"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "ingress"
+       },
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 22
+       },
+       {
+        "path": "cidr_blocks.*",
+        "op": "eq",
+        "value": "10.32.0.0/20"
+       },
+       {
+        "path": "protocol",
+        "op": "in",
+        "value": [
+         "tcp",
+         "6"
+        ]
+       }
+      ]
+     },
+     "to": "bas"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_vpc_security_group_ingress_rule"
+      ],
+      "where": [
+       {
+        "path": "from_port",
+        "op": "eq",
+        "value": 22
+       },
+       {
+        "path": "cidr_ipv4",
+        "op": "eq",
+        "value": "10.32.0.0/20"
+       }
+      ]
+     },
+     "to": "bas"
+    }
+   ],
+   "quote": "allowing inbound SSH on port 22 only from within the VPC CIDR block",
+   "justify": "SSH is TCP port 22; VPC CIDR is the stated 10.32.0.0/20"
+  },
+  {
+   "id": "bastion_ssh_only_vpc",
+   "kind": "any_of",
+   "tier": "detail",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "bas",
+     "cond": {
+      "path": "ingress.*.cidr_blocks.*",
+      "op": "eq",
+      "value": "10.32.0.0/20",
+      "every": true
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "bas",
+     "cond": {
+      "path": "ingress.*.cidr_blocks.*",
+      "op": "none_eq",
+      "value": "0.0.0.0/0"
+     }
+    }
+   ],
+   "quote": "only from within the VPC CIDR block"
+  },
+  {
+   "id": "bastion_egress_db",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "bas",
+     "to": "db"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_security_group_rule"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "egress"
+       },
+       {
+        "path": "cidr_blocks.*",
+        "op": "absent"
+       }
+      ]
+     },
+     "to": "db"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_vpc_security_group_egress_rule"
+      ],
+      "where": [
+       {
+        "path": "cidr_ipv4",
+        "op": "absent"
+       }
+      ]
+     },
+     "to": "db"
+    }
+   ],
+   "quote": "egress restricted exclusively to the PostgreSQL database security group"
+  },
+  {
+   "id": "bastion_egress_not_open",
+   "kind": "attr",
+   "tier": "detail",
+   "select": "bas",
+   "cond": {
+    "path": "egress.*.cidr_blocks.*",
+    "op": "none_eq",
+    "value": "0.0.0.0/0"
+   },
+   "quote": "egress restricted exclusively to the PostgreSQL database security group"
+  }
+ ],
+ "notes": "AZ names are inference space: db subnets must span two AZs (distinct_path) and the lambda and bastion subnets must share the AZ of lambda-rds-db-subnet-1 (join), which is what 'primary zone' means. Port checks require TCP so an all-protocol rule does not satisfy them. Bastion egress to the DB group via a separate rule must be CIDR-less (source-group) so the DB group's own egress rule cannot satisfy it. Known Partial: 'egress strictly to 10.32.0.0/20' is enforced as every-CIDR for inline egress blocks; with separate rule resources an added 0.0.0.0/0 rule cannot be ruled out, because a rule-to-group link is a reference and the schema cannot negate a reference."
+}

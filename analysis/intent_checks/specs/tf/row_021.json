@@ -1,0 +1,235 @@
+{
+ "lang": "tf",
+ "row_number": 21,
+ "source_hash": {
+  "gt": "93b4de2830e59918a85e365d1d4627ddf7a565dc63c530757769fbf9ce137ee6",
+  "prompt": "716ab52d7c4a618064d44802ca85fc86776467117092b00a3b62db17c4b8bcc3"
+ },
+ "selectors": {
+  "kp": {
+   "types": [
+    "aws_key_pair"
+   ]
+  },
+  "tls": {
+   "types": [
+    "tls_private_key"
+   ]
+  },
+  "pet": {
+   "types": [
+    "random_pet"
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "key_pair",
+   "kind": "exists",
+   "select": "kp",
+   "tier": "core",
+   "quote": "creates an AWS key pair for SSH access"
+  },
+  {
+   "id": "tls_key",
+   "kind": "exists",
+   "select": "tls",
+   "tier": "core",
+   "quote": "backed by a dynamically generated 4096-bit RSA private key"
+  },
+  {
+   "id": "tls_rsa",
+   "kind": "attr",
+   "select": "tls",
+   "cond": {
+    "path": "algorithm",
+    "op": "eq",
+    "value": "RSA"
+   },
+   "tier": "core",
+   "quote": "4096-bit RSA private key"
+  },
+  {
+   "id": "tls_bits",
+   "kind": "attr",
+   "select": "tls",
+   "cond": {
+    "path": "rsa_bits",
+    "op": "eq",
+    "value": 4096
+   },
+   "tier": "core",
+   "quote": "4096-bit RSA private key"
+  },
+  {
+   "id": "key_pair_uses_tls",
+   "kind": "ref",
+   "from": "kp",
+   "to": "tls",
+   "tier": "core",
+   "quote": "backed by a dynamically generated 4096-bit RSA private key"
+  },
+  {
+   "id": "key_prefix_var",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": "name",
+      "op": "eq",
+      "value": "key_prefix"
+     },
+     {
+      "path": "default",
+      "op": "eq",
+      "value": "key"
+     }
+    ]
+   },
+   "tier": "detail",
+   "quote": "a variable named \"key_prefix\" that defaults to \"key\""
+  },
+  {
+   "id": "random_pet",
+   "kind": "exists",
+   "select": "pet",
+   "tier": "core",
+   "quote": "a randomly generated two-word pet name identifier"
+  },
+  {
+   "id": "pet_two_words",
+   "kind": "attr",
+   "select": "pet",
+   "cond": {
+    "path": "length",
+    "op": "eq",
+    "value": 2
+   },
+   "tier": "core",
+   "quote": "randomly generated two-word pet name identifier",
+   "justify": "two-word means length 2"
+  },
+  {
+   "id": "key_name_uses_pet",
+   "kind": "ref",
+   "from": "kp",
+   "to": "pet",
+   "tier": "core",
+   "quote": "appended with a hyphen and a randomly generated two-word pet name identifier"
+  },
+  {
+   "id": "local_exec",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": "properties.provisioner",
+      "op": "regex",
+      "value": "local-exec"
+     }
+    ]
+   },
+   "tier": "core",
+   "quote": "a local execution provisioner"
+  },
+  {
+   "id": "local_exec_pem",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": "properties.provisioner",
+      "op": "regex",
+      "value": "local-exec"
+     },
+     {
+      "path": "properties.provisioner",
+      "op": "regex",
+      "value": "private_key_pem"
+     }
+    ]
+   },
+   "tier": "detail",
+   "quote": "saves the resulting private key in PEM format"
+  },
+  {
+   "id": "local_exec_parent",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": "properties.provisioner",
+      "op": "regex",
+      "value": "local-exec"
+     },
+     {
+      "path": "properties.provisioner",
+      "op": "regex",
+      "value": "\\.\\./"
+     }
+    ]
+   },
+   "tier": "detail",
+   "quote": "to a file in the parent directory"
+  },
+  {
+   "id": "local_exec_filename",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": "properties.provisioner",
+      "op": "regex",
+      "value": "local-exec"
+     },
+     {
+      "path": "properties.provisioner",
+      "op": "regex",
+      "value": "\\.\\./[\\\\\"\\']*\\$\\{[^}]*(key_name|key_prefix|random_pet)"
+     }
+    ]
+   },
+   "tier": "detail",
+   "quote": "to a file in the parent directory, named identically to the key pair"
+  },
+  {
+   "id": "local_exec_chmod",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": "properties.provisioner",
+      "op": "regex",
+      "value": "local-exec"
+     },
+     {
+      "path": "properties.provisioner",
+      "op": "regex",
+      "value": "chmod\\s+0?600"
+     }
+    ]
+   },
+   "tier": "core",
+   "quote": "explicitly secures the file by setting its permissions to 600"
+  }
+ ],
+ "notes": "The provisioner checks read only the declared provisioner block. A local_file with file_permission 0600 is not accepted: the prompt names a local execution provisioner. local_exec_filename accepts the key pair's name expression (self.key_name, a key_name local/attribute, or the key_prefix/random_pet interpolation) after '../'."
+}

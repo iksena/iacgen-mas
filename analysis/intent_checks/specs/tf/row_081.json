@@ -1,0 +1,369 @@
+{
+ "lang": "tf",
+ "row_number": 81,
+ "source_hash": {
+  "gt": "d6c14cf3a2fb3f9e5f5fa87724b105292560ef17bf166c69cc9bd160d031ea36",
+  "prompt": "1ffa0ef76d1c3d36b25a97e2d6fd65c5c9af34e51553e60075c39bcac4def3d4"
+ },
+ "selectors": {
+  "api": {
+   "types": [
+    "aws_api_gateway_rest_api"
+   ]
+  },
+  "method": {
+   "types": [
+    "aws_api_gateway_method"
+   ]
+  },
+  "integ": {
+   "types": [
+    "aws_api_gateway_integration"
+   ]
+  },
+  "topic": {
+   "types": [
+    "aws_sns_topic"
+   ]
+  },
+  "kms": {
+   "types": [
+    "aws_kms_key"
+   ]
+  },
+  "role": {
+   "types": [
+    "aws_iam_role"
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "rest_api",
+   "kind": "exists",
+   "select": "api",
+   "tier": "core",
+   "quote": "a REST API Gateway endpoint"
+  },
+  {
+   "id": "method_post",
+   "kind": "attr",
+   "select": "method",
+   "cond": {
+    "path": "http_method",
+    "op": "eq",
+    "value": "POST"
+   },
+   "tier": "core",
+   "quote": "publishes incoming POST requests"
+  },
+  {
+   "id": "integ_sns",
+   "kind": "attr",
+   "select": "integ",
+   "cond": {
+    "path": "uri",
+    "op": "regex",
+    "value": "(?i):sns:"
+   },
+   "tier": "core",
+   "quote": "publishes incoming POST requests directly to an SNS topic"
+  },
+  {
+   "id": "integ_topic",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "integ",
+     "to": "topic"
+    },
+    {
+     "kind": "attr",
+     "select": "integ",
+     "cond": {
+      "path": "request_templates",
+      "op": "regex",
+      "value": "event-topic"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "integ",
+     "cond": {
+      "path": "request_parameters",
+      "op": "regex",
+      "value": "event-topic"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_api_gateway_integration"
+       }
+      ]
+     },
+     "cond": {
+      "path": "properties.request_templates",
+      "op": "regex",
+      "value": "(?i)local\\.[a-z0-9_]*(sns|topic)"
+     }
+    }
+   ],
+   "tier": "core",
+   "quote": "directly to an SNS topic named event-topic"
+  },
+  {
+   "id": "topic",
+   "kind": "exists",
+   "select": "topic",
+   "tier": "core",
+   "quote": "an SNS topic named event-topic"
+  },
+  {
+   "id": "topic_name",
+   "kind": "attr",
+   "select": "topic",
+   "cond": {
+    "path": "name",
+    "op": "eq",
+    "value": "event-topic"
+   },
+   "tier": "core",
+   "quote": "an SNS topic named event-topic"
+  },
+  {
+   "id": "kms",
+   "kind": "exists",
+   "select": "kms",
+   "tier": "core",
+   "quote": "a dedicated customer-managed KMS key"
+  },
+  {
+   "id": "topic_kms",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "topic",
+     "to": "kms"
+    },
+    {
+     "kind": "ref",
+     "from": "topic",
+     "to": {
+      "types": [
+       "aws_kms_alias"
+      ]
+     }
+    }
+   ],
+   "tier": "core",
+   "quote": "encrypted with a dedicated customer-managed KMS key"
+  },
+  {
+   "id": "kms_rotation",
+   "kind": "attr",
+   "select": "kms",
+   "cond": {
+    "path": "enable_key_rotation",
+    "op": "truthy"
+   },
+   "tier": "core",
+   "quote": "with key rotation"
+  },
+  {
+   "id": "role",
+   "kind": "exists",
+   "select": "role",
+   "tier": "core",
+   "quote": "an IAM role that grants the API Gateway permission"
+  },
+  {
+   "id": "role_trust",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "role",
+     "cond": {
+      "path": "assume_role_policy",
+      "op": "regex",
+      "value": "apigateway\\.amazonaws\\.com"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "in",
+        "value": [
+         "aws_iam_role",
+         "data.aws_iam_policy_document"
+        ]
+       }
+      ]
+     },
+     "cond": {
+      "path": "properties",
+      "op": "regex",
+      "value": "apigateway\\.amazonaws\\.com"
+     }
+    }
+   ],
+   "tier": "core",
+   "quote": "an IAM role that grants the API Gateway permission to publish"
+  },
+  {
+   "id": "role_publish",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_iam_role_policy",
+       "aws_iam_policy"
+      ]
+     },
+     "cond": {
+      "path": "policy",
+      "op": "regex",
+      "value": "(?i)sns:(publish|\\*)([^A-Za-z0-9_]|$)"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "in",
+        "value": [
+         "aws_iam_role_policy",
+         "aws_iam_policy",
+         "data.aws_iam_policy_document",
+         "aws_iam_role"
+        ]
+       }
+      ]
+     },
+     "cond": {
+      "path": "properties",
+      "op": "regex",
+      "value": "(?i)sns:(publish|\\*)([^A-Za-z0-9_]|$)"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_iam_role_policy_attachment"
+      ]
+     },
+     "cond": {
+      "path": "policy_arn",
+      "op": "regex",
+      "value": "(?i)AmazonSNS(Full)?Access"
+     }
+    }
+   ],
+   "tier": "core",
+   "quote": "permission to publish to that topic"
+  },
+  {
+   "id": "role_policy_attached",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_role_policy"
+      ]
+     },
+     "to": "role"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_role_policy_attachment"
+      ]
+     },
+     "to": "role"
+    }
+   ],
+   "tier": "detail",
+   "quote": "an IAM role that grants the API Gateway permission to publish to that topic"
+  },
+  {
+   "id": "integ_role",
+   "kind": "ref",
+   "from": "integ",
+   "to": "role",
+   "tier": "core",
+   "quote": "using an IAM role"
+  },
+  {
+   "id": "integ_form",
+   "kind": "attr",
+   "select": "integ",
+   "cond": {
+    "path": "request_parameters",
+    "op": "regex",
+    "value": "x-www-form-urlencoded"
+   },
+   "tier": "extra"
+  },
+  {
+   "id": "extra_type_aws_api_gateway_integration_response",
+   "kind": "exists",
+   "tier": "extra",
+   "select": {
+    "types": [
+     "aws_api_gateway_integration_response"
+    ],
+    "where": []
+   }
+  },
+  {
+   "id": "extra_type_aws_api_gateway_method_response",
+   "kind": "exists",
+   "tier": "extra",
+   "select": {
+    "types": [
+     "aws_api_gateway_method_response"
+    ],
+    "where": []
+   }
+  },
+  {
+   "id": "extra_type_aws_api_gateway_resource",
+   "kind": "exists",
+   "tier": "extra",
+   "select": {
+    "types": [
+     "aws_api_gateway_resource"
+    ],
+    "where": []
+   }
+  }
+ ],
+ "notes": "Policy text references the topic ARN so it is unknown at plan time; declared-block alternatives cover it. The topic's KMS key must be a key or alias the template creates (an AWS-managed alias/aws/sns does not count as a dedicated customer-managed key). The integration->topic link accepts a reference, the literal topic name, or a request template held in a local whose name mentions sns/topic (locals are invisible). The publish grant is not bound to the integration's role (the policy text sits in a separate policy document), so role_publish and role_policy_attached are checked separately."
+}

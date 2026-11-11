@@ -1,0 +1,540 @@
+{
+ "meta": {
+  "lang": "tf",
+  "mode": "plan",
+  "warnings": [],
+  "gt_hash": "1055f725f5368357e2ac6b7362a7ff8108281046aaa0fa3bb7fc68168f3a0200",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "aws_iam_group.demo-user-group",
+   "cfg": "aws_iam_group.demo-user-group",
+   "type": "aws_iam_group",
+   "values": {
+    "name": "awscademo-demo-users",
+    "path": "/"
+   },
+   "refs": []
+  },
+  {
+   "id": "aws_iam_group.mfa-superadmin-group",
+   "cfg": "aws_iam_group.mfa-superadmin-group",
+   "type": "aws_iam_group",
+   "values": {
+    "name": "awscademo-mfa-superadmins",
+    "path": "/"
+   },
+   "refs": []
+  },
+  {
+   "id": "aws_iam_group.readonly-user-group",
+   "cfg": "aws_iam_group.readonly-user-group",
+   "type": "aws_iam_group",
+   "values": {
+    "name": "awscademo-readonly-users",
+    "path": "/"
+   },
+   "refs": []
+  },
+  {
+   "id": "aws_iam_group_policy_attachment.admin-assume-role-mfa-attach",
+   "cfg": "aws_iam_group_policy_attachment.admin-assume-role-mfa-attach",
+   "type": "aws_iam_group_policy_attachment",
+   "values": {
+    "group": "awscademo-mfa-superadmins"
+   },
+   "refs": [
+    "aws_iam_group.mfa-superadmin-group",
+    "aws_iam_policy.assume-role-mfa-policy"
+   ]
+  },
+  {
+   "id": "aws_iam_group_policy_attachment.readonly-attach",
+   "cfg": "aws_iam_group_policy_attachment.readonly-attach",
+   "type": "aws_iam_group_policy_attachment",
+   "values": {
+    "group": "awscademo-readonly-users",
+    "policy_arn": "arn:aws:iam::aws:policy/ReadOnlyAccess"
+   },
+   "refs": [
+    "aws_iam_group.readonly-user-group",
+    "data.aws_iam_policy.readonly-access-managed-policy"
+   ]
+  },
+  {
+   "id": "aws_iam_group_policy_attachment.self-management-attach",
+   "cfg": "aws_iam_group_policy_attachment.self-management-attach",
+   "type": "aws_iam_group_policy_attachment",
+   "values": {
+    "group": "awscademo-demo-users"
+   },
+   "refs": [
+    "aws_iam_group.demo-user-group",
+    "aws_iam_policy.self-management-policy"
+   ]
+  },
+  {
+   "id": "aws_iam_policy.admin-policy",
+   "cfg": "aws_iam_policy.admin-policy",
+   "type": "aws_iam_policy",
+   "values": {
+    "delay_after_policy_creation_in_ms": null,
+    "description": "Permits full admin access for awscademo-",
+    "name_prefix": "awscademo-admin-access-policy",
+    "path": "/",
+    "policy": "{\"Statement\":[{\"Action\":\"*\",\"Condition\":{\"BoolIfExists\":{\"aws:MultiFactorAuthPresent\":\"true\"}},\"Effect\":\"Allow\",\"Resource\":\"*\"}],\"Version\":\"2012-10-17\"}",
+    "tags": null
+   },
+   "refs": [
+    "data.aws_iam_policy_document.admin-policy-document"
+   ]
+  },
+  {
+   "id": "aws_iam_policy.assume-role-mfa-policy",
+   "cfg": "aws_iam_policy.assume-role-mfa-policy",
+   "type": "aws_iam_policy",
+   "values": {
+    "delay_after_policy_creation_in_ms": null,
+    "description": "Assume admin role with MFA only policy for awscademo-",
+    "name_prefix": "awscademo-assume-admin-role-wit",
+    "path": "/",
+    "tags": null
+   },
+   "refs": [
+    "aws_iam_group.mfa-superadmin-group",
+    "aws_iam_role.admin-role"
+   ]
+  },
+  {
+   "id": "aws_iam_policy.self-management-policy",
+   "cfg": "aws_iam_policy.self-management-policy",
+   "type": "aws_iam_policy",
+   "values": {
+    "delay_after_policy_creation_in_ms": null,
+    "description": "Policy for user self management of pwd, mfa device for awscademo-",
+    "name_prefix": "awscademo-user-self-management-",
+    "path": "/",
+    "policy": "{\"Statement\":[{\"Action\":[\"iam:ChangePassword\",\"iam:*LoginProfile\",\"iam:*AccessKey*\",\"iam:*SSHPublicKey*\",\"iam:ListUserPolicies\",\"iam:ListAttachedUserPolicies\",\"iam:ListGroupsForUser\"],\"Effect\":\"Allow\",\"Resource\":\"arn:aws:iam:::user/${aws:username}\",\"Sid\":\"AllowCredentialManagement\"},{\"Action\":[\"iam:ListAccount*\",\"iam:GetAccountSummary\",\"iam:GetAccountPasswordPolicy\",\"iam:ListUsers\"],\"Effect\":\"Allow\",\"Resource\":\"*\",\"Sid\":\"AllowConsoleUsage\"},{\"Action\":[\"iam:CreateVirtualMFADevice\",\"iam:EnableMFADevice\",\"iam:ResyncMFADevice\"],\"Effect\":\"Allow\",\"Resource\":[\"arn:aws:iam:::mfa/${aws:username}\",\"arn:aws:iam:::user/${aws:username}\"],\"Sid\":\"AllowMfaCreateEnableResync\"},{\"Action\":[\"iam:ListMFADevices\",\"iam:ListVirtualMFADevices\"],\"Effect\":\"Allow\",\"Resource\":\"*\",\"Sid\":\"AllowMfaFromConsole\"},{\"Action\":[\"iam:ListAccountAliases\",\"iam:ListUsers\",\"iam:ListVirtualMFADevices\",\"iam:GetAccountPasswordPolicy\",\"iam:GetAccountSummary\"],\"Effect\":\"Allow\",\"Resource\":\"*\",\"Sid\":\"AllowAllUsersToListAccounts\"},{\"Action\":[\"iam:ChangePassword\",\"iam:CreateAccessKey\",\"iam:CreateLoginProfile\",\"iam:DeleteAccessKey\",\"iam:DeleteLoginProfile\",\"iam:GetLoginProfile\",\"iam:ListAccessKeys\",\"iam:UpdateAccessKey\",\"iam:UpdateLoginProfile\",\"iam:ListSigningCertificates\",\"iam:DeleteSigningCertificate\",\"iam:UpdateSigningCertificate\",\"iam:UploadSigningCertificate\",\"iam:ListSSHPublicKeys\",\"iam:GetSSHPublicKey\",\"iam:DeleteSSHPublicKey\",\"iam:UpdateSSHPublicKey\",\"iam:UploadSSHPublicKey\"],\"Effect\":\"Allow\",\"Resource\":\"arn:aws:iam::*:user/${aws:username}\",\"Sid\":\"AllowIndividualUserToSeeAndManageOnlyTheirOwnAccountInformation\"},{\"Action\":[\"iam:CreateVirtualMFADevice\",\"iam:DeleteVirtualMFADevice\",\"iam:EnableMFADevice\",\"iam:ListMFADevices\",\"iam:ResyncMFADevice\"],\"Effect\":\"Allow\",\"Resource\":[\"arn:aws:iam::*:mfa/${aws:username}\",\"arn:aws:iam::*:user/${aws:username}\"],\"Sid\":\"AllowIndividualUserToViewAndManageTheirOwnMFA\"},{\"Action\":[\"iam:DeactivateMFADevice\"],\"Condition\":{\"Bool\":{\"aws:MultiFactorAuthPresent\":\"true\"}},\"Effect\":\"Allow\",\"Resource\":[\"arn:aws:iam::*:mfa/${aws:username}\",\"arn:aws:iam::*:user/${aws:username}\"],\"Sid\":\"AllowIndividualUserToDeactivateOnlyTheirOwnMFAOnlyWhenUsingMFA\"}],\"Version\":\"2012-10-17\"}",
+    "tags": null
+   },
+   "refs": [
+    "aws_iam_group.demo-user-group",
+    "aws_iam_policy.self-management-policy"
+   ]
+  },
+  {
+   "id": "aws_iam_role.admin-role",
+   "cfg": "aws_iam_role.admin-role",
+   "type": "aws_iam_role",
+   "values": {
+    "assume_role_policy": "{\"Statement\":[{\"Action\":\"sts:AssumeRole\",\"Effect\":\"Allow\",\"Principal\":{\"AWS\":\"arn:aws:iam::000000000000:root\"}}],\"Version\":\"2012-10-17\"}",
+    "description": null,
+    "force_detach_policies": false,
+    "max_session_duration": 43200,
+    "name_prefix": "awscademo-mfa-superadmins-role",
+    "path": "/",
+    "permissions_boundary": null,
+    "tags": null
+   },
+   "refs": [
+    "data.aws_iam_policy_document.admin-assume-role-document"
+   ]
+  },
+  {
+   "id": "aws_iam_role_policy_attachment.admin-role-attach",
+   "cfg": "aws_iam_role_policy_attachment.admin-role-attach",
+   "type": "aws_iam_role_policy_attachment",
+   "values": {},
+   "refs": [
+    "aws_iam_policy.admin-policy",
+    "aws_iam_role.admin-role"
+   ]
+  },
+  {
+   "id": "__parameter__.name",
+   "cfg": "__parameter__.name",
+   "type": "__parameter__",
+   "values": {
+    "name": "name",
+    "default": "awscademo-"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.region",
+   "cfg": "__parameter__.region",
+   "type": "__parameter__",
+   "values": {
+    "name": "region",
+    "default": "us-east-1"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.tags-to-value",
+   "cfg": "__parameter__.tags-to-value",
+   "type": "__parameter__",
+   "values": {
+    "name": "tags-to-value",
+    "default": {
+     "contact": "odeyinka2001@yahoo.com",
+     "date-deployed": "02-04-2023",
+     "deployed-by": "terraform",
+     "ttl": "infinity"
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.default-group",
+   "cfg": "__output__.default-group",
+   "type": "__output__",
+   "values": {
+    "name": "default-group",
+    "value": null,
+    "description": "The name of the IAM group for evryone"
+   },
+   "refs": [
+    "aws_iam_group.demo-user-group"
+   ]
+  },
+  {
+   "id": "__output__.mfa-superadmin-group",
+   "cfg": "__output__.mfa-superadmin-group",
+   "type": "__output__",
+   "values": {
+    "name": "mfa-superadmin-group",
+    "value": null,
+    "description": "The name of the IAM group for admins"
+   },
+   "refs": [
+    "aws_iam_group.mfa-superadmin-group"
+   ]
+  },
+  {
+   "id": "__output__.read-only-group",
+   "cfg": "__output__.read-only-group",
+   "type": "__output__",
+   "values": {
+    "name": "read-only-group",
+    "value": null,
+    "description": "The name of the IAM group for read only access permissions"
+   },
+   "refs": [
+    "aws_iam_group.readonly-user-group"
+   ]
+  },
+  {
+   "id": "__declared__.aws_iam_group.demo-user-group",
+   "cfg": "aws_iam_group.demo-user-group",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_iam_group",
+    "name": "demo-user-group",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "${format(\"%sdemo-users\",var.name)}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_policy.self-management-policy",
+   "cfg": "aws_iam_policy.self-management-policy",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_iam_policy",
+    "name": "self-management-policy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name_prefix": "${substr(format(\"%suser-self-management-policy\",var.name),0,31)}",
+     "description": "${format(\"Policy for user self management of pwd, mfa device for %s\",var.name)}",
+     "policy": "{\n    \"Statement\": [\n      {\n        \"Action\": [\n          \"iam:ChangePassword\",\n          \"iam:*LoginProfile\",\n          \"iam:*AccessKey*\",\n          \"iam:*SSHPublicKey*\",\n          \"iam:ListUserPolicies\",\n          \"iam:ListAttachedUserPolicies\",\n          \"iam:ListGroupsForUser\"\n        ],\n        \"Effect\": \"Allow\",\n        \"Resource\": \"arn:aws:iam:::user/$${aws:username}\",\n        \"Sid\": \"AllowCredentialManagement\"\n      },\n      {\n        \"Action\": [\n          \"iam:ListAccount*\",\n          \"iam:GetAccountSummary\",\n          \"iam:GetAccountPasswordPolicy\",\n          \"iam:ListUsers\"\n        ],\n        \"Effect\": \"Allow\",\n        \"Resource\": \"*\",\n        \"Sid\": \"AllowConsoleUsage\"\n      },\n      {\n        \"Action\": [\n          \"iam:CreateVirtualMFADevice\",\n          \"iam:EnableMFADevice\",\n          \"iam:ResyncMFADevice\"\n        ],\n        \"Effect\": \"Allow\",\n        \"Resource\": [\n          \"arn:aws:iam:::mfa/$${aws:username}\",\n          \"arn:aws:iam:::user/$${aws:username}\"\n        ],\n        \"Sid\": \"AllowMfaCreateEnableResync\"\n      },\n      {\n        \"Action\": [\n          \"iam:ListMFADevices\",\n          \"iam:ListVirtualMFADevices\"\n        ],\n        \"Effect\": \"Allow\",\n        \"Resource\": \"*\",\n        \"Sid\": \"AllowMfaFromConsole\"\n      },\n      {\n        \"Action\": [\n          \"iam:ListAccountAliases\",\n          \"iam:ListUsers\",\n          \"iam:ListVirtualMFADevices\",\n          \"iam:GetAccountPasswordPolicy\",\n          \"iam:GetAccountSummary\"\n        ],\n        \"Effect\": \"Allow\",\n        \"Resource\": \"*\",\n        \"Sid\": \"AllowAllUsersToListAccounts\"\n      },\n      {\n        \"Action\": [\n          \"iam:ChangePassword\",\n          \"iam:CreateAccessKey\",\n          \"iam:CreateLoginProfile\",\n          \"iam:DeleteAccessKey\",\n          \"iam:DeleteLoginProfile\",\n          \"iam:GetLoginProfile\",\n          \"iam:ListAccessKeys\",\n          \"iam:UpdateAccessKey\",\n          \"iam:UpdateLoginProfile\",\n          \"iam:ListSigningCertificates\",\n          \"iam:DeleteSigningCertificate\",\n          \"iam:UpdateSigningCertificate\",\n          \"iam:UploadSigningCertificate\",\n          \"iam:ListSSHPublicKeys\",\n          \"iam:GetSSHPublicKey\",\n          \"iam:DeleteSSHPublicKey\",\n          \"iam:UpdateSSHPublicKey\",\n          \"iam:UploadSSHPublicKey\"\n        ],\n        \"Effect\": \"Allow\",\n        \"Resource\": \"arn:aws:iam::*:user/$${aws:username}\",\n        \"Sid\": \"AllowIndividualUserToSeeAndManageOnlyTheirOwnAccountInformation\"\n      },\n      {\n        \"Action\": [\n          \"iam:CreateVirtualMFADevice\",\n          \"iam:DeleteVirtualMFADevice\",\n          \"iam:EnableMFADevice\",\n          \"iam:ListMFADevices\",\n          \"iam:ResyncMFADevice\"\n        ],\n        \"Effect\": \"Allow\",\n        \"Resource\": [\n          \"arn:aws:iam::*:mfa/$${aws:username}\",\n          \"arn:aws:iam::*:user/$${aws:username}\"\n        ],\n        \"Sid\": \"AllowIndividualUserToViewAndManageTheirOwnMFA\"\n      },\n      {\n        \"Action\": [\n          \"iam:DeactivateMFADevice\"\n        ],\n        \"Condition\": {\n          \"Bool\": {\n            \"aws:MultiFactorAuthPresent\": \"true\"\n          }\n        },\n        \"Effect\": \"Allow\",\n        \"Resource\": [\n          \"arn:aws:iam::*:mfa/$${aws:username}\",\n          \"arn:aws:iam::*:user/$${aws:username}\"\n        ],\n        \"Sid\": \"AllowIndividualUserToDeactivateOnlyTheirOwnMFAOnlyWhenUsingMFA\"\n      }\n    ],\n    \"Version\": \"2012-10-17\"\n  }\n"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_group_policy_attachment.self-management-attach",
+   "cfg": "aws_iam_group_policy_attachment.self-management-attach",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_group.demo-user-group",
+    "aws_iam_policy.self-management-policy"
+   ],
+   "values": {
+    "type": "aws_iam_group_policy_attachment",
+    "name": "self-management-attach",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "group": "${aws_iam_group.demo-user-group.name}",
+     "policy_arn": "${aws_iam_policy.self-management-policy.arn}",
+     "depends_on": [
+      "${aws_iam_group.demo-user-group}",
+      "${aws_iam_policy.self-management-policy}"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_group.readonly-user-group",
+   "cfg": "aws_iam_group.readonly-user-group",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_iam_group",
+    "name": "readonly-user-group",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "${format(\"%sreadonly-users\",var.name)}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.data.aws_iam_policy.readonly-access-managed-policy",
+   "cfg": "data.aws_iam_policy.readonly-access-managed-policy",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "data.aws_iam_policy",
+    "name": "readonly-access-managed-policy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "arn": "arn:aws:iam::aws:policy/ReadOnlyAccess"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_group_policy_attachment.readonly-attach",
+   "cfg": "aws_iam_group_policy_attachment.readonly-attach",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_group.readonly-user-group",
+    "data.aws_iam_policy.readonly-access-managed-policy"
+   ],
+   "values": {
+    "type": "aws_iam_group_policy_attachment",
+    "name": "readonly-attach",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "group": "${aws_iam_group.readonly-user-group.name}",
+     "policy_arn": "${data.aws_iam_policy.readonly-access-managed-policy.arn}",
+     "depends_on": [
+      "${aws_iam_group.readonly-user-group}",
+      "${data.aws_iam_policy.readonly-access-managed-policy}"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_group.mfa-superadmin-group",
+   "cfg": "aws_iam_group.mfa-superadmin-group",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_iam_group",
+    "name": "mfa-superadmin-group",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "${format(\"%smfa-superadmins\",var.name)}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role.admin-role",
+   "cfg": "aws_iam_role.admin-role",
+   "type": "__declared__",
+   "refs": [
+    "data.aws_iam_policy_document.admin-assume-role-document"
+   ],
+   "values": {
+    "type": "aws_iam_role",
+    "name": "admin-role",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name_prefix": "${substr(format(\"%smfa-superadmins-role\",var.name),0,31)}",
+     "assume_role_policy": "${data.aws_iam_policy_document.admin-assume-role-document.json}",
+     "max_session_duration": 43200
+    }
+   }
+  },
+  {
+   "id": "__declared__.data.aws_iam_policy_document.admin-policy-document",
+   "cfg": "data.aws_iam_policy_document.admin-policy-document",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "data.aws_iam_policy_document",
+    "name": "admin-policy-document",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "statement": [
+      {
+       "actions": [
+        "*"
+       ],
+       "effect": "Allow",
+       "resources": [
+        "*"
+       ],
+       "condition": [
+        {
+         "test": "BoolIfExists",
+         "variable": "aws:MultiFactorAuthPresent",
+         "values": [
+          "true"
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_policy.admin-policy",
+   "cfg": "aws_iam_policy.admin-policy",
+   "type": "__declared__",
+   "refs": [
+    "data.aws_iam_policy_document.admin-policy-document"
+   ],
+   "values": {
+    "type": "aws_iam_policy",
+    "name": "admin-policy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name_prefix": "${substr(format(\"%sadmin-access-policy\",var.name),0,31)}",
+     "description": "${format(\"Permits full admin access for %s\",var.name)}",
+     "path": "/",
+     "policy": "${data.aws_iam_policy_document.admin-policy-document.json}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role_policy_attachment.admin-role-attach",
+   "cfg": "aws_iam_role_policy_attachment.admin-role-attach",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_policy.admin-policy",
+    "aws_iam_role.admin-role"
+   ],
+   "values": {
+    "type": "aws_iam_role_policy_attachment",
+    "name": "admin-role-attach",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "role": "${aws_iam_role.admin-role.name}",
+     "policy_arn": "${aws_iam_policy.admin-policy.arn}",
+     "depends_on": [
+      "${aws_iam_role.admin-role}",
+      "${aws_iam_policy.admin-policy}"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_policy.assume-role-mfa-policy",
+   "cfg": "aws_iam_policy.assume-role-mfa-policy",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_group.mfa-superadmin-group",
+    "aws_iam_role.admin-role"
+   ],
+   "values": {
+    "type": "aws_iam_policy",
+    "name": "assume-role-mfa-policy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "depends_on": [
+      "${aws_iam_group.mfa-superadmin-group}"
+     ],
+     "name_prefix": "${substr(format(\"%sassume-admin-role-with-mfa-policy\",var.name),0,31)}",
+     "path": "/",
+     "description": "${format(\"Assume admin role with MFA only policy for %s\",var.name)}",
+     "policy": "{\n    \"Version\": \"2012-10-17\",\n    \"Statement\": [\n        {\n            \"Effect\": \"Allow\",\n            \"Action\": \"sts:AssumeRole\",\n            \"Resource\": \"${aws_iam_role.admin-role.arn}\",\n            \"Condition\": {\n                \"BoolIfExists\": {\n                    \"aws:MultiFactorAuthPresent\": \"true\"\n                }\n            }\n        }\n    ]\n}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_group_policy_attachment.admin-assume-role-mfa-attach",
+   "cfg": "aws_iam_group_policy_attachment.admin-assume-role-mfa-attach",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_group.mfa-superadmin-group",
+    "aws_iam_policy.assume-role-mfa-policy"
+   ],
+   "values": {
+    "type": "aws_iam_group_policy_attachment",
+    "name": "admin-assume-role-mfa-attach",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "group": "${aws_iam_group.mfa-superadmin-group.name}",
+     "policy_arn": "${aws_iam_policy.assume-role-mfa-policy.arn}",
+     "depends_on": [
+      "${aws_iam_group.mfa-superadmin-group}",
+      "${aws_iam_policy.assume-role-mfa-policy}"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.data.aws_caller_identity.current",
+   "cfg": "data.aws_caller_identity.current",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "data.aws_caller_identity",
+    "name": "current",
+    "gated": false,
+    "gate": null,
+    "properties": {}
+   }
+  },
+  {
+   "id": "__declared__.data.aws_iam_policy_document.admin-assume-role-document",
+   "cfg": "data.aws_iam_policy_document.admin-assume-role-document",
+   "type": "__declared__",
+   "refs": [
+    "data.aws_caller_identity.current"
+   ],
+   "values": {
+    "type": "data.aws_iam_policy_document",
+    "name": "admin-assume-role-document",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "statement": [
+      {
+       "actions": [
+        "sts:AssumeRole"
+       ],
+       "effect": "Allow",
+       "principals": [
+        {
+         "type": "AWS",
+         "identifiers": [
+          "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  }
+ ]
+}

@@ -1,0 +1,530 @@
+{
+ "lang": "tf",
+ "row_number": 350,
+ "source_hash": {
+  "gt": "054cf6bde418bc227ddcf780ed90a0e65f0956632bd8bdabde0eef6fbf52ccfd",
+  "prompt": "307d2a5168c79e68d12724262b58f516f9d77143f759115013396282dc6ced10"
+ },
+ "selectors": {
+  "role": {
+   "types": [
+    "aws_iam_role"
+   ]
+  },
+  "secret": {
+   "types": [
+    "aws_secretsmanager_secret"
+   ]
+  },
+  "sver": {
+   "types": [
+    "aws_secretsmanager_secret_version"
+   ]
+  },
+  "att": {
+   "types": [
+    "aws_iam_role_policy_attachment",
+    "aws_iam_policy_attachment"
+   ],
+   "where": [
+    {
+     "path": "policy_arn",
+     "op": "regex",
+     "value": "AmazonECSTaskExecutionRolePolicy$"
+    }
+   ]
+  },
+  "ip": {
+   "types": [
+    "aws_iam_role_policy"
+   ],
+   "where": [
+    {
+     "path": "name",
+     "op": "eq",
+     "value": "ECSTaskAccessSecretsPolicy"
+    }
+   ]
+  },
+  "ip_decl": {
+   "types": [
+    "__declared__"
+   ],
+   "where": [
+    {
+     "path": "type",
+     "op": "eq",
+     "value": "aws_iam_role_policy"
+    },
+    {
+     "path": "properties.name",
+     "op": "eq",
+     "value": "ECSTaskAccessSecretsPolicy"
+    }
+   ]
+  },
+  "doc": {
+   "types": [
+    "data.aws_iam_policy_document"
+   ]
+  },
+  "doc_decl": {
+   "types": [
+    "__declared__"
+   ],
+   "where": [
+    {
+     "path": "type",
+     "op": "eq",
+     "value": "data.aws_iam_policy_document"
+    }
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "role",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "named from the prefix \"nim\" with an \"-ecs_task_execution-\" suffix",
+   "justify": "name text may be built from variables, so the declared format string is accepted; name_prefix is the provider's way to name a role from a prefix",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "role",
+     "cond": {
+      "path": "name",
+      "op": "regex",
+      "value": "^nim-ecs_task_execution-"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_iam_role"
+       }
+      ]
+     },
+     "cond": {
+      "path": "properties.name",
+      "op": "contains",
+      "value": "-ecs_task_execution-"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "role",
+     "cond": {
+      "path": "name_prefix",
+      "op": "regex",
+      "value": "^nim-ecs_task_execution-"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_iam_role"
+       }
+      ]
+     },
+     "cond": {
+      "path": "properties.name_prefix",
+      "op": "contains",
+      "value": "-ecs_task_execution-"
+     }
+    }
+   ]
+  },
+  {
+   "id": "role_trust",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "trusted by the ECS tasks service",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "role",
+     "cond": {
+      "path": "assume_role_policy",
+      "op": "contains",
+      "value": "ecs-tasks.amazonaws.com"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_iam_role"
+       }
+      ]
+     },
+     "cond": {
+      "path": "properties.assume_role_policy",
+      "op": "contains",
+      "value": "ecs-tasks.amazonaws.com"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": "role",
+     "to": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "data.aws_iam_policy_document"
+       },
+       {
+        "path": "properties",
+        "op": "contains",
+        "value": "ecs-tasks.amazonaws.com"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "managed_policy",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "the AWS-managed AmazonECSTaskExecutionRolePolicy attached",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "att",
+     "to": "role"
+    },
+    {
+     "kind": "attr",
+     "select": "role",
+     "cond": {
+      "path": "managed_policy_arns.*",
+      "op": "regex",
+      "value": "AmazonECSTaskExecutionRolePolicy$"
+     }
+    }
+   ]
+  },
+  {
+   "id": "secret",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "a Secrets Manager secret named from the same \"nim\" prefix with a \"-reposecret-\" suffix",
+   "justify": "name text may be built from variables, so the declared format string is accepted; name_prefix is the provider's equivalent way to name a secret from a prefix",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "secret",
+     "cond": {
+      "path": "name",
+      "op": "regex",
+      "value": "^nim-reposecret-"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_secretsmanager_secret"
+       }
+      ]
+     },
+     "cond": {
+      "path": "properties.name",
+      "op": "contains",
+      "value": "-reposecret-"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "secret",
+     "cond": {
+      "path": "name_prefix",
+      "op": "regex",
+      "value": "^nim-reposecret-"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_secretsmanager_secret"
+       }
+      ]
+     },
+     "cond": {
+      "path": "properties.name_prefix",
+      "op": "contains",
+      "value": "-reposecret-"
+     }
+    }
+   ]
+  },
+  {
+   "id": "secret_username",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "JSON container-registry credential with the username \"AWS\"",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "sver",
+     "cond": {
+      "path": "secret_string",
+      "op": "regex",
+      "value": "(?s)\"username\"\\s*:\\s*\"AWS\""
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_secretsmanager_secret_version"
+       }
+      ]
+     },
+     "cond": {
+      "path": "properties.secret_string",
+      "op": "regex",
+      "value": "(?s)username['\"]?\\s*[:=]\\s*['\"]AWS['\"]"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_secretsmanager_secret"
+       }
+      ]
+     },
+     "cond": {
+      "path": "properties.secret_string",
+      "op": "regex",
+      "value": "(?s)username['\"]?\\s*[:=]\\s*['\"]AWS['\"]"
+     }
+    }
+   ]
+  },
+  {
+   "id": "secret_password_empty",
+   "kind": "attr",
+   "select": "sver",
+   "tier": "detail",
+   "quote": "an empty password by default",
+   "cond": {
+    "path": "secret_string",
+    "op": "regex",
+    "value": "(?s)\"password\"\\s*:\\s*\"\""
+   }
+  },
+  {
+   "id": "secret_version_of_secret",
+   "kind": "ref",
+   "from": "sver",
+   "to": "secret",
+   "tier": "detail",
+   "quote": "stores a JSON container-registry credential"
+  },
+  {
+   "id": "inline_policy",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "an inline policy named \"ECSTaskAccessSecretsPolicy\"",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": "ip"
+    },
+    {
+     "kind": "exists",
+     "select": "ip_decl"
+    }
+   ]
+  },
+  {
+   "id": "inline_on_role",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "give the role an inline policy",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "ip",
+     "to": "role"
+    },
+    {
+     "kind": "ref",
+     "from": "ip_decl",
+     "to": "role"
+    }
+   ]
+  },
+  {
+   "id": "inline_read_secret",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "allows reading only that secret's value",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "ip",
+     "cond": {
+      "path": "policy",
+      "op": "regex",
+      "value": "(?i)secretsmanager:GetSecretValue"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "ip_decl",
+     "cond": {
+      "path": "properties.policy",
+      "op": "regex",
+      "value": "(?i)secretsmanager:GetSecretValue"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": "ip",
+     "to": {
+      "types": [
+       "data.aws_iam_policy_document"
+      ],
+      "where": [
+       {
+        "path": "statement.*.actions.*",
+        "op": "regex",
+        "value": "(?i)secretsmanager:GetSecretValue"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": "ip",
+     "to": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "data.aws_iam_policy_document"
+       },
+       {
+        "path": "properties",
+        "op": "regex",
+        "value": "(?i)secretsmanager:GetSecretValue"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "inline_scoped_to_secret",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "that secret's value",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "data.aws_iam_policy_document"
+      ],
+      "where": [
+       {
+        "path": "statement.*.actions.*",
+        "op": "regex",
+        "value": "(?i)secretsmanager:GetSecretValue"
+       },
+       {
+        "path": "statement.*.resources.*",
+        "op": "none_eq",
+        "value": "*"
+       }
+      ]
+     },
+     "to": "secret"
+    },
+    {
+     "kind": "ref",
+     "from": "ip",
+     "to": "secret"
+    },
+    {
+     "kind": "ref",
+     "from": "ip_decl",
+     "to": "secret"
+    }
+   ]
+  },
+  {
+   "id": "x_getsecret_only_action",
+   "kind": "any_of",
+   "tier": "extra",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "doc_decl",
+     "cond": {
+      "path": "properties.statement.*.actions.*",
+      "op": "eq",
+      "value": "secretsmanager:GetSecretValue"
+     }
+    }
+   ]
+  }
+ ],
+ "notes": "GT also defines an S3 read document that is not part of the effective policy, so it is not checked. 'Only' that secret is checked via scope ref, not a no-other-action check. Policy text is unknown at plan, hence declared branches. Read grant must be secretsmanager:GetSecretValue bound to the named inline policy (its own text, or the policy document it references); a bare secretsmanager:* is not 'reading only'. Role name accepts name or name_prefix (candidate review: Gemini38F uses name_prefix). Residual gap: an inline JSON policy that grants the secret plus Resource \"*\" still passes the scope check (no negation over policy strings)."
+}

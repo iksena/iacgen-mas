@@ -1,0 +1,1104 @@
+package intent.tf.row_356
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {},
+ "checks": [
+  {
+   "id": "prefix_sudo_backup",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "default"
+      ],
+      "op": "regex",
+      "value": "^sudo-backup"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "in",
+        "value": [
+         "aws_backup_vault",
+         "aws_backup_plan",
+         "aws_iam_role",
+         "aws_backup_selection"
+        ]
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "name"
+      ],
+      "op": "regex",
+      "value": "sudo-backup"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "in",
+        "value": [
+         "aws_backup_vault",
+         "aws_backup_plan",
+         "aws_iam_role",
+         "aws_backup_selection"
+        ]
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "name"
+      ],
+      "op": "regex",
+      "value": "^\\$\\{(local|var)\\.[a-z_]*prefix[a-z_]*\\}"
+     }
+    }
+   ],
+   "tier": "detail",
+   "quote": "prefixed with \"sudo-backup-\"",
+   "justify": "the literal prefix usually sits in a local or variable the plan cannot show, so naming every resource from a single prefix local or variable is accepted"
+  },
+  {
+   "id": "random_suffix_len",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "random_string"
+    ],
+    "where": []
+   },
+   "cond": {
+    "path": [
+     "length"
+    ],
+    "op": "eq",
+    "value": 6
+   },
+   "tier": "core",
+   "quote": "followed by a random six-character lowercase alphanumeric string",
+   "justify": "six characters"
+  },
+  {
+   "id": "random_suffix_lower",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "random_string"
+    ],
+    "where": []
+   },
+   "cond": {
+    "path": [
+     "upper"
+    ],
+    "op": "falsy"
+   },
+   "tier": "core",
+   "quote": "random six-character lowercase alphanumeric string"
+  },
+  {
+   "id": "random_suffix_no_special",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "random_string"
+    ],
+    "where": []
+   },
+   "cond": {
+    "path": [
+     "special"
+    ],
+    "op": "falsy"
+   },
+   "tier": "detail",
+   "quote": "random six-character lowercase alphanumeric string"
+  },
+  {
+   "id": "names_use_random_suffix",
+   "kind": "all_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_backup_vault"
+      ],
+      "where": []
+     },
+     "to": {
+      "types": [
+       "random_string"
+      ],
+      "where": []
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_backup_plan"
+      ],
+      "where": []
+     },
+     "to": {
+      "types": [
+       "random_string"
+      ],
+      "where": []
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_role"
+      ],
+      "where": []
+     },
+     "to": {
+      "types": [
+       "random_string"
+      ],
+      "where": []
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_backup_selection"
+      ],
+      "where": []
+     },
+     "to": {
+      "types": [
+       "random_string"
+      ],
+      "where": []
+     }
+    }
+   ],
+   "tier": "detail",
+   "quote": "whose resource names are all prefixed with \"sudo-backup-\" followed by a random six-character lowercase alphanumeric string"
+  },
+  {
+   "id": "kms_key",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_kms_key"
+    ],
+    "where": []
+   },
+   "tier": "core",
+   "quote": "a customer-managed KMS key"
+  },
+  {
+   "id": "kms_rotation",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_kms_key"
+    ],
+    "where": []
+   },
+   "cond": {
+    "path": [
+     "enable_key_rotation"
+    ],
+    "op": "truthy"
+   },
+   "tier": "core",
+   "quote": "with key rotation enabled"
+  },
+  {
+   "id": "vault",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_backup_vault"
+    ],
+    "where": []
+   },
+   "tier": "core",
+   "quote": "encrypt a backup vault"
+  },
+  {
+   "id": "vault_uses_kms",
+   "kind": "ref",
+   "from": {
+    "types": [
+     "aws_backup_vault"
+    ],
+    "where": []
+   },
+   "to": {
+    "types": [
+     "aws_kms_key"
+    ],
+    "where": []
+   },
+   "tier": "core",
+   "quote": "use it to encrypt a backup vault"
+  },
+  {
+   "id": "vault_name",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_backup_vault"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "name"
+      ],
+      "op": "regex",
+      "value": "backup-vault"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_backup_vault"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "name"
+      ],
+      "op": "regex",
+      "value": "backup-vault"
+     }
+    }
+   ],
+   "tier": "detail",
+   "quote": "a backup vault named \"<prefix>-backup-vault\""
+  },
+  {
+   "id": "plan",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_backup_plan"
+    ],
+    "where": []
+   },
+   "tier": "core",
+   "quote": "Create a backup plan"
+  },
+  {
+   "id": "plan_single_rule",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_backup_plan"
+    ],
+    "where": []
+   },
+   "cond": {
+    "path": [
+     "rule"
+    ],
+    "op": "len_eq",
+    "value": 1
+   },
+   "tier": "core",
+   "quote": "with a single rule",
+   "justify": "a single rule means exactly one"
+  },
+  {
+   "id": "plan_name",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_backup_plan"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "name"
+      ],
+      "op": "regex",
+      "value": "backup-plan"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_backup_plan"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "name"
+      ],
+      "op": "regex",
+      "value": "backup-plan"
+     }
+    }
+   ],
+   "tier": "detail",
+   "quote": "a backup plan named \"<prefix>-backup-plan\""
+  },
+  {
+   "id": "rule_name",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_backup_plan"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "rule",
+       "*",
+       "rule_name"
+      ],
+      "op": "regex",
+      "value": "backup-rule"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_backup_plan"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "rule",
+       "*",
+       "rule_name"
+      ],
+      "op": "regex",
+      "value": "backup-rule"
+     }
+    }
+   ],
+   "tier": "detail",
+   "quote": "a single rule named \"<prefix>-backup-rule\""
+  },
+  {
+   "id": "plan_targets_vault",
+   "kind": "ref",
+   "from": {
+    "types": [
+     "aws_backup_plan"
+    ],
+    "where": []
+   },
+   "to": {
+    "types": [
+     "aws_backup_vault"
+    ],
+    "where": []
+   },
+   "tier": "core",
+   "quote": "that targets that vault"
+  },
+  {
+   "id": "rule_schedule",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_backup_plan"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "rule",
+       "*",
+       "schedule"
+      ],
+      "op": "eq",
+      "value": "cron(0 12 * * ? *)"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_backup_plan"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "rule",
+       "*",
+       "schedule"
+      ],
+      "op": "eq",
+      "value": "cron(0 12 * * ? *)"
+     }
+    }
+   ],
+   "tier": "core",
+   "quote": "on the daily schedule \"cron(0 12 * * ? *)\" (noon UTC)"
+  },
+  {
+   "id": "rule_recovery_point_name_tag",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_backup_plan"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "rule",
+       "*",
+       "recovery_point_tags",
+       "Name"
+      ],
+      "op": "present"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_backup_plan"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "rule",
+       "*",
+       "recovery_point_tags",
+       "Name"
+      ],
+      "op": "present"
+     }
+    }
+   ],
+   "tier": "detail",
+   "quote": "tags recovery points with a Name tag"
+  },
+  {
+   "id": "rule_no_lifecycle",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_backup_plan"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "rule",
+       "*",
+       "lifecycle",
+       "*"
+      ],
+      "op": "absent"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_backup_plan"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "rule",
+       "*",
+       "lifecycle"
+      ],
+      "op": "len_eq",
+      "value": 0
+     }
+    }
+   ],
+   "tier": "detail",
+   "quote": "by default has no lifecycle transition or expiration and no cross-vault copy action"
+  },
+  {
+   "id": "rule_no_copy_action",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_backup_plan"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "rule",
+       "*",
+       "copy_action",
+       "*"
+      ],
+      "op": "absent"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_backup_plan"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "rule",
+       "*",
+       "copy_action"
+      ],
+      "op": "len_eq",
+      "value": 0
+     }
+    }
+   ],
+   "tier": "detail",
+   "quote": "by default has no lifecycle transition or expiration and no cross-vault copy action"
+  },
+  {
+   "id": "role",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_iam_role"
+    ],
+    "where": []
+   },
+   "tier": "core",
+   "quote": "Create an IAM role"
+  },
+  {
+   "id": "role_name",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_iam_role"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "name"
+      ],
+      "op": "regex",
+      "value": "backup-role"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_iam_role"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "name"
+      ],
+      "op": "regex",
+      "value": "backup-role"
+     }
+    }
+   ],
+   "tier": "detail",
+   "quote": "an IAM role named \"<prefix>-backup-role\""
+  },
+  {
+   "id": "role_trust_backup",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_iam_role"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "assume_role_policy"
+      ],
+      "op": "contains",
+      "value": "backup.amazonaws.com"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "in",
+        "value": [
+         "aws_iam_role",
+         "data.aws_iam_policy_document"
+        ]
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties"
+      ],
+      "op": "regex",
+      "value": "(?s)backup\\.amazonaws\\.com"
+     }
+    }
+   ],
+   "tier": "core",
+   "quote": "that AWS Backup can assume",
+   "justify": "AWS Backup service principal is backup.amazonaws.com"
+  },
+  {
+   "id": "role_managed_policy",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_iam_role_policy_attachment",
+       "aws_iam_policy_attachment"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "policy_arn"
+      ],
+      "op": "regex",
+      "value": "service-role/AWSBackupServiceRolePolicyForBackup"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_iam_role"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "managed_policy_arns",
+       "*"
+      ],
+      "op": "regex",
+      "value": "service-role/AWSBackupServiceRolePolicyForBackup"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "in",
+        "value": [
+         "aws_iam_role_policy_attachment",
+         "aws_iam_policy_attachment",
+         "aws_iam_role"
+        ]
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties"
+      ],
+      "op": "regex",
+      "value": "service-role/AWSBackupServiceRolePolicyForBackup"
+     }
+    }
+   ],
+   "tier": "core",
+   "quote": "attach the AWS managed backup service role policy to it",
+   "justify": "the AWS managed backup service role policy is AWSBackupServiceRolePolicyForBackup"
+  },
+  {
+   "id": "selection",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_backup_selection"
+    ],
+    "where": []
+   },
+   "tier": "core",
+   "quote": "add a backup selection"
+  },
+  {
+   "id": "selection_name",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_backup_selection"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "name"
+      ],
+      "op": "regex",
+      "value": "backup-selection"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_backup_selection"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "name"
+      ],
+      "op": "regex",
+      "value": "backup-selection"
+     }
+    }
+   ],
+   "tier": "detail",
+   "quote": "a backup selection named \"<prefix>-backup-selection\""
+  },
+  {
+   "id": "selection_uses_role",
+   "kind": "ref",
+   "from": {
+    "types": [
+     "aws_backup_selection"
+    ],
+    "where": []
+   },
+   "to": {
+    "types": [
+     "aws_iam_role"
+    ],
+    "where": []
+   },
+   "tier": "core",
+   "quote": "that uses this role"
+  },
+  {
+   "id": "selection_in_plan",
+   "kind": "ref",
+   "from": {
+    "types": [
+     "aws_backup_selection"
+    ],
+    "where": []
+   },
+   "to": {
+    "types": [
+     "aws_backup_plan"
+    ],
+    "where": []
+   },
+   "tier": "detail",
+   "quote": "add a backup selection"
+  },
+  {
+   "id": "selection_tag_backup_true",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_backup_selection"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "selection_tag",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "key"
+        ],
+        "op": "eq",
+        "value": "backup"
+       },
+       {
+        "path": [
+         "value"
+        ],
+        "op": "eq",
+        "value": "true"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_backup_selection"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "condition",
+       "*",
+       "string_equals",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "key"
+        ],
+        "op": "regex",
+        "value": "(?i)^aws:ResourceTag/backup$"
+       },
+       {
+        "path": [
+         "value"
+        ],
+        "op": "eq",
+        "value": "true"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_backup_selection"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "selection_tag",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "key"
+        ],
+        "op": "eq",
+        "value": "backup"
+       },
+       {
+        "path": [
+         "value"
+        ],
+        "op": "eq",
+        "value": "true"
+       }
+      ]
+     }
+    }
+   ],
+   "tier": "core",
+   "quote": "back up resources tagged with key \"backup\" equal to \"true\""
+  },
+  {
+   "id": "x_trust_assume",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": [
+       "type"
+      ],
+      "op": "in",
+      "value": [
+       "aws_iam_role",
+       "data.aws_iam_policy_document"
+      ]
+     }
+    ]
+   },
+   "cond": {
+    "path": [
+     "properties"
+    ],
+    "op": "regex",
+    "value": "sts:AssumeRole"
+   },
+   "tier": "extra"
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

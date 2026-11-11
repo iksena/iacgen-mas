@@ -1,0 +1,774 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "952a9a56d149d462f405eb36697633c14a2b17b7ece80ed8d6f2ac19cc04cdf9",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "MyUserPool",
+   "cfg": "MyUserPool",
+   "type": "AWS::Cognito::UserPool",
+   "values": {
+    "UserPoolName": "MyServerlessLandUserPool",
+    "UsernameAttributes": [
+     "email"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "CognitoUserPoolDomain",
+   "cfg": "CognitoUserPoolDomain",
+   "type": "AWS::Cognito::UserPoolDomain",
+   "values": {
+    "Domain": "svls-{'Fn::Select': [4, ['id']]}",
+    "UserPoolId": {
+     "ref": "MyUserPool"
+    }
+   },
+   "refs": [
+    "MyUserPool"
+   ]
+  },
+  {
+   "id": "MyResourceServer",
+   "cfg": "MyResourceServer",
+   "type": "AWS::Cognito::UserPoolResourceServer",
+   "values": {
+    "Identifier": "petstore-api.example.com",
+    "Name": "myapi_resource_server",
+    "UserPoolId": {
+     "ref": "MyUserPool"
+    },
+    "Scopes": [
+     {
+      "ScopeName": "domestic.read",
+      "ScopeDescription": "Read scope for M2M access"
+     }
+    ]
+   },
+   "refs": [
+    "MyUserPool"
+   ]
+  },
+  {
+   "id": "MyWebClient",
+   "cfg": "MyWebClient",
+   "type": "AWS::Cognito::UserPoolClient",
+   "values": {
+    "ClientId": "MyWebClient",
+    "ClientName": "MyWebClient",
+    "GenerateSecret": true,
+    "AllowedOAuthFlows": [
+     "client_credentials"
+    ],
+    "AllowedOAuthFlowsUserPoolClient": true,
+    "AllowedOAuthScopes": [
+     "petstore-api.example.com/domestic.read"
+    ],
+    "CallbackURLs": [
+     "http://localhost:8080"
+    ],
+    "LogoutURLs": [
+     "http://localhost:8080/logout"
+    ],
+    "UserPoolId": {
+     "ref": "MyUserPool"
+    },
+    "__resource__": {
+     "DependsOn": [
+      "MyResourceServer"
+     ]
+    }
+   },
+   "refs": [
+    "MyUserPool"
+   ]
+  },
+  {
+   "id": "MyCMKKey",
+   "cfg": "MyCMKKey",
+   "type": "AWS::KMS::Key",
+   "values": {
+    "Description": "CMK Key for encrypting OAuth credentials",
+    "EnableKeyRotation": true,
+    "KeyPolicy": {
+     "Version": "2012-10-17",
+     "Id": "key-default-1",
+     "Statement": [
+      {
+       "Sid": "AllowRootUserToManageCMK",
+       "Effect": "Allow",
+       "Principal": {
+        "AWS": [
+         "arn:aws:iam::123456789012:root"
+        ]
+       },
+       "Action": [
+        "kms:*"
+       ],
+       "Resource": [
+        "*"
+       ]
+      },
+      {
+       "Sid": "AllowEventsServiceToUseCMK",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "events.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "kms:GenerateDataKey",
+        "kms:Decrypt"
+       ],
+       "Resource": [
+        "*"
+       ]
+      }
+     ]
+    },
+    "Tags": [
+     {
+      "Key": "EventBridgeApiDestinations",
+      "Value": true
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "MyCMKKeyAlias",
+   "cfg": "MyCMKKeyAlias",
+   "type": "AWS::KMS::Alias",
+   "values": {
+    "AliasName": "alias/MyCMKKey",
+    "TargetKeyId": {
+     "ref": "MyCMKKey"
+    }
+   },
+   "refs": [
+    "MyCMKKey"
+   ]
+  },
+  {
+   "id": "CogAuthorizer",
+   "cfg": "CogAuthorizer",
+   "type": "AWS::ApiGateway::Authorizer",
+   "values": {
+    "Name": "CognitoAuthorizer",
+    "RestApiId": {
+     "ref": "Api"
+    },
+    "Type": "COGNITO_USER_POOLS",
+    "IdentitySource": "method.request.header.Authorization",
+    "ProviderARNs": [
+     {
+      "ref": "MyUserPool",
+      "attr": "Arn"
+     }
+    ]
+   },
+   "refs": [
+    "Api",
+    "MyUserPool"
+   ]
+  },
+  {
+   "id": "Api",
+   "cfg": "Api",
+   "type": "AWS::ApiGateway::RestApi",
+   "values": {
+    "Name": "MyCogAuthApi"
+   },
+   "refs": []
+  },
+  {
+   "id": "ApiDeployment",
+   "cfg": "ApiDeployment",
+   "type": "AWS::ApiGateway::Deployment",
+   "values": {
+    "RestApiId": {
+     "ref": "Api"
+    },
+    "__resource__": {
+     "DependsOn": [
+      "CogAuthorizer",
+      "ApiGET"
+     ]
+    }
+   },
+   "refs": [
+    "Api"
+   ]
+  },
+  {
+   "id": "ApiDeploymentStageprod",
+   "cfg": "ApiDeploymentStageprod",
+   "type": "AWS::ApiGateway::Stage",
+   "values": {
+    "RestApiId": {
+     "ref": "Api"
+    },
+    "DeploymentId": {
+     "ref": "ApiDeployment"
+    },
+    "StageName": "prod",
+    "MethodSettings": [
+     {
+      "HttpMethod": "*",
+      "ResourcePath": "/*",
+      "LoggingLevel": "INFO",
+      "DataTraceEnabled": true
+     }
+    ]
+   },
+   "refs": [
+    "Api",
+    "ApiDeployment"
+   ]
+  },
+  {
+   "id": "ApiGET",
+   "cfg": "ApiGET",
+   "type": "AWS::ApiGateway::Method",
+   "values": {
+    "HttpMethod": "POST",
+    "ResourceId": {
+     "ref": "Api",
+     "attr": "RootResourceId"
+    },
+    "RestApiId": {
+     "ref": "Api"
+    },
+    "AuthorizationType": "COGNITO_USER_POOLS",
+    "AuthorizationScopes": [
+     "petstore-api.example.com/domestic.read"
+    ],
+    "AuthorizerId": {
+     "ref": "CogAuthorizer"
+    },
+    "Integration": {
+     "IntegrationHttpMethod": "GET",
+     "Type": "HTTP",
+     "Uri": "http://petstore-demo-endpoint.execute-api.com/petstore/pets",
+     "IntegrationResponses": [
+      {
+       "StatusCode": 200
+      }
+     ]
+    },
+    "MethodResponses": [
+     {
+      "StatusCode": 200
+     }
+    ]
+   },
+   "refs": [
+    "Api",
+    "CogAuthorizer"
+   ]
+  },
+  {
+   "id": "__parameter__.UserPoolName",
+   "cfg": "__parameter__.UserPoolName",
+   "type": "__parameter__",
+   "values": {
+    "name": "UserPoolName",
+    "type": "String",
+    "default": "MyServerlessLandUserPool",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.UsernameAttributes",
+   "cfg": "__parameter__.UsernameAttributes",
+   "type": "__parameter__",
+   "values": {
+    "name": "UsernameAttributes",
+    "type": "CommaDelimitedList",
+    "default": [
+     "email"
+    ],
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.ClientName",
+   "cfg": "__parameter__.ClientName",
+   "type": "__parameter__",
+   "values": {
+    "name": "ClientName",
+    "type": "String",
+    "default": "MyWebClient",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.CallbackURLs",
+   "cfg": "__parameter__.CallbackURLs",
+   "type": "__parameter__",
+   "values": {
+    "name": "CallbackURLs",
+    "type": "CommaDelimitedList",
+    "default": [
+     "http://localhost:8080"
+    ],
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.LogoutURLs",
+   "cfg": "__parameter__.LogoutURLs",
+   "type": "__parameter__",
+   "values": {
+    "name": "LogoutURLs",
+    "type": "CommaDelimitedList",
+    "default": [
+     "http://localhost:8080/logout"
+    ],
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.UserPoolArn",
+   "cfg": "__output__.UserPoolArn",
+   "type": "__output__",
+   "values": {
+    "name": "UserPoolArn",
+    "value": {
+     "ref": "MyUserPool",
+     "attr": "Arn"
+    },
+    "description": "User Pool ARN",
+    "export": null
+   },
+   "refs": [
+    "MyUserPool"
+   ]
+  },
+  {
+   "id": "__output__.ApiEndpoint",
+   "cfg": "__output__.ApiEndpoint",
+   "type": "__output__",
+   "values": {
+    "name": "ApiEndpoint",
+    "value": {
+     "Fn::Join": [
+      "",
+      [
+       "https://",
+       {
+        "ref": "Api"
+       },
+       ".execute-api.",
+       "us-east-1",
+       ".",
+       "amazonaws.com",
+       "/",
+       {
+        "ref": "ApiDeploymentStageprod"
+       }
+      ]
+     ]
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "Api",
+    "ApiDeploymentStageprod"
+   ]
+  },
+  {
+   "id": "__output__.ClientId",
+   "cfg": "__output__.ClientId",
+   "type": "__output__",
+   "values": {
+    "name": "ClientId",
+    "value": {
+     "ref": "MyWebClient"
+    },
+    "description": "App Client ID",
+    "export": null
+   },
+   "refs": [
+    "MyWebClient"
+   ]
+  },
+  {
+   "id": "__output__.CMKKeyArn",
+   "cfg": "__output__.CMKKeyArn",
+   "type": "__output__",
+   "values": {
+    "name": "CMKKeyArn",
+    "value": {
+     "ref": "MyCMKKey",
+     "attr": "Arn"
+    },
+    "description": "CMK Key ARN",
+    "export": null
+   },
+   "refs": [
+    "MyCMKKey"
+   ]
+  },
+  {
+   "id": "__output__.ExternalAuthEndpoint",
+   "cfg": "__output__.ExternalAuthEndpoint",
+   "type": "__output__",
+   "values": {
+    "name": "ExternalAuthEndpoint",
+    "value": {
+     "Fn::Join": [
+      "",
+      [
+       "https://",
+       {
+        "ref": "CognitoUserPoolDomain"
+       },
+       ".auth.",
+       "us-east-1",
+       ".amazoncognito.com/oauth2/token"
+      ]
+     ]
+    },
+    "description": "User Pool Domain",
+    "export": null
+   },
+   "refs": [
+    "CognitoUserPoolDomain"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPool.MyUserPool",
+   "cfg": "MyUserPool",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Cognito::UserPool",
+    "name": "MyUserPool",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "UserPoolName": "MyServerlessLandUserPool",
+     "UsernameAttributes": [
+      "email"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolDomain.CognitoUserPoolDomain",
+   "cfg": "CognitoUserPoolDomain",
+   "type": "__declared__",
+   "refs": [
+    "MyUserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolDomain",
+    "name": "CognitoUserPoolDomain",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Domain": "svls-{'Fn::Select': [4, ['id']]}",
+     "UserPoolId": {
+      "ref": "MyUserPool"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolResourceServer.MyResourceServer",
+   "cfg": "MyResourceServer",
+   "type": "__declared__",
+   "refs": [
+    "MyUserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolResourceServer",
+    "name": "MyResourceServer",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Identifier": "petstore-api.example.com",
+     "Name": "myapi_resource_server",
+     "UserPoolId": {
+      "ref": "MyUserPool"
+     },
+     "Scopes": [
+      {
+       "ScopeName": "domestic.read",
+       "ScopeDescription": "Read scope for M2M access"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolClient.MyWebClient",
+   "cfg": "MyWebClient",
+   "type": "__declared__",
+   "refs": [
+    "MyUserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolClient",
+    "name": "MyWebClient",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ClientId": "MyWebClient",
+     "ClientName": "MyWebClient",
+     "GenerateSecret": true,
+     "AllowedOAuthFlows": [
+      "client_credentials"
+     ],
+     "AllowedOAuthFlowsUserPoolClient": true,
+     "AllowedOAuthScopes": [
+      "petstore-api.example.com/domestic.read"
+     ],
+     "CallbackURLs": [
+      "http://localhost:8080"
+     ],
+     "LogoutURLs": [
+      "http://localhost:8080/logout"
+     ],
+     "UserPoolId": {
+      "ref": "MyUserPool"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::KMS::Key.MyCMKKey",
+   "cfg": "MyCMKKey",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::KMS::Key",
+    "name": "MyCMKKey",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Description": "CMK Key for encrypting OAuth credentials",
+     "EnableKeyRotation": true,
+     "KeyPolicy": {
+      "Version": "2012-10-17",
+      "Id": "key-default-1",
+      "Statement": [
+       {
+        "Sid": "AllowRootUserToManageCMK",
+        "Effect": "Allow",
+        "Principal": {
+         "AWS": [
+          "arn:aws:iam::123456789012:root"
+         ]
+        },
+        "Action": [
+         "kms:*"
+        ],
+        "Resource": [
+         "*"
+        ]
+       },
+       {
+        "Sid": "AllowEventsServiceToUseCMK",
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "events.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "kms:GenerateDataKey",
+         "kms:Decrypt"
+        ],
+        "Resource": [
+         "*"
+        ]
+       }
+      ]
+     },
+     "Tags": [
+      {
+       "Key": "EventBridgeApiDestinations",
+       "Value": true
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::KMS::Alias.MyCMKKeyAlias",
+   "cfg": "MyCMKKeyAlias",
+   "type": "__declared__",
+   "refs": [
+    "MyCMKKey"
+   ],
+   "values": {
+    "type": "AWS::KMS::Alias",
+    "name": "MyCMKKeyAlias",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AliasName": "alias/MyCMKKey",
+     "TargetKeyId": {
+      "ref": "MyCMKKey"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::Authorizer.CogAuthorizer",
+   "cfg": "CogAuthorizer",
+   "type": "__declared__",
+   "refs": [
+    "Api",
+    "MyUserPool"
+   ],
+   "values": {
+    "type": "AWS::ApiGateway::Authorizer",
+    "name": "CogAuthorizer",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "CognitoAuthorizer",
+     "RestApiId": {
+      "ref": "Api"
+     },
+     "Type": "COGNITO_USER_POOLS",
+     "IdentitySource": "method.request.header.Authorization",
+     "ProviderARNs": [
+      {
+       "ref": "MyUserPool",
+       "attr": "Arn"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::RestApi.Api",
+   "cfg": "Api",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::ApiGateway::RestApi",
+    "name": "Api",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "MyCogAuthApi"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::Deployment.ApiDeployment",
+   "cfg": "ApiDeployment",
+   "type": "__declared__",
+   "refs": [
+    "Api"
+   ],
+   "values": {
+    "type": "AWS::ApiGateway::Deployment",
+    "name": "ApiDeployment",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RestApiId": {
+      "ref": "Api"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::Stage.ApiDeploymentStageprod",
+   "cfg": "ApiDeploymentStageprod",
+   "type": "__declared__",
+   "refs": [
+    "Api",
+    "ApiDeployment"
+   ],
+   "values": {
+    "type": "AWS::ApiGateway::Stage",
+    "name": "ApiDeploymentStageprod",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RestApiId": {
+      "ref": "Api"
+     },
+     "DeploymentId": {
+      "ref": "ApiDeployment"
+     },
+     "StageName": "prod",
+     "MethodSettings": [
+      {
+       "HttpMethod": "*",
+       "ResourcePath": "/*",
+       "LoggingLevel": "INFO",
+       "DataTraceEnabled": true
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::Method.ApiGET",
+   "cfg": "ApiGET",
+   "type": "__declared__",
+   "refs": [
+    "Api",
+    "CogAuthorizer"
+   ],
+   "values": {
+    "type": "AWS::ApiGateway::Method",
+    "name": "ApiGET",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "HttpMethod": "POST",
+     "ResourceId": {
+      "ref": "Api",
+      "attr": "RootResourceId"
+     },
+     "RestApiId": {
+      "ref": "Api"
+     },
+     "AuthorizationType": "COGNITO_USER_POOLS",
+     "AuthorizationScopes": [
+      "petstore-api.example.com/domestic.read"
+     ],
+     "AuthorizerId": {
+      "ref": "CogAuthorizer"
+     },
+     "Integration": {
+      "IntegrationHttpMethod": "GET",
+      "Type": "HTTP",
+      "Uri": "http://petstore-demo-endpoint.execute-api.com/petstore/pets",
+      "IntegrationResponses": [
+       {
+        "StatusCode": 200
+       }
+      ]
+     },
+     "MethodResponses": [
+      {
+       "StatusCode": 200
+      }
+     ]
+    }
+   }
+  }
+ ]
+}

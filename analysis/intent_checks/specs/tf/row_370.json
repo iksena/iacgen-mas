@@ -1,0 +1,638 @@
+{
+  "lang": "tf",
+  "row_number": 370,
+  "source_hash": {
+    "gt": "0bd9b7525242159eb1d5794b74154d88f94244f6d8a2c8aca157b408ac5dc9cf",
+    "prompt": "67fdf5c6d68b9dc48f8346bebdc89e620c3385e5e748567a28b8c6c50693099c"
+  },
+  "selectors": {
+    "detector": {
+      "types": [
+        "aws_guardduty_detector"
+      ]
+    },
+    "runtime": {
+      "types": [
+        "aws_guardduty_detector_feature"
+      ],
+      "where": [
+        {
+          "path": "name",
+          "op": "in",
+          "value": [
+            "RUNTIME_MONITORING",
+            "EKS_RUNTIME_MONITORING"
+          ]
+        },
+        {
+          "path": "status",
+          "op": "eq",
+          "value": "ENABLED"
+        }
+      ]
+    },
+    "cli_holder": {
+      "types": [
+        "__declared__"
+      ],
+      "where": [
+        {
+          "path": "properties",
+          "op": "regex",
+          "value": "update-malware-scan-settings"
+        }
+      ]
+    }
+  },
+  "checks": [
+    {
+      "id": "detector_exists_enabled",
+      "kind": "attr",
+      "tier": "core",
+      "quote": "creates an enabled Amazon GuardDuty detector",
+      "select": "detector",
+      "cond": {
+        "path": "enable",
+        "op": "eq",
+        "value": true
+      }
+    },
+    {
+      "id": "publish_frequency",
+      "kind": "attr",
+      "tier": "core",
+      "quote": "publishes findings every fifteen minutes",
+      "select": "detector",
+      "cond": {
+        "path": "finding_publishing_frequency",
+        "op": "eq",
+        "value": "FIFTEEN_MINUTES"
+      },
+      "justify": "fifteen minutes is GuardDuty's FIFTEEN_MINUTES enum"
+    },
+    {
+      "id": "detector_tag_repo_url",
+      "kind": "any_of",
+      "tier": "detail",
+      "quote": "is tagged with the module's repository URL",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "detector",
+          "cond": {
+            "path": "tags.*",
+            "op": "regex",
+            "value": "^https?://"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "detector",
+          "cond": {
+            "path": "tags_all.*",
+            "op": "regex",
+            "value": "^https?://"
+          }
+        }
+      ],
+      "justify": "a repository URL is an http(s) URL; provider default_tags land in tags_all"
+    },
+    {
+      "id": "feature_s3_data_events",
+      "kind": "any_of",
+      "tier": "core",
+      "quote": "Enable the S3 data events",
+      "checks": [
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "aws_guardduty_detector_feature"
+            ],
+            "where": [
+              {
+                "path": "name",
+                "op": "eq",
+                "value": "S3_DATA_EVENTS"
+              },
+              {
+                "path": "status",
+                "op": "eq",
+                "value": "ENABLED"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "detector",
+          "cond": {
+            "path": "datasources.*.s3_logs.*.enable",
+            "op": "eq",
+            "value": true
+          }
+        }
+      ],
+      "justify": "S3 data events is the S3_DATA_EVENTS feature name"
+    },
+    {
+      "id": "feature_rds_login",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "RDS login events",
+      "select": {
+        "types": [
+          "aws_guardduty_detector_feature"
+        ],
+        "where": [
+          {
+            "path": "name",
+            "op": "eq",
+            "value": "RDS_LOGIN_EVENTS"
+          },
+          {
+            "path": "status",
+            "op": "eq",
+            "value": "ENABLED"
+          }
+        ]
+      },
+      "justify": "RDS login events is the RDS_LOGIN_EVENTS feature name"
+    },
+    {
+      "id": "feature_lambda_network",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "Lambda network logs",
+      "select": {
+        "types": [
+          "aws_guardduty_detector_feature"
+        ],
+        "where": [
+          {
+            "path": "name",
+            "op": "eq",
+            "value": "LAMBDA_NETWORK_LOGS"
+          },
+          {
+            "path": "status",
+            "op": "eq",
+            "value": "ENABLED"
+          }
+        ]
+      },
+      "justify": "Lambda network logs is the LAMBDA_NETWORK_LOGS feature name"
+    },
+    {
+      "id": "feature_eks_audit",
+      "kind": "any_of",
+      "tier": "core",
+      "quote": "EKS audit logs",
+      "checks": [
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "aws_guardduty_detector_feature"
+            ],
+            "where": [
+              {
+                "path": "name",
+                "op": "eq",
+                "value": "EKS_AUDIT_LOGS"
+              },
+              {
+                "path": "status",
+                "op": "eq",
+                "value": "ENABLED"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "detector",
+          "cond": {
+            "path": "datasources.*.kubernetes.*.audit_logs.*.enable",
+            "op": "eq",
+            "value": true
+          }
+        }
+      ],
+      "justify": "EKS audit logs is the EKS_AUDIT_LOGS feature name"
+    },
+    {
+      "id": "feature_ebs_malware",
+      "kind": "any_of",
+      "tier": "core",
+      "quote": "EBS malware protection detector features",
+      "checks": [
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "aws_guardduty_detector_feature"
+            ],
+            "where": [
+              {
+                "path": "name",
+                "op": "eq",
+                "value": "EBS_MALWARE_PROTECTION"
+              },
+              {
+                "path": "status",
+                "op": "eq",
+                "value": "ENABLED"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "detector",
+          "cond": {
+            "path": "datasources.*.malware_protection.*.scan_ec2_instance_with_findings.*.ebs_volumes.*.enable",
+            "op": "eq",
+            "value": true
+          }
+        }
+      ],
+      "justify": "EBS malware protection is the EBS_MALWARE_PROTECTION feature name"
+    },
+    {
+      "id": "runtime_monitoring_enabled",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "turn on runtime monitoring for EKS, ECS Fargate, and EC2",
+      "select": "runtime",
+      "justify": "runtime monitoring is the RUNTIME_MONITORING detector feature (EKS_RUNTIME_MONITORING is the older EKS-only name)"
+    },
+    {
+      "id": "runtime_eks_agent_disabled",
+      "kind": "attr",
+      "tier": "core",
+      "quote": "leaving GuardDuty's automatic agent management for each of those disabled",
+      "select": "runtime",
+      "quantifier": "all",
+      "cond": {
+        "path": "additional_configuration.*",
+        "op": "none_eq",
+        "value": {
+          "name": "EKS_ADDON_MANAGEMENT",
+          "status": "ENABLED"
+        }
+      },
+      "justify": "EKS automatic agent management is the EKS_ADDON_MANAGEMENT additional configuration; an omitted setting stays disabled, so only an explicit ENABLED violates the prompt"
+    },
+    {
+      "id": "runtime_ecs_agent_disabled",
+      "kind": "attr",
+      "tier": "core",
+      "quote": "leaving GuardDuty's automatic agent management for each of those disabled",
+      "select": "runtime",
+      "quantifier": "all",
+      "cond": {
+        "path": "additional_configuration.*",
+        "op": "none_eq",
+        "value": {
+          "name": "ECS_FARGATE_AGENT_MANAGEMENT",
+          "status": "ENABLED"
+        }
+      },
+      "justify": "ECS Fargate automatic agent management is the ECS_FARGATE_AGENT_MANAGEMENT additional configuration; an omitted setting stays disabled, so only an explicit ENABLED violates the prompt"
+    },
+    {
+      "id": "runtime_ec2_agent_disabled",
+      "kind": "attr",
+      "tier": "core",
+      "quote": "leaving GuardDuty's automatic agent management for each of those disabled",
+      "select": "runtime",
+      "quantifier": "all",
+      "cond": {
+        "path": "additional_configuration.*",
+        "op": "none_eq",
+        "value": {
+          "name": "EC2_AGENT_MANAGEMENT",
+          "status": "ENABLED"
+        }
+      },
+      "justify": "EC2 automatic agent management is the EC2_AGENT_MANAGEMENT additional configuration; an omitted setting stays disabled, so only an explicit ENABLED violates the prompt"
+    },
+    {
+      "id": "cli_malware_scan_settings",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "run an AWS CLI command that configures malware scan settings",
+      "select": "cli_holder",
+      "justify": "update-malware-scan-settings is the AWS CLI subcommand that configures GuardDuty malware scan settings"
+    },
+    {
+      "id": "cli_snapshots_not_retained",
+      "kind": "any_of",
+      "tier": "detail",
+      "quote": "so EBS snapshots are not retained",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "cli_holder",
+          "cond": {
+            "path": "properties",
+            "op": "regex",
+            "value": "NO_RETENTION"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "cli_holder",
+          "cond": {
+            "path": "properties",
+            "op": "regex",
+            "value": "ebs-snapshot-preservation[=\\s'\"]+\\$\\{"
+          }
+        }
+      ],
+      "justify": "--ebs-snapshot-preservation NO_RETENTION is the CLI setting for not retaining snapshots; a value from a variable/local is accepted (locals are not observable), a literal RETENTION_WITH_FINDING is not"
+    },
+    {
+      "id": "optional_findings_filter",
+      "kind": "exists",
+      "tier": "detail",
+      "quote": "findings filters",
+      "select": {
+        "types": [
+          "__declared__"
+        ],
+        "where": [
+          {
+            "path": "type",
+            "op": "eq",
+            "value": "aws_guardduty_filter"
+          }
+        ]
+      }
+    },
+    {
+      "id": "optional_ipset",
+      "kind": "exists",
+      "tier": "detail",
+      "quote": "trusted IP sets",
+      "select": {
+        "types": [
+          "__declared__"
+        ],
+        "where": [
+          {
+            "path": "type",
+            "op": "eq",
+            "value": "aws_guardduty_ipset"
+          }
+        ]
+      }
+    },
+    {
+      "id": "optional_threatintelset",
+      "kind": "exists",
+      "tier": "detail",
+      "quote": "threat intelligence sets",
+      "select": {
+        "types": [
+          "__declared__"
+        ],
+        "where": [
+          {
+            "path": "type",
+            "op": "eq",
+            "value": "aws_guardduty_threatintelset"
+          }
+        ]
+      }
+    },
+    {
+      "id": "optional_malware_plan",
+      "kind": "exists",
+      "tier": "detail",
+      "quote": "a malware protection plan for S3 buckets",
+      "select": {
+        "types": [
+          "__declared__"
+        ],
+        "where": [
+          {
+            "path": "type",
+            "op": "eq",
+            "value": "aws_guardduty_malware_protection_plan"
+          }
+        ]
+      }
+    },
+    {
+      "id": "optional_publishing_destination",
+      "kind": "exists",
+      "tier": "detail",
+      "quote": "exporting findings to a versioned, access-logged, KMS-encrypted and cross-region-replicated S3 bucket",
+      "select": {
+        "types": [
+          "__declared__"
+        ],
+        "where": [
+          {
+            "path": "type",
+            "op": "eq",
+            "value": "aws_guardduty_publishing_destination"
+          }
+        ]
+      }
+    },
+    {
+      "id": "optional_export_kms",
+      "kind": "exists",
+      "tier": "detail",
+      "quote": "KMS-encrypted",
+      "select": {
+        "types": [
+          "__declared__"
+        ],
+        "where": [
+          {
+            "path": "type",
+            "op": "eq",
+            "value": "aws_kms_key"
+          }
+        ]
+      }
+    },
+    {
+      "id": "optional_export_replication",
+      "kind": "any_of",
+      "tier": "detail",
+      "quote": "cross-region-replicated S3 bucket",
+      "checks": [
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "in",
+                "value": [
+                  "aws_s3_bucket_replication_configuration"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "eq",
+                "value": "aws_s3_bucket"
+              },
+              {
+                "path": "properties.replication_configuration",
+                "op": "present"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "in",
+                "value": [
+                  "data.aws_iam_policy_document",
+                  "aws_iam_policy",
+                  "aws_iam_role_policy",
+                  "aws_iam_role"
+                ]
+              },
+              {
+                "path": "properties",
+                "op": "regex",
+                "value": "s3:Replicate"
+              }
+            ]
+          }
+        }
+      ],
+      "justify": "cross-region replication is an S3 replication configuration or a replication role/policy granting s3:Replicate* actions"
+    },
+    {
+      "id": "optional_features_not_created_by_default",
+      "kind": "exists",
+      "tier": "detail",
+      "quote": "support, but not create by default, findings filters, trusted IP sets, threat intelligence sets, a malware protection plan for S3 buckets, and exporting findings",
+      "select": {
+        "types": [
+          "aws_guardduty_detector",
+          "aws_guardduty_filter",
+          "aws_guardduty_ipset",
+          "aws_guardduty_threatintelset",
+          "aws_guardduty_malware_protection_plan",
+          "aws_guardduty_publishing_destination"
+        ]
+      },
+      "max": 1,
+      "justify": "with defaults the plan holds the one detector and none of the optional filter/IP set/threat intel set/malware plan/publishing destination resources"
+    },
+    {
+      "id": "export_resources_not_created_by_default",
+      "kind": "exists",
+      "tier": "detail",
+      "quote": "with the default settings none of those buckets, KMS keys, or replication roles are created",
+      "select": {
+        "types": [
+          "aws_guardduty_detector",
+          "aws_s3_bucket",
+          "aws_kms_key",
+          "aws_s3_bucket_replication_configuration"
+        ]
+      },
+      "max": 1,
+      "justify": "with defaults the plan holds the one detector and no S3 bucket, KMS key or replication configuration"
+    },
+    {
+      "id": "extra_type_aws_iam_policy",
+      "kind": "exists",
+      "tier": "extra",
+      "select": {
+        "types": [
+          "__declared__"
+        ],
+        "where": [
+          {
+            "path": "type",
+            "op": "eq",
+            "value": "aws_iam_policy"
+          }
+        ]
+      }
+    },
+    {
+      "id": "extra_type_aws_iam_role_policy_attachment",
+      "kind": "exists",
+      "tier": "extra",
+      "select": {
+        "types": [
+          "__declared__"
+        ],
+        "where": [
+          {
+            "path": "type",
+            "op": "eq",
+            "value": "aws_iam_role_policy_attachment"
+          }
+        ]
+      }
+    },
+    {
+      "id": "extra_type_aws_iam_service_linked_role",
+      "kind": "exists",
+      "tier": "extra",
+      "select": {
+        "types": [
+          "__declared__"
+        ],
+        "where": [
+          {
+            "path": "type",
+            "op": "eq",
+            "value": "aws_iam_service_linked_role"
+          }
+        ]
+      }
+    },
+    {
+      "id": "extra_type_aws_s3_object",
+      "kind": "exists",
+      "tier": "extra",
+      "select": {
+        "types": [
+          "__declared__"
+        ],
+        "where": [
+          {
+            "path": "type",
+            "op": "eq",
+            "value": "aws_s3_object"
+          }
+        ]
+      }
+    }
+  ],
+  "notes": "Optional capabilities are checked as declared, and 'not created by default' as a plan holding only the detector among those types. The export bucket lives in a nested module in the ground truth, so its versioning and access logging are not observable there; those two clauses are unchecked. Replication roles are covered via the replication configuration/bucket types only (a role is not distinguishable from other roles without its policy, which may be unknown at plan). Agent management checks fail only on an explicit ENABLED: an omitted additional_configuration leaves it disabled. Snapshot retention: the ground truth passes the value through a local (not observable), so a ${...} value after --ebs-snapshot-preservation is accepted alongside a literal NO_RETENTION."
+}

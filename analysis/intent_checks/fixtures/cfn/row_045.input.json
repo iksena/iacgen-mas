@@ -1,0 +1,633 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "sam_expanded",
+  "warnings": [],
+  "gt_hash": "2ea9dc64c79771cdba853201f8ec6b94518dfa58b7f2df8b6e75cc5d169d274e",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "AskAroundMeRealtime",
+   "cfg": "AskAroundMeRealtime",
+   "type": "AWS::IoT::Thing",
+   "values": {
+    "ThingName": "askaroundme-realtime",
+    "AttributePayload": {
+     "Attributes": {}
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "UserPool",
+   "cfg": "UserPool",
+   "type": "AWS::Cognito::UserPool",
+   "values": {
+    "UserPoolName": "askAroundMeUserPool",
+    "MfaConfiguration": "OFF",
+    "Schema": [
+     {
+      "Name": "email",
+      "AttributeDataType": "String",
+      "Mutable": false,
+      "Required": true
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "UserPoolClient",
+   "cfg": "UserPoolClient",
+   "type": "AWS::Cognito::UserPoolClient",
+   "values": {
+    "ClientName": "askAroundMeUserPoolClient",
+    "GenerateSecret": false,
+    "UserPoolId": {
+     "ref": "UserPool"
+    }
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "IdentityPool",
+   "cfg": "IdentityPool",
+   "type": "AWS::Cognito::IdentityPool",
+   "values": {
+    "IdentityPoolName": "askAroundMeIdentityPool",
+    "AllowUnauthenticatedIdentities": true,
+    "CognitoIdentityProviders": [
+     {
+      "ClientId": {
+       "ref": "UserPoolClient"
+      },
+      "ProviderName": {
+       "ref": "UserPool",
+       "attr": "ProviderName"
+      }
+     }
+    ]
+   },
+   "refs": [
+    "UserPool",
+    "UserPoolClient"
+   ]
+  },
+  {
+   "id": "CognitoUnAuthorizedRole",
+   "cfg": "CognitoUnAuthorizedRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Federated": [
+         "cognito-identity.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRoleWithWebIdentity"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "cognito-identity.amazonaws.com:aud": {
+          "ref": "IdentityPool"
+         }
+        },
+        "ForAnyValue:StringLike": {
+         "cognito-identity.amazonaws.com:amr": "unauthenticated"
+        }
+       }
+      }
+     ]
+    },
+    "Policies": [
+     {
+      "PolicyName": "CognitoUnauthorizedPolicy",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "cognito-sync:*"
+         ],
+         "Resource": {
+          "Fn::Join": [
+           "",
+           [
+            "arn:aws:cognito-sync:",
+            "us-east-1",
+            ":",
+            "123456789012",
+            ":identitypool/",
+            {
+             "ref": "IdentityPool"
+            }
+           ]
+          ]
+         }
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "iot:Connect"
+         ],
+         "Resource": [
+          "arn:aws:iot:us-east-1:123456789012:client/askAroundMe-*"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "iot:Subscribe"
+         ],
+         "Resource": [
+          "*"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "iot:Receive"
+         ],
+         "Resource": [
+          "arn:aws:iot:us-east-1:123456789012:topic/*"
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": [
+    "IdentityPool"
+   ]
+  },
+  {
+   "id": "CognitoAuthorizedRole",
+   "cfg": "CognitoAuthorizedRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Federated": [
+         "cognito-identity.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRoleWithWebIdentity"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "cognito-identity.amazonaws.com:aud": {
+          "ref": "IdentityPool"
+         }
+        },
+        "ForAnyValue:StringLike": {
+         "cognito-identity.amazonaws.com:amr": "authenticated"
+        }
+       }
+      }
+     ]
+    },
+    "Policies": [
+     {
+      "PolicyName": "CognitoAuthorizedPolicy",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "cognito-sync:*"
+         ],
+         "Resource": {
+          "Fn::Join": [
+           "",
+           [
+            "arn:aws:cognito-sync:",
+            "us-east-1",
+            ":",
+            "123456789012",
+            ":identitypool/",
+            {
+             "ref": "IdentityPool"
+            }
+           ]
+          ]
+         }
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "iot:Connect"
+         ],
+         "Resource": [
+          "arn:aws:iot:us-east-1:123456789012:client/askAroundMe-*"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "iot:Subscribe"
+         ],
+         "Resource": [
+          "*"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "iot:Receive"
+         ],
+         "Resource": [
+          "arn:aws:iot:us-east-1:123456789012:topic/*"
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": [
+    "IdentityPool"
+   ]
+  },
+  {
+   "id": "IdentityPoolRoleMapping",
+   "cfg": "IdentityPoolRoleMapping",
+   "type": "AWS::Cognito::IdentityPoolRoleAttachment",
+   "values": {
+    "IdentityPoolId": {
+     "ref": "IdentityPool"
+    },
+    "Roles": {
+     "authenticated": {
+      "ref": "CognitoAuthorizedRole",
+      "attr": "Arn"
+     },
+     "unauthenticated": {
+      "ref": "CognitoUnAuthorizedRole",
+      "attr": "Arn"
+     }
+    }
+   },
+   "refs": [
+    "CognitoAuthorizedRole",
+    "CognitoUnAuthorizedRole",
+    "IdentityPool"
+   ]
+  },
+  {
+   "id": "__output__.IotEndpoint",
+   "cfg": "__output__.IotEndpoint",
+   "type": "__output__",
+   "values": {
+    "name": "IotEndpoint",
+    "value": {
+     "ref": "AskAroundMeRealtime"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "AskAroundMeRealtime"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::IoT::Thing.AskAroundMeRealtime",
+   "cfg": "AskAroundMeRealtime",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IoT::Thing",
+    "name": "AskAroundMeRealtime",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ThingName": "askaroundme-realtime",
+     "AttributePayload": {
+      "Attributes": {}
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPool.UserPool",
+   "cfg": "UserPool",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Cognito::UserPool",
+    "name": "UserPool",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "UserPoolName": "askAroundMeUserPool",
+     "MfaConfiguration": "OFF",
+     "Schema": [
+      {
+       "Name": "email",
+       "AttributeDataType": "String",
+       "Mutable": false,
+       "Required": true
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolClient.UserPoolClient",
+   "cfg": "UserPoolClient",
+   "type": "__declared__",
+   "refs": [
+    "UserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolClient",
+    "name": "UserPoolClient",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ClientName": "askAroundMeUserPoolClient",
+     "GenerateSecret": false,
+     "UserPoolId": {
+      "ref": "UserPool"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::IdentityPool.IdentityPool",
+   "cfg": "IdentityPool",
+   "type": "__declared__",
+   "refs": [
+    "UserPool",
+    "UserPoolClient"
+   ],
+   "values": {
+    "type": "AWS::Cognito::IdentityPool",
+    "name": "IdentityPool",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "IdentityPoolName": "askAroundMeIdentityPool",
+     "AllowUnauthenticatedIdentities": true,
+     "CognitoIdentityProviders": [
+      {
+       "ClientId": {
+        "ref": "UserPoolClient"
+       },
+       "ProviderName": {
+        "ref": "UserPool",
+        "attr": "ProviderName"
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.CognitoUnAuthorizedRole",
+   "cfg": "CognitoUnAuthorizedRole",
+   "type": "__declared__",
+   "refs": [
+    "IdentityPool"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "CognitoUnAuthorizedRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Federated": [
+          "cognito-identity.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRoleWithWebIdentity"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "cognito-identity.amazonaws.com:aud": {
+           "ref": "IdentityPool"
+          }
+         },
+         "ForAnyValue:StringLike": {
+          "cognito-identity.amazonaws.com:amr": "unauthenticated"
+         }
+        }
+       }
+      ]
+     },
+     "Policies": [
+      {
+       "PolicyName": "CognitoUnauthorizedPolicy",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "cognito-sync:*"
+          ],
+          "Resource": {
+           "Fn::Join": [
+            "",
+            [
+             "arn:aws:cognito-sync:",
+             "us-east-1",
+             ":",
+             "123456789012",
+             ":identitypool/",
+             {
+              "ref": "IdentityPool"
+             }
+            ]
+           ]
+          }
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "iot:Connect"
+          ],
+          "Resource": [
+           "arn:aws:iot:us-east-1:123456789012:client/askAroundMe-*"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "iot:Subscribe"
+          ],
+          "Resource": [
+           "*"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "iot:Receive"
+          ],
+          "Resource": [
+           "arn:aws:iot:us-east-1:123456789012:topic/*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.CognitoAuthorizedRole",
+   "cfg": "CognitoAuthorizedRole",
+   "type": "__declared__",
+   "refs": [
+    "IdentityPool"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "CognitoAuthorizedRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Federated": [
+          "cognito-identity.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRoleWithWebIdentity"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "cognito-identity.amazonaws.com:aud": {
+           "ref": "IdentityPool"
+          }
+         },
+         "ForAnyValue:StringLike": {
+          "cognito-identity.amazonaws.com:amr": "authenticated"
+         }
+        }
+       }
+      ]
+     },
+     "Policies": [
+      {
+       "PolicyName": "CognitoAuthorizedPolicy",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "cognito-sync:*"
+          ],
+          "Resource": {
+           "Fn::Join": [
+            "",
+            [
+             "arn:aws:cognito-sync:",
+             "us-east-1",
+             ":",
+             "123456789012",
+             ":identitypool/",
+             {
+              "ref": "IdentityPool"
+             }
+            ]
+           ]
+          }
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "iot:Connect"
+          ],
+          "Resource": [
+           "arn:aws:iot:us-east-1:123456789012:client/askAroundMe-*"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "iot:Subscribe"
+          ],
+          "Resource": [
+           "*"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "iot:Receive"
+          ],
+          "Resource": [
+           "arn:aws:iot:us-east-1:123456789012:topic/*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::IdentityPoolRoleAttachment.IdentityPoolRoleMapping",
+   "cfg": "IdentityPoolRoleMapping",
+   "type": "__declared__",
+   "refs": [
+    "CognitoAuthorizedRole",
+    "CognitoUnAuthorizedRole",
+    "IdentityPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::IdentityPoolRoleAttachment",
+    "name": "IdentityPoolRoleMapping",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "IdentityPoolId": {
+      "ref": "IdentityPool"
+     },
+     "Roles": {
+      "authenticated": {
+       "ref": "CognitoAuthorizedRole",
+       "attr": "Arn"
+      },
+      "unauthenticated": {
+       "ref": "CognitoUnAuthorizedRole",
+       "attr": "Arn"
+      }
+     }
+    }
+   }
+  }
+ ]
+}

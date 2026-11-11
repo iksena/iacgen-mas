@@ -1,0 +1,952 @@
+{
+ "meta": {
+  "lang": "tf",
+  "mode": "plan",
+  "warnings": [],
+  "gt_hash": "08ead34ce2a345defd34a7ffcc63ac9e2eea628ba159b98eb4db733c85784c0a",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "aws_iam_instance_profile.ec2_instance_profile",
+   "cfg": "aws_iam_instance_profile.ec2_instance_profile",
+   "type": "aws_iam_instance_profile",
+   "values": {
+    "name_prefix": "bmk-ec2-instance-profile-",
+    "path": "/",
+    "tags": null
+   },
+   "refs": [
+    "aws_iam_role.ec2_ssm_exec_role"
+   ]
+  },
+  {
+   "id": "aws_iam_policy.ec2_ssm_exec_role_permissions",
+   "cfg": "aws_iam_policy.ec2_ssm_exec_role_permissions",
+   "type": "aws_iam_policy",
+   "values": {
+    "delay_after_policy_creation_in_ms": null,
+    "description": "Provides EC2 instance access to SSM, S3 and CW Logs services",
+    "name_prefix": "bmk-ec2-ssm-exec-role-permissions-",
+    "path": "/",
+    "policy": "{\"Statement\":[{\"Action\":[\"ssm:UpdateInstanceInformation\",\"ssm:ListInstanceAssociations\",\"ssm:DescribeInstanceProperties\",\"ssm:DescribeDocumentParameters\",\"ssm:StartSession\"],\"Effect\":\"Allow\",\"Resource\":\"*\",\"Sid\":\"SSMPermissions\"},{\"Action\":[\"ssmmessages:CreateControlChannel\",\"ssmmessages:CreateDataChannel\",\"ssmmessages:OpenControlChannel\",\"ssmmessages:OpenDataChannel\",\"ssm:UpdateInstanceInformation\"],\"Effect\":\"Allow\",\"Resource\":\"*\",\"Sid\":\"SSMMessagesPermissions\"},{\"Action\":[\"ec2messages:AcknowledgeMessage\",\"ec2messages:DeleteMessage\",\"ec2messages:FailMessage\",\"ec2messages:GetEndpoint\",\"ec2messages:GetMessages\",\"ec2messages:SendReply\"],\"Effect\":\"Allow\",\"Resource\":\"*\",\"Sid\":\"EC2MessagesPermissions\"},{\"Action\":[\"logs:CreateLogStream\",\"logs:PutLogEvents\",\"logs:DescribeLogGroups\",\"logs:DescribeLogStreams\"],\"Effect\":\"Allow\",\"Resource\":\"*\",\"Sid\":\"CWLogsPermissions\"},{\"Action\":[\"kms:GenerateDataKey\"],\"Effect\":\"Allow\",\"Resource\":\"*\",\"Sid\":\"KMSPermissions\"},{\"Action\":[\"s3:GetEncryptionConfiguration\",\"s3:PutObject\"],\"Effect\":\"Allow\",\"Resource\":\"*\",\"Sid\":\"S3Permissions\"}],\"Version\":\"2012-10-17\"}",
+    "tags": null
+   },
+   "refs": []
+  },
+  {
+   "id": "aws_iam_role.ec2_ssm_exec_role",
+   "cfg": "aws_iam_role.ec2_ssm_exec_role",
+   "type": "aws_iam_role",
+   "values": {
+    "assume_role_policy": "{\"Statement\":[{\"Action\":\"sts:AssumeRole\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":[\"ec2.amazonaws.com\"]},\"Sid\":\"EC2ExecRole\"}],\"Version\":\"2012-10-17\"}",
+    "description": null,
+    "force_detach_policies": false,
+    "max_session_duration": 3600,
+    "name_prefix": "bmk-ec2-ssm-exec-role-",
+    "path": "/",
+    "permissions_boundary": null,
+    "tags": {
+     "Application": "benchmark-app",
+     "Environment": "dev"
+    },
+    "tags_all": {
+     "Application": "benchmark-app",
+     "Environment": "dev"
+    }
+   },
+   "refs": [
+    "aws_iam_policy.ec2_ssm_exec_role_permissions"
+   ]
+  },
+  {
+   "id": "aws_iam_role_policy_attachment.ec2_ssm_exec_role_policy",
+   "cfg": "aws_iam_role_policy_attachment.ec2_ssm_exec_role_policy",
+   "type": "aws_iam_role_policy_attachment",
+   "values": {},
+   "refs": [
+    "aws_iam_policy.ec2_ssm_exec_role_permissions",
+    "aws_iam_role.ec2_ssm_exec_role"
+   ]
+  },
+  {
+   "id": "aws_instance.test_instance",
+   "cfg": "aws_instance.test_instance",
+   "type": "aws_instance",
+   "values": {
+    "ami": "ami-04681a1dbd79675a5",
+    "credit_specification": [],
+    "force_destroy": false,
+    "get_password_data": false,
+    "hibernation": null,
+    "instance_type": "t3.small",
+    "launch_template": [],
+    "metadata_options": [
+     {
+      "http_endpoint": "enabled",
+      "http_protocol_ipv6": "disabled",
+      "http_tokens": "required"
+     }
+    ],
+    "region": "us-east-2",
+    "root_block_device": [
+     {
+      "delete_on_termination": true,
+      "encrypted": true,
+      "tags": null
+     }
+    ],
+    "source_dest_check": false,
+    "tags": {
+     "Application": "benchmark-app",
+     "Environment": "dev",
+     "Name": "bmk-test"
+    },
+    "tags_all": {
+     "Application": "benchmark-app",
+     "Environment": "dev",
+     "Name": "bmk-test"
+    },
+    "timeouts": null,
+    "user_data": null,
+    "user_data_replace_on_change": false,
+    "volume_tags": null
+   },
+   "refs": [
+    "aws_iam_instance_profile.ec2_instance_profile",
+    "aws_security_group.ec2_sg",
+    "aws_subnet.priv_subnet",
+    "data.aws_ami.ec2_ami"
+   ]
+  },
+  {
+   "id": "aws_security_group.ec2_sg",
+   "cfg": "aws_security_group.ec2_sg",
+   "type": "aws_security_group",
+   "values": {
+    "description": "Managed by Terraform",
+    "egress": [
+     {
+      "cidr_blocks": [
+       "10.8.0.0/16"
+      ],
+      "description": "",
+      "from_port": 443,
+      "ipv6_cidr_blocks": [],
+      "prefix_list_ids": [],
+      "protocol": "tcp",
+      "security_groups": [],
+      "self": false,
+      "to_port": 443
+     }
+    ],
+    "name": "ec2_sg",
+    "region": "us-east-2",
+    "revoke_rules_on_delete": false,
+    "tags": {
+     "Application": "benchmark-app",
+     "Environment": "dev"
+    },
+    "tags_all": {
+     "Application": "benchmark-app",
+     "Environment": "dev"
+    },
+    "timeouts": null
+   },
+   "refs": [
+    "aws_vpc.vpc"
+   ]
+  },
+  {
+   "id": "aws_security_group.svc_vpce_sg",
+   "cfg": "aws_security_group.svc_vpce_sg",
+   "type": "aws_security_group",
+   "values": {
+    "description": "Managed by Terraform",
+    "ingress": [
+     {
+      "cidr_blocks": [
+       "10.8.0.0/16"
+      ],
+      "description": "",
+      "from_port": 443,
+      "ipv6_cidr_blocks": [],
+      "prefix_list_ids": [],
+      "protocol": "tcp",
+      "security_groups": [],
+      "self": false,
+      "to_port": 443
+     }
+    ],
+    "name": "svc_vpce_sg",
+    "region": "us-east-2",
+    "revoke_rules_on_delete": false,
+    "tags": {
+     "Application": "benchmark-app",
+     "Environment": "dev"
+    },
+    "tags_all": {
+     "Application": "benchmark-app",
+     "Environment": "dev"
+    },
+    "timeouts": null
+   },
+   "refs": [
+    "aws_vpc.vpc"
+   ]
+  },
+  {
+   "id": "aws_subnet.priv_subnet",
+   "cfg": "aws_subnet.priv_subnet",
+   "type": "aws_subnet",
+   "values": {
+    "assign_ipv6_address_on_creation": false,
+    "availability_zone": "us-east-2a",
+    "cidr_block": "10.8.1.0/24",
+    "customer_owned_ipv4_pool": null,
+    "enable_dns64": false,
+    "enable_lni_at_device_index": null,
+    "enable_resource_name_dns_a_record_on_launch": false,
+    "enable_resource_name_dns_aaaa_record_on_launch": false,
+    "ipv4_ipam_pool_id": null,
+    "ipv4_netmask_length": null,
+    "ipv6_ipam_pool_id": null,
+    "ipv6_native": false,
+    "ipv6_netmask_length": null,
+    "map_customer_owned_ip_on_launch": null,
+    "map_public_ip_on_launch": false,
+    "outpost_arn": null,
+    "region": "us-east-2",
+    "tags": {
+     "Application": "benchmark-app",
+     "Environment": "dev",
+     "Name": "packer_subnet"
+    },
+    "tags_all": {
+     "Application": "benchmark-app",
+     "Environment": "dev",
+     "Name": "packer_subnet"
+    },
+    "timeouts": null
+   },
+   "refs": [
+    "aws_vpc.vpc",
+    "data.aws_availability_zones.available_azs"
+   ]
+  },
+  {
+   "id": "aws_vpc.vpc",
+   "cfg": "aws_vpc.vpc",
+   "type": "aws_vpc",
+   "values": {
+    "assign_generated_ipv6_cidr_block": false,
+    "cidr_block": "10.8.0.0/16",
+    "enable_dns_hostnames": true,
+    "enable_dns_support": true,
+    "instance_tenancy": "default",
+    "ipv4_ipam_pool_id": null,
+    "ipv4_netmask_length": null,
+    "ipv6_ipam_pool_id": null,
+    "ipv6_netmask_length": null,
+    "region": "us-east-2",
+    "tags": {
+     "Application": "benchmark-app",
+     "Environment": "dev",
+     "Name": "bmk_packer_vpc"
+    },
+    "tags_all": {
+     "Application": "benchmark-app",
+     "Environment": "dev",
+     "Name": "bmk_packer_vpc"
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "aws_vpc_endpoint.vpce_cw_logs",
+   "cfg": "aws_vpc_endpoint.vpce_cw_logs",
+   "type": "aws_vpc_endpoint",
+   "values": {
+    "auto_accept": true,
+    "policy": "{\"Statement\":[{\"Action\":[\"logs:CreateLogStream\",\"logs:PutLogEvents\"],\"Effect\":\"Allow\",\"Principal\":\"*\",\"Resource\":\"*\",\"Sid\":\"SSMRequiredPermissions\"}],\"Version\":\"2012-10-17\"}",
+    "private_dns_enabled": true,
+    "region": "us-east-2",
+    "resource_configuration_arn": null,
+    "service_name": "com.amazonaws.us-east-2.logs",
+    "service_network_arn": null,
+    "tags": {
+     "Application": "benchmark-app",
+     "Environment": "dev",
+     "Name": "bmk_cw_logs"
+    },
+    "tags_all": {
+     "Application": "benchmark-app",
+     "Environment": "dev",
+     "Name": "bmk_cw_logs"
+    },
+    "timeouts": null,
+    "vpc_endpoint_type": "Interface"
+   },
+   "refs": [
+    "aws_security_group.svc_vpce_sg",
+    "aws_subnet.priv_subnet",
+    "aws_vpc.vpc"
+   ]
+  },
+  {
+   "id": "aws_vpc_endpoint.vpce_ec2_messages",
+   "cfg": "aws_vpc_endpoint.vpce_ec2_messages",
+   "type": "aws_vpc_endpoint",
+   "values": {
+    "auto_accept": true,
+    "policy": "{\"Statement\":[{\"Action\":[\"ec2messages:AcknowledgeMessage\",\"ec2messages:DeleteMessage\",\"ec2messages:FailMessage\",\"ec2messages:GetEndpoint\",\"ec2messages:GetMessages\",\"ec2messages:SendReply\"],\"Effect\":\"Allow\",\"Principal\":\"*\",\"Resource\":\"*\",\"Sid\":\"SSMRequiredPermissions\"}],\"Version\":\"2012-10-17\"}",
+    "private_dns_enabled": true,
+    "region": "us-east-2",
+    "resource_configuration_arn": null,
+    "service_name": "com.amazonaws.us-east-2.ec2messages",
+    "service_network_arn": null,
+    "tags": {
+     "Application": "benchmark-app",
+     "Environment": "dev",
+     "Name": "bmk_ec2_messages"
+    },
+    "tags_all": {
+     "Application": "benchmark-app",
+     "Environment": "dev",
+     "Name": "bmk_ec2_messages"
+    },
+    "timeouts": null,
+    "vpc_endpoint_type": "Interface"
+   },
+   "refs": [
+    "aws_security_group.svc_vpce_sg",
+    "aws_subnet.priv_subnet",
+    "aws_vpc.vpc"
+   ]
+  },
+  {
+   "id": "aws_vpc_endpoint.vpce_ssm",
+   "cfg": "aws_vpc_endpoint.vpce_ssm",
+   "type": "aws_vpc_endpoint",
+   "values": {
+    "auto_accept": true,
+    "policy": "{\"Statement\":[{\"Action\":[\"ssm:UpdateInstanceInformation\",\"ssm:ListInstanceAssociations\",\"ssm:DescribeInstanceProperties\",\"ssm:DescribeDocumentParameters\"],\"Effect\":\"Allow\",\"Principal\":\"*\",\"Resource\":\"*\",\"Sid\":\"SSMRequiredPermissions\"}],\"Version\":\"2012-10-17\"}",
+    "private_dns_enabled": true,
+    "region": "us-east-2",
+    "resource_configuration_arn": null,
+    "service_name": "com.amazonaws.us-east-2.ssm",
+    "service_network_arn": null,
+    "tags": {
+     "Application": "benchmark-app",
+     "Environment": "dev",
+     "Name": "bmk_ssm"
+    },
+    "tags_all": {
+     "Application": "benchmark-app",
+     "Environment": "dev",
+     "Name": "bmk_ssm"
+    },
+    "timeouts": null,
+    "vpc_endpoint_type": "Interface"
+   },
+   "refs": [
+    "aws_security_group.svc_vpce_sg",
+    "aws_subnet.priv_subnet",
+    "aws_vpc.vpc"
+   ]
+  },
+  {
+   "id": "aws_vpc_endpoint.vpce_ssm_messages",
+   "cfg": "aws_vpc_endpoint.vpce_ssm_messages",
+   "type": "aws_vpc_endpoint",
+   "values": {
+    "auto_accept": true,
+    "policy": "{\"Statement\":[{\"Action\":[\"ssmmessages:CreateControlChannel\",\"ssmmessages:CreateDataChannel\",\"ssmmessages:OpenControlChannel\",\"ssmmessages:OpenDataChannel\"],\"Effect\":\"Allow\",\"Principal\":\"*\",\"Resource\":\"*\",\"Sid\":\"SSMRequiredPermissions\"}],\"Version\":\"2012-10-17\"}",
+    "private_dns_enabled": true,
+    "region": "us-east-2",
+    "resource_configuration_arn": null,
+    "service_name": "com.amazonaws.us-east-2.ssmmessages",
+    "service_network_arn": null,
+    "tags": {
+     "Application": "benchmark-app",
+     "Environment": "dev",
+     "Name": "bmk_ssm_messages"
+    },
+    "tags_all": {
+     "Application": "benchmark-app",
+     "Environment": "dev",
+     "Name": "bmk_ssm_messages"
+    },
+    "timeouts": null,
+    "vpc_endpoint_type": "Interface"
+   },
+   "refs": [
+    "aws_security_group.svc_vpce_sg",
+    "aws_subnet.priv_subnet",
+    "aws_vpc.vpc"
+   ]
+  },
+  {
+   "id": "__parameter__.app_name",
+   "cfg": "__parameter__.app_name",
+   "type": "__parameter__",
+   "values": {
+    "name": "app_name",
+    "default": "benchmark-app"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.app_shortcode",
+   "cfg": "__parameter__.app_shortcode",
+   "type": "__parameter__",
+   "values": {
+    "name": "app_shortcode",
+    "default": "bmk"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.aws_env",
+   "cfg": "__parameter__.aws_env",
+   "type": "__parameter__",
+   "values": {
+    "name": "aws_env",
+    "default": "dev"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.aws_profile",
+   "cfg": "__parameter__.aws_profile",
+   "type": "__parameter__",
+   "values": {
+    "name": "aws_profile",
+    "default": "default"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.aws_region",
+   "cfg": "__parameter__.aws_region",
+   "type": "__parameter__",
+   "values": {
+    "name": "aws_region",
+    "default": "us-east-2"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.priv_subnet_cidr",
+   "cfg": "__parameter__.priv_subnet_cidr",
+   "type": "__parameter__",
+   "values": {
+    "name": "priv_subnet_cidr",
+    "default": "10.8.1.0/24"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.priv_subnet_name",
+   "cfg": "__parameter__.priv_subnet_name",
+   "type": "__parameter__",
+   "values": {
+    "name": "priv_subnet_name",
+    "default": "packer_subnet"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.vpc_cidr",
+   "cfg": "__parameter__.vpc_cidr",
+   "type": "__parameter__",
+   "values": {
+    "name": "vpc_cidr",
+    "default": "10.8.0.0/16"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.vpc_name",
+   "cfg": "__parameter__.vpc_name",
+   "type": "__parameter__",
+   "values": {
+    "name": "vpc_name",
+    "default": "packer_vpc"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.ec2_instance_id",
+   "cfg": "__output__.ec2_instance_id",
+   "type": "__output__",
+   "values": {
+    "name": "ec2_instance_id",
+    "value": null,
+    "description": null
+   },
+   "refs": [
+    "aws_instance.test_instance"
+   ]
+  },
+  {
+   "id": "__output__.ec2_instance_profile_name",
+   "cfg": "__output__.ec2_instance_profile_name",
+   "type": "__output__",
+   "values": {
+    "name": "ec2_instance_profile_name",
+    "value": null,
+    "description": null
+   },
+   "refs": [
+    "aws_iam_instance_profile.ec2_instance_profile"
+   ]
+  },
+  {
+   "id": "__output__.ec2_private_dns",
+   "cfg": "__output__.ec2_private_dns",
+   "type": "__output__",
+   "values": {
+    "name": "ec2_private_dns",
+    "value": null,
+    "description": null
+   },
+   "refs": [
+    "aws_instance.test_instance"
+   ]
+  },
+  {
+   "id": "__output__.ec2_sg_id",
+   "cfg": "__output__.ec2_sg_id",
+   "type": "__output__",
+   "values": {
+    "name": "ec2_sg_id",
+    "value": null,
+    "description": null
+   },
+   "refs": [
+    "aws_security_group.ec2_sg"
+   ]
+  },
+  {
+   "id": "__output__.subnet_id",
+   "cfg": "__output__.subnet_id",
+   "type": "__output__",
+   "values": {
+    "name": "subnet_id",
+    "value": null,
+    "description": null
+   },
+   "refs": [
+    "aws_subnet.priv_subnet"
+   ]
+  },
+  {
+   "id": "__output__.vpc_id",
+   "cfg": "__output__.vpc_id",
+   "type": "__output__",
+   "values": {
+    "name": "vpc_id",
+    "value": null,
+    "description": null
+   },
+   "refs": [
+    "aws_vpc.vpc"
+   ]
+  },
+  {
+   "id": "__declared__.aws_security_group.ec2_sg",
+   "cfg": "aws_security_group.ec2_sg",
+   "type": "__declared__",
+   "refs": [
+    "aws_vpc.vpc"
+   ],
+   "values": {
+    "type": "aws_security_group",
+    "name": "ec2_sg",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "ec2_sg",
+     "vpc_id": "${aws_vpc.vpc.id}",
+     "egress": [
+      {
+       "from_port": 443,
+       "to_port": 443,
+       "protocol": "tcp",
+       "cidr_blocks": [
+        "${aws_vpc.vpc.cidr_block}"
+       ]
+      }
+     ],
+     "tags": "${local.common_tags}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_security_group.svc_vpce_sg",
+   "cfg": "aws_security_group.svc_vpce_sg",
+   "type": "__declared__",
+   "refs": [
+    "aws_vpc.vpc"
+   ],
+   "values": {
+    "type": "aws_security_group",
+    "name": "svc_vpce_sg",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "svc_vpce_sg",
+     "vpc_id": "${aws_vpc.vpc.id}",
+     "ingress": [
+      {
+       "cidr_blocks": [
+        "${aws_vpc.vpc.cidr_block}"
+       ],
+       "from_port": 443,
+       "to_port": 443,
+       "protocol": "tcp"
+      }
+     ],
+     "tags": "${local.common_tags}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role.ec2_ssm_exec_role",
+   "cfg": "aws_iam_role.ec2_ssm_exec_role",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_policy.ec2_ssm_exec_role_permissions"
+   ],
+   "values": {
+    "type": "aws_iam_role",
+    "name": "ec2_ssm_exec_role",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name_prefix": "${var.app_shortcode}-ec2-ssm-exec-role-",
+     "assume_role_policy": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Action\": \"sts:AssumeRole\",\n      \"Principal\": {\n        \"Service\": [\n          \"ec2.amazonaws.com\"\n        ]\n      },\n      \"Effect\": \"Allow\",\n      \"Sid\": \"EC2ExecRole\"\n    }\n  ]\n}",
+     "depends_on": [
+      "${aws_iam_policy.ec2_ssm_exec_role_permissions}"
+     ],
+     "tags": "${local.common_tags}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_policy.ec2_ssm_exec_role_permissions",
+   "cfg": "aws_iam_policy.ec2_ssm_exec_role_permissions",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_iam_policy",
+    "name": "ec2_ssm_exec_role_permissions",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name_prefix": "${var.app_shortcode}-ec2-ssm-exec-role-permissions-",
+     "description": "Provides EC2 instance access to SSM, S3 and CW Logs services",
+     "policy": "${jsonencode({'Version': '2012-10-17', 'Statement': [{'Sid': 'SSMPermissions', 'Action': ['ssm:UpdateInstanceInformation', 'ssm:ListInstanceAssociations', 'ssm:DescribeInstanceProperties', 'ssm:DescribeDocumentParameters', 'ssm:StartSession'], 'Effect': 'Allow', 'Resource': '*'}, {'Sid': 'SSMMessagesPermissions', 'Action': ['ssmmessages:CreateControlChannel', 'ssmmessages:CreateDataChannel', 'ssmmessages:OpenControlChannel', 'ssmmessages:OpenDataChannel', 'ssm:UpdateInstanceInformation'], 'Effect': 'Allow', 'Resource': '*'}, {'Sid': 'EC2MessagesPermissions', 'Action': ['ec2messages:AcknowledgeMessage', 'ec2messages:DeleteMessage', 'ec2messages:FailMessage', 'ec2messages:GetEndpoint', 'ec2messages:GetMessages', 'ec2messages:SendReply'], 'Effect': 'Allow', 'Resource': '*'}, {'Sid': 'CWLogsPermissions', 'Action': ['logs:CreateLogStream', 'logs:PutLogEvents', 'logs:DescribeLogGroups', 'logs:DescribeLogStreams'], 'Effect': 'Allow', 'Resource': '*'}, {'Sid': 'KMSPermissions', 'Action': ['kms:GenerateDataKey'], 'Effect': 'Allow', 'Resource': '*'}, {'Sid': 'S3Permissions', 'Action': ['s3:GetEncryptionConfiguration', 's3:PutObject'], 'Effect': 'Allow', 'Resource': '*'}]})}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role_policy_attachment.ec2_ssm_exec_role_policy",
+   "cfg": "aws_iam_role_policy_attachment.ec2_ssm_exec_role_policy",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_policy.ec2_ssm_exec_role_permissions",
+    "aws_iam_role.ec2_ssm_exec_role"
+   ],
+   "values": {
+    "type": "aws_iam_role_policy_attachment",
+    "name": "ec2_ssm_exec_role_policy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "role": "${aws_iam_role.ec2_ssm_exec_role.name}",
+     "policy_arn": "${aws_iam_policy.ec2_ssm_exec_role_permissions.arn}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_instance_profile.ec2_instance_profile",
+   "cfg": "aws_iam_instance_profile.ec2_instance_profile",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_role.ec2_ssm_exec_role"
+   ],
+   "values": {
+    "type": "aws_iam_instance_profile",
+    "name": "ec2_instance_profile",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name_prefix": "${var.app_shortcode}-ec2-instance-profile-",
+     "role": "${aws_iam_role.ec2_ssm_exec_role.name}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.data.aws_ami.ec2_ami",
+   "cfg": "data.aws_ami.ec2_ami",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "data.aws_ami",
+    "name": "ec2_ami",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "most_recent": true,
+     "owners": [
+      "amazon"
+     ],
+     "filter": [
+      {
+       "name": "name",
+       "values": [
+        "amzn2-ami-hvm-2*"
+       ]
+      },
+      {
+       "name": "architecture",
+       "values": [
+        "x86_64"
+       ]
+      },
+      {
+       "name": "root-device-type",
+       "values": [
+        "ebs"
+       ]
+      },
+      {
+       "name": "virtualization-type",
+       "values": [
+        "hvm"
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_instance.test_instance",
+   "cfg": "aws_instance.test_instance",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_instance_profile.ec2_instance_profile",
+    "aws_security_group.ec2_sg",
+    "aws_subnet.priv_subnet",
+    "data.aws_ami.ec2_ami"
+   ],
+   "values": {
+    "type": "aws_instance",
+    "name": "test_instance",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ami": "${data.aws_ami.ec2_ami.id}",
+     "instance_type": "t3.small",
+     "subnet_id": "${aws_subnet.priv_subnet.id}",
+     "source_dest_check": false,
+     "vpc_security_group_ids": [
+      "${aws_security_group.ec2_sg.id}"
+     ],
+     "iam_instance_profile": "${aws_iam_instance_profile.ec2_instance_profile.name}",
+     "metadata_options": [
+      {
+       "http_tokens": "required"
+      }
+     ],
+     "root_block_device": [
+      {
+       "encrypted": true
+      }
+     ],
+     "tags": "${merge(local.common_tags,{'Name': '${var.app_shortcode}-test'})}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.data.aws_availability_zones.available_azs",
+   "cfg": "data.aws_availability_zones.available_azs",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "data.aws_availability_zones",
+    "name": "available_azs",
+    "gated": false,
+    "gate": null,
+    "properties": {}
+   }
+  },
+  {
+   "id": "__declared__.aws_vpc.vpc",
+   "cfg": "aws_vpc.vpc",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_vpc",
+    "name": "vpc",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "cidr_block": "10.8.0.0/16",
+     "assign_generated_ipv6_cidr_block": false,
+     "enable_dns_support": true,
+     "enable_dns_hostnames": true,
+     "tags": "${merge(local.common_tags,{'Name': '${var.app_shortcode}_${var.vpc_name}'})}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_subnet.priv_subnet",
+   "cfg": "aws_subnet.priv_subnet",
+   "type": "__declared__",
+   "refs": [
+    "aws_vpc.vpc",
+    "data.aws_availability_zones.available_azs"
+   ],
+   "values": {
+    "type": "aws_subnet",
+    "name": "priv_subnet",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "vpc_id": "${aws_vpc.vpc.id}",
+     "availability_zone": "${data.aws_availability_zones.available_azs.names[0]}",
+     "cidr_block": "10.8.1.0/24",
+     "map_public_ip_on_launch": false,
+     "tags": "${merge(local.common_tags,{'Name': '${var.priv_subnet_name}'})}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_vpc_endpoint.vpce_ssm",
+   "cfg": "aws_vpc_endpoint.vpce_ssm",
+   "type": "__declared__",
+   "refs": [
+    "aws_security_group.svc_vpce_sg",
+    "aws_subnet.priv_subnet",
+    "aws_vpc.vpc"
+   ],
+   "values": {
+    "type": "aws_vpc_endpoint",
+    "name": "vpce_ssm",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "service_name": "com.amazonaws.${var.aws_region}.ssm",
+     "vpc_id": "${aws_vpc.vpc.id}",
+     "subnet_ids": [
+      "${aws_subnet.priv_subnet.id}"
+     ],
+     "private_dns_enabled": true,
+     "auto_accept": true,
+     "vpc_endpoint_type": "Interface",
+     "security_group_ids": [
+      "${aws_security_group.svc_vpce_sg.id}"
+     ],
+     "policy": "${jsonencode({'Version': '2012-10-17', 'Statement': [{'Sid': 'SSMRequiredPermissions', 'Principal': '*', 'Action': ['ssm:UpdateInstanceInformation', 'ssm:ListInstanceAssociations', 'ssm:DescribeInstanceProperties', 'ssm:DescribeDocumentParameters'], 'Effect': 'Allow', 'Resource': '*'}]})}",
+     "tags": "${merge(local.common_tags,{'Name': '${var.app_shortcode}_ssm'})}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_vpc_endpoint.vpce_ec2_messages",
+   "cfg": "aws_vpc_endpoint.vpce_ec2_messages",
+   "type": "__declared__",
+   "refs": [
+    "aws_security_group.svc_vpce_sg",
+    "aws_subnet.priv_subnet",
+    "aws_vpc.vpc"
+   ],
+   "values": {
+    "type": "aws_vpc_endpoint",
+    "name": "vpce_ec2_messages",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "service_name": "com.amazonaws.${var.aws_region}.ec2messages",
+     "vpc_id": "${aws_vpc.vpc.id}",
+     "subnet_ids": [
+      "${aws_subnet.priv_subnet.id}"
+     ],
+     "private_dns_enabled": true,
+     "auto_accept": true,
+     "vpc_endpoint_type": "Interface",
+     "security_group_ids": [
+      "${aws_security_group.svc_vpce_sg.id}"
+     ],
+     "policy": "${jsonencode({'Version': '2012-10-17', 'Statement': [{'Sid': 'SSMRequiredPermissions', 'Principal': '*', 'Action': ['ec2messages:AcknowledgeMessage', 'ec2messages:DeleteMessage', 'ec2messages:FailMessage', 'ec2messages:GetEndpoint', 'ec2messages:GetMessages', 'ec2messages:SendReply'], 'Effect': 'Allow', 'Resource': '*'}]})}",
+     "tags": "${merge(local.common_tags,{'Name': '${var.app_shortcode}_ec2_messages'})}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_vpc_endpoint.vpce_ssm_messages",
+   "cfg": "aws_vpc_endpoint.vpce_ssm_messages",
+   "type": "__declared__",
+   "refs": [
+    "aws_security_group.svc_vpce_sg",
+    "aws_subnet.priv_subnet",
+    "aws_vpc.vpc"
+   ],
+   "values": {
+    "type": "aws_vpc_endpoint",
+    "name": "vpce_ssm_messages",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "service_name": "com.amazonaws.${var.aws_region}.ssmmessages",
+     "vpc_id": "${aws_vpc.vpc.id}",
+     "subnet_ids": [
+      "${aws_subnet.priv_subnet.id}"
+     ],
+     "private_dns_enabled": true,
+     "auto_accept": true,
+     "vpc_endpoint_type": "Interface",
+     "security_group_ids": [
+      "${aws_security_group.svc_vpce_sg.id}"
+     ],
+     "policy": "${jsonencode({'Version': '2012-10-17', 'Statement': [{'Sid': 'SSMRequiredPermissions', 'Principal': '*', 'Action': ['ssmmessages:CreateControlChannel', 'ssmmessages:CreateDataChannel', 'ssmmessages:OpenControlChannel', 'ssmmessages:OpenDataChannel'], 'Effect': 'Allow', 'Resource': '*'}]})}",
+     "tags": "${merge(local.common_tags,{'Name': '${var.app_shortcode}_ssm_messages'})}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_vpc_endpoint.vpce_cw_logs",
+   "cfg": "aws_vpc_endpoint.vpce_cw_logs",
+   "type": "__declared__",
+   "refs": [
+    "aws_security_group.svc_vpce_sg",
+    "aws_subnet.priv_subnet",
+    "aws_vpc.vpc"
+   ],
+   "values": {
+    "type": "aws_vpc_endpoint",
+    "name": "vpce_cw_logs",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "service_name": "com.amazonaws.${var.aws_region}.logs",
+     "vpc_id": "${aws_vpc.vpc.id}",
+     "subnet_ids": [
+      "${aws_subnet.priv_subnet.id}"
+     ],
+     "private_dns_enabled": true,
+     "auto_accept": true,
+     "vpc_endpoint_type": "Interface",
+     "security_group_ids": [
+      "${aws_security_group.svc_vpce_sg.id}"
+     ],
+     "policy": "${jsonencode({'Version': '2012-10-17', 'Statement': [{'Sid': 'SSMRequiredPermissions', 'Principal': '*', 'Action': ['logs:CreateLogStream', 'logs:PutLogEvents'], 'Effect': 'Allow', 'Resource': '*'}]})}",
+     "tags": "${merge(local.common_tags,{'Name': '${var.app_shortcode}_cw_logs'})}"
+    }
+   }
+  }
+ ]
+}

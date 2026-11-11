@@ -1,0 +1,372 @@
+{
+ "lang": "tf",
+ "row_number": 340,
+ "source_hash": {
+  "gt": "76c713848706115fca0f2b6a99f0470551a57e3cdce92edc35aa182ab76578ca",
+  "prompt": "63b6610fd8d8a73f75c1b25cee5f1969095124a358ce380f5c3095a4a326f974"
+ },
+ "selectors": {},
+ "checks": [
+  {
+   "id": "vpc_cidr",
+   "tier": "core",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_vpc"
+    ]
+   },
+   "cond": {
+    "path": "cidr_block",
+    "op": "eq",
+    "value": "10.0.0.0/16"
+   },
+   "quote": "a development VPC in us-east-1 named \"demo-vpc\" with CIDR \"10.0.0.0/16\""
+  },
+  {
+   "id": "vpc_name",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_vpc"
+      ]
+     },
+     "cond": {
+      "path": "tags.Name",
+      "op": "eq",
+      "value": "demo-vpc"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_vpc"
+      ]
+     },
+     "cond": {
+      "path": "tags_all.Name",
+      "op": "eq",
+      "value": "demo-vpc"
+     }
+    }
+   ],
+   "quote": "named \"demo-vpc\""
+  },
+  {
+   "id": "private_cidrs",
+   "tier": "core",
+   "kind": "all_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": "cidr_block",
+        "op": "eq",
+        "value": "10.0.11.0/24"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": "cidr_block",
+        "op": "eq",
+        "value": "10.0.12.0/24"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": "cidr_block",
+        "op": "eq",
+        "value": "10.0.13.0/24"
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "three private subnets (\"10.0.11.0/24\", \"10.0.12.0/24\", \"10.0.13.0/24\")"
+  },
+  {
+   "id": "public_cidrs",
+   "tier": "core",
+   "kind": "all_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": "cidr_block",
+        "op": "eq",
+        "value": "10.0.101.0/24"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": "cidr_block",
+        "op": "eq",
+        "value": "10.0.102.0/24"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": "cidr_block",
+        "op": "eq",
+        "value": "10.0.103.0/24"
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "three public subnets (\"10.0.101.0/24\", \"10.0.102.0/24\", \"10.0.103.0/24\")"
+  },
+  {
+   "id": "azs_spread",
+   "tier": "detail",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_subnet"
+    ]
+   },
+   "distinct_path": "availability_zone",
+   "min": 3,
+   "quote": "each pair placed in the second, third, and fourth available availability zones",
+   "justify": "three distinct zones are needed for the second, third and fourth zone"
+  },
+  {
+   "id": "igw",
+   "tier": "core",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_internet_gateway"
+    ]
+   },
+   "quote": "Add an internet gateway"
+  },
+  {
+   "id": "igw_vpc",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_internet_gateway"
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_vpc"
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_internet_gateway_attachment"
+      ]
+     }
+    }
+   ],
+   "quote": "Add an internet gateway"
+  },
+  {
+   "id": "public_route_igw",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route_table"
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_internet_gateway"
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route"
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_internet_gateway"
+      ]
+     }
+    }
+   ],
+   "quote": "an internet gateway with a public route table for the public subnets"
+  },
+  {
+   "id": "route_assocs",
+   "tier": "detail",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_route_table_association"
+    ]
+   },
+   "min": 6,
+   "quote": "a public route table for the public subnets",
+   "justify": "six subnets each need a route table association"
+  },
+  {
+   "id": "nat_single",
+   "tier": "core",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_nat_gateway"
+    ]
+   },
+   "min": 1,
+   "max": 1,
+   "quote": "a single NAT gateway",
+   "justify": "single means exactly one"
+  },
+  {
+   "id": "nat_eip",
+   "tier": "core",
+   "kind": "ref",
+   "from": {
+    "types": [
+     "aws_nat_gateway"
+    ]
+   },
+   "to": {
+    "types": [
+     "aws_eip"
+    ]
+   },
+   "quote": "a single NAT gateway with an Elastic IP"
+  },
+  {
+   "id": "nat_in_first_public",
+   "tier": "core",
+   "kind": "ref",
+   "from": {
+    "types": [
+     "aws_nat_gateway"
+    ]
+   },
+   "to": {
+    "types": [
+     "aws_subnet"
+    ],
+    "where": [
+     {
+      "path": "cidr_block",
+      "op": "eq",
+      "value": "10.0.101.0/24"
+     }
+    ]
+   },
+   "quote": "in the first public subnet",
+   "justify": "the first listed public subnet is 10.0.101.0/24"
+  },
+  {
+   "id": "private_route_nat",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route_table"
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_nat_gateway"
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route"
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_nat_gateway"
+      ]
+     }
+    }
+   ],
+   "quote": "provides outbound internet access through a private route table shared by the private subnets"
+  },
+  {
+   "id": "x_eip_vpc",
+   "tier": "extra",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_eip"
+    ]
+   },
+   "cond": {
+    "path": "domain",
+    "op": "eq",
+    "value": "vpc"
+   }
+  }
+ ],
+ "notes": "Region us-east-1 and the \"second, third, fourth\" zone offsets are not checked (provider region invisible; only AZ spread is checked)."
+}

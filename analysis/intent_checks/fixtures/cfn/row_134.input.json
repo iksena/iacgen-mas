@@ -1,0 +1,2079 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "ee613afeeba386ceb9e63582db65c8ed82d3d8a0a303fa50317f5d3eed6b6656",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "ScraperLambdaRole",
+   "cfg": "ScraperLambdaRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "hospitality-insights-scraper-lambda-role-prod",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Tags": [
+     {
+      "Key": "Project",
+      "Value": "hospitality-insights"
+     },
+     {
+      "Key": "Environment",
+      "Value": "prod"
+     }
+    ],
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+     "arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess",
+     "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+    ],
+    "Policies": [
+     {
+      "PolicyName": "ScraperLambdaPolicy",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "dynamodb:PutItem",
+          "dynamodb:GetItem",
+          "dynamodb:BatchWriteItem"
+         ],
+         "Resource": [
+          "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-raw-posts-prod"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "dynamodb:GetItem",
+          "dynamodb:Query",
+          "dynamodb:Scan",
+          "dynamodb:UpdateItem"
+         ],
+         "Resource": [
+          "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-sources-prod",
+          "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-platform-config-prod"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "dynamodb:GetItem"
+         ],
+         "Resource": [
+          "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-brand-config-prod"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "secretsmanager:GetSecretValue"
+         ],
+         "Resource": [
+          "arn:aws:secretsmanager:us-east-1:123456789012:secret:hospitality-insights/prod/*"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "secretsmanager:ListSecrets"
+         ],
+         "Resource": [
+          "*"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "sqs:SendMessage",
+          "sqs:ReceiveMessage",
+          "sqs:DeleteMessage",
+          "sqs:GetQueueAttributes"
+         ],
+         "Resource": [
+          "arn:aws:sqs:us-east-1:123456789012:hospitality-insights-rate-limit-queue-prod"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "lambda:InvokeFunction"
+         ],
+         "Resource": [
+          "arn:aws:lambda:us-east-1:123456789012:function:hospitality-insights-*-scraper-prod"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "cloudwatch:PutMetricData"
+         ],
+         "Resource": [
+          "*"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+         ],
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "AnalysisLambdaRole",
+   "cfg": "AnalysisLambdaRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "hospitality-insights-analysis-lambda-role-prod",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Tags": [
+     {
+      "Key": "Project",
+      "Value": "hospitality-insights"
+     },
+     {
+      "Key": "Environment",
+      "Value": "prod"
+     }
+    ],
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+     "arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess"
+    ],
+    "Policies": [
+     {
+      "PolicyName": "AnalysisLambdaPolicy",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "dynamodb:GetItem",
+          "dynamodb:Query",
+          "dynamodb:Scan",
+          "dynamodb:PutItem",
+          "dynamodb:UpdateItem"
+         ],
+         "Resource": [
+          "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-raw-posts-prod",
+          "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-analysis-results-prod",
+          "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-keywords-prod",
+          "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-brand-config-prod",
+          "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-insights-prod"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "dynamodb:Query"
+         ],
+         "Resource": [
+          "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-raw-posts-prod/index/*",
+          "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-analysis-results-prod/index/*"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "dynamodb:DescribeStream",
+          "dynamodb:GetRecords",
+          "dynamodb:GetShardIterator",
+          "dynamodb:ListStreams"
+         ],
+         "Resource": [
+          "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-raw-posts-prod/stream/*"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "comprehend:DetectSentiment",
+          "comprehend:BatchDetectSentiment",
+          "comprehend:DetectToxicContent",
+          "comprehend:DetectEntities"
+         ],
+         "Resource": [
+          "*"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "bedrock:InvokeModel"
+         ],
+         "Resource": [
+          "*"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "s3:PutObject",
+          "s3:GetObject"
+         ],
+         "Resource": [
+          "arn:aws:s3:::hospitality-insights-scan-results-*/*"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+         ],
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "AlertsLambdaRole",
+   "cfg": "AlertsLambdaRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "hospitality-insights-alerts-lambda-role-prod",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Tags": [
+     {
+      "Key": "Project",
+      "Value": "hospitality-insights"
+     },
+     {
+      "Key": "Environment",
+      "Value": "prod"
+     }
+    ],
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+     "arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess"
+    ],
+    "Policies": [
+     {
+      "PolicyName": "AlertsLambdaPolicy",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "dynamodb:GetItem",
+          "dynamodb:Query",
+          "dynamodb:Scan",
+          "dynamodb:PutItem",
+          "dynamodb:UpdateItem"
+         ],
+         "Resource": [
+          "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-analysis-results-prod",
+          "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-analysis-results-prod/index/*",
+          "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-alerts-prod"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "dynamodb:GetItem",
+          "dynamodb:Scan"
+         ],
+         "Resource": [
+          "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-alert-config-prod"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "dynamodb:Query"
+         ],
+         "Resource": [
+          "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-alerts-prod/index/*"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "dynamodb:DescribeStream",
+          "dynamodb:GetRecords",
+          "dynamodb:GetShardIterator",
+          "dynamodb:ListStreams"
+         ],
+         "Resource": [
+          "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-analysis-results-prod/stream/*"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "sns:Publish"
+         ],
+         "Resource": [
+          "*"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+         ],
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "APILambdaRole",
+   "cfg": "APILambdaRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "hospitality-insights-api-lambda-role-prod",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Tags": [
+     {
+      "Key": "Project",
+      "Value": "hospitality-insights"
+     },
+     {
+      "Key": "Environment",
+      "Value": "prod"
+     }
+    ],
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+     "arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess"
+    ],
+    "Policies": [
+     {
+      "PolicyName": "APILambdaPolicy",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "dynamodb:GetItem",
+          "dynamodb:Query",
+          "dynamodb:Scan",
+          "dynamodb:PutItem",
+          "dynamodb:UpdateItem",
+          "dynamodb:DeleteItem"
+         ],
+         "Resource": [
+          "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-analysis-results-prod",
+          "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-analysis-results-scrubbed",
+          "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-alerts-prod",
+          "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-sources-prod",
+          "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-insights-prod",
+          "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-insights-scrubbed",
+          "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-actions-prod",
+          "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-brands-prod",
+          "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-people-prod",
+          "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-table-config-prod"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "dynamodb:Query"
+         ],
+         "Resource": [
+          "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-analysis-results-prod/index/*",
+          "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-analysis-results-scrubbed/index/*",
+          "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-alerts-prod/index/*",
+          "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-actions-prod/index/*",
+          "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-people-prod/index/*"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "states:StartExecution"
+         ],
+         "Resource": [
+          "arn:aws:states:us-east-1:123456789012:stateMachine:hospitality-insights-insights-generator-prod"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "bedrock-agentcore:InvokeAgentRuntime"
+         ],
+         "Resource": [
+          "*"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+         ],
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "AdminLambdaRole",
+   "cfg": "AdminLambdaRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "hospitality-insights-admin-lambda-role-prod",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Tags": [
+     {
+      "Key": "Project",
+      "Value": "hospitality-insights"
+     },
+     {
+      "Key": "Environment",
+      "Value": "prod"
+     }
+    ],
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+     "arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess",
+     "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+    ],
+    "Policies": [
+     {
+      "PolicyName": "AdminLambdaPolicy",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "dynamodb:GetItem",
+          "dynamodb:Query",
+          "dynamodb:Scan",
+          "dynamodb:PutItem",
+          "dynamodb:UpdateItem",
+          "dynamodb:DeleteItem"
+         ],
+         "Resource": [
+          "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-sources-prod",
+          "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-keywords-prod",
+          "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-alert-config-prod",
+          "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-brand-config-prod",
+          "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-platform-config-prod",
+          "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-table-config-prod"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "secretsmanager:CreateSecret",
+          "secretsmanager:UpdateSecret",
+          "secretsmanager:DeleteSecret",
+          "secretsmanager:GetSecretValue",
+          "secretsmanager:PutSecretValue",
+          "secretsmanager:DescribeSecret",
+          "secretsmanager:TagResource"
+         ],
+         "Resource": [
+          "arn:aws:secretsmanager:us-east-1:123456789012:secret:hospitality-insights/prod/*"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "secretsmanager:ListSecrets"
+         ],
+         "Resource": [
+          "*"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "cognito-idp:AdminCreateUser",
+          "cognito-idp:AdminDeleteUser",
+          "cognito-idp:AdminUpdateUserAttributes",
+          "cognito-idp:AdminAddUserToGroup",
+          "cognito-idp:AdminRemoveUserFromGroup",
+          "cognito-idp:ListUsers",
+          "cognito-idp:ListUsersInGroup"
+         ],
+         "Resource": [
+          "arn:aws:cognito-idp:us-east-1:123456789012:userpool/*"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+         ],
+         "Resource": [
+          "*"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "states:StartExecution"
+         ],
+         "Resource": [
+          "arn:aws:states:us-east-1:123456789012:stateMachine:hospitality-insights-data-transform-prod",
+          "arn:aws:states:us-east-1:123456789012:stateMachine:hospitality-insights-scraper-workflow-prod"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "s3:PutObject",
+          "s3:DeleteObject"
+         ],
+         "Resource": [
+          "arn:aws:s3:::hospitality-insights-frontend-prod/logos/*"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "dynamodb:Query"
+         ],
+         "Resource": [
+          "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-raw-posts-prod",
+          "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-raw-posts-prod/index/*"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "scheduler:GetSchedule"
+         ],
+         "Resource": [
+          "arn:aws:scheduler:us-east-1:123456789012:schedule/default/hospitality-insights-scraper-schedule-prod"
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "AgentCoreLambdaRole",
+   "cfg": "AgentCoreLambdaRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "hospitality-insights-agentcore-role-prod",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "bedrock-agentcore.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Tags": [
+     {
+      "Key": "Project",
+      "Value": "hospitality-insights"
+     },
+     {
+      "Key": "Environment",
+      "Value": "prod"
+     }
+    ],
+    "Policies": [
+     {
+      "PolicyName": "AgentCorePolicy",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "bedrock:InvokeModel",
+          "bedrock:InvokeModelWithResponseStream"
+         ],
+         "Resource": [
+          "*"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "bedrock-agentcore:InvokeAgentRuntime",
+          "bedrock-agentcore:CreateAgentRuntime",
+          "bedrock-agentcore:UpdateAgentRuntime",
+          "bedrock-agentcore:GetAgentRuntime",
+          "bedrock-agentcore:GetAgentRuntimeEndpoint",
+          "bedrock-agentcore:DeleteAgentRuntime",
+          "bedrock-agentcore:CreateMemory",
+          "bedrock-agentcore:GetMemory",
+          "bedrock-agentcore:DeleteMemory",
+          "bedrock-agentcore:ListMemories",
+          "bedrock-agentcore:CreateSession",
+          "bedrock-agentcore:GetSession",
+          "bedrock-agentcore:DeleteSession",
+          "bedrock-agentcore:ListSessions",
+          "bedrock-agentcore:IngestMemoryEvent",
+          "bedrock-agentcore:RetrieveMemory",
+          "bedrock-agentcore:ListEvents",
+          "bedrock-agentcore:CreateEvent",
+          "bedrock-agentcore:GetEvent",
+          "bedrock-agentcore:DeleteEvent"
+         ],
+         "Resource": [
+          "*"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "dynamodb:GetItem",
+          "dynamodb:Query",
+          "dynamodb:Scan"
+         ],
+         "Resource": [
+          "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-analysis-results-prod",
+          "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-analysis-results-prod/index/*",
+          "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-analysis-results-scrubbed",
+          "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-analysis-results-scrubbed/index/*",
+          "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-insights-prod",
+          "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-insights-scrubbed",
+          "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-alerts-prod",
+          "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-alerts-prod/index/*",
+          "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-brands-prod",
+          "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-people-prod",
+          "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-people-prod/index/*",
+          "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-actions-prod",
+          "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-actions-prod/index/*"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "dynamodb:PutItem"
+         ],
+         "Resource": [
+          "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-actions-prod"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "s3:GetObject"
+         ],
+         "Resource": [
+          "*"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+         ],
+         "Resource": [
+          "*"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:BatchGetImage",
+          "ecr:GetAuthorizationToken"
+         ],
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "ArchivalLambdaRole",
+   "cfg": "ArchivalLambdaRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "hospitality-insights-archival-lambda-role-prod",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Tags": [
+     {
+      "Key": "Project",
+      "Value": "hospitality-insights"
+     },
+     {
+      "Key": "Environment",
+      "Value": "prod"
+     }
+    ],
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+     "arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess"
+    ],
+    "Policies": [
+     {
+      "PolicyName": "ArchivalLambdaPolicy",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "dynamodb:Query",
+          "dynamodb:Scan"
+         ],
+         "Resource": [
+          "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-raw-posts-prod",
+          "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-raw-posts-prod/index/*",
+          "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-analysis-results-prod",
+          "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-analysis-results-prod/index/*"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "s3:PutObject",
+          "s3:PutObjectAcl"
+         ],
+         "Resource": [
+          "arn:aws:s3:::hospitality-insights-archival-prod/*"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+         ],
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "SecretsManagerPrefix",
+   "cfg": "SecretsManagerPrefix",
+   "type": "AWS::SecretsManager::Secret",
+   "values": {
+    "Name": "hospitality-insights/prod/credentials-prefix",
+    "Description": "Placeholder secret to establish naming convention",
+    "SecretString": "{\"note\": \"This is a placeholder. Actual credentials will be created via admin API.\"}",
+    "Tags": [
+     {
+      "Key": "Project",
+      "Value": "hospitality-insights"
+     },
+     {
+      "Key": "Environment",
+      "Value": "prod"
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "ScrapingBeeAPIKeySecret",
+   "cfg": "ScrapingBeeAPIKeySecret",
+   "type": "AWS::SecretsManager::Secret",
+   "values": {
+    "Name": "hospitality-insights/prod/scrapingbee-api-key",
+    "Description": "ScrapingBee API Key for web scraping",
+    "SecretString": "{\"apiKey\": \"PLACEHOLDER_REPLACE_ME\"}",
+    "Tags": [
+     {
+      "Key": "Project",
+      "Value": "hospitality-insights"
+     },
+     {
+      "Key": "Environment",
+      "Value": "prod"
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.Environment",
+   "cfg": "__parameter__.Environment",
+   "type": "__parameter__",
+   "values": {
+    "name": "Environment",
+    "type": "String",
+    "default": "prod",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.ProjectName",
+   "cfg": "__parameter__.ProjectName",
+   "type": "__parameter__",
+   "values": {
+    "name": "ProjectName",
+    "type": "String",
+    "default": "hospitality-insights",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.ProjectTag",
+   "cfg": "__parameter__.ProjectTag",
+   "type": "__parameter__",
+   "values": {
+    "name": "ProjectTag",
+    "type": "String",
+    "default": "hospitality-insights",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.ScraperLambdaRoleArn",
+   "cfg": "__output__.ScraperLambdaRoleArn",
+   "type": "__output__",
+   "values": {
+    "name": "ScraperLambdaRoleArn",
+    "value": {
+     "ref": "ScraperLambdaRole",
+     "attr": "Arn"
+    },
+    "description": "ARN of the Scraper Lambda execution role",
+    "export": null
+   },
+   "refs": [
+    "ScraperLambdaRole"
+   ]
+  },
+  {
+   "id": "__output__.AnalysisLambdaRoleArn",
+   "cfg": "__output__.AnalysisLambdaRoleArn",
+   "type": "__output__",
+   "values": {
+    "name": "AnalysisLambdaRoleArn",
+    "value": {
+     "ref": "AnalysisLambdaRole",
+     "attr": "Arn"
+    },
+    "description": "ARN of the Analysis Lambda execution role",
+    "export": null
+   },
+   "refs": [
+    "AnalysisLambdaRole"
+   ]
+  },
+  {
+   "id": "__output__.AlertsLambdaRoleArn",
+   "cfg": "__output__.AlertsLambdaRoleArn",
+   "type": "__output__",
+   "values": {
+    "name": "AlertsLambdaRoleArn",
+    "value": {
+     "ref": "AlertsLambdaRole",
+     "attr": "Arn"
+    },
+    "description": "ARN of the Alerts Lambda execution role",
+    "export": null
+   },
+   "refs": [
+    "AlertsLambdaRole"
+   ]
+  },
+  {
+   "id": "__output__.APILambdaRoleArn",
+   "cfg": "__output__.APILambdaRoleArn",
+   "type": "__output__",
+   "values": {
+    "name": "APILambdaRoleArn",
+    "value": {
+     "ref": "APILambdaRole",
+     "attr": "Arn"
+    },
+    "description": "ARN of the API Lambda execution role",
+    "export": null
+   },
+   "refs": [
+    "APILambdaRole"
+   ]
+  },
+  {
+   "id": "__output__.AdminLambdaRoleArn",
+   "cfg": "__output__.AdminLambdaRoleArn",
+   "type": "__output__",
+   "values": {
+    "name": "AdminLambdaRoleArn",
+    "value": {
+     "ref": "AdminLambdaRole",
+     "attr": "Arn"
+    },
+    "description": "ARN of the Admin Lambda execution role",
+    "export": null
+   },
+   "refs": [
+    "AdminLambdaRole"
+   ]
+  },
+  {
+   "id": "__output__.ArchivalLambdaRoleArn",
+   "cfg": "__output__.ArchivalLambdaRoleArn",
+   "type": "__output__",
+   "values": {
+    "name": "ArchivalLambdaRoleArn",
+    "value": {
+     "ref": "ArchivalLambdaRole",
+     "attr": "Arn"
+    },
+    "description": "ARN of the Archival Lambda execution role",
+    "export": null
+   },
+   "refs": [
+    "ArchivalLambdaRole"
+   ]
+  },
+  {
+   "id": "__output__.SecretsManagerPrefixArn",
+   "cfg": "__output__.SecretsManagerPrefixArn",
+   "type": "__output__",
+   "values": {
+    "name": "SecretsManagerPrefixArn",
+    "value": {
+     "ref": "SecretsManagerPrefix"
+    },
+    "description": "ARN of the Secrets Manager prefix",
+    "export": null
+   },
+   "refs": [
+    "SecretsManagerPrefix"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.ScraperLambdaRole",
+   "cfg": "ScraperLambdaRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "ScraperLambdaRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "hospitality-insights-scraper-lambda-role-prod",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Tags": [
+      {
+       "Key": "Project",
+       "Value": "hospitality-insights"
+      },
+      {
+       "Key": "Environment",
+       "Value": "prod"
+      }
+     ],
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+      "arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess",
+      "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+     ],
+     "Policies": [
+      {
+       "PolicyName": "ScraperLambdaPolicy",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "dynamodb:PutItem",
+           "dynamodb:GetItem",
+           "dynamodb:BatchWriteItem"
+          ],
+          "Resource": [
+           "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-raw-posts-prod"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "dynamodb:GetItem",
+           "dynamodb:Query",
+           "dynamodb:Scan",
+           "dynamodb:UpdateItem"
+          ],
+          "Resource": [
+           "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-sources-prod",
+           "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-platform-config-prod"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "dynamodb:GetItem"
+          ],
+          "Resource": [
+           "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-brand-config-prod"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "secretsmanager:GetSecretValue"
+          ],
+          "Resource": [
+           "arn:aws:secretsmanager:us-east-1:123456789012:secret:hospitality-insights/prod/*"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "secretsmanager:ListSecrets"
+          ],
+          "Resource": [
+           "*"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "sqs:SendMessage",
+           "sqs:ReceiveMessage",
+           "sqs:DeleteMessage",
+           "sqs:GetQueueAttributes"
+          ],
+          "Resource": [
+           "arn:aws:sqs:us-east-1:123456789012:hospitality-insights-rate-limit-queue-prod"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "lambda:InvokeFunction"
+          ],
+          "Resource": [
+           "arn:aws:lambda:us-east-1:123456789012:function:hospitality-insights-*-scraper-prod"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "cloudwatch:PutMetricData"
+          ],
+          "Resource": [
+           "*"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "logs:CreateLogGroup",
+           "logs:CreateLogStream",
+           "logs:PutLogEvents"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.AnalysisLambdaRole",
+   "cfg": "AnalysisLambdaRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "AnalysisLambdaRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "hospitality-insights-analysis-lambda-role-prod",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Tags": [
+      {
+       "Key": "Project",
+       "Value": "hospitality-insights"
+      },
+      {
+       "Key": "Environment",
+       "Value": "prod"
+      }
+     ],
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+      "arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess"
+     ],
+     "Policies": [
+      {
+       "PolicyName": "AnalysisLambdaPolicy",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "dynamodb:GetItem",
+           "dynamodb:Query",
+           "dynamodb:Scan",
+           "dynamodb:PutItem",
+           "dynamodb:UpdateItem"
+          ],
+          "Resource": [
+           "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-raw-posts-prod",
+           "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-analysis-results-prod",
+           "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-keywords-prod",
+           "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-brand-config-prod",
+           "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-insights-prod"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "dynamodb:Query"
+          ],
+          "Resource": [
+           "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-raw-posts-prod/index/*",
+           "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-analysis-results-prod/index/*"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "dynamodb:DescribeStream",
+           "dynamodb:GetRecords",
+           "dynamodb:GetShardIterator",
+           "dynamodb:ListStreams"
+          ],
+          "Resource": [
+           "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-raw-posts-prod/stream/*"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "comprehend:DetectSentiment",
+           "comprehend:BatchDetectSentiment",
+           "comprehend:DetectToxicContent",
+           "comprehend:DetectEntities"
+          ],
+          "Resource": [
+           "*"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "bedrock:InvokeModel"
+          ],
+          "Resource": [
+           "*"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "s3:PutObject",
+           "s3:GetObject"
+          ],
+          "Resource": [
+           "arn:aws:s3:::hospitality-insights-scan-results-*/*"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "logs:CreateLogGroup",
+           "logs:CreateLogStream",
+           "logs:PutLogEvents"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.AlertsLambdaRole",
+   "cfg": "AlertsLambdaRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "AlertsLambdaRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "hospitality-insights-alerts-lambda-role-prod",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Tags": [
+      {
+       "Key": "Project",
+       "Value": "hospitality-insights"
+      },
+      {
+       "Key": "Environment",
+       "Value": "prod"
+      }
+     ],
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+      "arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess"
+     ],
+     "Policies": [
+      {
+       "PolicyName": "AlertsLambdaPolicy",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "dynamodb:GetItem",
+           "dynamodb:Query",
+           "dynamodb:Scan",
+           "dynamodb:PutItem",
+           "dynamodb:UpdateItem"
+          ],
+          "Resource": [
+           "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-analysis-results-prod",
+           "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-analysis-results-prod/index/*",
+           "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-alerts-prod"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "dynamodb:GetItem",
+           "dynamodb:Scan"
+          ],
+          "Resource": [
+           "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-alert-config-prod"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "dynamodb:Query"
+          ],
+          "Resource": [
+           "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-alerts-prod/index/*"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "dynamodb:DescribeStream",
+           "dynamodb:GetRecords",
+           "dynamodb:GetShardIterator",
+           "dynamodb:ListStreams"
+          ],
+          "Resource": [
+           "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-analysis-results-prod/stream/*"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "sns:Publish"
+          ],
+          "Resource": [
+           "*"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "logs:CreateLogGroup",
+           "logs:CreateLogStream",
+           "logs:PutLogEvents"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.APILambdaRole",
+   "cfg": "APILambdaRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "APILambdaRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "hospitality-insights-api-lambda-role-prod",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Tags": [
+      {
+       "Key": "Project",
+       "Value": "hospitality-insights"
+      },
+      {
+       "Key": "Environment",
+       "Value": "prod"
+      }
+     ],
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+      "arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess"
+     ],
+     "Policies": [
+      {
+       "PolicyName": "APILambdaPolicy",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "dynamodb:GetItem",
+           "dynamodb:Query",
+           "dynamodb:Scan",
+           "dynamodb:PutItem",
+           "dynamodb:UpdateItem",
+           "dynamodb:DeleteItem"
+          ],
+          "Resource": [
+           "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-analysis-results-prod",
+           "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-analysis-results-scrubbed",
+           "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-alerts-prod",
+           "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-sources-prod",
+           "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-insights-prod",
+           "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-insights-scrubbed",
+           "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-actions-prod",
+           "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-brands-prod",
+           "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-people-prod",
+           "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-table-config-prod"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "dynamodb:Query"
+          ],
+          "Resource": [
+           "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-analysis-results-prod/index/*",
+           "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-analysis-results-scrubbed/index/*",
+           "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-alerts-prod/index/*",
+           "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-actions-prod/index/*",
+           "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-people-prod/index/*"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "states:StartExecution"
+          ],
+          "Resource": [
+           "arn:aws:states:us-east-1:123456789012:stateMachine:hospitality-insights-insights-generator-prod"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "bedrock-agentcore:InvokeAgentRuntime"
+          ],
+          "Resource": [
+           "*"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "logs:CreateLogGroup",
+           "logs:CreateLogStream",
+           "logs:PutLogEvents"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.AdminLambdaRole",
+   "cfg": "AdminLambdaRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "AdminLambdaRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "hospitality-insights-admin-lambda-role-prod",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Tags": [
+      {
+       "Key": "Project",
+       "Value": "hospitality-insights"
+      },
+      {
+       "Key": "Environment",
+       "Value": "prod"
+      }
+     ],
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+      "arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess",
+      "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+     ],
+     "Policies": [
+      {
+       "PolicyName": "AdminLambdaPolicy",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "dynamodb:GetItem",
+           "dynamodb:Query",
+           "dynamodb:Scan",
+           "dynamodb:PutItem",
+           "dynamodb:UpdateItem",
+           "dynamodb:DeleteItem"
+          ],
+          "Resource": [
+           "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-sources-prod",
+           "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-keywords-prod",
+           "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-alert-config-prod",
+           "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-brand-config-prod",
+           "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-platform-config-prod",
+           "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-table-config-prod"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "secretsmanager:CreateSecret",
+           "secretsmanager:UpdateSecret",
+           "secretsmanager:DeleteSecret",
+           "secretsmanager:GetSecretValue",
+           "secretsmanager:PutSecretValue",
+           "secretsmanager:DescribeSecret",
+           "secretsmanager:TagResource"
+          ],
+          "Resource": [
+           "arn:aws:secretsmanager:us-east-1:123456789012:secret:hospitality-insights/prod/*"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "secretsmanager:ListSecrets"
+          ],
+          "Resource": [
+           "*"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "cognito-idp:AdminCreateUser",
+           "cognito-idp:AdminDeleteUser",
+           "cognito-idp:AdminUpdateUserAttributes",
+           "cognito-idp:AdminAddUserToGroup",
+           "cognito-idp:AdminRemoveUserFromGroup",
+           "cognito-idp:ListUsers",
+           "cognito-idp:ListUsersInGroup"
+          ],
+          "Resource": [
+           "arn:aws:cognito-idp:us-east-1:123456789012:userpool/*"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "logs:CreateLogGroup",
+           "logs:CreateLogStream",
+           "logs:PutLogEvents"
+          ],
+          "Resource": [
+           "*"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "states:StartExecution"
+          ],
+          "Resource": [
+           "arn:aws:states:us-east-1:123456789012:stateMachine:hospitality-insights-data-transform-prod",
+           "arn:aws:states:us-east-1:123456789012:stateMachine:hospitality-insights-scraper-workflow-prod"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "s3:PutObject",
+           "s3:DeleteObject"
+          ],
+          "Resource": [
+           "arn:aws:s3:::hospitality-insights-frontend-prod/logos/*"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "dynamodb:Query"
+          ],
+          "Resource": [
+           "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-raw-posts-prod",
+           "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-raw-posts-prod/index/*"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "scheduler:GetSchedule"
+          ],
+          "Resource": [
+           "arn:aws:scheduler:us-east-1:123456789012:schedule/default/hospitality-insights-scraper-schedule-prod"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.AgentCoreLambdaRole",
+   "cfg": "AgentCoreLambdaRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "AgentCoreLambdaRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "hospitality-insights-agentcore-role-prod",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "bedrock-agentcore.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Tags": [
+      {
+       "Key": "Project",
+       "Value": "hospitality-insights"
+      },
+      {
+       "Key": "Environment",
+       "Value": "prod"
+      }
+     ],
+     "Policies": [
+      {
+       "PolicyName": "AgentCorePolicy",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "bedrock:InvokeModel",
+           "bedrock:InvokeModelWithResponseStream"
+          ],
+          "Resource": [
+           "*"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "bedrock-agentcore:InvokeAgentRuntime",
+           "bedrock-agentcore:CreateAgentRuntime",
+           "bedrock-agentcore:UpdateAgentRuntime",
+           "bedrock-agentcore:GetAgentRuntime",
+           "bedrock-agentcore:GetAgentRuntimeEndpoint",
+           "bedrock-agentcore:DeleteAgentRuntime",
+           "bedrock-agentcore:CreateMemory",
+           "bedrock-agentcore:GetMemory",
+           "bedrock-agentcore:DeleteMemory",
+           "bedrock-agentcore:ListMemories",
+           "bedrock-agentcore:CreateSession",
+           "bedrock-agentcore:GetSession",
+           "bedrock-agentcore:DeleteSession",
+           "bedrock-agentcore:ListSessions",
+           "bedrock-agentcore:IngestMemoryEvent",
+           "bedrock-agentcore:RetrieveMemory",
+           "bedrock-agentcore:ListEvents",
+           "bedrock-agentcore:CreateEvent",
+           "bedrock-agentcore:GetEvent",
+           "bedrock-agentcore:DeleteEvent"
+          ],
+          "Resource": [
+           "*"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "dynamodb:GetItem",
+           "dynamodb:Query",
+           "dynamodb:Scan"
+          ],
+          "Resource": [
+           "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-analysis-results-prod",
+           "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-analysis-results-prod/index/*",
+           "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-analysis-results-scrubbed",
+           "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-analysis-results-scrubbed/index/*",
+           "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-insights-prod",
+           "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-insights-scrubbed",
+           "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-alerts-prod",
+           "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-alerts-prod/index/*",
+           "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-brands-prod",
+           "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-people-prod",
+           "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-people-prod/index/*",
+           "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-actions-prod",
+           "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-actions-prod/index/*"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "dynamodb:PutItem"
+          ],
+          "Resource": [
+           "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-actions-prod"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "s3:GetObject"
+          ],
+          "Resource": [
+           "*"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "logs:CreateLogGroup",
+           "logs:CreateLogStream",
+           "logs:PutLogEvents"
+          ],
+          "Resource": [
+           "*"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "ecr:GetDownloadUrlForLayer",
+           "ecr:BatchGetImage",
+           "ecr:GetAuthorizationToken"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.ArchivalLambdaRole",
+   "cfg": "ArchivalLambdaRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "ArchivalLambdaRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "hospitality-insights-archival-lambda-role-prod",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Tags": [
+      {
+       "Key": "Project",
+       "Value": "hospitality-insights"
+      },
+      {
+       "Key": "Environment",
+       "Value": "prod"
+      }
+     ],
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+      "arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess"
+     ],
+     "Policies": [
+      {
+       "PolicyName": "ArchivalLambdaPolicy",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "dynamodb:Query",
+           "dynamodb:Scan"
+          ],
+          "Resource": [
+           "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-raw-posts-prod",
+           "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-raw-posts-prod/index/*",
+           "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-analysis-results-prod",
+           "arn:aws:dynamodb:us-east-1:123456789012:table/hospitality-insights-analysis-results-prod/index/*"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "s3:PutObject",
+           "s3:PutObjectAcl"
+          ],
+          "Resource": [
+           "arn:aws:s3:::hospitality-insights-archival-prod/*"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "logs:CreateLogGroup",
+           "logs:CreateLogStream",
+           "logs:PutLogEvents"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SecretsManager::Secret.SecretsManagerPrefix",
+   "cfg": "SecretsManagerPrefix",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::SecretsManager::Secret",
+    "name": "SecretsManagerPrefix",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "hospitality-insights/prod/credentials-prefix",
+     "Description": "Placeholder secret to establish naming convention",
+     "SecretString": "{\"note\": \"This is a placeholder. Actual credentials will be created via admin API.\"}",
+     "Tags": [
+      {
+       "Key": "Project",
+       "Value": "hospitality-insights"
+      },
+      {
+       "Key": "Environment",
+       "Value": "prod"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SecretsManager::Secret.ScrapingBeeAPIKeySecret",
+   "cfg": "ScrapingBeeAPIKeySecret",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::SecretsManager::Secret",
+    "name": "ScrapingBeeAPIKeySecret",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "hospitality-insights/prod/scrapingbee-api-key",
+     "Description": "ScrapingBee API Key for web scraping",
+     "SecretString": "{\"apiKey\": \"PLACEHOLDER_REPLACE_ME\"}",
+     "Tags": [
+      {
+       "Key": "Project",
+       "Value": "hospitality-insights"
+      },
+      {
+       "Key": "Environment",
+       "Value": "prod"
+      }
+     ]
+    }
+   }
+  }
+ ]
+}

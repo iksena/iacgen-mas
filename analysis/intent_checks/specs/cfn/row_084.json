@@ -1,0 +1,431 @@
+{
+  "lang": "cfn",
+  "row_number": 84,
+  "source_hash": {
+    "gt": "cd98c7fd2c31d8508ae6ad74e6f1aad18c535253b0079b2c485247f205209540",
+    "prompt": "a5ffc1485ed407aeed1d64427e01b6ecb0b5512adbefaadff7f53f9f2b969902"
+  },
+  "selectors": {
+    "api": {
+      "types": [
+        "AWS::ApiGateway::RestApi"
+      ]
+    },
+    "method": {
+      "types": [
+        "AWS::ApiGateway::Method"
+      ]
+    },
+    "fn": {
+      "types": [
+        "AWS::Lambda::Function"
+      ]
+    },
+    "role": {
+      "types": [
+        "AWS::IAM::Role"
+      ]
+    },
+    "post_method": {
+      "types": [
+        "AWS::ApiGateway::Method"
+      ],
+      "where": [
+        {
+          "path": "HttpMethod",
+          "op": "in",
+          "value": [
+            "POST",
+            "ANY"
+          ]
+        }
+      ]
+    },
+    "proxy_post_method": {
+      "types": [
+        "AWS::ApiGateway::Method"
+      ],
+      "where": [
+        {
+          "path": "HttpMethod",
+          "op": "in",
+          "value": [
+            "POST",
+            "ANY"
+          ]
+        },
+        {
+          "path": "Integration.Type",
+          "op": "eq",
+          "value": "AWS_PROXY"
+        }
+      ]
+    }
+  },
+  "checks": [
+    {
+      "id": "rest_api_named",
+      "kind": "attr",
+      "tier": "core",
+      "quote": "API Gateway REST API named \"ContentModeration\"",
+      "select": "api",
+      "cond": {
+        "path": "Name",
+        "op": "eq",
+        "value": "ContentModeration"
+      }
+    },
+    {
+      "id": "production_stage",
+      "kind": "any_of",
+      "tier": "core",
+      "quote": "with a production stage",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "AWS::ApiGateway::Stage"
+            ]
+          },
+          "cond": {
+            "path": "StageName",
+            "op": "regex",
+            "value": "(?i)^prod(uction)?$"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "AWS::ApiGateway::Deployment"
+            ]
+          },
+          "cond": {
+            "path": "StageName",
+            "op": "regex",
+            "value": "(?i)^prod(uction)?$"
+          }
+        }
+      ],
+      "justify": "a production stage is named prod or production"
+    },
+    {
+      "id": "lambda_named",
+      "kind": "attr",
+      "tier": "core",
+      "quote": "a Python 3.11 Lambda function named \"invokeContentModeration\"",
+      "select": "fn",
+      "cond": {
+        "path": "FunctionName",
+        "op": "eq",
+        "value": "invokeContentModeration"
+      }
+    },
+    {
+      "id": "lambda_python311",
+      "kind": "attr",
+      "tier": "core",
+      "quote": "a Python 3.11 Lambda function",
+      "select": "fn",
+      "cond": {
+        "path": "Runtime",
+        "op": "eq",
+        "value": "python3.11"
+      }
+    },
+    {
+      "id": "accepts_json_url_payload",
+      "kind": "attr",
+      "tier": "detail",
+      "quote": "accepts a JSON payload containing a URL",
+      "select": "fn",
+      "cond": {
+        "path": "Code.ZipFile",
+        "op": "regex",
+        "value": "(?is)json\\.loads.{0,400}\\burl\\b"
+      },
+      "justify": "a Python handler parses the JSON body and reads its URL"
+    },
+    {
+      "id": "post_method",
+      "kind": "attr",
+      "tier": "core",
+      "quote": "via a POST request",
+      "select": "method",
+      "cond": {
+        "path": "HttpMethod",
+        "op": "in",
+        "value": [
+          "POST",
+          "ANY"
+        ]
+      },
+      "justify": "ANY also accepts POST"
+    },
+    {
+      "id": "proxy_integration",
+      "kind": "attr",
+      "tier": "core",
+      "quote": "the API should use a proxy integration",
+      "select": "post_method",
+      "cond": {
+        "path": "Integration.Type",
+        "op": "eq",
+        "value": "AWS_PROXY"
+      },
+      "justify": "the proxy integration serves the POST request; ANY also accepts POST"
+    },
+    {
+      "id": "method_invokes_lambda",
+      "kind": "any_of",
+      "tier": "core",
+      "quote": "synchronously invokes the Lambda function",
+      "checks": [
+        {
+          "kind": "ref",
+          "from": "proxy_post_method",
+          "to": "fn"
+        },
+        {
+          "kind": "attr",
+          "select": "proxy_post_method",
+          "cond": {
+            "path": "Integration.Uri",
+            "op": "contains",
+            "value": "function:invokeContentModeration"
+          }
+        }
+      ],
+      "justify": "the integration of the POST method targets the named function, by reference or by an ARN built from its name; ANY also accepts POST"
+    },
+    {
+      "id": "calls_detect_moderation_labels",
+      "kind": "attr",
+      "tier": "core",
+      "quote": "calls Rekognition's DetectModerationLabels API",
+      "select": "fn",
+      "cond": {
+        "path": "Code.ZipFile",
+        "op": "regex",
+        "value": "(?i)detect_?moderation_?labels"
+      }
+    },
+    {
+      "id": "returns_moderation_labels",
+      "kind": "attr",
+      "tier": "detail",
+      "quote": "return the moderation labels in the HTTP response",
+      "select": "fn",
+      "cond": {
+        "path": "Code.ZipFile",
+        "op": "regex",
+        "value": "(?i)[\"']moderation_?labels[\"']"
+      },
+      "justify": "the labels are read from or returned under the ModerationLabels key"
+    },
+    {
+      "id": "min_confidence_60",
+      "kind": "any_of",
+      "tier": "detail",
+      "quote": "a minimum confidence threshold of 60",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "fn",
+          "cond": {
+            "path": "Code.ZipFile",
+            "op": "regex",
+            "value": "(?i)min_?confidence[\"']?\\s*[=:,]\\s*[\"']?60\\b"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "fn",
+          "cond": {
+            "path": "Environment.Variables",
+            "op": "regex",
+            "value": "(?i)min_?confidence[^,]{0,6}60\\b"
+          }
+        }
+      ]
+    },
+    {
+      "id": "validates_formats",
+      "kind": "attr",
+      "tier": "detail",
+      "quote": "validates that the image is in jpg, jpeg, or png format",
+      "select": "fn",
+      "cond": {
+        "path": "Code.ZipFile",
+        "op": "regex",
+        "value": "(?is)(jpe?g.{0,60}png|png.{0,60}jpe?g)"
+      }
+    },
+    {
+      "id": "validates_size_5mb",
+      "kind": "attr",
+      "tier": "detail",
+      "quote": "does not exceed 5MB",
+      "select": "fn",
+      "cond": {
+        "path": "Code.ZipFile",
+        "op": "regex",
+        "value": "(?i)(5242880|5\\s*\\*\\s*1024\\s*\\*\\s*1024|1024\\s*\\*\\s*1024\\s*\\*\\s*5|5\\s*\\*\\s*1_?048_?576|5_?000_?000|\\b5\\s*mb\\b|1048576\\s*\\*\\s*5)"
+      },
+      "justify": "5MB expressed in bytes or MB"
+    },
+    {
+      "id": "fetches_image_from_url",
+      "kind": "attr",
+      "tier": "detail",
+      "quote": "fetches the image from the provided URL",
+      "select": "fn",
+      "cond": {
+        "path": "Code.ZipFile",
+        "op": "regex",
+        "value": "(urllib|requests\\.|http\\.client|PoolManager|httpx)"
+      }
+    },
+    {
+      "id": "handles_not_found",
+      "kind": "attr",
+      "tier": "detail",
+      "quote": "handle cases where the image is not found",
+      "select": "fn",
+      "cond": {
+        "path": "Code.ZipFile",
+        "op": "regex",
+        "value": "(?i)(\\b404\\b|not[ _-]?found)"
+      },
+      "justify": "a not-found case returns HTTP 404 or says the image was not found"
+    },
+    {
+      "id": "handles_unsupported_format",
+      "kind": "attr",
+      "tier": "detail",
+      "quote": "the format is unsupported, returning appropriate error codes",
+      "select": "fn",
+      "cond": {
+        "path": "Code.ZipFile",
+        "op": "regex",
+        "value": "\\b(400|415|422)\\b"
+      },
+      "justify": "a client-error HTTP status is returned"
+    },
+    {
+      "id": "role_allows_rekognition",
+      "kind": "any_of",
+      "tier": "detail",
+      "quote": "calls Rekognition's DetectModerationLabels API",
+      "checks": [
+        {
+          "kind": "ref",
+          "from": "fn",
+          "to": {
+            "types": [
+              "AWS::IAM::Role"
+            ],
+            "where": [
+              {
+                "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+                "op": "glob_covers",
+                "value": "rekognition:DetectModerationLabels"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "ref",
+          "from": "fn",
+          "to": {
+            "types": [
+              "AWS::IAM::Role"
+            ],
+            "where": [
+              {
+                "path": "ManagedPolicyArns.*",
+                "op": "regex",
+                "value": "(?i)rekognition"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "ref",
+          "bidirectional": true,
+          "from": {
+            "types": [
+              "AWS::IAM::Policy",
+              "AWS::IAM::ManagedPolicy"
+            ],
+            "where": [
+              {
+                "path": "PolicyDocument.Statement.*.Action.*",
+                "op": "glob_covers",
+                "value": "rekognition:DetectModerationLabels"
+              }
+            ]
+          },
+          "to": "role"
+        }
+      ]
+    },
+    {
+      "id": "x_apigw_invoke_permission",
+      "kind": "attr",
+      "tier": "extra",
+      "select": {
+        "types": [
+          "AWS::Lambda::Permission"
+        ]
+      },
+      "cond": {
+        "path": "Principal",
+        "op": "eq",
+        "value": "apigateway.amazonaws.com"
+      }
+    },
+    {
+      "id": "x_lambda_role_trust",
+      "kind": "attr",
+      "tier": "extra",
+      "select": {
+        "types": [
+          "AWS::IAM::Role"
+        ]
+      },
+      "cond": {
+        "path": "AssumeRolePolicyDocument.Statement.*.Principal.Service.*",
+        "op": "eq",
+        "value": "lambda.amazonaws.com"
+      }
+    },
+    {
+      "id": "x_method_no_auth",
+      "kind": "attr",
+      "tier": "extra",
+      "select": "method",
+      "cond": {
+        "path": "AuthorizationType",
+        "op": "eq",
+        "value": "NONE"
+      }
+    },
+    {
+      "id": "x_log_group_retention",
+      "kind": "attr",
+      "tier": "extra",
+      "select": {
+        "types": [
+          "AWS::Logs::LogGroup"
+        ]
+      },
+      "cond": {
+        "path": "RetentionInDays",
+        "op": "present"
+      }
+    }
+  ],
+  "notes": "lambda_python311 is kept exact: the prompt pins Python 3.11, so python3.12 and python3.14 fail it. The method checks bind the proxy integration and the function target to the method that serves POST. Handler-behaviour checks read inline code only; code in S3 has nothing to observe."
+}

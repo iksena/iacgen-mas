@@ -1,0 +1,1628 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "ce7d6fba681d6bae4a0f420b1742afb5d2ebfb910312c89b4e2386f1cffd994d",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "VPC",
+   "cfg": "VPC",
+   "type": "AWS::EC2::VPC",
+   "values": {
+    "CidrBlock": "10.0.1.0/24",
+    "EnableDnsHostnames": true,
+    "EnableDnsSupport": true,
+    "InstanceTenancy": "default",
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "KerberosEMRonEKS-VPC"
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "InternetGateway",
+   "cfg": "InternetGateway",
+   "type": "AWS::EC2::InternetGateway",
+   "values": {
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "KerberosEMRonEKS-IGW"
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "InternetGatewayAttachment",
+   "cfg": "InternetGatewayAttachment",
+   "type": "AWS::EC2::VPCGatewayAttachment",
+   "values": {
+    "InternetGatewayId": {
+     "ref": "InternetGateway"
+    },
+    "VpcId": {
+     "ref": "VPC"
+    }
+   },
+   "refs": [
+    "InternetGateway",
+    "VPC"
+   ]
+  },
+  {
+   "id": "PublicSubnet1",
+   "cfg": "PublicSubnet1",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "AvailabilityZone": "us-east-1a",
+    "CidrBlock": "10.0.1.0/26",
+    "MapPublicIpOnLaunch": false,
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "KerberosEMRonEKS Public Subnet (AZ1)"
+     },
+     {
+      "Key": "kubernetes.io/role/elb",
+      "Value": 1
+     }
+    ]
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "PublicSubnet2",
+   "cfg": "PublicSubnet2",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "AvailabilityZone": "us-east-1b",
+    "CidrBlock": "10.0.1.64/26",
+    "MapPublicIpOnLaunch": false,
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "KerberosEMRonEKS Public Subnet (AZ2)"
+     },
+     {
+      "Key": "kubernetes.io/role/elb",
+      "Value": 1
+     }
+    ]
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "PrivateSubnet1",
+   "cfg": "PrivateSubnet1",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "AvailabilityZone": "us-east-1a",
+    "CidrBlock": "10.0.1.128/26",
+    "MapPublicIpOnLaunch": false,
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "KerberosEMRonEKS Private Subnet (AZ1)"
+     },
+     {
+      "Key": "kubernetes.io/role/internal-elb",
+      "Value": 1
+     }
+    ]
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "PrivateSubnet2",
+   "cfg": "PrivateSubnet2",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "AvailabilityZone": "us-east-1b",
+    "CidrBlock": "10.0.1.192/26",
+    "MapPublicIpOnLaunch": false,
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "KerberosEMRonEKS Private Subnet (AZ2)"
+     },
+     {
+      "Key": "kubernetes.io/role/internal-elb",
+      "Value": 1
+     }
+    ]
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "NatGateway1EIP",
+   "cfg": "NatGateway1EIP",
+   "type": "AWS::EC2::EIP",
+   "values": {
+    "Domain": "vpc",
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "KerberosEMRonEKS NAT Gateway 1 EIP"
+     }
+    ],
+    "__resource__": {
+     "DependsOn": [
+      "InternetGatewayAttachment"
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "NatGateway2EIP",
+   "cfg": "NatGateway2EIP",
+   "type": "AWS::EC2::EIP",
+   "values": {
+    "Domain": "vpc",
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "KerberosEMRonEKS NAT Gateway 2 EIP"
+     }
+    ],
+    "__resource__": {
+     "DependsOn": [
+      "InternetGatewayAttachment"
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "NatGateway1",
+   "cfg": "NatGateway1",
+   "type": "AWS::EC2::NatGateway",
+   "values": {
+    "AllocationId": {
+     "ref": "NatGateway1EIP",
+     "attr": "AllocationId"
+    },
+    "SubnetId": {
+     "ref": "PublicSubnet1"
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "KerberosEMRonEKS NAT Gateway 1"
+     }
+    ]
+   },
+   "refs": [
+    "NatGateway1EIP",
+    "PublicSubnet1"
+   ]
+  },
+  {
+   "id": "NatGateway2",
+   "cfg": "NatGateway2",
+   "type": "AWS::EC2::NatGateway",
+   "values": {
+    "AllocationId": {
+     "ref": "NatGateway2EIP",
+     "attr": "AllocationId"
+    },
+    "SubnetId": {
+     "ref": "PublicSubnet2"
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "KerberosEMRonEKS NAT Gateway 2"
+     }
+    ]
+   },
+   "refs": [
+    "NatGateway2EIP",
+    "PublicSubnet2"
+   ]
+  },
+  {
+   "id": "PublicRouteTable",
+   "cfg": "PublicRouteTable",
+   "type": "AWS::EC2::RouteTable",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "KerberosEMRonEKS Public Routes"
+     }
+    ]
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "DefaultPublicRoute",
+   "cfg": "DefaultPublicRoute",
+   "type": "AWS::EC2::Route",
+   "values": {
+    "RouteTableId": {
+     "ref": "PublicRouteTable"
+    },
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "GatewayId": {
+     "ref": "InternetGateway"
+    },
+    "__resource__": {
+     "DependsOn": [
+      "InternetGatewayAttachment"
+     ]
+    }
+   },
+   "refs": [
+    "InternetGateway",
+    "PublicRouteTable"
+   ]
+  },
+  {
+   "id": "PublicSubnet1RouteTableAssociation",
+   "cfg": "PublicSubnet1RouteTableAssociation",
+   "type": "AWS::EC2::SubnetRouteTableAssociation",
+   "values": {
+    "RouteTableId": {
+     "ref": "PublicRouteTable"
+    },
+    "SubnetId": {
+     "ref": "PublicSubnet1"
+    }
+   },
+   "refs": [
+    "PublicRouteTable",
+    "PublicSubnet1"
+   ]
+  },
+  {
+   "id": "PublicSubnet2RouteTableAssociation",
+   "cfg": "PublicSubnet2RouteTableAssociation",
+   "type": "AWS::EC2::SubnetRouteTableAssociation",
+   "values": {
+    "RouteTableId": {
+     "ref": "PublicRouteTable"
+    },
+    "SubnetId": {
+     "ref": "PublicSubnet2"
+    }
+   },
+   "refs": [
+    "PublicRouteTable",
+    "PublicSubnet2"
+   ]
+  },
+  {
+   "id": "PrivateRouteTable1",
+   "cfg": "PrivateRouteTable1",
+   "type": "AWS::EC2::RouteTable",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "KerberosEMRonEKS Private Routes (AZ1)"
+     }
+    ]
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "DefaultPrivateRoute1",
+   "cfg": "DefaultPrivateRoute1",
+   "type": "AWS::EC2::Route",
+   "values": {
+    "RouteTableId": {
+     "ref": "PrivateRouteTable1"
+    },
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "NatGatewayId": {
+     "ref": "NatGateway1"
+    }
+   },
+   "refs": [
+    "NatGateway1",
+    "PrivateRouteTable1"
+   ]
+  },
+  {
+   "id": "PrivateSubnet1RouteTableAssociation",
+   "cfg": "PrivateSubnet1RouteTableAssociation",
+   "type": "AWS::EC2::SubnetRouteTableAssociation",
+   "values": {
+    "RouteTableId": {
+     "ref": "PrivateRouteTable1"
+    },
+    "SubnetId": {
+     "ref": "PrivateSubnet1"
+    }
+   },
+   "refs": [
+    "PrivateRouteTable1",
+    "PrivateSubnet1"
+   ]
+  },
+  {
+   "id": "PrivateRouteTable2",
+   "cfg": "PrivateRouteTable2",
+   "type": "AWS::EC2::RouteTable",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "KerberosEMRonEKS Private Routes (AZ2)"
+     }
+    ]
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "DefaultPrivateRoute2",
+   "cfg": "DefaultPrivateRoute2",
+   "type": "AWS::EC2::Route",
+   "values": {
+    "RouteTableId": {
+     "ref": "PrivateRouteTable2"
+    },
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "NatGatewayId": {
+     "ref": "NatGateway2"
+    }
+   },
+   "refs": [
+    "NatGateway2",
+    "PrivateRouteTable2"
+   ]
+  },
+  {
+   "id": "PrivateSubnet2RouteTableAssociation",
+   "cfg": "PrivateSubnet2RouteTableAssociation",
+   "type": "AWS::EC2::SubnetRouteTableAssociation",
+   "values": {
+    "RouteTableId": {
+     "ref": "PrivateRouteTable2"
+    },
+    "SubnetId": {
+     "ref": "PrivateSubnet2"
+    }
+   },
+   "refs": [
+    "PrivateRouteTable2",
+    "PrivateSubnet2"
+   ]
+  },
+  {
+   "id": "CommonKMSKey",
+   "cfg": "CommonKMSKey",
+   "type": "AWS::KMS::Key",
+   "values": {
+    "Description": "KMS key for encrypting VPC flow logs",
+    "EnableKeyRotation": true,
+    "KeyPolicy": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Sid": "Enable IAM User Permissions",
+       "Effect": "Allow",
+       "Principal": {
+        "AWS": [
+         "arn:aws:iam::123456789012:root"
+        ]
+       },
+       "Action": [
+        "kms:*"
+       ],
+       "Resource": [
+        "*"
+       ]
+      },
+      {
+       "Sid": "AllowAmazonCloudWatchLogs",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "logs.us-east-1.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "kms:Encrypt*",
+        "kms:Decrypt*",
+        "kms:ReEncrypt*",
+        "kms:GenerateDataKey*",
+        "kms:Describe*"
+       ],
+       "Resource": [
+        "*"
+       ]
+      }
+     ]
+    },
+    "__resource__": {
+     "DeletionPolicy": "Delete",
+     "UpdateReplacePolicy": "Delete"
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "FlowLogRole",
+   "cfg": "FlowLogRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "vpc-flow-logs.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Policies": [
+     {
+      "PolicyName": "flowlog-policy",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents",
+          "logs:DescribeLogGroups",
+          "logs:DescribeLogStreams",
+          "kms:Encrypt",
+          "kms:Decrypt",
+          "kms:ReEncrypt*",
+          "kms:GenerateDataKey*",
+          "kms:DescribeKey"
+         ],
+         "Resource": [
+          "arn:aws:logs:us-east-1:123456789012:log-group:*",
+          {
+           "ref": "CommonKMSKey",
+           "attr": "Arn"
+          }
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": [
+    "CommonKMSKey"
+   ]
+  },
+  {
+   "id": "FlowLogGroup",
+   "cfg": "FlowLogGroup",
+   "type": "AWS::Logs::LogGroup",
+   "values": {
+    "RetentionInDays": 30,
+    "KmsKeyId": {
+     "ref": "CommonKMSKey",
+     "attr": "Arn"
+    },
+    "__resource__": {
+     "DeletionPolicy": "Delete",
+     "UpdateReplacePolicy": "Delete"
+    }
+   },
+   "refs": [
+    "CommonKMSKey"
+   ]
+  },
+  {
+   "id": "VPCFlowLog",
+   "cfg": "VPCFlowLog",
+   "type": "AWS::EC2::FlowLog",
+   "values": {
+    "DeliverLogsPermissionArn": {
+     "ref": "FlowLogRole",
+     "attr": "Arn"
+    },
+    "LogGroupName": {
+     "ref": "FlowLogGroup"
+    },
+    "ResourceId": {
+     "ref": "VPC"
+    },
+    "ResourceType": "VPC",
+    "TrafficType": "ALL",
+    "Tags": [
+     {
+      "Key": "ProjectName",
+      "Value": "KerberosEMRonEKS"
+     }
+    ]
+   },
+   "refs": [
+    "FlowLogGroup",
+    "FlowLogRole",
+    "VPC"
+   ]
+  },
+  {
+   "id": "__parameter__.ProjectName",
+   "cfg": "__parameter__.ProjectName",
+   "type": "__parameter__",
+   "values": {
+    "name": "ProjectName",
+    "type": "String",
+    "default": "KerberosEMRonEKS",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.VpcCIDR",
+   "cfg": "__parameter__.VpcCIDR",
+   "type": "__parameter__",
+   "values": {
+    "name": "VpcCIDR",
+    "type": "String",
+    "default": "10.0.1.0/24",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.PublicSubnet1CIDR",
+   "cfg": "__parameter__.PublicSubnet1CIDR",
+   "type": "__parameter__",
+   "values": {
+    "name": "PublicSubnet1CIDR",
+    "type": "String",
+    "default": "10.0.1.0/26",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.PublicSubnet2CIDR",
+   "cfg": "__parameter__.PublicSubnet2CIDR",
+   "type": "__parameter__",
+   "values": {
+    "name": "PublicSubnet2CIDR",
+    "type": "String",
+    "default": "10.0.1.64/26",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.PrivateSubnet1CIDR",
+   "cfg": "__parameter__.PrivateSubnet1CIDR",
+   "type": "__parameter__",
+   "values": {
+    "name": "PrivateSubnet1CIDR",
+    "type": "String",
+    "default": "10.0.1.128/26",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.PrivateSubnet2CIDR",
+   "cfg": "__parameter__.PrivateSubnet2CIDR",
+   "type": "__parameter__",
+   "values": {
+    "name": "PrivateSubnet2CIDR",
+    "type": "String",
+    "default": "10.0.1.192/26",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.VPC",
+   "cfg": "__output__.VPC",
+   "type": "__output__",
+   "values": {
+    "name": "VPC",
+    "value": {
+     "ref": "VPC"
+    },
+    "description": "A reference to the created VPC",
+    "export": "KerberosEMRonEKS-EKS-VPC"
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "__output__.VPCCidr",
+   "cfg": "__output__.VPCCidr",
+   "type": "__output__",
+   "values": {
+    "name": "VPCCidr",
+    "value": {
+     "ref": "VPC",
+     "attr": "CidrBlock"
+    },
+    "description": "CIDR range for the VPC",
+    "export": "KerberosEMRonEKS-EKS-CIDR"
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "__output__.PublicSubnets",
+   "cfg": "__output__.PublicSubnets",
+   "type": "__output__",
+   "values": {
+    "name": "PublicSubnets",
+    "value": {
+     "Fn::Join": [
+      ",",
+      [
+       {
+        "ref": "PublicSubnet1"
+       },
+       {
+        "ref": "PublicSubnet2"
+       }
+      ]
+     ]
+    },
+    "description": "A list of the public subnets",
+    "export": null
+   },
+   "refs": [
+    "PublicSubnet1",
+    "PublicSubnet2"
+   ]
+  },
+  {
+   "id": "__output__.PrivateSubnets",
+   "cfg": "__output__.PrivateSubnets",
+   "type": "__output__",
+   "values": {
+    "name": "PrivateSubnets",
+    "value": {
+     "Fn::Join": [
+      ",",
+      [
+       {
+        "ref": "PrivateSubnet1"
+       },
+       {
+        "ref": "PrivateSubnet2"
+       }
+      ]
+     ]
+    },
+    "description": "A list of the private subnets",
+    "export": "KerberosEMRonEKS-EKS-PrivateSubnets"
+   },
+   "refs": [
+    "PrivateSubnet1",
+    "PrivateSubnet2"
+   ]
+  },
+  {
+   "id": "__output__.PublicSubnet1",
+   "cfg": "__output__.PublicSubnet1",
+   "type": "__output__",
+   "values": {
+    "name": "PublicSubnet1",
+    "value": {
+     "ref": "PublicSubnet1"
+    },
+    "description": "A reference to the public subnet in the 1st Availability Zone",
+    "export": null
+   },
+   "refs": [
+    "PublicSubnet1"
+   ]
+  },
+  {
+   "id": "__output__.PublicSubnet2",
+   "cfg": "__output__.PublicSubnet2",
+   "type": "__output__",
+   "values": {
+    "name": "PublicSubnet2",
+    "value": {
+     "ref": "PublicSubnet2"
+    },
+    "description": "A reference to the public subnet in the 2nd Availability Zone",
+    "export": null
+   },
+   "refs": [
+    "PublicSubnet2"
+   ]
+  },
+  {
+   "id": "__output__.PrivateSubnet1",
+   "cfg": "__output__.PrivateSubnet1",
+   "type": "__output__",
+   "values": {
+    "name": "PrivateSubnet1",
+    "value": {
+     "ref": "PrivateSubnet1"
+    },
+    "description": "A reference to the private subnet in the 1st Availability Zone",
+    "export": null
+   },
+   "refs": [
+    "PrivateSubnet1"
+   ]
+  },
+  {
+   "id": "__output__.PrivateSubnet2",
+   "cfg": "__output__.PrivateSubnet2",
+   "type": "__output__",
+   "values": {
+    "name": "PrivateSubnet2",
+    "value": {
+     "ref": "PrivateSubnet2"
+    },
+    "description": "A reference to the private subnet in the 2nd Availability Zone",
+    "export": null
+   },
+   "refs": [
+    "PrivateSubnet2"
+   ]
+  },
+  {
+   "id": "__output__.NatGateway1",
+   "cfg": "__output__.NatGateway1",
+   "type": "__output__",
+   "values": {
+    "name": "NatGateway1",
+    "value": {
+     "ref": "NatGateway1"
+    },
+    "description": "A reference to the NAT Gateway 1",
+    "export": null
+   },
+   "refs": [
+    "NatGateway1"
+   ]
+  },
+  {
+   "id": "__output__.NatGateway2",
+   "cfg": "__output__.NatGateway2",
+   "type": "__output__",
+   "values": {
+    "name": "NatGateway2",
+    "value": {
+     "ref": "NatGateway2"
+    },
+    "description": "A reference to the NAT Gateway 2",
+    "export": null
+   },
+   "refs": [
+    "NatGateway2"
+   ]
+  },
+  {
+   "id": "__output__.CommonKMSKeyArn",
+   "cfg": "__output__.CommonKMSKeyArn",
+   "type": "__output__",
+   "values": {
+    "name": "CommonKMSKeyArn",
+    "value": {
+     "ref": "CommonKMSKey",
+     "attr": "Arn"
+    },
+    "description": "ARN of the KMS key used for encryption",
+    "export": null
+   },
+   "refs": [
+    "CommonKMSKey"
+   ]
+  },
+  {
+   "id": "__output__.RouteTable",
+   "cfg": "__output__.RouteTable",
+   "type": "__output__",
+   "values": {
+    "name": "RouteTable",
+    "value": {
+     "ref": "PublicRouteTable"
+    },
+    "description": "Route Table ID",
+    "export": "KerberosEMRonEKS-EKS-RouteTable"
+   },
+   "refs": [
+    "PublicRouteTable"
+   ]
+  },
+  {
+   "id": "__output__.PrivateRouteTable1",
+   "cfg": "__output__.PrivateRouteTable1",
+   "type": "__output__",
+   "values": {
+    "name": "PrivateRouteTable1",
+    "value": {
+     "ref": "PrivateRouteTable1"
+    },
+    "description": "Private Route Table 1 ID",
+    "export": "KerberosEMRonEKS-EKS-PrivateRouteTable1"
+   },
+   "refs": [
+    "PrivateRouteTable1"
+   ]
+  },
+  {
+   "id": "__output__.PrivateRouteTable2",
+   "cfg": "__output__.PrivateRouteTable2",
+   "type": "__output__",
+   "values": {
+    "name": "PrivateRouteTable2",
+    "value": {
+     "ref": "PrivateRouteTable2"
+    },
+    "description": "Private Route Table 2 ID",
+    "export": "KerberosEMRonEKS-EKS-PrivateRouteTable2"
+   },
+   "refs": [
+    "PrivateRouteTable2"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPC.VPC",
+   "cfg": "VPC",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::VPC",
+    "name": "VPC",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "CidrBlock": "10.0.1.0/24",
+     "EnableDnsHostnames": true,
+     "EnableDnsSupport": true,
+     "InstanceTenancy": "default",
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "KerberosEMRonEKS-VPC"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::InternetGateway.InternetGateway",
+   "cfg": "InternetGateway",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::InternetGateway",
+    "name": "InternetGateway",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "KerberosEMRonEKS-IGW"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCGatewayAttachment.InternetGatewayAttachment",
+   "cfg": "InternetGatewayAttachment",
+   "type": "__declared__",
+   "refs": [
+    "InternetGateway",
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::VPCGatewayAttachment",
+    "name": "InternetGatewayAttachment",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "InternetGatewayId": {
+      "ref": "InternetGateway"
+     },
+     "VpcId": {
+      "ref": "VPC"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.PublicSubnet1",
+   "cfg": "PublicSubnet1",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "PublicSubnet1",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "AvailabilityZone": "us-east-1a",
+     "CidrBlock": "10.0.1.0/26",
+     "MapPublicIpOnLaunch": false,
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "KerberosEMRonEKS Public Subnet (AZ1)"
+      },
+      {
+       "Key": "kubernetes.io/role/elb",
+       "Value": 1
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.PublicSubnet2",
+   "cfg": "PublicSubnet2",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "PublicSubnet2",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "AvailabilityZone": "us-east-1b",
+     "CidrBlock": "10.0.1.64/26",
+     "MapPublicIpOnLaunch": false,
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "KerberosEMRonEKS Public Subnet (AZ2)"
+      },
+      {
+       "Key": "kubernetes.io/role/elb",
+       "Value": 1
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.PrivateSubnet1",
+   "cfg": "PrivateSubnet1",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "PrivateSubnet1",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "AvailabilityZone": "us-east-1a",
+     "CidrBlock": "10.0.1.128/26",
+     "MapPublicIpOnLaunch": false,
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "KerberosEMRonEKS Private Subnet (AZ1)"
+      },
+      {
+       "Key": "kubernetes.io/role/internal-elb",
+       "Value": 1
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.PrivateSubnet2",
+   "cfg": "PrivateSubnet2",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "PrivateSubnet2",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "AvailabilityZone": "us-east-1b",
+     "CidrBlock": "10.0.1.192/26",
+     "MapPublicIpOnLaunch": false,
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "KerberosEMRonEKS Private Subnet (AZ2)"
+      },
+      {
+       "Key": "kubernetes.io/role/internal-elb",
+       "Value": 1
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::EIP.NatGateway1EIP",
+   "cfg": "NatGateway1EIP",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::EIP",
+    "name": "NatGateway1EIP",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Domain": "vpc",
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "KerberosEMRonEKS NAT Gateway 1 EIP"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::EIP.NatGateway2EIP",
+   "cfg": "NatGateway2EIP",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::EIP",
+    "name": "NatGateway2EIP",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Domain": "vpc",
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "KerberosEMRonEKS NAT Gateway 2 EIP"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::NatGateway.NatGateway1",
+   "cfg": "NatGateway1",
+   "type": "__declared__",
+   "refs": [
+    "NatGateway1EIP",
+    "PublicSubnet1"
+   ],
+   "values": {
+    "type": "AWS::EC2::NatGateway",
+    "name": "NatGateway1",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AllocationId": {
+      "ref": "NatGateway1EIP",
+      "attr": "AllocationId"
+     },
+     "SubnetId": {
+      "ref": "PublicSubnet1"
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "KerberosEMRonEKS NAT Gateway 1"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::NatGateway.NatGateway2",
+   "cfg": "NatGateway2",
+   "type": "__declared__",
+   "refs": [
+    "NatGateway2EIP",
+    "PublicSubnet2"
+   ],
+   "values": {
+    "type": "AWS::EC2::NatGateway",
+    "name": "NatGateway2",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AllocationId": {
+      "ref": "NatGateway2EIP",
+      "attr": "AllocationId"
+     },
+     "SubnetId": {
+      "ref": "PublicSubnet2"
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "KerberosEMRonEKS NAT Gateway 2"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::RouteTable.PublicRouteTable",
+   "cfg": "PublicRouteTable",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::RouteTable",
+    "name": "PublicRouteTable",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "KerberosEMRonEKS Public Routes"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Route.DefaultPublicRoute",
+   "cfg": "DefaultPublicRoute",
+   "type": "__declared__",
+   "refs": [
+    "InternetGateway",
+    "PublicRouteTable"
+   ],
+   "values": {
+    "type": "AWS::EC2::Route",
+    "name": "DefaultPublicRoute",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RouteTableId": {
+      "ref": "PublicRouteTable"
+     },
+     "DestinationCidrBlock": "0.0.0.0/0",
+     "GatewayId": {
+      "ref": "InternetGateway"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetRouteTableAssociation.PublicSubnet1RouteTableAssociation",
+   "cfg": "PublicSubnet1RouteTableAssociation",
+   "type": "__declared__",
+   "refs": [
+    "PublicRouteTable",
+    "PublicSubnet1"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetRouteTableAssociation",
+    "name": "PublicSubnet1RouteTableAssociation",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RouteTableId": {
+      "ref": "PublicRouteTable"
+     },
+     "SubnetId": {
+      "ref": "PublicSubnet1"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetRouteTableAssociation.PublicSubnet2RouteTableAssociation",
+   "cfg": "PublicSubnet2RouteTableAssociation",
+   "type": "__declared__",
+   "refs": [
+    "PublicRouteTable",
+    "PublicSubnet2"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetRouteTableAssociation",
+    "name": "PublicSubnet2RouteTableAssociation",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RouteTableId": {
+      "ref": "PublicRouteTable"
+     },
+     "SubnetId": {
+      "ref": "PublicSubnet2"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::RouteTable.PrivateRouteTable1",
+   "cfg": "PrivateRouteTable1",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::RouteTable",
+    "name": "PrivateRouteTable1",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "KerberosEMRonEKS Private Routes (AZ1)"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Route.DefaultPrivateRoute1",
+   "cfg": "DefaultPrivateRoute1",
+   "type": "__declared__",
+   "refs": [
+    "NatGateway1",
+    "PrivateRouteTable1"
+   ],
+   "values": {
+    "type": "AWS::EC2::Route",
+    "name": "DefaultPrivateRoute1",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RouteTableId": {
+      "ref": "PrivateRouteTable1"
+     },
+     "DestinationCidrBlock": "0.0.0.0/0",
+     "NatGatewayId": {
+      "ref": "NatGateway1"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetRouteTableAssociation.PrivateSubnet1RouteTableAssociation",
+   "cfg": "PrivateSubnet1RouteTableAssociation",
+   "type": "__declared__",
+   "refs": [
+    "PrivateRouteTable1",
+    "PrivateSubnet1"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetRouteTableAssociation",
+    "name": "PrivateSubnet1RouteTableAssociation",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RouteTableId": {
+      "ref": "PrivateRouteTable1"
+     },
+     "SubnetId": {
+      "ref": "PrivateSubnet1"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::RouteTable.PrivateRouteTable2",
+   "cfg": "PrivateRouteTable2",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::RouteTable",
+    "name": "PrivateRouteTable2",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "KerberosEMRonEKS Private Routes (AZ2)"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Route.DefaultPrivateRoute2",
+   "cfg": "DefaultPrivateRoute2",
+   "type": "__declared__",
+   "refs": [
+    "NatGateway2",
+    "PrivateRouteTable2"
+   ],
+   "values": {
+    "type": "AWS::EC2::Route",
+    "name": "DefaultPrivateRoute2",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RouteTableId": {
+      "ref": "PrivateRouteTable2"
+     },
+     "DestinationCidrBlock": "0.0.0.0/0",
+     "NatGatewayId": {
+      "ref": "NatGateway2"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetRouteTableAssociation.PrivateSubnet2RouteTableAssociation",
+   "cfg": "PrivateSubnet2RouteTableAssociation",
+   "type": "__declared__",
+   "refs": [
+    "PrivateRouteTable2",
+    "PrivateSubnet2"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetRouteTableAssociation",
+    "name": "PrivateSubnet2RouteTableAssociation",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RouteTableId": {
+      "ref": "PrivateRouteTable2"
+     },
+     "SubnetId": {
+      "ref": "PrivateSubnet2"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::KMS::Key.CommonKMSKey",
+   "cfg": "CommonKMSKey",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::KMS::Key",
+    "name": "CommonKMSKey",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Description": "KMS key for encrypting VPC flow logs",
+     "EnableKeyRotation": true,
+     "KeyPolicy": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Sid": "Enable IAM User Permissions",
+        "Effect": "Allow",
+        "Principal": {
+         "AWS": [
+          "arn:aws:iam::123456789012:root"
+         ]
+        },
+        "Action": [
+         "kms:*"
+        ],
+        "Resource": [
+         "*"
+        ]
+       },
+       {
+        "Sid": "AllowAmazonCloudWatchLogs",
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "logs.us-east-1.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "kms:Encrypt*",
+         "kms:Decrypt*",
+         "kms:ReEncrypt*",
+         "kms:GenerateDataKey*",
+         "kms:Describe*"
+        ],
+        "Resource": [
+         "*"
+        ]
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.FlowLogRole",
+   "cfg": "FlowLogRole",
+   "type": "__declared__",
+   "refs": [
+    "CommonKMSKey"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "FlowLogRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "vpc-flow-logs.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Policies": [
+      {
+       "PolicyName": "flowlog-policy",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "logs:CreateLogGroup",
+           "logs:CreateLogStream",
+           "logs:PutLogEvents",
+           "logs:DescribeLogGroups",
+           "logs:DescribeLogStreams",
+           "kms:Encrypt",
+           "kms:Decrypt",
+           "kms:ReEncrypt*",
+           "kms:GenerateDataKey*",
+           "kms:DescribeKey"
+          ],
+          "Resource": [
+           "arn:aws:logs:us-east-1:123456789012:log-group:*",
+           {
+            "ref": "CommonKMSKey",
+            "attr": "Arn"
+           }
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::LogGroup.FlowLogGroup",
+   "cfg": "FlowLogGroup",
+   "type": "__declared__",
+   "refs": [
+    "CommonKMSKey"
+   ],
+   "values": {
+    "type": "AWS::Logs::LogGroup",
+    "name": "FlowLogGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RetentionInDays": 30,
+     "KmsKeyId": {
+      "ref": "CommonKMSKey",
+      "attr": "Arn"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::FlowLog.VPCFlowLog",
+   "cfg": "VPCFlowLog",
+   "type": "__declared__",
+   "refs": [
+    "FlowLogGroup",
+    "FlowLogRole",
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::FlowLog",
+    "name": "VPCFlowLog",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "DeliverLogsPermissionArn": {
+      "ref": "FlowLogRole",
+      "attr": "Arn"
+     },
+     "LogGroupName": {
+      "ref": "FlowLogGroup"
+     },
+     "ResourceId": {
+      "ref": "VPC"
+     },
+     "ResourceType": "VPC",
+     "TrafficType": "ALL",
+     "Tags": [
+      {
+       "Key": "ProjectName",
+       "Value": "KerberosEMRonEKS"
+      }
+     ]
+    }
+   }
+  }
+ ]
+}

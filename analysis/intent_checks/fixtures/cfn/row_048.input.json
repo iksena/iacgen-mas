@@ -1,0 +1,353 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "4114a8b866d85fc582edf807e8eb27ee0417dcfbdd6200c027176cf685e8f9c2",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "ParameterA",
+   "cfg": "ParameterA",
+   "type": "AWS::SSM::Parameter",
+   "values": {
+    "Name": "/stack/key/a",
+    "Type": "String",
+    "Value": "This is A",
+    "Description": "Just an example parameter"
+   },
+   "refs": []
+  },
+  {
+   "id": "ParameterB",
+   "cfg": "ParameterB",
+   "type": "AWS::SSM::Parameter",
+   "values": {
+    "Name": "/stack/key/b",
+    "Type": "String",
+    "Value": "This is B",
+    "Description": "Just an example parameter"
+   },
+   "refs": []
+  },
+  {
+   "id": "SecretC",
+   "cfg": "SecretC",
+   "type": "AWS::SecretsManager::Secret",
+   "values": {
+    "Name": "/stack/key/c",
+    "Description": "This secret has a dynamically generated secret password.",
+    "GenerateSecretString": {
+     "SecretStringTemplate": "{\"username\": \"test-user\"}",
+     "GenerateStringKey": "password",
+     "PasswordLength": 30,
+     "ExcludeCharacters": "\"@/\\"
+    },
+    "Tags": [
+     {
+      "Key": "AppName",
+      "Value": "AppB"
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "MyLambda",
+   "cfg": "MyLambda",
+   "type": "AWS::Lambda::Function",
+   "values": {
+    "FunctionName": "ParameterStoreDemo",
+    "Description": "Illustrates how to  retrieve parameters from SSM parameter store and secrets manager",
+    "MemorySize": 128,
+    "Timeout": 10,
+    "Role": {
+     "ref": "LambdaFunctionRole",
+     "attr": "Arn"
+    },
+    "Runtime": "python3.12",
+    "Handler": "index.lambda_handler",
+    "Environment": {
+     "Variables": {
+      "PREFIX": "stack"
+     }
+    },
+    "Code": {
+     "ZipFile": "from __future__ import print_function\nimport os\nimport boto3\nprint('Loading function')\nssm = boto3.client('ssm')\nsecrets = boto3.client('secretsmanager')\n\ndef lambda_handler(event, context):\n\n  # This code will retrieve and decrypt all parameters matching the given prefix:\n  path = \"/\" + os.getenv('PREFIX')\n  response = ssm.get_parameters_by_path(\n    Path=path,\n    Recursive=True,\n    WithDecryption=True )\n\n  for parameter in response['Parameters']:\n    print('Parameter {} = {}'.format(parameter['Name'],parameter['Value'] ))\n\n  # This code will retrieve all secrets which match the prefix.  But it does not provide values or decrypt:\n  secretList = secrets.list_secrets(\n      Filters=[{ 'Key': 'name', 'Values': [ path  ] }]\n  )\n\n  # Using secrets manager, separate calls are needed to retrieve and decrypt individual secret values:\n  for secret in secretList['SecretList']:\n    name = secret['Name']\n    response = secrets.get_secret_value(\n        SecretId=name\n    )\n    print('Secret {} = {}'.format(name,response['SecretString'] ))\n\n# Note: you can retrieve individual secrets from secret manager via the parameter store's get_parameter call.\n# You only need to prefix the secret with: \"/aws/reference/secretsmanager/\"\n# However, you can't LIST the secrets using get_parameters_by_path, and you can't retrieve the secret if it contains a \"/\"\n"
+    }
+   },
+   "refs": [
+    "LambdaFunctionRole"
+   ]
+  },
+  {
+   "id": "LambdaFunctionRole",
+   "cfg": "LambdaFunctionRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "stack-ParameterStoreLambdaRole",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "LambdaFunctionPolicy",
+   "cfg": "LambdaFunctionPolicy",
+   "type": "AWS::IAM::Policy",
+   "values": {
+    "PolicyName": "stack-ParameterStoreLambdaPolicy",
+    "PolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Action": [
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents",
+        "ssm:Describe*",
+        "ssm:Get*",
+        "ssm:List*",
+        "secretsmanager:ListSecrets",
+        "secretsmanager:GetSecretValue"
+       ],
+       "Resource": [
+        "*"
+       ]
+      }
+     ]
+    },
+    "Roles": [
+     {
+      "ref": "LambdaFunctionRole"
+     }
+    ]
+   },
+   "refs": [
+    "LambdaFunctionRole"
+   ]
+  },
+  {
+   "id": "__output__.ParameterAValue",
+   "cfg": "__output__.ParameterAValue",
+   "type": "__output__",
+   "values": {
+    "name": "ParameterAValue",
+    "value": {
+     "ref": "ParameterA",
+     "attr": "Value"
+    },
+    "description": "The value of parameter A.",
+    "export": null
+   },
+   "refs": [
+    "ParameterA"
+   ]
+  },
+  {
+   "id": "__output__.ParameterBValue",
+   "cfg": "__output__.ParameterBValue",
+   "type": "__output__",
+   "values": {
+    "name": "ParameterBValue",
+    "value": {
+     "ref": "ParameterB",
+     "attr": "Value"
+    },
+    "description": "The value of parameter B.",
+    "export": null
+   },
+   "refs": [
+    "ParameterB"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::SSM::Parameter.ParameterA",
+   "cfg": "ParameterA",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::SSM::Parameter",
+    "name": "ParameterA",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "/stack/key/a",
+     "Type": "String",
+     "Value": "This is A",
+     "Description": "Just an example parameter"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SSM::Parameter.ParameterB",
+   "cfg": "ParameterB",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::SSM::Parameter",
+    "name": "ParameterB",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "/stack/key/b",
+     "Type": "String",
+     "Value": "This is B",
+     "Description": "Just an example parameter"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SecretsManager::Secret.SecretC",
+   "cfg": "SecretC",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::SecretsManager::Secret",
+    "name": "SecretC",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "/stack/key/c",
+     "Description": "This secret has a dynamically generated secret password.",
+     "GenerateSecretString": {
+      "SecretStringTemplate": "{\"username\": \"test-user\"}",
+      "GenerateStringKey": "password",
+      "PasswordLength": 30,
+      "ExcludeCharacters": "\"@/\\"
+     },
+     "Tags": [
+      {
+       "Key": "AppName",
+       "Value": "AppB"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Function.MyLambda",
+   "cfg": "MyLambda",
+   "type": "__declared__",
+   "refs": [
+    "LambdaFunctionRole"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Function",
+    "name": "MyLambda",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "FunctionName": "ParameterStoreDemo",
+     "Description": "Illustrates how to  retrieve parameters from SSM parameter store and secrets manager",
+     "MemorySize": 128,
+     "Timeout": 10,
+     "Role": {
+      "ref": "LambdaFunctionRole",
+      "attr": "Arn"
+     },
+     "Runtime": "python3.12",
+     "Handler": "index.lambda_handler",
+     "Environment": {
+      "Variables": {
+       "PREFIX": "stack"
+      }
+     },
+     "Code": {
+      "ZipFile": "from __future__ import print_function\nimport os\nimport boto3\nprint('Loading function')\nssm = boto3.client('ssm')\nsecrets = boto3.client('secretsmanager')\n\ndef lambda_handler(event, context):\n\n  # This code will retrieve and decrypt all parameters matching the given prefix:\n  path = \"/\" + os.getenv('PREFIX')\n  response = ssm.get_parameters_by_path(\n    Path=path,\n    Recursive=True,\n    WithDecryption=True )\n\n  for parameter in response['Parameters']:\n    print('Parameter {} = {}'.format(parameter['Name'],parameter['Value'] ))\n\n  # This code will retrieve all secrets which match the prefix.  But it does not provide values or decrypt:\n  secretList = secrets.list_secrets(\n      Filters=[{ 'Key': 'name', 'Values': [ path  ] }]\n  )\n\n  # Using secrets manager, separate calls are needed to retrieve and decrypt individual secret values:\n  for secret in secretList['SecretList']:\n    name = secret['Name']\n    response = secrets.get_secret_value(\n        SecretId=name\n    )\n    print('Secret {} = {}'.format(name,response['SecretString'] ))\n\n# Note: you can retrieve individual secrets from secret manager via the parameter store's get_parameter call.\n# You only need to prefix the secret with: \"/aws/reference/secretsmanager/\"\n# However, you can't LIST the secrets using get_parameters_by_path, and you can't retrieve the secret if it contains a \"/\"\n"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.LambdaFunctionRole",
+   "cfg": "LambdaFunctionRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "LambdaFunctionRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "stack-ParameterStoreLambdaRole",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Policy.LambdaFunctionPolicy",
+   "cfg": "LambdaFunctionPolicy",
+   "type": "__declared__",
+   "refs": [
+    "LambdaFunctionRole"
+   ],
+   "values": {
+    "type": "AWS::IAM::Policy",
+    "name": "LambdaFunctionPolicy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "PolicyName": "stack-ParameterStoreLambdaPolicy",
+     "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Action": [
+         "logs:CreateLogGroup",
+         "logs:CreateLogStream",
+         "logs:PutLogEvents",
+         "ssm:Describe*",
+         "ssm:Get*",
+         "ssm:List*",
+         "secretsmanager:ListSecrets",
+         "secretsmanager:GetSecretValue"
+        ],
+        "Resource": [
+         "*"
+        ]
+       }
+      ]
+     },
+     "Roles": [
+      {
+       "ref": "LambdaFunctionRole"
+      }
+     ]
+    }
+   }
+  }
+ ]
+}

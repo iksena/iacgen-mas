@@ -1,0 +1,911 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "51af94481ed83c0917e8d12776d27374a7a1d8302d56cfa96ac25b931f688423",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "UsersVpc",
+   "cfg": "UsersVpc",
+   "type": "AWS::EC2::VPC",
+   "values": {
+    "CidrBlock": "10.50.0.0/16",
+    "EnableDnsSupport": true,
+    "EnableDnsHostnames": true
+   },
+   "refs": []
+  },
+  {
+   "id": "UsersSubnet",
+   "cfg": "UsersSubnet",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "VpcId": {
+     "ref": "UsersVpc"
+    },
+    "CidrBlock": "10.50.1.0/24",
+    "AvailabilityZone": "us-east-1a"
+   },
+   "refs": [
+    "UsersVpc"
+   ]
+  },
+  {
+   "id": "UsersRouteTable",
+   "cfg": "UsersRouteTable",
+   "type": "AWS::EC2::RouteTable",
+   "values": {
+    "VpcId": {
+     "ref": "UsersVpc"
+    }
+   },
+   "refs": [
+    "UsersVpc"
+   ]
+  },
+  {
+   "id": "UsersSubnetRouteTableAssociation",
+   "cfg": "UsersSubnetRouteTableAssociation",
+   "type": "AWS::EC2::SubnetRouteTableAssociation",
+   "values": {
+    "SubnetId": {
+     "ref": "UsersSubnet"
+    },
+    "RouteTableId": {
+     "ref": "UsersRouteTable"
+    }
+   },
+   "refs": [
+    "UsersRouteTable",
+    "UsersSubnet"
+   ]
+  },
+  {
+   "id": "FogVpc",
+   "cfg": "FogVpc",
+   "type": "AWS::EC2::VPC",
+   "values": {
+    "CidrBlock": "10.60.0.0/16",
+    "EnableDnsSupport": true,
+    "EnableDnsHostnames": true
+   },
+   "refs": []
+  },
+  {
+   "id": "FogSubnet",
+   "cfg": "FogSubnet",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "VpcId": {
+     "ref": "FogVpc"
+    },
+    "CidrBlock": "10.60.1.0/24",
+    "AvailabilityZone": "us-east-1a"
+   },
+   "refs": [
+    "FogVpc"
+   ]
+  },
+  {
+   "id": "FogRouteTable",
+   "cfg": "FogRouteTable",
+   "type": "AWS::EC2::RouteTable",
+   "values": {
+    "VpcId": {
+     "ref": "FogVpc"
+    }
+   },
+   "refs": [
+    "FogVpc"
+   ]
+  },
+  {
+   "id": "FogSubnetRouteTableAssociation",
+   "cfg": "FogSubnetRouteTableAssociation",
+   "type": "AWS::EC2::SubnetRouteTableAssociation",
+   "values": {
+    "SubnetId": {
+     "ref": "FogSubnet"
+    },
+    "RouteTableId": {
+     "ref": "FogRouteTable"
+    }
+   },
+   "refs": [
+    "FogRouteTable",
+    "FogSubnet"
+   ]
+  },
+  {
+   "id": "S3GatewayEndpointUsers2",
+   "cfg": "S3GatewayEndpointUsers2",
+   "type": "AWS::EC2::VPCEndpoint",
+   "values": {
+    "VpcEndpointType": "Gateway",
+    "VpcId": {
+     "ref": "UsersVpc"
+    },
+    "ServiceName": "com.amazonaws.us-east-1.s3",
+    "PolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": "*",
+       "Action": [
+        "s3:*"
+       ],
+       "Resource": [
+        "*"
+       ]
+      }
+     ]
+    },
+    "RouteTableIds": [
+     {
+      "ref": "UsersRouteTable"
+     }
+    ]
+   },
+   "refs": [
+    "UsersRouteTable",
+    "UsersVpc"
+   ]
+  },
+  {
+   "id": "S3GatewayEndpointFog",
+   "cfg": "S3GatewayEndpointFog",
+   "type": "AWS::EC2::VPCEndpoint",
+   "values": {
+    "VpcEndpointType": "Gateway",
+    "VpcId": {
+     "ref": "FogVpc"
+    },
+    "ServiceName": "com.amazonaws.us-east-1.s3",
+    "PolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": "*",
+       "Action": [
+        "s3:*"
+       ],
+       "Resource": [
+        "*"
+       ]
+      }
+     ]
+    },
+    "RouteTableIds": [
+     {
+      "ref": "FogRouteTable"
+     }
+    ]
+   },
+   "refs": [
+    "FogRouteTable",
+    "FogVpc"
+   ]
+  },
+  {
+   "id": "SecretsManagerGatewayEndpointFog",
+   "cfg": "SecretsManagerGatewayEndpointFog",
+   "type": "AWS::EC2::VPCEndpoint",
+   "values": {
+    "VpcEndpointType": "Interface",
+    "VpcId": {
+     "ref": "FogVpc"
+    },
+    "SubnetIds": [
+     {
+      "ref": "FogSubnet"
+     }
+    ],
+    "ServiceName": "com.amazonaws.us-east-1.secretsmanager",
+    "PolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": "*",
+       "Action": [
+        "secretsmanager:*"
+       ],
+       "Resource": [
+        "*"
+       ]
+      }
+     ]
+    }
+   },
+   "refs": [
+    "FogSubnet",
+    "FogVpc"
+   ]
+  },
+  {
+   "id": "KmsGatewayEndpointUsers",
+   "cfg": "KmsGatewayEndpointUsers",
+   "type": "AWS::EC2::VPCEndpoint",
+   "values": {
+    "VpcEndpointType": "Interface",
+    "VpcId": {
+     "ref": "UsersVpc"
+    },
+    "SubnetIds": [
+     {
+      "ref": "UsersSubnet"
+     }
+    ],
+    "ServiceName": "com.amazonaws.us-east-1.kms",
+    "PolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": "*",
+       "Action": [
+        "kms:GenerateDataKey"
+       ],
+       "Resource": [
+        "*"
+       ]
+      }
+     ]
+    }
+   },
+   "refs": [
+    "UsersSubnet",
+    "UsersVpc"
+   ]
+  },
+  {
+   "id": "KmsGatewayEndpointFog",
+   "cfg": "KmsGatewayEndpointFog",
+   "type": "AWS::EC2::VPCEndpoint",
+   "values": {
+    "VpcEndpointType": "Interface",
+    "VpcId": {
+     "ref": "FogVpc"
+    },
+    "SubnetIds": [
+     {
+      "ref": "FogSubnet"
+     }
+    ],
+    "ServiceName": "com.amazonaws.us-east-1.kms",
+    "PolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": "*",
+       "Action": [
+        "kms:GenerateDataKey",
+        "kafka:ListScramSecrets"
+       ],
+       "Resource": [
+        "*"
+       ]
+      }
+     ]
+    }
+   },
+   "refs": [
+    "FogSubnet",
+    "FogVpc"
+   ]
+  },
+  {
+   "id": "EventsGatewayEndpointFog",
+   "cfg": "EventsGatewayEndpointFog",
+   "type": "AWS::EC2::VPCEndpoint",
+   "values": {
+    "VpcEndpointType": "Interface",
+    "VpcId": {
+     "ref": "FogVpc"
+    },
+    "SubnetIds": [
+     {
+      "ref": "FogSubnet"
+     }
+    ],
+    "ServiceName": "com.amazonaws.us-east-1.events",
+    "PolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": "*",
+       "Action": [
+        "events:*",
+        "pipes:*"
+       ],
+       "Resource": [
+        "*"
+       ]
+      }
+     ]
+    }
+   },
+   "refs": [
+    "FogSubnet",
+    "FogVpc"
+   ]
+  },
+  {
+   "id": "StsGatewayEndpointFog",
+   "cfg": "StsGatewayEndpointFog",
+   "type": "AWS::EC2::VPCEndpoint",
+   "values": {
+    "VpcEndpointType": "Interface",
+    "VpcId": {
+     "ref": "FogVpc"
+    },
+    "SubnetIds": [
+     {
+      "ref": "FogSubnet"
+     }
+    ],
+    "ServiceName": "com.amazonaws.us-east-1.sts",
+    "PolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": "*",
+       "Action": [
+        "*"
+       ],
+       "Resource": [
+        "*"
+       ]
+      }
+     ]
+    }
+   },
+   "refs": [
+    "FogSubnet",
+    "FogVpc"
+   ]
+  },
+  {
+   "id": "LambdaGatewayEndpointFog",
+   "cfg": "LambdaGatewayEndpointFog",
+   "type": "AWS::EC2::VPCEndpoint",
+   "values": {
+    "VpcEndpointType": "Interface",
+    "VpcId": {
+     "ref": "FogVpc"
+    },
+    "SubnetIds": [
+     {
+      "ref": "FogSubnet"
+     }
+    ],
+    "ServiceName": "com.amazonaws.us-east-1.lambda",
+    "PolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": "*",
+       "Action": [
+        "*"
+       ],
+       "Resource": [
+        "*"
+       ]
+      }
+     ]
+    }
+   },
+   "refs": [
+    "FogSubnet",
+    "FogVpc"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPC.UsersVpc",
+   "cfg": "UsersVpc",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::VPC",
+    "name": "UsersVpc",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "CidrBlock": "10.50.0.0/16",
+     "EnableDnsSupport": true,
+     "EnableDnsHostnames": true
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.UsersSubnet",
+   "cfg": "UsersSubnet",
+   "type": "__declared__",
+   "refs": [
+    "UsersVpc"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "UsersSubnet",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "UsersVpc"
+     },
+     "CidrBlock": "10.50.1.0/24",
+     "AvailabilityZone": "us-east-1a"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::RouteTable.UsersRouteTable",
+   "cfg": "UsersRouteTable",
+   "type": "__declared__",
+   "refs": [
+    "UsersVpc"
+   ],
+   "values": {
+    "type": "AWS::EC2::RouteTable",
+    "name": "UsersRouteTable",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "UsersVpc"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetRouteTableAssociation.UsersSubnetRouteTableAssociation",
+   "cfg": "UsersSubnetRouteTableAssociation",
+   "type": "__declared__",
+   "refs": [
+    "UsersRouteTable",
+    "UsersSubnet"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetRouteTableAssociation",
+    "name": "UsersSubnetRouteTableAssociation",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "SubnetId": {
+      "ref": "UsersSubnet"
+     },
+     "RouteTableId": {
+      "ref": "UsersRouteTable"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPC.FogVpc",
+   "cfg": "FogVpc",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::VPC",
+    "name": "FogVpc",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "CidrBlock": "10.60.0.0/16",
+     "EnableDnsSupport": true,
+     "EnableDnsHostnames": true
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.FogSubnet",
+   "cfg": "FogSubnet",
+   "type": "__declared__",
+   "refs": [
+    "FogVpc"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "FogSubnet",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "FogVpc"
+     },
+     "CidrBlock": "10.60.1.0/24",
+     "AvailabilityZone": "us-east-1a"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::RouteTable.FogRouteTable",
+   "cfg": "FogRouteTable",
+   "type": "__declared__",
+   "refs": [
+    "FogVpc"
+   ],
+   "values": {
+    "type": "AWS::EC2::RouteTable",
+    "name": "FogRouteTable",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "FogVpc"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetRouteTableAssociation.FogSubnetRouteTableAssociation",
+   "cfg": "FogSubnetRouteTableAssociation",
+   "type": "__declared__",
+   "refs": [
+    "FogRouteTable",
+    "FogSubnet"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetRouteTableAssociation",
+    "name": "FogSubnetRouteTableAssociation",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "SubnetId": {
+      "ref": "FogSubnet"
+     },
+     "RouteTableId": {
+      "ref": "FogRouteTable"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCEndpoint.S3GatewayEndpointUsers2",
+   "cfg": "S3GatewayEndpointUsers2",
+   "type": "__declared__",
+   "refs": [
+    "UsersRouteTable",
+    "UsersVpc"
+   ],
+   "values": {
+    "type": "AWS::EC2::VPCEndpoint",
+    "name": "S3GatewayEndpointUsers2",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcEndpointType": "Gateway",
+     "VpcId": {
+      "ref": "UsersVpc"
+     },
+     "ServiceName": "com.amazonaws.us-east-1.s3",
+     "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": "*",
+        "Action": [
+         "s3:*"
+        ],
+        "Resource": [
+         "*"
+        ]
+       }
+      ]
+     },
+     "RouteTableIds": [
+      {
+       "ref": "UsersRouteTable"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCEndpoint.S3GatewayEndpointFog",
+   "cfg": "S3GatewayEndpointFog",
+   "type": "__declared__",
+   "refs": [
+    "FogRouteTable",
+    "FogVpc"
+   ],
+   "values": {
+    "type": "AWS::EC2::VPCEndpoint",
+    "name": "S3GatewayEndpointFog",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcEndpointType": "Gateway",
+     "VpcId": {
+      "ref": "FogVpc"
+     },
+     "ServiceName": "com.amazonaws.us-east-1.s3",
+     "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": "*",
+        "Action": [
+         "s3:*"
+        ],
+        "Resource": [
+         "*"
+        ]
+       }
+      ]
+     },
+     "RouteTableIds": [
+      {
+       "ref": "FogRouteTable"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCEndpoint.SecretsManagerGatewayEndpointFog",
+   "cfg": "SecretsManagerGatewayEndpointFog",
+   "type": "__declared__",
+   "refs": [
+    "FogSubnet",
+    "FogVpc"
+   ],
+   "values": {
+    "type": "AWS::EC2::VPCEndpoint",
+    "name": "SecretsManagerGatewayEndpointFog",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcEndpointType": "Interface",
+     "VpcId": {
+      "ref": "FogVpc"
+     },
+     "SubnetIds": [
+      {
+       "ref": "FogSubnet"
+      }
+     ],
+     "ServiceName": "com.amazonaws.us-east-1.secretsmanager",
+     "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": "*",
+        "Action": [
+         "secretsmanager:*"
+        ],
+        "Resource": [
+         "*"
+        ]
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCEndpoint.KmsGatewayEndpointUsers",
+   "cfg": "KmsGatewayEndpointUsers",
+   "type": "__declared__",
+   "refs": [
+    "UsersSubnet",
+    "UsersVpc"
+   ],
+   "values": {
+    "type": "AWS::EC2::VPCEndpoint",
+    "name": "KmsGatewayEndpointUsers",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcEndpointType": "Interface",
+     "VpcId": {
+      "ref": "UsersVpc"
+     },
+     "SubnetIds": [
+      {
+       "ref": "UsersSubnet"
+      }
+     ],
+     "ServiceName": "com.amazonaws.us-east-1.kms",
+     "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": "*",
+        "Action": [
+         "kms:GenerateDataKey"
+        ],
+        "Resource": [
+         "*"
+        ]
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCEndpoint.KmsGatewayEndpointFog",
+   "cfg": "KmsGatewayEndpointFog",
+   "type": "__declared__",
+   "refs": [
+    "FogSubnet",
+    "FogVpc"
+   ],
+   "values": {
+    "type": "AWS::EC2::VPCEndpoint",
+    "name": "KmsGatewayEndpointFog",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcEndpointType": "Interface",
+     "VpcId": {
+      "ref": "FogVpc"
+     },
+     "SubnetIds": [
+      {
+       "ref": "FogSubnet"
+      }
+     ],
+     "ServiceName": "com.amazonaws.us-east-1.kms",
+     "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": "*",
+        "Action": [
+         "kms:GenerateDataKey",
+         "kafka:ListScramSecrets"
+        ],
+        "Resource": [
+         "*"
+        ]
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCEndpoint.EventsGatewayEndpointFog",
+   "cfg": "EventsGatewayEndpointFog",
+   "type": "__declared__",
+   "refs": [
+    "FogSubnet",
+    "FogVpc"
+   ],
+   "values": {
+    "type": "AWS::EC2::VPCEndpoint",
+    "name": "EventsGatewayEndpointFog",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcEndpointType": "Interface",
+     "VpcId": {
+      "ref": "FogVpc"
+     },
+     "SubnetIds": [
+      {
+       "ref": "FogSubnet"
+      }
+     ],
+     "ServiceName": "com.amazonaws.us-east-1.events",
+     "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": "*",
+        "Action": [
+         "events:*",
+         "pipes:*"
+        ],
+        "Resource": [
+         "*"
+        ]
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCEndpoint.StsGatewayEndpointFog",
+   "cfg": "StsGatewayEndpointFog",
+   "type": "__declared__",
+   "refs": [
+    "FogSubnet",
+    "FogVpc"
+   ],
+   "values": {
+    "type": "AWS::EC2::VPCEndpoint",
+    "name": "StsGatewayEndpointFog",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcEndpointType": "Interface",
+     "VpcId": {
+      "ref": "FogVpc"
+     },
+     "SubnetIds": [
+      {
+       "ref": "FogSubnet"
+      }
+     ],
+     "ServiceName": "com.amazonaws.us-east-1.sts",
+     "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": "*",
+        "Action": [
+         "*"
+        ],
+        "Resource": [
+         "*"
+        ]
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCEndpoint.LambdaGatewayEndpointFog",
+   "cfg": "LambdaGatewayEndpointFog",
+   "type": "__declared__",
+   "refs": [
+    "FogSubnet",
+    "FogVpc"
+   ],
+   "values": {
+    "type": "AWS::EC2::VPCEndpoint",
+    "name": "LambdaGatewayEndpointFog",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcEndpointType": "Interface",
+     "VpcId": {
+      "ref": "FogVpc"
+     },
+     "SubnetIds": [
+      {
+       "ref": "FogSubnet"
+      }
+     ],
+     "ServiceName": "com.amazonaws.us-east-1.lambda",
+     "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": "*",
+        "Action": [
+         "*"
+        ],
+        "Resource": [
+         "*"
+        ]
+       }
+      ]
+     }
+    }
+   }
+  }
+ ]
+}

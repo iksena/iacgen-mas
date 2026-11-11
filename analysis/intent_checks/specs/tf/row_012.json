@@ -1,0 +1,453 @@
+{
+ "lang": "tf",
+ "row_number": 12,
+ "source_hash": {
+  "gt": "0a9cebfd3621fb8a1531f21aa89b2b8a58f8f68031ef0bdfe98e2bc53c31a1c8",
+  "prompt": "f0f4d69eeb17fb784d0976a74c9f348c0b758e786118155f81334edf9ba52e8a"
+ },
+ "selectors": {},
+ "checks": [
+  {
+   "id": "efs_exists",
+   "kind": "exists",
+   "tier": "core",
+   "select": {
+    "types": [
+     "aws_efs_file_system"
+    ]
+   },
+   "quote": "creates an encrypted Amazon EFS file system"
+  },
+  {
+   "id": "efs_encrypted",
+   "kind": "attr",
+   "tier": "core",
+   "select": {
+    "types": [
+     "aws_efs_file_system"
+    ]
+   },
+   "cond": {
+    "path": "encrypted",
+    "op": "truthy"
+   },
+   "quote": "an encrypted Amazon EFS file system"
+  },
+  {
+   "id": "efs_token",
+   "kind": "attr",
+   "tier": "core",
+   "select": {
+    "types": [
+     "aws_efs_file_system"
+    ]
+   },
+   "cond": {
+    "path": "creation_token",
+    "op": "eq",
+    "value": "efs-not-secure"
+   },
+   "quote": "a creation token of \"efs-not-secure\""
+  },
+  {
+   "id": "efs_name_tag",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "a Name tag set to \"NotSecure\"",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_efs_file_system"
+      ]
+     },
+     "cond": {
+      "path": "tags.Name",
+      "op": "eq",
+      "value": "NotSecure"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_efs_file_system"
+      ]
+     },
+     "cond": {
+      "path": "tags_all.Name",
+      "op": "eq",
+      "value": "NotSecure"
+     }
+    }
+   ]
+  },
+  {
+   "id": "policy_on_efs",
+   "kind": "ref",
+   "tier": "core",
+   "to": {
+    "types": [
+     "aws_efs_file_system"
+    ]
+   },
+   "quote": "Attached to this file system, configure a file system policy",
+   "from": {
+    "types": [
+     "aws_efs_file_system_policy"
+    ]
+   }
+  },
+  {
+   "id": "policy_id",
+   "kind": "any_of",
+   "tier": "detail",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_efs_file_system_policy"
+      ]
+     },
+     "cond": {
+      "path": "policy",
+      "op": "regex",
+      "value": "(?is)[\"']id[\"']\\s*:\\s*[\"']ExamplePolicy01[\"']"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_efs_file_system_policy"
+       }
+      ]
+     },
+     "cond": {
+      "path": "properties.policy",
+      "op": "regex",
+      "value": "(?is)[\"']id[\"']\\s*:\\s*[\"']ExamplePolicy01[\"']"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_efs_file_system_policy"
+      ]
+     },
+     "to": {
+      "types": [
+       "data.aws_iam_policy_document"
+      ],
+      "where": [
+       {
+        "path": "policy_id",
+        "op": "eq",
+        "value": "ExamplePolicy01"
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "policy ID \"ExamplePolicy01\""
+  },
+  {
+   "id": "statement_sid",
+   "kind": "any_of",
+   "tier": "detail",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_efs_file_system_policy"
+      ]
+     },
+     "cond": {
+      "path": "policy",
+      "op": "regex",
+      "value": "(?is)[\"']sid[\"']\\s*:\\s*[\"']ExampleStatement01[\"']"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_efs_file_system_policy"
+       }
+      ]
+     },
+     "cond": {
+      "path": "properties.policy",
+      "op": "regex",
+      "value": "(?is)[\"']sid[\"']\\s*:\\s*[\"']ExampleStatement01[\"']"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_efs_file_system_policy"
+      ]
+     },
+     "to": {
+      "types": [
+       "data.aws_iam_policy_document"
+      ],
+      "where": [
+       {
+        "path": "statement.*.sid",
+        "op": "eq",
+        "value": "ExampleStatement01"
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "statement with SID \"ExampleStatement01\""
+  },
+  {
+   "id": "policy_allow",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "explicitly allows all Elastic File System actions for any AWS principal",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_efs_file_system_policy"
+      ]
+     },
+     "cond": {
+      "path": "policy",
+      "op": "regex",
+      "value": "(?is)\"Action\":\\[?(\"[^\"]*\",)*\"(elasticfilesystem:\\*|\\*)\"(,\"[^\"]*\")*\\]?,(?:\"Condition\":\\{(?:[^{}]|\\{[^{}]*\\})*\\},)?\"Effect\":\"Allow\",\"Principal\":(\\{\"AWS\":\\[?)?\"\\*\""
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_efs_file_system_policy"
+       }
+      ]
+     },
+     "cond": {
+      "path": "properties.policy",
+      "op": "regex",
+      "value": "(?is)(?:[\"']action[\"']\\s*:\\s*\\[?\\s*[\"'](elasticfilesystem:\\*|\\*)[\"'][^{}]{0,40}?\\}?(?:[^{}]|\\{[^{}]*\\}){0,300}[\"']principal[\"']\\s*:\\s*(\\{\\s*[\"']aws[\"']\\s*:\\s*)?\\[?\\s*[\"']\\*[\"']|[\"']principal[\"']\\s*:\\s*(\\{\\s*[\"']aws[\"']\\s*:\\s*)?\\[?\\s*[\"']\\*[\"'][^{}]{0,40}?\\}?(?:[^{}]|\\{[^{}]*\\}){0,300}[\"']action[\"']\\s*:\\s*\\[?\\s*[\"'](elasticfilesystem:\\*|\\*)[\"'])"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_efs_file_system_policy"
+      ]
+     },
+     "to": {
+      "types": [
+       "data.aws_iam_policy_document"
+      ],
+      "where": [
+       {
+        "path": "statement.*",
+        "op": "match",
+        "value": [
+         {
+          "path": "effect",
+          "op": "eq",
+          "value": "Allow"
+         },
+         {
+          "path": "actions.*",
+          "op": "in",
+          "value": [
+           "elasticfilesystem:*",
+           "*"
+          ]
+         },
+         {
+          "path": "principals.*.identifiers.*",
+          "op": "eq",
+          "value": "*"
+         }
+        ]
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "policy_all_efs_actions",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "all Elastic File System actions",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_efs_file_system_policy"
+      ]
+     },
+     "cond": {
+      "path": "policy",
+      "op": "regex",
+      "value": "(?is)\"Action\":\\[?(\"[^\"]*\",)*\"(elasticfilesystem:\\*|\\*)\"(,\"[^\"]*\")*\\]?,(?:\"Condition\":\\{(?:[^{}]|\\{[^{}]*\\})*\\},)?\"Effect\":\"Allow\""
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_efs_file_system_policy"
+       }
+      ]
+     },
+     "cond": {
+      "path": "properties.policy",
+      "op": "regex",
+      "value": "(?is)[\"']action[\"']\\s*:\\s*\\[?\\s*[\"'](elasticfilesystem:\\*|\\*)[\"'][^{}]{0,40}?\\}?(?:[^{}]|\\{[^{}]*\\}){0,300}[\"']effect[\"']\\s*:\\s*[\"']allow[\"']|[\"']effect[\"']\\s*:\\s*[\"']allow[\"'][^{}]{0,40}?\\}?(?:[^{}]|\\{[^{}]*\\}){0,300}[\"']action[\"']\\s*:\\s*\\[?\\s*[\"'](elasticfilesystem:\\*|\\*)[\"']"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_efs_file_system_policy"
+      ]
+     },
+     "to": {
+      "types": [
+       "data.aws_iam_policy_document"
+      ],
+      "where": [
+       {
+        "path": "statement.*",
+        "op": "match",
+        "value": [
+         {
+          "path": "effect",
+          "op": "eq",
+          "value": "Allow"
+         },
+         {
+          "path": "actions.*",
+          "op": "in",
+          "value": [
+           "elasticfilesystem:*",
+           "*"
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "policy_any_principal",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "for any AWS principal",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_efs_file_system_policy"
+      ]
+     },
+     "cond": {
+      "path": "policy",
+      "op": "regex",
+      "value": "(?is)\"Effect\":\"Allow\",\"Principal\":(\\{\"AWS\":\\[?)?\"\\*\""
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_efs_file_system_policy"
+       }
+      ]
+     },
+     "cond": {
+      "path": "properties.policy",
+      "op": "regex",
+      "value": "(?is)[\"']principal[\"']\\s*:\\s*(\\{\\s*[\"']aws[\"']\\s*:\\s*)?\\[?\\s*[\"']\\*[\"'][^{}]{0,40}?\\}?(?:[^{}]|\\{[^{}]*\\}){0,300}[\"']effect[\"']\\s*:\\s*[\"']allow[\"']|[\"']effect[\"']\\s*:\\s*[\"']allow[\"'][^{}]{0,40}?\\}?(?:[^{}]|\\{[^{}]*\\}){0,300}[\"']principal[\"']\\s*:\\s*(\\{\\s*[\"']aws[\"']\\s*:\\s*)?\\[?\\s*[\"']\\*[\"']"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_efs_file_system_policy"
+      ]
+     },
+     "to": {
+      "types": [
+       "data.aws_iam_policy_document"
+      ],
+      "where": [
+       {
+        "path": "statement.*",
+        "op": "match",
+        "value": [
+         {
+          "path": "effect",
+          "op": "eq",
+          "value": "Allow"
+         },
+         {
+          "path": "principals.*.identifiers.*",
+          "op": "eq",
+          "value": "*"
+         }
+        ]
+       }
+      ]
+     }
+    }
+   ]
+  }
+ ],
+ "notes": "Policy forms: planned JSON on aws_efs_file_system_policy (provider-normalised, keys sorted, so one statement's Action, Effect and Principal are adjacent), declared heredoc/jsonencode text (tokens within one statement's text), or a policy document referenced by the file-system policy. policy_allow binds Allow + all EFS actions + any principal to one statement; the other two bind Allow with the actions and with the principal. The SID is not bound to that statement."
+}

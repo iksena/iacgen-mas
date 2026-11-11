@@ -1,0 +1,238 @@
+{
+ "meta": {
+  "lang": "tf",
+  "mode": "plan",
+  "warnings": [],
+  "gt_hash": "79035dd0ff1443c8cb9a7f1790496c7f79810c021652218a06134ae73a65cd7a",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "aws_iam_role.invoke",
+   "cfg": "aws_iam_role.invoke",
+   "type": "aws_iam_role",
+   "values": {
+    "assume_role_policy": "{\"Statement\":[{\"Action\":\"sts:AssumeRole\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"events.amazonaws.com\"}}],\"Version\":\"2012-10-17\"}",
+    "description": null,
+    "force_detach_policies": false,
+    "inline_policy": [
+     {
+      "name": "default-invoke-targets",
+      "policy": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Action\":[\"lambda:InvokeFunction\",\"states:StartExecution\"],\"Effect\":\"Allow\",\"Resource\":[\"*\"]}]}"
+     }
+    ],
+    "max_session_duration": 3600,
+    "name": "default-invoke",
+    "path": "/",
+    "permissions_boundary": null,
+    "tags": {
+     "Name": "default",
+     "terraform.io": "managed"
+    },
+    "tags_all": {
+     "Name": "default",
+     "terraform.io": "managed"
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "module.frigga.random_pet.name",
+   "cfg": "module.frigga.random_pet.name",
+   "type": "random_pet",
+   "values": {
+    "keepers": null,
+    "length": 1,
+    "prefix": null,
+    "separator": "-"
+   },
+   "refs": []
+  },
+  {
+   "id": "module.frigga.random_string.suffix",
+   "cfg": "module.frigga.random_string.suffix",
+   "type": "random_string",
+   "values": {
+    "keepers": null,
+    "length": 5,
+    "lower": true,
+    "min_lower": 0,
+    "min_numeric": 0,
+    "min_special": 0,
+    "min_upper": 0,
+    "number": false,
+    "numeric": false,
+    "override_special": null,
+    "special": false,
+    "upper": false
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.bus",
+   "cfg": "__parameter__.bus",
+   "type": "__parameter__",
+   "values": {
+    "name": "bus",
+    "default": {}
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.name",
+   "cfg": "__parameter__.name",
+   "type": "__parameter__",
+   "values": {
+    "name": "name",
+    "default": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.rules",
+   "cfg": "__parameter__.rules",
+   "type": "__parameter__",
+   "values": {
+    "name": "rules",
+    "default": []
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.tags",
+   "cfg": "__parameter__.tags",
+   "type": "__parameter__",
+   "values": {
+    "name": "tags",
+    "default": {}
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.targets",
+   "cfg": "__parameter__.targets",
+   "type": "__parameter__",
+   "values": {
+    "name": "targets",
+    "default": []
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.bus",
+   "cfg": "__output__.bus",
+   "type": "__output__",
+   "values": {
+    "name": "bus",
+    "value": {},
+    "description": "The attributes of generated event bridge bus"
+   },
+   "refs": [
+    "aws_cloudwatch_event_bus.bus"
+   ]
+  },
+  {
+   "id": "__output__.rules",
+   "cfg": "__output__.rules",
+   "type": "__output__",
+   "values": {
+    "name": "rules",
+    "value": {},
+    "description": "The attributes of generated event bridge rules"
+   },
+   "refs": [
+    "aws_cloudwatch_event_rule.rule"
+   ]
+  },
+  {
+   "id": "__declared__.aws_cloudwatch_event_bus.bus",
+   "cfg": "aws_cloudwatch_event_bus.bus",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_cloudwatch_event_bus",
+    "name": "bus",
+    "gated": true,
+    "gate": "toset(local.custom_bus ? [\"custom\"] : [])",
+    "properties": {
+     "for_each": "${toset(local.custom_bus ? ['custom'] : [])}",
+     "name": "${local.name}",
+     "tags": "${merge(local.default-tags,var.tags)}",
+     "event_source_name": "${lookup(var.bus,\"event_source_name\",local.default_bus.event_source_name)}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_cloudwatch_event_rule.rule",
+   "cfg": "aws_cloudwatch_event_rule.rule",
+   "type": "__declared__",
+   "refs": [
+    "aws_cloudwatch_event_bus.bus"
+   ],
+   "values": {
+    "type": "aws_cloudwatch_event_rule",
+    "name": "rule",
+    "gated": true,
+    "gate": "{ for r in var.rules : r.name => r }",
+    "properties": {
+     "for_each": "${{for r in var.rules : r.name => r}}",
+     "name": "${each.key}",
+     "tags": "${merge(local.default-tags,var.tags)}",
+     "description": "${lookup(each.value,\"description\",local.default_rule.description)}",
+     "event_bus_name": "${local.custom_bus ? aws_cloudwatch_event_bus.bus[\"custom\"].id : None}",
+     "event_pattern": "${lookup(each.value,\"event_pattern\",local.default_rule.event_pattern)}",
+     "schedule_expression": "${lookup(each.value,\"schedule_expression\",local.default_rule.schedule_expression)}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role.invoke",
+   "cfg": "aws_iam_role.invoke",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_iam_role",
+    "name": "invoke",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "${join(\"-\",['${local.name}', 'invoke'])}",
+     "tags": "${merge(local.default-tags,var.tags)}",
+     "assume_role_policy": "${jsonencode({'Version': '2012-10-17', 'Statement': [{'Action': 'sts:AssumeRole', 'Effect': 'Allow', 'Principal': {'Service': '${format(\"events.%s\",local.aws.dns)}'}}]})}",
+     "inline_policy": [
+      {
+       "name": "${join(\"-\",['${local.name}', 'invoke-targets'])}",
+       "policy": "${jsonencode({'Version': '2012-10-17', 'Statement': [{'Action': ['lambda:InvokeFunction', 'states:StartExecution'], 'Effect': 'Allow', 'Resource': ['*']}]})}"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_cloudwatch_event_target.target",
+   "cfg": "aws_cloudwatch_event_target.target",
+   "type": "__declared__",
+   "refs": [
+    "aws_cloudwatch_event_bus.bus",
+    "aws_cloudwatch_event_rule.rule",
+    "aws_iam_role.invoke"
+   ],
+   "values": {
+    "type": "aws_cloudwatch_event_target",
+    "name": "target",
+    "gated": true,
+    "gate": "{ for t in var.targets : t.name => t }",
+    "properties": {
+     "depends_on": [
+      "${aws_cloudwatch_event_rule.rule}"
+     ],
+     "for_each": "${{for t in var.targets : t.name => t}}",
+     "event_bus_name": "${local.custom_bus ? aws_cloudwatch_event_bus.bus[\"custom\"].id : None}",
+     "rule": "${lookup(each.value,\"rule\")}",
+     "arn": "${lookup(each.value,\"arn\")}",
+     "role_arn": "${strcontains(lookup(each.value,\"arn\",\"\"),\"stateMachine\") ? aws_iam_role.invoke.arn : None}"
+    }
+   }
+  }
+ ]
+}

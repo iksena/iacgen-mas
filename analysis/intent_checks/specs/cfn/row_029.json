@@ -1,0 +1,103 @@
+{
+  "lang": "cfn",
+  "row_number": 29,
+  "source_hash": {
+    "gt": "49d843fd56b74971ade3033739d620ec95563e368f0157bd201a0ebce692ea22",
+    "prompt": "930ef949240c30166902b96f33947d7f8a66b56436b2b67b3973507a5102cb3c"
+  },
+  "selectors": {
+    "role": {
+      "types": [
+        "AWS::IAM::Role"
+      ]
+    },
+    "pod_role": {
+      "types": [
+        "AWS::IAM::Role"
+      ],
+      "where": [
+        {
+          "path": "AssumeRolePolicyDocument",
+          "op": "regex",
+          "value": "pods\\.eks\\.amazonaws\\.com"
+        }
+      ]
+    }
+  },
+  "checks": [
+    {
+      "id": "role",
+      "kind": "exists",
+      "select": "role",
+      "tier": "core",
+      "quote": "creates an IAM role for SageMaker HyperPod training operator access"
+    },
+    {
+      "id": "prefix_param",
+      "kind": "attr",
+      "select": {
+        "types": [
+          "__parameter__"
+        ]
+      },
+      "cond": {
+        "path": "default",
+        "op": "eq",
+        "value": "sagemaker-hyperpod-eks"
+      },
+      "tier": "detail",
+      "quote": "a configurable resource name prefix with a default value of \"sagemaker-hyperpod-eks\""
+    },
+    {
+      "id": "pod_identity_trust",
+      "kind": "attr",
+      "select": "role",
+      "cond": {
+        "path": "AssumeRolePolicyDocument",
+        "op": "regex",
+        "value": "pods\\.eks\\.amazonaws\\.com"
+      },
+      "tier": "core",
+      "quote": "assumable by the EKS pod identity service",
+      "justify": "the EKS pod identity service principal is pods.eks.amazonaws.com"
+    },
+    {
+      "id": "hpto_managed_policy",
+      "kind": "attr",
+      "select": "pod_role",
+      "cond": {
+        "path": "ManagedPolicyArns.*",
+        "op": "contains",
+        "value": "AmazonSageMakerHyperPodTrainingOperatorAccess"
+      },
+      "tier": "core",
+      "quote": "the AWS managed policy for SageMaker HyperPod training operator access",
+      "justify": "managed policy name follows from the stated access type, on the role that the EKS pod identity principal pods.eks.amazonaws.com assumes"
+    },
+    {
+      "id": "role_uses_prefix",
+      "kind": "attr",
+      "select": "role",
+      "cond": {
+        "path": "RoleName",
+        "op": "contains",
+        "value": "sagemaker-hyperpod-eks"
+      },
+      "tier": "detail",
+      "quote": "using a configurable resource name prefix",
+      "justify": "the prefix default resolves into the role name"
+    },
+    {
+      "id": "x_tag_session",
+      "kind": "attr",
+      "select": "role",
+      "tier": "extra",
+      "cond": {
+        "path": "AssumeRolePolicyDocument.Statement.*.Action.*",
+        "op": "glob_covers",
+        "value": "sts:TagSession"
+      }
+    }
+  ],
+  "notes": ""
+}

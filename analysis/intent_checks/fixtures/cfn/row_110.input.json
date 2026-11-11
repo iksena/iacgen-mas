@@ -1,0 +1,527 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "0af7e30da89b31fd74be7411bff8ffcff6fbeecb616d367f232b0506975a36a7",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "InternetGateway",
+   "cfg": "InternetGateway",
+   "type": "AWS::EC2::InternetGateway",
+   "values": {},
+   "refs": []
+  },
+  {
+   "id": "Nat",
+   "cfg": "Nat",
+   "type": "AWS::EC2::NatGateway",
+   "values": {
+    "AllocationId": {
+     "ref": "NatEip",
+     "attr": "AllocationId"
+    },
+    "SubnetId": {
+     "ref": "PublicSubnet"
+    }
+   },
+   "refs": [
+    "NatEip",
+    "PublicSubnet"
+   ]
+  },
+  {
+   "id": "NatAttachment",
+   "cfg": "NatAttachment",
+   "type": "AWS::EC2::VPCGatewayAttachment",
+   "values": {
+    "InternetGatewayId": {
+     "ref": "InternetGateway"
+    },
+    "VpcId": {
+     "ref": "VPC"
+    }
+   },
+   "refs": [
+    "InternetGateway",
+    "VPC"
+   ]
+  },
+  {
+   "id": "NatEip",
+   "cfg": "NatEip",
+   "type": "AWS::EC2::EIP",
+   "values": {
+    "Domain": "vpc"
+   },
+   "refs": []
+  },
+  {
+   "id": "NatRoute",
+   "cfg": "NatRoute",
+   "type": "AWS::EC2::Route",
+   "values": {
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "NatGatewayId": {
+     "ref": "Nat"
+    },
+    "RouteTableId": {
+     "ref": "PrivateRouteTable"
+    }
+   },
+   "refs": [
+    "Nat",
+    "PrivateRouteTable"
+   ]
+  },
+  {
+   "id": "PrivateRouteAssociation",
+   "cfg": "PrivateRouteAssociation",
+   "type": "AWS::EC2::SubnetRouteTableAssociation",
+   "values": {
+    "RouteTableId": {
+     "ref": "PrivateRouteTable"
+    },
+    "SubnetId": {
+     "ref": "PrivateSubnet"
+    }
+   },
+   "refs": [
+    "PrivateRouteTable",
+    "PrivateSubnet"
+   ]
+  },
+  {
+   "id": "PrivateRouteTable",
+   "cfg": "PrivateRouteTable",
+   "type": "AWS::EC2::RouteTable",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    }
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "PrivateSubnet",
+   "cfg": "PrivateSubnet",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "CidrBlock": "172.18.32.0/21",
+    "MapPublicIpOnLaunch": "false",
+    "VpcId": {
+     "ref": "VPC"
+    }
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "PublicDefaultRoute",
+   "cfg": "PublicDefaultRoute",
+   "type": "AWS::EC2::Route",
+   "values": {
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "GatewayId": {
+     "ref": "InternetGateway"
+    },
+    "RouteTableId": {
+     "ref": "PublicRouteTable"
+    }
+   },
+   "refs": [
+    "InternetGateway",
+    "PublicRouteTable"
+   ]
+  },
+  {
+   "id": "PublicRouteAssociation",
+   "cfg": "PublicRouteAssociation",
+   "type": "AWS::EC2::SubnetRouteTableAssociation",
+   "values": {
+    "RouteTableId": {
+     "ref": "PublicRouteTable"
+    },
+    "SubnetId": {
+     "ref": "PublicSubnet"
+    }
+   },
+   "refs": [
+    "PublicRouteTable",
+    "PublicSubnet"
+   ]
+  },
+  {
+   "id": "PublicRouteTable",
+   "cfg": "PublicRouteTable",
+   "type": "AWS::EC2::RouteTable",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    }
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "PublicSubnet",
+   "cfg": "PublicSubnet",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "CidrBlock": "172.18.0.0/22",
+    "VpcId": {
+     "ref": "VPC"
+    }
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "VPC",
+   "cfg": "VPC",
+   "type": "AWS::EC2::VPC",
+   "values": {
+    "CidrBlock": "172.18.0.0/16"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.PrivateSubnetCidr",
+   "cfg": "__parameter__.PrivateSubnetCidr",
+   "type": "__parameter__",
+   "values": {
+    "name": "PrivateSubnetCidr",
+    "type": "String",
+    "default": "172.18.32.0/21",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.PublicSubnetCidr",
+   "cfg": "__parameter__.PublicSubnetCidr",
+   "type": "__parameter__",
+   "values": {
+    "name": "PublicSubnetCidr",
+    "type": "String",
+    "default": "172.18.0.0/22",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.VPCCIDR",
+   "cfg": "__parameter__.VPCCIDR",
+   "type": "__parameter__",
+   "values": {
+    "name": "VPCCIDR",
+    "type": "String",
+    "default": "172.18.0.0/16",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.NatEip",
+   "cfg": "__output__.NatEip",
+   "type": "__output__",
+   "values": {
+    "name": "NatEip",
+    "value": {
+     "ref": "NatEip"
+    },
+    "description": "Nat Elastic IP",
+    "export": null
+   },
+   "refs": [
+    "NatEip"
+   ]
+  },
+  {
+   "id": "__output__.VPCId",
+   "cfg": "__output__.VPCId",
+   "type": "__output__",
+   "values": {
+    "name": "VPCId",
+    "value": {
+     "ref": "VPC"
+    },
+    "description": "VPC Id",
+    "export": null
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::EC2::InternetGateway.InternetGateway",
+   "cfg": "InternetGateway",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::InternetGateway",
+    "name": "InternetGateway",
+    "gated": false,
+    "gate": null,
+    "properties": {}
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::NatGateway.Nat",
+   "cfg": "Nat",
+   "type": "__declared__",
+   "refs": [
+    "NatEip",
+    "PublicSubnet"
+   ],
+   "values": {
+    "type": "AWS::EC2::NatGateway",
+    "name": "Nat",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AllocationId": {
+      "ref": "NatEip",
+      "attr": "AllocationId"
+     },
+     "SubnetId": {
+      "ref": "PublicSubnet"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCGatewayAttachment.NatAttachment",
+   "cfg": "NatAttachment",
+   "type": "__declared__",
+   "refs": [
+    "InternetGateway",
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::VPCGatewayAttachment",
+    "name": "NatAttachment",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "InternetGatewayId": {
+      "ref": "InternetGateway"
+     },
+     "VpcId": {
+      "ref": "VPC"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::EIP.NatEip",
+   "cfg": "NatEip",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::EIP",
+    "name": "NatEip",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Domain": "vpc"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Route.NatRoute",
+   "cfg": "NatRoute",
+   "type": "__declared__",
+   "refs": [
+    "Nat",
+    "PrivateRouteTable"
+   ],
+   "values": {
+    "type": "AWS::EC2::Route",
+    "name": "NatRoute",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "DestinationCidrBlock": "0.0.0.0/0",
+     "NatGatewayId": {
+      "ref": "Nat"
+     },
+     "RouteTableId": {
+      "ref": "PrivateRouteTable"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetRouteTableAssociation.PrivateRouteAssociation",
+   "cfg": "PrivateRouteAssociation",
+   "type": "__declared__",
+   "refs": [
+    "PrivateRouteTable",
+    "PrivateSubnet"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetRouteTableAssociation",
+    "name": "PrivateRouteAssociation",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RouteTableId": {
+      "ref": "PrivateRouteTable"
+     },
+     "SubnetId": {
+      "ref": "PrivateSubnet"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::RouteTable.PrivateRouteTable",
+   "cfg": "PrivateRouteTable",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::RouteTable",
+    "name": "PrivateRouteTable",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.PrivateSubnet",
+   "cfg": "PrivateSubnet",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "PrivateSubnet",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "CidrBlock": "172.18.32.0/21",
+     "MapPublicIpOnLaunch": "false",
+     "VpcId": {
+      "ref": "VPC"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Route.PublicDefaultRoute",
+   "cfg": "PublicDefaultRoute",
+   "type": "__declared__",
+   "refs": [
+    "InternetGateway",
+    "PublicRouteTable"
+   ],
+   "values": {
+    "type": "AWS::EC2::Route",
+    "name": "PublicDefaultRoute",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "DestinationCidrBlock": "0.0.0.0/0",
+     "GatewayId": {
+      "ref": "InternetGateway"
+     },
+     "RouteTableId": {
+      "ref": "PublicRouteTable"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetRouteTableAssociation.PublicRouteAssociation",
+   "cfg": "PublicRouteAssociation",
+   "type": "__declared__",
+   "refs": [
+    "PublicRouteTable",
+    "PublicSubnet"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetRouteTableAssociation",
+    "name": "PublicRouteAssociation",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RouteTableId": {
+      "ref": "PublicRouteTable"
+     },
+     "SubnetId": {
+      "ref": "PublicSubnet"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::RouteTable.PublicRouteTable",
+   "cfg": "PublicRouteTable",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::RouteTable",
+    "name": "PublicRouteTable",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.PublicSubnet",
+   "cfg": "PublicSubnet",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "PublicSubnet",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "CidrBlock": "172.18.0.0/22",
+     "VpcId": {
+      "ref": "VPC"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPC.VPC",
+   "cfg": "VPC",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::VPC",
+    "name": "VPC",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "CidrBlock": "172.18.0.0/16"
+    }
+   }
+  }
+ ]
+}

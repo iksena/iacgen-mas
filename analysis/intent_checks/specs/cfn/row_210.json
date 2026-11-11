@@ -1,0 +1,523 @@
+{
+  "lang": "cfn",
+  "row_number": 210,
+  "source_hash": {
+    "gt": "5b2d4f3609f3f02c126e64d89de9b29e316534c7ba3694406e1cafaa449026d4",
+    "prompt": "f1794f8046d0a3edb6323a8dd6e052eee38e443801b4719abc266941d6988867"
+  },
+  "selectors": {
+    "table": {
+      "types": [
+        "AWS::DynamoDB::Table"
+      ],
+      "where": []
+    },
+    "mp": {
+      "types": [
+        "AWS::IAM::ManagedPolicy"
+      ],
+      "where": []
+    }
+  },
+  "checks": [
+    {
+      "id": "table",
+      "kind": "exists",
+      "select": "table",
+      "tier": "core",
+      "quote": "creates a self-contained DynamoDB table"
+    },
+    {
+      "id": "params_string",
+      "kind": "attr",
+      "select": {
+        "types": [
+          "__parameter__"
+        ],
+        "where": [
+          {
+            "path": "name",
+            "op": "in",
+            "value": [
+              "App",
+              "Env",
+              "Name"
+            ]
+          }
+        ]
+      },
+      "cond": {
+        "path": "type",
+        "op": "eq",
+        "value": "String"
+      },
+      "quantifier": "all",
+      "tier": "detail",
+      "quote": "three string parameters"
+    },
+    {
+      "id": "params_no_default",
+      "kind": "attr",
+      "select": {
+        "types": [
+          "__parameter__"
+        ],
+        "where": [
+          {
+            "path": "name",
+            "op": "in",
+            "value": [
+              "App",
+              "Env",
+              "Name"
+            ]
+          }
+        ]
+      },
+      "cond": {
+        "path": "default",
+        "op": "absent"
+      },
+      "tier": "detail",
+      "quote": "three string parameters without default values",
+      "quantifier": "all"
+    },
+    {
+      "id": "managed_policy",
+      "kind": "exists",
+      "select": "mp",
+      "tier": "core",
+      "quote": "an associated IAM managed policy"
+    },
+    {
+      "id": "param_app",
+      "kind": "exists",
+      "select": {
+        "types": [
+          "__parameter__"
+        ],
+        "where": [
+          {
+            "path": "name",
+            "op": "eq",
+            "value": "App"
+          }
+        ]
+      },
+      "tier": "core",
+      "quote": "App (the application name)"
+    },
+    {
+      "id": "param_env",
+      "kind": "exists",
+      "select": {
+        "types": [
+          "__parameter__"
+        ],
+        "where": [
+          {
+            "path": "name",
+            "op": "eq",
+            "value": "Env"
+          }
+        ]
+      },
+      "tier": "core",
+      "quote": "Env (the target environment name)"
+    },
+    {
+      "id": "param_name",
+      "kind": "exists",
+      "select": {
+        "types": [
+          "__parameter__"
+        ],
+        "where": [
+          {
+            "path": "name",
+            "op": "eq",
+            "value": "Name"
+          }
+        ]
+      },
+      "tier": "core",
+      "quote": "and Name (the workload name)"
+    },
+    {
+      "id": "billing_on_demand",
+      "kind": "attr",
+      "select": "table",
+      "cond": {
+        "path": "BillingMode",
+        "op": "eq",
+        "value": "PAY_PER_REQUEST"
+      },
+      "tier": "core",
+      "quote": "on-demand (PAY_PER_REQUEST) DynamoDB table"
+    },
+    {
+      "id": "table_name",
+      "kind": "attr",
+      "select": "table",
+      "cond": {
+        "path": "TableName",
+        "op": "regex",
+        "value": "^.*-.*-.*-bs-dynamodb$"
+      },
+      "tier": "core",
+      "quote": "named \"{App}-{Env}-{Name}-bs-dynamodb\"",
+      "justify": "three hyphen-joined parts before the stated bs-dynamodb suffix; parameters render as their default, which may be empty"
+    },
+    {
+      "id": "partition_key",
+      "kind": "attr",
+      "select": "table",
+      "cond": {
+        "path": "KeySchema.*",
+        "op": "match",
+        "value": [
+          {
+            "path": "AttributeName",
+            "op": "eq",
+            "value": "bs"
+          },
+          {
+            "path": "KeyType",
+            "op": "eq",
+            "value": "HASH"
+          }
+        ]
+      },
+      "tier": "core",
+      "quote": "configured with a numeric partition key named \"bs\"",
+      "justify": "partition key = HASH key type"
+    },
+    {
+      "id": "partition_key_numeric",
+      "kind": "attr",
+      "select": "table",
+      "cond": {
+        "path": "AttributeDefinitions.*",
+        "op": "match",
+        "value": [
+          {
+            "path": "AttributeName",
+            "op": "eq",
+            "value": "bs"
+          },
+          {
+            "path": "AttributeType",
+            "op": "eq",
+            "value": "N"
+          }
+        ]
+      },
+      "tier": "core",
+      "quote": "a numeric partition key named \"bs\""
+    },
+    {
+      "id": "policy_batch",
+      "kind": "all_of",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "mp",
+          "cond": {
+            "path": "PolicyDocument.Statement.*",
+            "op": "match",
+            "value": [
+              {
+                "path": "Effect",
+                "op": "eq",
+                "value": "Allow"
+              },
+              {
+                "path": "Action.*",
+                "op": "glob_covers",
+                "value": "dynamodb:BatchGetItem"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "mp",
+          "cond": {
+            "path": "PolicyDocument.Statement.*",
+            "op": "match",
+            "value": [
+              {
+                "path": "Effect",
+                "op": "eq",
+                "value": "Allow"
+              },
+              {
+                "path": "Action.*",
+                "op": "glob_covers",
+                "value": "dynamodb:BatchWriteItem"
+              }
+            ]
+          }
+        }
+      ],
+      "tier": "core",
+      "quote": "specifically permitting batch operations"
+    },
+    {
+      "id": "policy_describe",
+      "kind": "all_of",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "mp",
+          "cond": {
+            "path": "PolicyDocument.Statement.*",
+            "op": "match",
+            "value": [
+              {
+                "path": "Effect",
+                "op": "eq",
+                "value": "Allow"
+              },
+              {
+                "path": "Action.*",
+                "op": "glob_covers",
+                "value": "dynamodb:DescribeStream"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "mp",
+          "cond": {
+            "path": "PolicyDocument.Statement.*",
+            "op": "match",
+            "value": [
+              {
+                "path": "Effect",
+                "op": "eq",
+                "value": "Allow"
+              },
+              {
+                "path": "Action.*",
+                "op": "glob_covers",
+                "value": "dynamodb:DescribeTable"
+              }
+            ]
+          }
+        }
+      ],
+      "tier": "core",
+      "quote": "describing streams and tables"
+    },
+    {
+      "id": "policy_query_scan",
+      "kind": "all_of",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "mp",
+          "cond": {
+            "path": "PolicyDocument.Statement.*",
+            "op": "match",
+            "value": [
+              {
+                "path": "Effect",
+                "op": "eq",
+                "value": "Allow"
+              },
+              {
+                "path": "Action.*",
+                "op": "glob_covers",
+                "value": "dynamodb:Query"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "mp",
+          "cond": {
+            "path": "PolicyDocument.Statement.*",
+            "op": "match",
+            "value": [
+              {
+                "path": "Effect",
+                "op": "eq",
+                "value": "Allow"
+              },
+              {
+                "path": "Action.*",
+                "op": "glob_covers",
+                "value": "dynamodb:Scan"
+              }
+            ]
+          }
+        }
+      ],
+      "tier": "core",
+      "quote": "querying, scanning"
+    },
+    {
+      "id": "policy_write",
+      "kind": "all_of",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "mp",
+          "cond": {
+            "path": "PolicyDocument.Statement.*",
+            "op": "match",
+            "value": [
+              {
+                "path": "Effect",
+                "op": "eq",
+                "value": "Allow"
+              },
+              {
+                "path": "Action.*",
+                "op": "glob_covers",
+                "value": "dynamodb:UpdateItem"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "mp",
+          "cond": {
+            "path": "PolicyDocument.Statement.*",
+            "op": "match",
+            "value": [
+              {
+                "path": "Effect",
+                "op": "eq",
+                "value": "Allow"
+              },
+              {
+                "path": "Action.*",
+                "op": "glob_covers",
+                "value": "dynamodb:DeleteItem"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "mp",
+          "cond": {
+            "path": "PolicyDocument.Statement.*",
+            "op": "match",
+            "value": [
+              {
+                "path": "Effect",
+                "op": "eq",
+                "value": "Allow"
+              },
+              {
+                "path": "Action.*",
+                "op": "glob_covers",
+                "value": "dynamodb:PutItem"
+              }
+            ]
+          }
+        }
+      ],
+      "tier": "core",
+      "quote": "creating, updating, deleting, and putting items on the table ARN"
+    },
+    {
+      "id": "policy_on_table",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "AWS::IAM::ManagedPolicy"
+            ],
+            "where": [
+              {
+                "path": "PolicyDocument.Statement.*.Resource.*",
+                "op": "none_eq",
+                "value": "*"
+              }
+            ]
+          },
+          "to": "table"
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "AWS::IAM::ManagedPolicy"
+            ],
+            "where": [
+              {
+                "path": "PolicyDocument.Statement.*.Resource.*",
+                "op": "none_eq",
+                "value": "*"
+              }
+            ]
+          },
+          "cond": {
+            "path": "PolicyDocument.Statement.*.Resource.*",
+            "op": "regex",
+            "value": "table/.*bs-dynamodb"
+          }
+        }
+      ],
+      "tier": "core",
+      "quote": "items on the table ARN",
+      "justify": "scoped to the table, so not a bare * resource"
+    },
+    {
+      "id": "policy_index_path",
+      "kind": "attr",
+      "select": "mp",
+      "cond": {
+        "path": "PolicyDocument.Statement.*.Resource.*",
+        "op": "regex",
+        "value": "index/\\*"
+      },
+      "tier": "detail",
+      "quote": "any index path under the table",
+      "justify": "any index path means the index/* wildcard"
+    },
+    {
+      "id": "output_table",
+      "kind": "ref",
+      "from": {
+        "types": [
+          "__output__"
+        ],
+        "where": [
+          {
+            "path": "value.attr",
+            "op": "none_eq",
+            "value": "Arn"
+          }
+        ]
+      },
+      "to": "table",
+      "tier": "detail",
+      "quote": "export the DynamoDB table name",
+      "justify": "Ref returns the table name; an Arn output is not the name"
+    },
+    {
+      "id": "output_policy",
+      "kind": "ref",
+      "from": {
+        "types": [
+          "__output__"
+        ],
+        "where": []
+      },
+      "to": "mp",
+      "tier": "detail",
+      "quote": "the IAM managed policy ARN in the outputs block"
+    }
+  ],
+  "notes": "PROMPT_GT_MISMATCH: prompt says outputs are exported; GT outputs have no Export, so only output->resource references are checked. 'creating ... items' has no action of its own beyond PutItem, so the GT's dynamodb:Create* is not required."
+}

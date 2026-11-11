@@ -1,0 +1,175 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "sam_expanded",
+  "warnings": [],
+  "gt_hash": "315c42f053f0404cedf65f3de9ea229ee42282351428f9f58b74891ec33dff7e",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "DatadogPolicyMacro",
+   "cfg": "DatadogPolicyMacro",
+   "type": "AWS::CloudFormation::Macro",
+   "values": {
+    "Name": "DatadogPolicy",
+    "FunctionName": {
+     "ref": "DatadogPolicyMacroMacroFunction",
+     "attr": "Arn"
+    }
+   },
+   "refs": [
+    "DatadogPolicyMacroMacroFunction"
+   ]
+  },
+  {
+   "id": "DatadogPolicyMacroMacroFunction",
+   "cfg": "DatadogPolicyMacroMacroFunction",
+   "type": "AWS::Lambda::Function",
+   "values": {
+    "Code": {
+     "ZipFile": "import traceback, itertools\ndef generate_archives_policy(archives):\n    if not archives:\n        return {\"Ref\" : \"AWS::NoValue\"}\n    s3_paths = [path.strip(\"/ \") for path in archives.split(',')]\n    return {\n        \"PolicyName\": \"DatadogLogArchiveAndRehydratePolicy\",\n        \"PolicyDocument\": {\n            \"Version\": \"2012-10-17\",\n            \"Statement\": [\n                {\n                    \"Effect\": \"Allow\",\n                    \"Action\": [\n                        \"s3:PutObject\",\n                        \"s3:GetObject\"\n                    ],\n                    \"Resource\": [f\"arn:aws:s3:::{s3_path}/*\" for s3_path in s3_paths]\n                },\n                {\n                    \"Effect\": \"Allow\",\n                    \"Action\": [\n                        \"s3:ListBucket\"\n                    ],\n                    \"Resource\": list(set([\n                        f\"arn:aws:s3:::{s3_path.split('/')[0]}\"\n                        for s3_path in s3_paths\n                    ]))\n                }\n            ]\n        }\n    }\ndef generate_trails_policy(trails):\n    if not trails:\n        return {\"Ref\" : \"AWS::NoValue\"}\n    s3_buckets = [bucket.strip(\"/ \") for bucket in trails.split(',')]\n    return {\n        \"PolicyName\": \"DatadogCloudTrailsPolicy\",\n        \"PolicyDocument\": {\n            \"Version\": \"2012-10-17\",\n            \"Statement\": [\n                {\n                    \"Effect\": \"Allow\",\n                    \"Action\": [\n                        \"s3:ListBucket\",\n                        \"s3:GetObject\",\n                        \"s3:GetBucketLocation\"\n                    ],\n                    \"Resource\": list(itertools.chain.from_iterable([(f\"arn:aws:s3:::{s3_bucket}\", f\"arn:aws:s3:::{s3_bucket}/*\") for s3_bucket in s3_buckets]))\n                }\n            ]\n        }\n    }\ndef handler(event, context):\n    try:\n        policy_type = event[\"params\"][\"PolicyType\"]\n        if policy_type == \"LogArchive\":\n            archives = event[\"params\"][\"LogArchives\"].strip()\n            fragment = generate_archives_policy(archives)\n        elif policy_type == \"CloudTrail\":\n            trails = event[\"params\"][\"CloudTrails\"].strip()\n            fragment = generate_trails_policy(trails)\n        else:\n            fragment = event[\"fragment\"]\n        return {\n            \"requestId\": event[\"requestId\"],\n            \"status\": \"success\",\n            \"fragment\": fragment,\n        }\n    except Exception as e:\n        traceback.print_exc()\n        return {\n            \"requestId\": event[\"requestId\"],\n            \"status\": \"failure\",\n            \"errorMessage\": str(e),\n        }"
+    },
+    "Handler": "index.handler",
+    "Role": {
+     "ref": "DatadogPolicyMacroMacroFunctionRole",
+     "attr": "Arn"
+    },
+    "Runtime": "python3.14",
+    "Tags": [
+     {
+      "Key": "lambda:createdBy",
+      "Value": "SAM"
+     }
+    ]
+   },
+   "refs": [
+    "DatadogPolicyMacroMacroFunctionRole"
+   ]
+  },
+  {
+   "id": "DatadogPolicyMacroMacroFunctionRole",
+   "cfg": "DatadogPolicyMacroMacroFunctionRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       }
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+    ],
+    "Tags": [
+     {
+      "Key": "lambda:createdBy",
+      "Value": "SAM"
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__declared__.AWS::CloudFormation::Macro.DatadogPolicyMacro",
+   "cfg": "DatadogPolicyMacro",
+   "type": "__declared__",
+   "refs": [
+    "DatadogPolicyMacroMacroFunction"
+   ],
+   "values": {
+    "type": "AWS::CloudFormation::Macro",
+    "name": "DatadogPolicyMacro",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "DatadogPolicy",
+     "FunctionName": {
+      "ref": "DatadogPolicyMacroMacroFunction",
+      "attr": "Arn"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Function.DatadogPolicyMacroMacroFunction",
+   "cfg": "DatadogPolicyMacroMacroFunction",
+   "type": "__declared__",
+   "refs": [
+    "DatadogPolicyMacroMacroFunctionRole"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Function",
+    "name": "DatadogPolicyMacroMacroFunction",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Code": {
+      "ZipFile": "import traceback, itertools\ndef generate_archives_policy(archives):\n    if not archives:\n        return {\"Ref\" : \"AWS::NoValue\"}\n    s3_paths = [path.strip(\"/ \") for path in archives.split(',')]\n    return {\n        \"PolicyName\": \"DatadogLogArchiveAndRehydratePolicy\",\n        \"PolicyDocument\": {\n            \"Version\": \"2012-10-17\",\n            \"Statement\": [\n                {\n                    \"Effect\": \"Allow\",\n                    \"Action\": [\n                        \"s3:PutObject\",\n                        \"s3:GetObject\"\n                    ],\n                    \"Resource\": [f\"arn:aws:s3:::{s3_path}/*\" for s3_path in s3_paths]\n                },\n                {\n                    \"Effect\": \"Allow\",\n                    \"Action\": [\n                        \"s3:ListBucket\"\n                    ],\n                    \"Resource\": list(set([\n                        f\"arn:aws:s3:::{s3_path.split('/')[0]}\"\n                        for s3_path in s3_paths\n                    ]))\n                }\n            ]\n        }\n    }\ndef generate_trails_policy(trails):\n    if not trails:\n        return {\"Ref\" : \"AWS::NoValue\"}\n    s3_buckets = [bucket.strip(\"/ \") for bucket in trails.split(',')]\n    return {\n        \"PolicyName\": \"DatadogCloudTrailsPolicy\",\n        \"PolicyDocument\": {\n            \"Version\": \"2012-10-17\",\n            \"Statement\": [\n                {\n                    \"Effect\": \"Allow\",\n                    \"Action\": [\n                        \"s3:ListBucket\",\n                        \"s3:GetObject\",\n                        \"s3:GetBucketLocation\"\n                    ],\n                    \"Resource\": list(itertools.chain.from_iterable([(f\"arn:aws:s3:::{s3_bucket}\", f\"arn:aws:s3:::{s3_bucket}/*\") for s3_bucket in s3_buckets]))\n                }\n            ]\n        }\n    }\ndef handler(event, context):\n    try:\n        policy_type = event[\"params\"][\"PolicyType\"]\n        if policy_type == \"LogArchive\":\n            archives = event[\"params\"][\"LogArchives\"].strip()\n            fragment = generate_archives_policy(archives)\n        elif policy_type == \"CloudTrail\":\n            trails = event[\"params\"][\"CloudTrails\"].strip()\n            fragment = generate_trails_policy(trails)\n        else:\n            fragment = event[\"fragment\"]\n        return {\n            \"requestId\": event[\"requestId\"],\n            \"status\": \"success\",\n            \"fragment\": fragment,\n        }\n    except Exception as e:\n        traceback.print_exc()\n        return {\n            \"requestId\": event[\"requestId\"],\n            \"status\": \"failure\",\n            \"errorMessage\": str(e),\n        }"
+     },
+     "Handler": "index.handler",
+     "Role": {
+      "ref": "DatadogPolicyMacroMacroFunctionRole",
+      "attr": "Arn"
+     },
+     "Runtime": "python3.14",
+     "Tags": [
+      {
+       "Key": "lambda:createdBy",
+       "Value": "SAM"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.DatadogPolicyMacroMacroFunctionRole",
+   "cfg": "DatadogPolicyMacroMacroFunctionRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "DatadogPolicyMacroMacroFunctionRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        }
+       }
+      ]
+     },
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+     ],
+     "Tags": [
+      {
+       "Key": "lambda:createdBy",
+       "Value": "SAM"
+      }
+     ]
+    }
+   }
+  }
+ ]
+}

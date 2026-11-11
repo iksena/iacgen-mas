@@ -1,0 +1,722 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [
+   "S3GatewayVpcEndpoint excluded: condition ShouldCreateVpcEndpoints false under defaults",
+   "DynamoDbGatewayVpcEndpoint excluded: condition ShouldCreateVpcEndpoints false under defaults",
+   "ComprehendVpcEndpoint excluded: condition ShouldCreateVpcEndpoints false under defaults",
+   "SnsVpcEndpoint excluded: condition ShouldCreateVpcEndpoints false under defaults",
+   "VpcEndpointSecurityGroup excluded: condition ShouldCreateVpcEndpoints false under defaults"
+  ],
+  "gt_hash": "abc6d020dd2de60391c5a4f704d3926e77b011b8e3187acafaf65821328edb0d",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "ClassificationReportTable",
+   "cfg": "ClassificationReportTable",
+   "type": "AWS::DynamoDB::Table",
+   "values": {
+    "TableName": "stack-reports",
+    "BillingMode": "PAY_PER_REQUEST",
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "access_point_arn",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "started_at",
+      "AttributeType": "S"
+     }
+    ],
+    "KeySchema": [
+     {
+      "AttributeName": "access_point_arn",
+      "KeyType": "HASH"
+     },
+     {
+      "AttributeName": "started_at",
+      "KeyType": "RANGE"
+     }
+    ],
+    "PointInTimeRecoverySpecification": {
+     "PointInTimeRecoveryEnabled": true
+    },
+    "SSESpecification": {
+     "SSEEnabled": true
+    },
+    "Tags": [
+     {
+      "Key": "Project",
+      "Value": "fsxn-observability"
+     },
+     {
+      "Key": "Purpose",
+      "Value": "content-classification-report"
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "ScannerLambdaRole",
+   "cfg": "ScannerLambdaRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "stack-lambda-role",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+    ],
+    "Policies": [
+     {
+      "PolicyName": "ContentClassificationPolicy",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Sid": "S3AccessPointObjectRead",
+         "Effect": "Allow",
+         "Action": [
+          "s3:ListBucket",
+          "s3:GetObject"
+         ],
+         "Resource": [
+          "arn:aws:s3:us-east-1:123456789012:accesspoint/*",
+          "arn:aws:s3:us-east-1:123456789012:accesspoint/*/object/*"
+         ]
+        },
+        {
+         "Sid": "ComprehendDetectPii",
+         "Effect": "Allow",
+         "Action": [
+          "comprehend:DetectPiiEntities"
+         ],
+         "Resource": [
+          "*"
+         ]
+        },
+        {
+         "Sid": "DynamoDbReportLedger",
+         "Effect": "Allow",
+         "Action": [
+          "dynamodb:PutItem"
+         ],
+         "Resource": {
+          "ref": "ClassificationReportTable",
+          "attr": "Arn"
+         }
+        },
+        {
+         "Sid": "SNSPublish",
+         "Effect": "Allow",
+         "Action": [
+          "sns:Publish"
+         ],
+         "Resource": [
+          "arn:aws:sns:us-east-1:123456789012:*"
+         ]
+        },
+        {
+         "Sid": "CloudWatchLogs",
+         "Effect": "Allow",
+         "Action": [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+         ],
+         "Resource": [
+          "arn:aws:logs:us-east-1:123456789012:log-group:/aws/lambda/stack-scanner:*"
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": [
+    "ClassificationReportTable"
+   ]
+  },
+  {
+   "id": "ScannerLogGroup",
+   "cfg": "ScannerLogGroup",
+   "type": "AWS::Logs::LogGroup",
+   "values": {
+    "LogGroupName": "/aws/lambda/stack-scanner",
+    "RetentionInDays": 365
+   },
+   "refs": []
+  },
+  {
+   "id": "ScannerFunction",
+   "cfg": "ScannerFunction",
+   "type": "AWS::Lambda::Function",
+   "values": {
+    "FunctionName": "stack-scanner",
+    "Runtime": "python3.12",
+    "Handler": "index.lambda_handler",
+    "MemorySize": 512,
+    "Timeout": 600,
+    "Role": {
+     "ref": "ScannerLambdaRole",
+     "attr": "Arn"
+    },
+    "Environment": {
+     "Variables": {
+      "REPORT_TABLE_NAME": {
+       "ref": "ClassificationReportTable"
+      },
+      "DEFAULT_LANGUAGE_CODE": "en",
+      "DEFAULT_MAX_FILES": 500,
+      "NOTIFICATION_TOPIC_ARN": ""
+     }
+    },
+    "Code": {
+     "ZipFile": "\"\"\"Content-level PII discovery scanner (CSF 2.0 Identify function).\n\nInvocation input (direct Lambda invoke or Step Functions task):\n{\n    \"access_point_arn\": \"arn:aws:s3:...:accesspoint/...\",  // required\n    \"language_code\": \"en\",                                  // optional\n    \"max_files\": 500                                        // optional\n}\n\nScans scannable text/structured-data files exposed via the given\nS3 Access Point for PII entities using Amazon Comprehend\nDetectPiiEntities, aggregates findings, writes a report to\nDynamoDB, and optionally notifies via SNS.\n\nDoes NOT create or manage the S3 Access Point itself \u2014 pass the\nARN of an existing one (e.g., from restore-verification.yaml's\nAttachAccessPoint step, or any other FSx for ONTAP S3 Access Point\nyou want to classify).\n\"\"\"\nimport json\nimport logging\nimport os\nfrom dataclasses import dataclass, field\nfrom datetime import datetime, timezone\nfrom typing import Any\n\nimport boto3\nfrom botocore.exceptions import ClientError\n\nlogger = logging.getLogger()\nlogger.setLevel(logging.INFO)\n\ns3 = boto3.client(\"s3\")\ncomprehend = boto3.client(\"comprehend\")\ndynamodb = boto3.resource(\"dynamodb\")\nsns = boto3.client(\"sns\")\n\nCOMPREHEND_MAX_BYTES = 100_000\nCHUNK_SAFETY_MARGIN_BYTES = 2_000\nCHUNK_TARGET_BYTES = COMPREHEND_MAX_BYTES - CHUNK_SAFETY_MARGIN_BYTES\n\nSCANNABLE_EXTENSIONS = frozenset({\n    \".txt\", \".csv\", \".tsv\", \".json\", \".xml\", \".log\", \".md\",\n    \".yaml\", \".yml\", \".ini\", \".conf\", \".sql\", \".html\", \".htm\",\n})\n\nDEFAULT_MAX_FILE_BYTES = 5_000_000\nDEFAULT_SAMPLE_BYTES = 500_000\n\nCOMPREHEND_SUPPORTED_LANGUAGES = frozenset({\n    \"en\", \"es\", \"fr\", \"de\", \"it\", \"pt\", \"ar\", \"hi\", \"ja\", \"ko\", \"zh\", \"zh-TW\",\n})\n\ndef _chunk_text(text, target_bytes=CHUNK_TARGET_BYTES):\n    if not text:\n        return []\n    chunks = []\n    current_lines, current_bytes = [], 0\n    for line in text.splitlines(keepends=True):\n        line_bytes = len(line.encode(\"utf-8\"))\n        if line_bytes > target_bytes:\n            if current_lines:\n                chunks.append(\"\".join(current_lines))\n                current_lines, current_bytes = [], 0\n            encoded = line.encode(\"utf-8\")\n            for i in range(0, len(encoded), target_bytes):\n                chunks.append(encoded[i:i + target_bytes].decode(\"utf-8\", errors=\"ignore\"))\n            continue\n        if current_bytes + line_bytes > target_bytes and current_lines:\n            chunks.append(\"\".join(current_lines))\n            current_lines, current_bytes = [], 0\n        current_lines.append(line)\n        current_bytes += line_bytes\n    if current_lines:\n        chunks.append(\"\".join(current_lines))\n    return chunks\n\ndef _classify_object(access_point_arn, key, size_bytes, language_code):\n    sampled = size_bytes > DEFAULT_MAX_FILE_BYTES\n    finding = {\"key\": key, \"size_bytes\": size_bytes, \"sampled\": sampled,\n               \"entity_counts\": {}, \"highest_confidence_by_type\": {}, \"error\": \"\"}\n\n    try:\n        if sampled:\n            resp = s3.get_object(Bucket=access_point_arn, Key=key,\n                                 Range=f\"bytes=0-{DEFAULT_SAMPLE_BYTES - 1}\")\n        else:\n            resp = s3.get_object(Bucket=access_point_arn, Key=key)\n        raw = resp[\"Body\"].read()\n    except ClientError as e:\n        finding[\"error\"] = f\"read_failed: {e}\"\n        return finding\n\n    text = raw.decode(\"utf-8\", errors=\"ignore\")\n    if not text.strip():\n        return finding\n\n    for chunk in _chunk_text(text):\n        if not chunk.strip():\n            continue\n        try:\n            resp = comprehend.detect_pii_entities(Text=chunk, LanguageCode=language_code)\n        except ClientError as e:\n            finding[\"error\"] = f\"comprehend_failed: {e}\"\n            continue\n        for entity in resp.get(\"Entities\", []):\n            etype = entity.get(\"Type\", \"UNKNOWN\")\n            score = entity.get(\"Score\", 0.0)\n            finding[\"entity_counts\"][etype] = finding[\"entity_counts\"].get(etype, 0) + 1\n            finding[\"highest_confidence_by_type\"][etype] = max(\n                finding[\"highest_confidence_by_type\"].get(etype, 0.0), score\n            )\n\n    return finding\n\ndef lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:\n    access_point_arn = event[\"access_point_arn\"]\n    language_code = event.get(\"language_code\", os.environ.get(\"DEFAULT_LANGUAGE_CODE\", \"en\"))\n    max_files = int(event.get(\"max_files\", os.environ.get(\"DEFAULT_MAX_FILES\", \"500\")))\n\n    if language_code not in COMPREHEND_SUPPORTED_LANGUAGES:\n        raise ValueError(\n            f\"Unsupported language_code '{language_code}' \u2014 must be one of \"\n            f\"{sorted(COMPREHEND_SUPPORTED_LANGUAGES)}\"\n        )\n\n    started_at = datetime.now(timezone.utc).isoformat()\n    files_scanned = 0\n    files_skipped_unscannable = 0\n    files_sampled_too_large = 0\n    files_with_pii = 0\n    pii_density_by_type = {}\n    findings = []\n\n    paginator = s3.get_paginator(\"list_objects_v2\")\n    for page in paginator.paginate(Bucket=access_point_arn, MaxKeys=1000):\n        for obj in page.get(\"Contents\", []):\n            if files_scanned >= max_files:\n                break\n            key = obj[\"Key\"]\n            size_bytes = obj.get(\"Size\", 0)\n            lower_key = key.lower()\n\n            if not any(lower_key.endswith(ext) for ext in SCANNABLE_EXTENSIONS):\n                files_skipped_unscannable += 1\n                continue\n            if size_bytes == 0:\n                continue\n\n            finding = _classify_object(access_point_arn, key, size_bytes, language_code)\n            files_scanned += 1\n\n            if finding[\"sampled\"]:\n                files_sampled_too_large += 1\n            if finding[\"entity_counts\"]:\n                files_with_pii += 1\n                findings.append(finding)\n                for etype, count in finding[\"entity_counts\"].items():\n                    pii_density_by_type[etype] = pii_density_by_type.get(etype, 0) + count\n            elif finding[\"error\"]:\n                findings.append(finding)\n        if files_scanned >= max_files:\n            break\n\n    completed_at = datetime.now(timezone.utc).isoformat()\n    report = {\n        \"access_point_arn\": access_point_arn,\n        \"started_at\": started_at,\n        \"completed_at\": completed_at,\n        \"language_code\": language_code,\n        \"files_scanned\": files_scanned,\n        \"files_skipped_unscannable\": files_skipped_unscannable,\n        \"files_sampled_too_large\": files_sampled_too_large,\n        \"files_with_pii\": files_with_pii,\n        \"pii_density_by_type\": pii_density_by_type,\n        \"findings\": findings[:100],\n        \"finding_count\": len(findings),\n    }\n\n    table = dynamodb.Table(os.environ[\"REPORT_TABLE_NAME\"])\n    table.put_item(Item=json.loads(json.dumps(report), parse_float=str))\n\n    logger.info(\n        \"Classification complete: %d files scanned, %d with PII, %d unscannable skipped\",\n        files_scanned, files_with_pii, files_skipped_unscannable,\n    )\n\n    topic_arn = os.environ.get(\"NOTIFICATION_TOPIC_ARN\")\n    if topic_arn and files_with_pii > 0:\n        try:\n            sns.publish(\n                TopicArn=topic_arn,\n                Subject=f\"[FSx-ONTAP PII Scan] {files_with_pii} file(s) with PII found\"[:100],\n                Message=json.dumps(\n                    {k: v for k, v in report.items() if k != \"findings\"},\n                    indent=2, default=str,\n                ),\n            )\n        except Exception as e:\n            logger.warning(\"Notification failed: %s\", e)\n\n    return report\n"
+    }
+   },
+   "refs": [
+    "ClassificationReportTable",
+    "ScannerLambdaRole"
+   ]
+  },
+  {
+   "id": "__parameter__.VpcId",
+   "cfg": "__parameter__.VpcId",
+   "type": "__parameter__",
+   "values": {
+    "name": "VpcId",
+    "type": "String",
+    "default": "",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.SubnetIds",
+   "cfg": "__parameter__.SubnetIds",
+   "type": "__parameter__",
+   "values": {
+    "name": "SubnetIds",
+    "type": "CommaDelimitedList",
+    "default": [
+     ""
+    ],
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.SecurityGroupId",
+   "cfg": "__parameter__.SecurityGroupId",
+   "type": "__parameter__",
+   "values": {
+    "name": "SecurityGroupId",
+    "type": "String",
+    "default": "",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.RouteTableIds",
+   "cfg": "__parameter__.RouteTableIds",
+   "type": "__parameter__",
+   "values": {
+    "name": "RouteTableIds",
+    "type": "CommaDelimitedList",
+    "default": [
+     ""
+    ],
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.CreateVpcEndpoints",
+   "cfg": "__parameter__.CreateVpcEndpoints",
+   "type": "__parameter__",
+   "values": {
+    "name": "CreateVpcEndpoints",
+    "type": "String",
+    "default": "true",
+    "allowed_values": [
+     "true",
+     "false"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.LambdaMemorySize",
+   "cfg": "__parameter__.LambdaMemorySize",
+   "type": "__parameter__",
+   "values": {
+    "name": "LambdaMemorySize",
+    "type": "Number",
+    "default": 512,
+    "allowed_values": [
+     256,
+     512,
+     1024,
+     2048
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.LambdaTimeoutSeconds",
+   "cfg": "__parameter__.LambdaTimeoutSeconds",
+   "type": "__parameter__",
+   "values": {
+    "name": "LambdaTimeoutSeconds",
+    "type": "Number",
+    "default": 600,
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.DefaultLanguageCode",
+   "cfg": "__parameter__.DefaultLanguageCode",
+   "type": "__parameter__",
+   "values": {
+    "name": "DefaultLanguageCode",
+    "type": "String",
+    "default": "en",
+    "allowed_values": [
+     "en",
+     "es",
+     "fr",
+     "de",
+     "it",
+     "pt",
+     "ar",
+     "hi",
+     "ja",
+     "ko",
+     "zh",
+     "zh-TW"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.DefaultMaxFiles",
+   "cfg": "__parameter__.DefaultMaxFiles",
+   "type": "__parameter__",
+   "values": {
+    "name": "DefaultMaxFiles",
+    "type": "Number",
+    "default": 500,
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.NotificationTopicArn",
+   "cfg": "__parameter__.NotificationTopicArn",
+   "type": "__parameter__",
+   "values": {
+    "name": "NotificationTopicArn",
+    "type": "String",
+    "default": "",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.ScannerFunctionArn",
+   "cfg": "__output__.ScannerFunctionArn",
+   "type": "__output__",
+   "values": {
+    "name": "ScannerFunctionArn",
+    "value": {
+     "ref": "ScannerFunction",
+     "attr": "Arn"
+    },
+    "description": "Content classification scanner Lambda ARN. Invoke directly with {\"access_point_arn\": \"...\"} or chain after the restore-verification.yaml workflow's AttachAccessPoint step (e.g., via Step Functions or a scheduled EventBridge rule targeting an S3 Access Point you manage separately). If VpcId was set at deploy time, this function only reaches VPC-scoped access points bound to that same VPC (and internet-origin ones, via the VPC's own internet/NAT path if present) \u2014 if VpcId was left empty, this function only reaches internet-origin access points.",
+    "export": null
+   },
+   "refs": [
+    "ScannerFunction"
+   ]
+  },
+  {
+   "id": "__output__.ReportTableName",
+   "cfg": "__output__.ReportTableName",
+   "type": "__output__",
+   "values": {
+    "name": "ReportTableName",
+    "value": {
+     "ref": "ClassificationReportTable"
+    },
+    "description": "DynamoDB table name for classification reports",
+    "export": null
+   },
+   "refs": [
+    "ClassificationReportTable"
+   ]
+  },
+  {
+   "id": "__output__.InvokeExample",
+   "cfg": "__output__.InvokeExample",
+   "type": "__output__",
+   "values": {
+    "name": "InvokeExample",
+    "value": "aws lambda invoke --function-name ${ScannerFunction} --payload '{\"access_point_arn\":\"arn:aws:s3:REGION:ACCOUNT:accesspoint/NAME\",\"language_code\":\"en\",\"max_files\":500}' --cli-binary-format raw-in-base64-out response.json",
+    "description": "Example AWS CLI command to invoke the scanner",
+    "export": null
+   },
+   "refs": [
+    "ScannerFunction"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCEndpoint.S3GatewayVpcEndpoint",
+   "cfg": "S3GatewayVpcEndpoint",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::VPCEndpoint",
+    "name": "S3GatewayVpcEndpoint",
+    "gated": true,
+    "gate": "ShouldCreateVpcEndpoints",
+    "properties": {
+     "VpcId": "",
+     "ServiceName": "com.amazonaws.us-east-1.s3",
+     "VpcEndpointType": "Gateway",
+     "RouteTableIds": [
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCEndpoint.DynamoDbGatewayVpcEndpoint",
+   "cfg": "DynamoDbGatewayVpcEndpoint",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::VPCEndpoint",
+    "name": "DynamoDbGatewayVpcEndpoint",
+    "gated": true,
+    "gate": "ShouldCreateVpcEndpoints",
+    "properties": {
+     "VpcId": "",
+     "ServiceName": "com.amazonaws.us-east-1.dynamodb",
+     "VpcEndpointType": "Gateway",
+     "RouteTableIds": [
+      ""
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCEndpoint.ComprehendVpcEndpoint",
+   "cfg": "ComprehendVpcEndpoint",
+   "type": "__declared__",
+   "refs": [
+    "VpcEndpointSecurityGroup"
+   ],
+   "values": {
+    "type": "AWS::EC2::VPCEndpoint",
+    "name": "ComprehendVpcEndpoint",
+    "gated": true,
+    "gate": "ShouldCreateVpcEndpoints",
+    "properties": {
+     "VpcId": "",
+     "ServiceName": "com.amazonaws.us-east-1.comprehend",
+     "VpcEndpointType": "Interface",
+     "SubnetIds": [
+      ""
+     ],
+     "SecurityGroupIds": [
+      {
+       "ref": "VpcEndpointSecurityGroup"
+      }
+     ],
+     "PrivateDnsEnabled": true
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCEndpoint.SnsVpcEndpoint",
+   "cfg": "SnsVpcEndpoint",
+   "type": "__declared__",
+   "refs": [
+    "VpcEndpointSecurityGroup"
+   ],
+   "values": {
+    "type": "AWS::EC2::VPCEndpoint",
+    "name": "SnsVpcEndpoint",
+    "gated": true,
+    "gate": "ShouldCreateVpcEndpoints",
+    "properties": {
+     "VpcId": "",
+     "ServiceName": "com.amazonaws.us-east-1.sns",
+     "VpcEndpointType": "Interface",
+     "SubnetIds": [
+      ""
+     ],
+     "SecurityGroupIds": [
+      {
+       "ref": "VpcEndpointSecurityGroup"
+      }
+     ],
+     "PrivateDnsEnabled": true
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SecurityGroup.VpcEndpointSecurityGroup",
+   "cfg": "VpcEndpointSecurityGroup",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::SecurityGroup",
+    "name": "VpcEndpointSecurityGroup",
+    "gated": true,
+    "gate": "ShouldCreateVpcEndpoints",
+    "properties": {
+     "GroupDescription": "Allow scanner Lambda to access Interface VPC Endpoints (Comprehend, SNS)",
+     "VpcId": "",
+     "SecurityGroupIngress": [
+      {
+       "IpProtocol": "tcp",
+       "FromPort": 443,
+       "ToPort": 443,
+       "SourceSecurityGroupId": "",
+       "Description": "Lambda SG to VPC Endpoint (HTTPS)"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::DynamoDB::Table.ClassificationReportTable",
+   "cfg": "ClassificationReportTable",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::DynamoDB::Table",
+    "name": "ClassificationReportTable",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "TableName": "stack-reports",
+     "BillingMode": "PAY_PER_REQUEST",
+     "AttributeDefinitions": [
+      {
+       "AttributeName": "access_point_arn",
+       "AttributeType": "S"
+      },
+      {
+       "AttributeName": "started_at",
+       "AttributeType": "S"
+      }
+     ],
+     "KeySchema": [
+      {
+       "AttributeName": "access_point_arn",
+       "KeyType": "HASH"
+      },
+      {
+       "AttributeName": "started_at",
+       "KeyType": "RANGE"
+      }
+     ],
+     "PointInTimeRecoverySpecification": {
+      "PointInTimeRecoveryEnabled": true
+     },
+     "SSESpecification": {
+      "SSEEnabled": true
+     },
+     "Tags": [
+      {
+       "Key": "Project",
+       "Value": "fsxn-observability"
+      },
+      {
+       "Key": "Purpose",
+       "Value": "content-classification-report"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.ScannerLambdaRole",
+   "cfg": "ScannerLambdaRole",
+   "type": "__declared__",
+   "refs": [
+    "ClassificationReportTable"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "ScannerLambdaRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "stack-lambda-role",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+     ],
+     "Policies": [
+      {
+       "PolicyName": "ContentClassificationPolicy",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Sid": "S3AccessPointObjectRead",
+          "Effect": "Allow",
+          "Action": [
+           "s3:ListBucket",
+           "s3:GetObject"
+          ],
+          "Resource": [
+           "arn:aws:s3:us-east-1:123456789012:accesspoint/*",
+           "arn:aws:s3:us-east-1:123456789012:accesspoint/*/object/*"
+          ]
+         },
+         {
+          "Sid": "ComprehendDetectPii",
+          "Effect": "Allow",
+          "Action": [
+           "comprehend:DetectPiiEntities"
+          ],
+          "Resource": [
+           "*"
+          ]
+         },
+         {
+          "Sid": "DynamoDbReportLedger",
+          "Effect": "Allow",
+          "Action": [
+           "dynamodb:PutItem"
+          ],
+          "Resource": {
+           "ref": "ClassificationReportTable",
+           "attr": "Arn"
+          }
+         },
+         {
+          "Sid": "SNSPublish",
+          "Effect": "Allow",
+          "Action": [
+           "sns:Publish"
+          ],
+          "Resource": [
+           "arn:aws:sns:us-east-1:123456789012:*"
+          ]
+         },
+         {
+          "Sid": "CloudWatchLogs",
+          "Effect": "Allow",
+          "Action": [
+           "logs:CreateLogGroup",
+           "logs:CreateLogStream",
+           "logs:PutLogEvents"
+          ],
+          "Resource": [
+           "arn:aws:logs:us-east-1:123456789012:log-group:/aws/lambda/stack-scanner:*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::LogGroup.ScannerLogGroup",
+   "cfg": "ScannerLogGroup",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Logs::LogGroup",
+    "name": "ScannerLogGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "LogGroupName": "/aws/lambda/stack-scanner",
+     "RetentionInDays": 365
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Function.ScannerFunction",
+   "cfg": "ScannerFunction",
+   "type": "__declared__",
+   "refs": [
+    "ClassificationReportTable",
+    "ScannerLambdaRole"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Function",
+    "name": "ScannerFunction",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "FunctionName": "stack-scanner",
+     "Runtime": "python3.12",
+     "Handler": "index.lambda_handler",
+     "MemorySize": 512,
+     "Timeout": 600,
+     "Role": {
+      "ref": "ScannerLambdaRole",
+      "attr": "Arn"
+     },
+     "Environment": {
+      "Variables": {
+       "REPORT_TABLE_NAME": {
+        "ref": "ClassificationReportTable"
+       },
+       "DEFAULT_LANGUAGE_CODE": "en",
+       "DEFAULT_MAX_FILES": 500,
+       "NOTIFICATION_TOPIC_ARN": ""
+      }
+     },
+     "Code": {
+      "ZipFile": "\"\"\"Content-level PII discovery scanner (CSF 2.0 Identify function).\n\nInvocation input (direct Lambda invoke or Step Functions task):\n{\n    \"access_point_arn\": \"arn:aws:s3:...:accesspoint/...\",  // required\n    \"language_code\": \"en\",                                  // optional\n    \"max_files\": 500                                        // optional\n}\n\nScans scannable text/structured-data files exposed via the given\nS3 Access Point for PII entities using Amazon Comprehend\nDetectPiiEntities, aggregates findings, writes a report to\nDynamoDB, and optionally notifies via SNS.\n\nDoes NOT create or manage the S3 Access Point itself \u2014 pass the\nARN of an existing one (e.g., from restore-verification.yaml's\nAttachAccessPoint step, or any other FSx for ONTAP S3 Access Point\nyou want to classify).\n\"\"\"\nimport json\nimport logging\nimport os\nfrom dataclasses import dataclass, field\nfrom datetime import datetime, timezone\nfrom typing import Any\n\nimport boto3\nfrom botocore.exceptions import ClientError\n\nlogger = logging.getLogger()\nlogger.setLevel(logging.INFO)\n\ns3 = boto3.client(\"s3\")\ncomprehend = boto3.client(\"comprehend\")\ndynamodb = boto3.resource(\"dynamodb\")\nsns = boto3.client(\"sns\")\n\nCOMPREHEND_MAX_BYTES = 100_000\nCHUNK_SAFETY_MARGIN_BYTES = 2_000\nCHUNK_TARGET_BYTES = COMPREHEND_MAX_BYTES - CHUNK_SAFETY_MARGIN_BYTES\n\nSCANNABLE_EXTENSIONS = frozenset({\n    \".txt\", \".csv\", \".tsv\", \".json\", \".xml\", \".log\", \".md\",\n    \".yaml\", \".yml\", \".ini\", \".conf\", \".sql\", \".html\", \".htm\",\n})\n\nDEFAULT_MAX_FILE_BYTES = 5_000_000\nDEFAULT_SAMPLE_BYTES = 500_000\n\nCOMPREHEND_SUPPORTED_LANGUAGES = frozenset({\n    \"en\", \"es\", \"fr\", \"de\", \"it\", \"pt\", \"ar\", \"hi\", \"ja\", \"ko\", \"zh\", \"zh-TW\",\n})\n\ndef _chunk_text(text, target_bytes=CHUNK_TARGET_BYTES):\n    if not text:\n        return []\n    chunks = []\n    current_lines, current_bytes = [], 0\n    for line in text.splitlines(keepends=True):\n        line_bytes = len(line.encode(\"utf-8\"))\n        if line_bytes > target_bytes:\n            if current_lines:\n                chunks.append(\"\".join(current_lines))\n                current_lines, current_bytes = [], 0\n            encoded = line.encode(\"utf-8\")\n            for i in range(0, len(encoded), target_bytes):\n                chunks.append(encoded[i:i + target_bytes].decode(\"utf-8\", errors=\"ignore\"))\n            continue\n        if current_bytes + line_bytes > target_bytes and current_lines:\n            chunks.append(\"\".join(current_lines))\n            current_lines, current_bytes = [], 0\n        current_lines.append(line)\n        current_bytes += line_bytes\n    if current_lines:\n        chunks.append(\"\".join(current_lines))\n    return chunks\n\ndef _classify_object(access_point_arn, key, size_bytes, language_code):\n    sampled = size_bytes > DEFAULT_MAX_FILE_BYTES\n    finding = {\"key\": key, \"size_bytes\": size_bytes, \"sampled\": sampled,\n               \"entity_counts\": {}, \"highest_confidence_by_type\": {}, \"error\": \"\"}\n\n    try:\n        if sampled:\n            resp = s3.get_object(Bucket=access_point_arn, Key=key,\n                                 Range=f\"bytes=0-{DEFAULT_SAMPLE_BYTES - 1}\")\n        else:\n            resp = s3.get_object(Bucket=access_point_arn, Key=key)\n        raw = resp[\"Body\"].read()\n    except ClientError as e:\n        finding[\"error\"] = f\"read_failed: {e}\"\n        return finding\n\n    text = raw.decode(\"utf-8\", errors=\"ignore\")\n    if not text.strip():\n        return finding\n\n    for chunk in _chunk_text(text):\n        if not chunk.strip():\n            continue\n        try:\n            resp = comprehend.detect_pii_entities(Text=chunk, LanguageCode=language_code)\n        except ClientError as e:\n            finding[\"error\"] = f\"comprehend_failed: {e}\"\n            continue\n        for entity in resp.get(\"Entities\", []):\n            etype = entity.get(\"Type\", \"UNKNOWN\")\n            score = entity.get(\"Score\", 0.0)\n            finding[\"entity_counts\"][etype] = finding[\"entity_counts\"].get(etype, 0) + 1\n            finding[\"highest_confidence_by_type\"][etype] = max(\n                finding[\"highest_confidence_by_type\"].get(etype, 0.0), score\n            )\n\n    return finding\n\ndef lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:\n    access_point_arn = event[\"access_point_arn\"]\n    language_code = event.get(\"language_code\", os.environ.get(\"DEFAULT_LANGUAGE_CODE\", \"en\"))\n    max_files = int(event.get(\"max_files\", os.environ.get(\"DEFAULT_MAX_FILES\", \"500\")))\n\n    if language_code not in COMPREHEND_SUPPORTED_LANGUAGES:\n        raise ValueError(\n            f\"Unsupported language_code '{language_code}' \u2014 must be one of \"\n            f\"{sorted(COMPREHEND_SUPPORTED_LANGUAGES)}\"\n        )\n\n    started_at = datetime.now(timezone.utc).isoformat()\n    files_scanned = 0\n    files_skipped_unscannable = 0\n    files_sampled_too_large = 0\n    files_with_pii = 0\n    pii_density_by_type = {}\n    findings = []\n\n    paginator = s3.get_paginator(\"list_objects_v2\")\n    for page in paginator.paginate(Bucket=access_point_arn, MaxKeys=1000):\n        for obj in page.get(\"Contents\", []):\n            if files_scanned >= max_files:\n                break\n            key = obj[\"Key\"]\n            size_bytes = obj.get(\"Size\", 0)\n            lower_key = key.lower()\n\n            if not any(lower_key.endswith(ext) for ext in SCANNABLE_EXTENSIONS):\n                files_skipped_unscannable += 1\n                continue\n            if size_bytes == 0:\n                continue\n\n            finding = _classify_object(access_point_arn, key, size_bytes, language_code)\n            files_scanned += 1\n\n            if finding[\"sampled\"]:\n                files_sampled_too_large += 1\n            if finding[\"entity_counts\"]:\n                files_with_pii += 1\n                findings.append(finding)\n                for etype, count in finding[\"entity_counts\"].items():\n                    pii_density_by_type[etype] = pii_density_by_type.get(etype, 0) + count\n            elif finding[\"error\"]:\n                findings.append(finding)\n        if files_scanned >= max_files:\n            break\n\n    completed_at = datetime.now(timezone.utc).isoformat()\n    report = {\n        \"access_point_arn\": access_point_arn,\n        \"started_at\": started_at,\n        \"completed_at\": completed_at,\n        \"language_code\": language_code,\n        \"files_scanned\": files_scanned,\n        \"files_skipped_unscannable\": files_skipped_unscannable,\n        \"files_sampled_too_large\": files_sampled_too_large,\n        \"files_with_pii\": files_with_pii,\n        \"pii_density_by_type\": pii_density_by_type,\n        \"findings\": findings[:100],\n        \"finding_count\": len(findings),\n    }\n\n    table = dynamodb.Table(os.environ[\"REPORT_TABLE_NAME\"])\n    table.put_item(Item=json.loads(json.dumps(report), parse_float=str))\n\n    logger.info(\n        \"Classification complete: %d files scanned, %d with PII, %d unscannable skipped\",\n        files_scanned, files_with_pii, files_skipped_unscannable,\n    )\n\n    topic_arn = os.environ.get(\"NOTIFICATION_TOPIC_ARN\")\n    if topic_arn and files_with_pii > 0:\n        try:\n            sns.publish(\n                TopicArn=topic_arn,\n                Subject=f\"[FSx-ONTAP PII Scan] {files_with_pii} file(s) with PII found\"[:100],\n                Message=json.dumps(\n                    {k: v for k, v in report.items() if k != \"findings\"},\n                    indent=2, default=str,\n                ),\n            )\n        except Exception as e:\n            logger.warning(\"Notification failed: %s\", e)\n\n    return report\n"
+     }
+    }
+   }
+  }
+ ]
+}

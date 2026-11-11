@@ -1,0 +1,488 @@
+package intent.cfn.row_052
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {
+  "role": {
+   "types": [
+    "AWS::IAM::Role"
+   ],
+   "where": []
+  },
+  "oidc": {
+   "types": [
+    "AWS::IAM::OIDCProvider"
+   ],
+   "where": []
+  },
+  "iam": {
+   "types": [
+    "AWS::IAM::Role",
+    "AWS::IAM::Policy",
+    "AWS::IAM::ManagedPolicy"
+   ],
+   "where": []
+  },
+  "oidc_role": {
+   "types": [
+    "AWS::IAM::Role"
+   ],
+   "where": [
+    {
+     "path": [
+      "AssumeRolePolicyDocument",
+      "Statement",
+      "*",
+      "Principal",
+      "Federated"
+     ],
+     "op": "present"
+    }
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "role",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "creates an IAM role for GitHub Actions workflows",
+   "select": "role"
+  },
+  {
+   "id": "oidc",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "sets up the GitHub Actions OIDC identity provider",
+   "select": "oidc"
+  },
+  {
+   "id": "oidc_url",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "sets up the GitHub Actions OIDC identity provider",
+   "justify": "GitHub Actions OIDC provider URL",
+   "select": "oidc",
+   "cond": {
+    "path": [
+     "Url"
+    ],
+    "op": "contains",
+    "value": "token.actions.githubusercontent.com"
+   }
+  },
+  {
+   "id": "assume_web_identity",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "to assume via OIDC",
+   "select": "role",
+   "cond": {
+    "path": [
+     "AssumeRolePolicyDocument",
+     "Statement",
+     "*",
+     "Action",
+     "*"
+    ],
+    "op": "glob_covers",
+    "value": "sts:AssumeRoleWithWebIdentity"
+   }
+  },
+  {
+   "id": "repo_scope",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "from the guardian/facia-scala-client repository",
+   "select": "role",
+   "cond": {
+    "path": [
+     "AssumeRolePolicyDocument",
+     "Statement",
+     "*"
+    ],
+    "op": "match",
+    "value": [
+     {
+      "path": [
+       "Effect"
+      ],
+      "op": "eq",
+      "value": "Allow"
+     },
+     {
+      "path": [
+       "Principal",
+       "Federated"
+      ],
+      "op": "present"
+     },
+     {
+      "path": [
+       "Condition"
+      ],
+      "op": "contains",
+      "value": "guardian/facia-scala-client"
+     }
+    ]
+   }
+  },
+  {
+   "id": "trust_oidc",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "to assume via OIDC",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "role",
+     "to": "oidc"
+    },
+    {
+     "kind": "attr",
+     "select": "role",
+     "cond": {
+      "path": [
+       "AssumeRolePolicyDocument",
+       "Statement",
+       "*",
+       "Principal",
+       "Federated"
+      ],
+      "op": "contains",
+      "value": "token.actions.githubusercontent.com"
+     }
+    }
+   ],
+   "justify": "GitHub Actions OIDC provider is token.actions.githubusercontent.com"
+  },
+  {
+   "id": "bucket",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "read-only access to the facia-tool-store S3 bucket",
+   "justify": "the policy statement's resource names the bucket, or the role references a bucket with that name",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "oidc_role",
+     "cond": {
+      "path": [
+       "Policies",
+       "*",
+       "PolicyDocument",
+       "Statement",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "Effect"
+        ],
+        "op": "eq",
+        "value": "Allow"
+       },
+       {
+        "path": [
+         "Resource",
+         "*"
+        ],
+        "op": "regex",
+        "value": "(?i)facia-tool-store"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy"
+      ],
+      "where": [
+       {
+        "path": [
+         "PolicyDocument",
+         "Statement",
+         "*"
+        ],
+        "op": "match",
+        "value": [
+         {
+          "path": [
+           "Effect"
+          ],
+          "op": "eq",
+          "value": "Allow"
+         },
+         {
+          "path": [
+           "Resource",
+           "*"
+          ],
+          "op": "regex",
+          "value": "(?i)facia-tool-store"
+         }
+        ]
+       }
+      ]
+     },
+     "to": "oidc_role",
+     "bidirectional": true
+    },
+    {
+     "kind": "ref",
+     "from": "oidc_role",
+     "to": {
+      "types": [
+       "AWS::S3::Bucket"
+      ],
+      "where": [
+       {
+        "path": [
+         "BucketName"
+        ],
+        "op": "regex",
+        "value": "(?i)facia-tool-store"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "dev_prefix",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "including its DEV prefix",
+   "justify": "the DEV prefix appears as DEV/* in an object ARN or an s3:prefix condition; a grant on the whole bucket includes it",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "oidc_role",
+     "cond": {
+      "path": [
+       "Policies",
+       "*",
+       "PolicyDocument",
+       "Statement",
+       "*"
+      ],
+      "op": "regex",
+      "value": "(?i)(/dev\\b|prefix\\W+dev\\b|facia-tool-store/\\*)"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy"
+      ],
+      "where": [
+       {
+        "path": [
+         "PolicyDocument",
+         "Statement",
+         "*"
+        ],
+        "op": "regex",
+        "value": "(?i)(/dev\\b|prefix\\W+dev\\b|facia-tool-store/\\*)"
+       }
+      ]
+     },
+     "to": "oidc_role",
+     "bidirectional": true
+    }
+   ]
+  },
+  {
+   "id": "read_actions",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "grants that role read-only access",
+   "justify": "read access means s3:GetObject",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "oidc_role",
+     "cond": {
+      "path": [
+       "Policies",
+       "*",
+       "PolicyDocument",
+       "Statement",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "Effect"
+        ],
+        "op": "eq",
+        "value": "Allow"
+       },
+       {
+        "path": [
+         "Action",
+         "*"
+        ],
+        "op": "glob_covers",
+        "value": "s3:GetObject"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy"
+      ],
+      "where": [
+       {
+        "path": [
+         "PolicyDocument",
+         "Statement",
+         "*"
+        ],
+        "op": "match",
+        "value": [
+         {
+          "path": [
+           "Effect"
+          ],
+          "op": "eq",
+          "value": "Allow"
+         },
+         {
+          "path": [
+           "Action",
+           "*"
+          ],
+          "op": "glob_covers",
+          "value": "s3:GetObject"
+         }
+        ]
+       }
+      ]
+     },
+     "to": "oidc_role",
+     "bidirectional": true
+    },
+    {
+     "kind": "attr",
+     "select": "oidc_role",
+     "cond": {
+      "path": [
+       "ManagedPolicyArns",
+       "*"
+      ],
+      "op": "regex",
+      "value": "(?i)AmazonS3ReadOnlyAccess"
+     }
+    }
+   ]
+  },
+  {
+   "id": "read_only",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "grants that role read-only access",
+   "justify": "read-only means every action the role's policies grant is an S3 read; KMS actions needed for an encrypted bucket are not writes to it",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "oidc_role",
+     "cond": {
+      "path": [
+       "Policies",
+       "*",
+       "PolicyDocument",
+       "Statement",
+       "*",
+       "Action",
+       "*"
+      ],
+      "op": "regex",
+      "value": "(?i)^(s3:(get|list|head)[a-z*]*|kms:[a-z*]+)$",
+      "every": true
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy"
+      ],
+      "where": [
+       {
+        "path": [
+         "PolicyDocument",
+         "Statement",
+         "*",
+         "Action",
+         "*"
+        ],
+        "op": "regex",
+        "value": "(?i)^(s3:(get|list|head)[a-z*]*|kms:[a-z*]+)$",
+        "every": true
+       }
+      ]
+     },
+     "to": "oidc_role",
+     "bidirectional": true
+    },
+    {
+     "kind": "attr",
+     "select": "oidc_role",
+     "cond": {
+      "path": [
+       "ManagedPolicyArns",
+       "*"
+      ],
+      "op": "regex",
+      "value": "(?i)AmazonS3ReadOnlyAccess"
+     }
+    }
+   ]
+  },
+  {
+   "id": "x_list_bucket",
+   "kind": "attr",
+   "tier": "extra",
+   "select": "iam",
+   "cond": {
+    "path": [],
+    "op": "regex",
+    "value": "(?i)s3:(listbucket|list\\*|\\*)"
+   }
+  },
+  {
+   "id": "x_client_id",
+   "kind": "attr",
+   "tier": "extra",
+   "select": "oidc",
+   "cond": {
+    "path": [
+     "ClientIdList",
+     "*"
+    ],
+    "op": "eq",
+    "value": "sts.amazonaws.com"
+   }
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

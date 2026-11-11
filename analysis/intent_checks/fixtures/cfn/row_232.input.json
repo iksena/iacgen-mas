@@ -1,0 +1,592 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [
+   "JobLogGroup excluded: condition ShouldCreateJob false under defaults",
+   "Job excluded: condition ShouldCreateJob false under defaults"
+  ],
+  "gt_hash": "0baf73797bfc737a1f40b2d38e2c9cd2fae07169382a387f4f4a4fc703a6bb4a",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "Database",
+   "cfg": "Database",
+   "type": "AWS::Glue::Database",
+   "values": {
+    "CatalogId": "123456789012",
+    "DatabaseInput": {
+     "Name": "<param:NamePrefix>_dev_raw",
+     "Description": "<param:NamePrefix> raw catalog (dev)"
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "ServiceRole",
+   "cfg": "ServiceRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "glue.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "aws:SourceAccount": "123456789012"
+        }
+       }
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/AWSGlueServiceRole"
+    ],
+    "Policies": [
+     {
+      "PolicyName": "lake-access",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "s3:GetObject",
+          "s3:ListBucket"
+         ],
+         "Resource": [
+          "<param:SourceBucketArn>",
+          "<param:SourceBucketArn>/*"
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "Crawler",
+   "cfg": "Crawler",
+   "type": "AWS::Glue::Crawler",
+   "values": {
+    "Name": "<param:NamePrefix>-dev-raw",
+    "Role": {
+     "ref": "ServiceRole",
+     "attr": "Arn"
+    },
+    "DatabaseName": {
+     "ref": "Database"
+    },
+    "Targets": {
+     "S3Targets": [
+      {
+       "Path": "s3://{'Fn::Select': [5, ['<param', 'SourceBucketArn>']]}/raw/"
+      }
+     ]
+    },
+    "Schedule": {
+     "ScheduleExpression": "cron(0 1 * * ? *)"
+    },
+    "SchemaChangePolicy": {
+     "UpdateBehavior": "LOG",
+     "DeleteBehavior": "LOG"
+    },
+    "RecrawlPolicy": {
+     "RecrawlBehavior": "CRAWL_NEW_FOLDERS_ONLY"
+    },
+    "Configuration": "{\"Version\":1.0,\"CrawlerOutput\":{\"Partitions\":{\"AddOrUpdateBehavior\":\"InheritFromTable\"}}}\n",
+    "__resource__": {
+     "Condition": "ShouldCreateCrawler"
+    }
+   },
+   "refs": [
+    "Database",
+    "ServiceRole"
+   ]
+  },
+  {
+   "id": "__parameter__.NamePrefix",
+   "cfg": "__parameter__.NamePrefix",
+   "type": "__parameter__",
+   "values": {
+    "name": "NamePrefix",
+    "type": "String",
+    "default": null,
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.Environment",
+   "cfg": "__parameter__.Environment",
+   "type": "__parameter__",
+   "values": {
+    "name": "Environment",
+    "type": "String",
+    "default": "dev",
+    "allowed_values": [
+     "dev",
+     "staging",
+     "prod"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.DatabaseSuffix",
+   "cfg": "__parameter__.DatabaseSuffix",
+   "type": "__parameter__",
+   "values": {
+    "name": "DatabaseSuffix",
+    "type": "String",
+    "default": "raw",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.SourceBucketArn",
+   "cfg": "__parameter__.SourceBucketArn",
+   "type": "__parameter__",
+   "values": {
+    "name": "SourceBucketArn",
+    "type": "String",
+    "default": null,
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.SourcePrefix",
+   "cfg": "__parameter__.SourcePrefix",
+   "type": "__parameter__",
+   "values": {
+    "name": "SourcePrefix",
+    "type": "String",
+    "default": "raw",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.TargetBucketArn",
+   "cfg": "__parameter__.TargetBucketArn",
+   "type": "__parameter__",
+   "values": {
+    "name": "TargetBucketArn",
+    "type": "String",
+    "default": "",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.TargetPrefix",
+   "cfg": "__parameter__.TargetPrefix",
+   "type": "__parameter__",
+   "values": {
+    "name": "TargetPrefix",
+    "type": "String",
+    "default": "curated",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.EnableCrawler",
+   "cfg": "__parameter__.EnableCrawler",
+   "type": "__parameter__",
+   "values": {
+    "name": "EnableCrawler",
+    "type": "String",
+    "default": "true",
+    "allowed_values": [
+     "true",
+     "false"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.CrawlerSchedule",
+   "cfg": "__parameter__.CrawlerSchedule",
+   "type": "__parameter__",
+   "values": {
+    "name": "CrawlerSchedule",
+    "type": "String",
+    "default": "cron(0 1 * * ? *)",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.EnableJob",
+   "cfg": "__parameter__.EnableJob",
+   "type": "__parameter__",
+   "values": {
+    "name": "EnableJob",
+    "type": "String",
+    "default": "false",
+    "allowed_values": [
+     "true",
+     "false"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.JobScriptS3Uri",
+   "cfg": "__parameter__.JobScriptS3Uri",
+   "type": "__parameter__",
+   "values": {
+    "name": "JobScriptS3Uri",
+    "type": "String",
+    "default": "",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.GlueVersion",
+   "cfg": "__parameter__.GlueVersion",
+   "type": "__parameter__",
+   "values": {
+    "name": "GlueVersion",
+    "type": "String",
+    "default": "4.0",
+    "allowed_values": [
+     "3.0",
+     "4.0",
+     "5.0"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.WorkerType",
+   "cfg": "__parameter__.WorkerType",
+   "type": "__parameter__",
+   "values": {
+    "name": "WorkerType",
+    "type": "String",
+    "default": "G.1X",
+    "allowed_values": [
+     "G.1X",
+     "G.2X",
+     "G.4X",
+     "G.8X",
+     "G.025X"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.NumberOfWorkers",
+   "cfg": "__parameter__.NumberOfWorkers",
+   "type": "__parameter__",
+   "values": {
+    "name": "NumberOfWorkers",
+    "type": "Number",
+    "default": 2,
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.JobTimeoutMinutes",
+   "cfg": "__parameter__.JobTimeoutMinutes",
+   "type": "__parameter__",
+   "values": {
+    "name": "JobTimeoutMinutes",
+    "type": "Number",
+    "default": 60,
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.MaxConcurrentRuns",
+   "cfg": "__parameter__.MaxConcurrentRuns",
+   "type": "__parameter__",
+   "values": {
+    "name": "MaxConcurrentRuns",
+    "type": "Number",
+    "default": 1,
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.LogRetentionDays",
+   "cfg": "__parameter__.LogRetentionDays",
+   "type": "__parameter__",
+   "values": {
+    "name": "LogRetentionDays",
+    "type": "Number",
+    "default": 30,
+    "allowed_values": [
+     1,
+     3,
+     5,
+     7,
+     14,
+     30,
+     60,
+     90,
+     120,
+     150,
+     180,
+     365,
+     400,
+     545,
+     731,
+     1827,
+     3653
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.DatabaseName",
+   "cfg": "__output__.DatabaseName",
+   "type": "__output__",
+   "values": {
+    "name": "DatabaseName",
+    "value": {
+     "ref": "Database"
+    },
+    "description": "Glue Data Catalog database name, for Athena queries and job scripts.",
+    "export": null
+   },
+   "refs": [
+    "Database"
+   ]
+  },
+  {
+   "id": "__output__.ServiceRoleArn",
+   "cfg": "__output__.ServiceRoleArn",
+   "type": "__output__",
+   "values": {
+    "name": "ServiceRoleArn",
+    "value": {
+     "ref": "ServiceRole",
+     "attr": "Arn"
+    },
+    "description": "Role the crawler and job assume.",
+    "export": null
+   },
+   "refs": [
+    "ServiceRole"
+   ]
+  },
+  {
+   "id": "__output__.CrawlerName",
+   "cfg": "__output__.CrawlerName",
+   "type": "__output__",
+   "values": {
+    "name": "CrawlerName",
+    "value": {
+     "ref": "Crawler"
+    },
+    "description": "Crawler name, for on-demand runs via start-crawler.",
+    "export": null
+   },
+   "refs": [
+    "Crawler"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::Glue::Database.Database",
+   "cfg": "Database",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Glue::Database",
+    "name": "Database",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "CatalogId": "123456789012",
+     "DatabaseInput": {
+      "Name": "<param:NamePrefix>_dev_raw",
+      "Description": "<param:NamePrefix> raw catalog (dev)"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.ServiceRole",
+   "cfg": "ServiceRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "ServiceRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "glue.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "aws:SourceAccount": "123456789012"
+         }
+        }
+       }
+      ]
+     },
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AWSGlueServiceRole"
+     ],
+     "Policies": [
+      {
+       "PolicyName": "lake-access",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "s3:GetObject",
+           "s3:ListBucket"
+          ],
+          "Resource": [
+           "<param:SourceBucketArn>",
+           "<param:SourceBucketArn>/*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Glue::Crawler.Crawler",
+   "cfg": "Crawler",
+   "type": "__declared__",
+   "refs": [
+    "Database",
+    "ServiceRole"
+   ],
+   "values": {
+    "type": "AWS::Glue::Crawler",
+    "name": "Crawler",
+    "gated": true,
+    "gate": "ShouldCreateCrawler",
+    "properties": {
+     "Name": "<param:NamePrefix>-dev-raw",
+     "Role": {
+      "ref": "ServiceRole",
+      "attr": "Arn"
+     },
+     "DatabaseName": {
+      "ref": "Database"
+     },
+     "Targets": {
+      "S3Targets": [
+       {
+        "Path": "s3://{'Fn::Select': [5, ['<param', 'SourceBucketArn>']]}/raw/"
+       }
+      ]
+     },
+     "Schedule": {
+      "ScheduleExpression": "cron(0 1 * * ? *)"
+     },
+     "SchemaChangePolicy": {
+      "UpdateBehavior": "LOG",
+      "DeleteBehavior": "LOG"
+     },
+     "RecrawlPolicy": {
+      "RecrawlBehavior": "CRAWL_NEW_FOLDERS_ONLY"
+     },
+     "Configuration": "{\"Version\":1.0,\"CrawlerOutput\":{\"Partitions\":{\"AddOrUpdateBehavior\":\"InheritFromTable\"}}}\n"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::LogGroup.JobLogGroup",
+   "cfg": "JobLogGroup",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Logs::LogGroup",
+    "name": "JobLogGroup",
+    "gated": true,
+    "gate": "ShouldCreateJob",
+    "properties": {
+     "LogGroupName": "/dev/<param:NamePrefix>/glue/raw",
+     "RetentionInDays": 30
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Glue::Job.Job",
+   "cfg": "Job",
+   "type": "__declared__",
+   "refs": [
+    "JobLogGroup",
+    "ServiceRole"
+   ],
+   "values": {
+    "type": "AWS::Glue::Job",
+    "name": "Job",
+    "gated": true,
+    "gate": "ShouldCreateJob",
+    "properties": {
+     "Name": "<param:NamePrefix>-dev-raw-etl",
+     "Role": {
+      "ref": "ServiceRole",
+      "attr": "Arn"
+     },
+     "GlueVersion": "4.0",
+     "WorkerType": "G.1X",
+     "NumberOfWorkers": 2,
+     "Timeout": 60,
+     "ExecutionProperty": {
+      "MaxConcurrentRuns": 1
+     },
+     "Command": {
+      "Name": "glueetl",
+      "PythonVersion": "3",
+      "ScriptLocation": ""
+     },
+     "DefaultArguments": {
+      "--job-bookmark-option": "job-bookmark-enable",
+      "--enable-metrics": "true",
+      "--enable-continuous-cloudwatch-log": "true",
+      "--continuous-log-logGroup": {
+       "ref": "JobLogGroup"
+      },
+      "--enable-spark-ui": "false",
+      "--TempDir": "s3://{'Fn::Select': [5, ['<param', 'SourceBucketArn>']]}/curated/_glue_temp/"
+     }
+    }
+   }
+  }
+ ]
+}

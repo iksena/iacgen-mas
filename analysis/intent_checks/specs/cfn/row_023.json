@@ -1,0 +1,76 @@
+{
+  "lang": "cfn",
+  "row_number": 23,
+  "source_hash": {
+    "gt": "21839a31bea9f01c052d228806511fceab4589b758f1fb1eadc296474fa9f083",
+    "prompt": "c2125e6258e5aed6073c6db141d38cd643593d330d0e9f67fb2e230085991f09"
+  },
+  "selectors": {
+    "efs": {
+      "types": [
+        "AWS::EFS::FileSystem"
+      ]
+    }
+  },
+  "checks": [
+    {
+      "id": "efs",
+      "kind": "exists",
+      "select": "efs",
+      "tier": "core",
+      "quote": "an encrypted EFS file system"
+    },
+    {
+      "id": "encrypted",
+      "kind": "attr",
+      "select": "efs",
+      "cond": {
+        "path": "Encrypted",
+        "op": "truthy"
+      },
+      "tier": "core",
+      "quote": "an encrypted EFS file system"
+    },
+    {
+      "id": "general_purpose",
+      "kind": "any_of",
+      "tier": "detail",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "efs",
+          "cond": {
+            "path": "PerformanceMode",
+            "op": "eq",
+            "value": "generalPurpose"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "efs",
+          "cond": {
+            "path": "PerformanceMode",
+            "op": "absent"
+          }
+        }
+      ],
+      "quote": "for general purpose use",
+      "justify": "generalPurpose is the EFS default, so omitting PerformanceMode is also general purpose"
+    },
+    {
+      "id": "backups_disabled",
+      "kind": "attr",
+      "select": "efs",
+      "quantifier": "all",
+      "cond": {
+        "path": "BackupPolicy.Status",
+        "op": "none_eq",
+        "value": "ENABLED"
+      },
+      "tier": "core",
+      "quote": "it should have automated backups disabled",
+      "justify": "disabled means the policy is not ENABLED; a file system created through CloudFormation has automatic backups off when BackupPolicy is omitted"
+    }
+  ],
+  "notes": ""
+}

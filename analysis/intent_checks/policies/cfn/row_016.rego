@@ -1,0 +1,122 @@
+package intent.cfn.row_016
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {
+  "repo": {
+   "types": [
+    "AWS::ECR::Repository"
+   ],
+   "where": []
+  },
+  "param": {
+   "types": [
+    "__parameter__"
+   ],
+   "where": []
+  }
+ },
+ "checks": [
+  {
+   "id": "repository",
+   "kind": "exists",
+   "select": "repo",
+   "tier": "core",
+   "quote": "creates an Amazon ECR repository"
+  },
+  {
+   "id": "repo_name_default",
+   "kind": "attr",
+   "select": "repo",
+   "cond": {
+    "path": [
+     "RepositoryName"
+    ],
+    "op": "eq",
+    "value": "agentic-sales-analyst"
+   },
+   "tier": "core",
+   "quote": "a configurable repository name defaulting to agentic-sales-analyst"
+  },
+  {
+   "id": "name_param",
+   "kind": "attr",
+   "select": "param",
+   "cond": {
+    "path": [
+     "default"
+    ],
+    "op": "eq",
+    "value": "agentic-sales-analyst"
+   },
+   "tier": "detail",
+   "quote": "a configurable repository name defaulting to agentic-sales-analyst"
+  },
+  {
+   "id": "scan_on_push",
+   "kind": "attr",
+   "select": "repo",
+   "cond": {
+    "path": [
+     "ImageScanningConfiguration",
+     "ScanOnPush"
+    ],
+    "op": "truthy"
+   },
+   "tier": "core",
+   "quote": "image scanning on push"
+  },
+  {
+   "id": "kms_encryption",
+   "kind": "attr",
+   "select": "repo",
+   "cond": {
+    "path": [
+     "EncryptionConfiguration",
+     "EncryptionType"
+    ],
+    "op": "eq",
+    "value": "KMS"
+   },
+   "tier": "core",
+   "quote": "KMS encryption"
+  },
+  {
+   "id": "immutable_tags",
+   "kind": "attr",
+   "select": "repo",
+   "cond": {
+    "path": [
+     "ImageTagMutability"
+    ],
+    "op": "eq",
+    "value": "IMMUTABLE"
+   },
+   "tier": "core",
+   "quote": "immutable image tags"
+  },
+  {
+   "id": "lifecycle_keep_10",
+   "kind": "attr",
+   "select": "repo",
+   "cond": {
+    "path": [
+     "LifecyclePolicy",
+     "LifecyclePolicyText"
+    ],
+    "op": "regex",
+    "value": "(?s)imageCountMoreThan.{0,120}countNumber\\W{1,5}10\\D|countNumber\\W{1,5}10\\D.{0,120}imageCountMoreThan"
+   },
+   "tier": "core",
+   "quote": "a lifecycle policy that retains only the most recent 10 images",
+   "justify": "retaining the most recent 10 images means a rule keyed on image count, with a count of 10"
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

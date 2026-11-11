@@ -1,0 +1,1098 @@
+package intent.tf.row_200
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {
+  "vpc": {
+   "types": [
+    "aws_vpc"
+   ],
+   "where": []
+  },
+  "igw": {
+   "types": [
+    "aws_internet_gateway"
+   ],
+   "where": []
+  },
+  "subs": {
+   "types": [
+    "aws_subnet"
+   ],
+   "where": []
+  },
+  "pubsub": {
+   "types": [
+    "aws_subnet"
+   ],
+   "where": [
+    {
+     "path": [
+      "cidr_block"
+     ],
+     "op": "in",
+     "value": [
+      "10.20.32.0/21",
+      "10.20.40.0/21",
+      "10.20.48.0/21"
+     ]
+    }
+   ]
+  },
+  "privsub": {
+   "types": [
+    "aws_subnet"
+   ],
+   "where": [
+    {
+     "path": [
+      "cidr_block"
+     ],
+     "op": "in",
+     "value": [
+      "10.20.0.0/21",
+      "10.20.8.0/21",
+      "10.20.16.0/21",
+      "10.20.64.0/21",
+      "10.20.72.0/21",
+      "10.20.80.0/21",
+      "10.20.96.0/21",
+      "10.20.104.0/21",
+      "10.20.112.0/21"
+     ]
+    }
+   ]
+  },
+  "nat": {
+   "types": [
+    "aws_nat_gateway"
+   ],
+   "where": []
+  },
+  "privrt": {
+   "types": [
+    "aws_route_table"
+   ],
+   "where": [
+    {
+     "path": [
+      "tags",
+      "Name"
+     ],
+     "op": "regex",
+     "value": "^private_az[123]$"
+    }
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "vpc",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "creates a customizable multi-tier AWS VPC network",
+   "select": "vpc"
+  },
+  {
+   "id": "vpc_cidr",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "a base CIDR block constructed as \"10.20.0.0/16\"",
+   "select": "vpc",
+   "cond": {
+    "path": [
+     "cidr_block"
+    ],
+    "op": "eq",
+    "value": "10.20.0.0/16"
+   }
+  },
+  {
+   "id": "dns_hostnames",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "with DNS hostnames and DNS support enabled",
+   "select": "vpc",
+   "cond": {
+    "path": [
+     "enable_dns_hostnames"
+    ],
+    "op": "eq",
+    "value": true
+   }
+  },
+  {
+   "id": "dns_support",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "with DNS hostnames and DNS support enabled",
+   "select": "vpc",
+   "cond": {
+    "path": [
+     "enable_dns_support"
+    ],
+    "op": "eq",
+    "value": true
+   }
+  },
+  {
+   "id": "tag_author",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "tagged with default global tags (\"Author\" = \"Fairwinds\", \"Managed By\" = \"Terraform\")",
+   "select": "vpc",
+   "cond": {
+    "path": [
+     "tags",
+     "Author"
+    ],
+    "op": "eq",
+    "value": "Fairwinds"
+   }
+  },
+  {
+   "id": "tag_managed_by",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "tagged with default global tags (\"Author\" = \"Fairwinds\", \"Managed By\" = \"Terraform\")",
+   "select": "vpc",
+   "cond": {
+    "path": [
+     "tags",
+     "Managed By"
+    ],
+    "op": "eq",
+    "value": "Terraform"
+   }
+  },
+  {
+   "id": "region_default",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "defaulting to us-east-1",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "vpc",
+     "cond": {
+      "path": [
+       "region"
+      ],
+      "op": "eq",
+      "value": "us-east-1"
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": [
+         "default"
+        ],
+        "op": "eq",
+        "value": "us-east-1"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": [
+         "default"
+        ],
+        "op": "regex",
+        "value": "us-east-1[a-f]"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "az_list_default",
+   "kind": "exists",
+   "tier": "detail",
+   "quote": "parsed from a comma-separated list of availability zone names, defaulting to a preconfigured set of us-east-1 availability zones",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": [
+       "default"
+      ],
+      "op": "regex",
+      "value": "^\\s*us-east-1[a-z]\\s*(,\\s*us-east-1[a-z]\\s*)+$"
+     }
+    ]
+   },
+   "justify": "a comma-separated string of us-east-1 AZ names"
+  },
+  {
+   "id": "igw",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "connected to an Internet Gateway named \"vpc\"",
+   "select": "igw"
+  },
+  {
+   "id": "igw_name",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "an Internet Gateway named \"vpc\"",
+   "select": "igw",
+   "cond": {
+    "path": [
+     "tags",
+     "Name"
+    ],
+    "op": "eq",
+    "value": "vpc"
+   }
+  },
+  {
+   "id": "igw_attached",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "connected to an Internet Gateway named \"vpc\"",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "igw",
+     "to": "vpc"
+    },
+    {
+     "kind": "attr",
+     "select": "igw",
+     "cond": {
+      "path": [
+       "vpc_id"
+      ],
+      "op": "present"
+     }
+    }
+   ]
+  },
+  {
+   "id": "subnet_azs",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "Across 3 active availability zones",
+   "select": "subs",
+   "distinct_path": [
+    "availability_zone"
+   ],
+   "min": 3,
+   "justify": "three availability zones"
+  },
+  {
+   "id": "subnet_count",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "create 4 distinct subnet tiers per availability zone",
+   "select": "subs",
+   "min": 12,
+   "justify": "4 tiers x 3 AZs = 12 subnets"
+  },
+  {
+   "id": "admin_subnets",
+   "kind": "all_of",
+   "tier": "core",
+   "quote": "admin subnets (suffixes \".0.0/21\", \".8.0/21\", \".16.0/21\")",
+   "justify": "suffixes appended to the 10.20 base CIDR give full /21 CIDRs",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "10.20.0.0/21"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "10.20.8.0/21"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "10.20.16.0/21"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "public_subnets",
+   "kind": "all_of",
+   "tier": "core",
+   "quote": "public subnets (suffixes \".32.0/21\", \".40.0/21\", \".48.0/21\")",
+   "justify": "suffixes appended to the 10.20 base CIDR give full /21 CIDRs",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "10.20.32.0/21"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "10.20.40.0/21"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "10.20.48.0/21"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "private_prod_subnets",
+   "kind": "all_of",
+   "tier": "core",
+   "quote": "private production subnets (suffixes \".64.0/21\", \".72.0/21\", \".80.0/21\")",
+   "justify": "suffixes appended to the 10.20 base CIDR give full /21 CIDRs",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "10.20.64.0/21"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "10.20.72.0/21"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "10.20.80.0/21"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "private_working_subnets",
+   "kind": "all_of",
+   "tier": "core",
+   "quote": "private working subnets (suffixes \".96.0/21\", \".104.0/21\", \".112.0/21\")",
+   "justify": "suffixes appended to the 10.20 base CIDR give full /21 CIDRs",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "10.20.96.0/21"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "10.20.104.0/21"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "10.20.112.0/21"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "public_rt",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "one shared public route table associated with all public subnets",
+   "select": {
+    "types": [
+     "aws_route_table"
+    ],
+    "where": []
+   }
+  },
+  {
+   "id": "public_default_route",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "routing \"0.0.0.0/0\" to the Internet Gateway",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route"
+      ],
+      "where": [
+       {
+        "path": [
+         "destination_cidr_block"
+        ],
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     },
+     "to": "igw"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route_table"
+      ],
+      "where": [
+       {
+        "path": [
+         "route",
+         "*",
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     },
+     "to": "igw"
+    }
+   ]
+  },
+  {
+   "id": "public_rt_assoc",
+   "kind": "ref",
+   "tier": "core",
+   "quote": "associated with all public subnets",
+   "justify": "subnet CIDRs derive from the stated base CIDR and suffixes",
+   "from": {
+    "types": [
+     "aws_route_table_association"
+    ],
+    "where": []
+   },
+   "to": "pubsub"
+  },
+  {
+   "id": "private_rt_assoc",
+   "kind": "ref",
+   "tier": "core",
+   "quote": "associated with all admin, private production, and private working subnets",
+   "justify": "subnet CIDRs derive from the stated base CIDR and suffixes",
+   "from": {
+    "types": [
+     "aws_route_table_association"
+    ],
+    "where": []
+   },
+   "to": "privsub"
+  },
+  {
+   "id": "assoc_count",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "associated with all admin, private production, and private working subnets",
+   "select": {
+    "types": [
+     "aws_route_table_association"
+    ],
+    "where": []
+   },
+   "min": 12,
+   "justify": "3 public + 9 private subnets each associated"
+  },
+  {
+   "id": "private_rts_named",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "dedicated per-AZ private route tables (named \"private_az1\", \"private_az2\", \"private_az3\")",
+   "select": "privrt",
+   "min": 3,
+   "distinct_path": [
+    "tags",
+    "Name"
+   ],
+   "justify": "three route tables private_az1..3"
+  },
+  {
+   "id": "eips",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "per-AZ Elastic IPs and NAT Gateways deployed into each public subnet",
+   "select": {
+    "types": [
+     "aws_eip"
+    ],
+    "where": []
+   },
+   "min": 3,
+   "justify": "one per AZ, three AZs"
+  },
+  {
+   "id": "nats",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "NAT Gateways deployed into each public subnet",
+   "select": "nat",
+   "min": 3,
+   "justify": "one per AZ, three AZs"
+  },
+  {
+   "id": "nat_in_public",
+   "kind": "ref",
+   "tier": "core",
+   "quote": "NAT Gateways deployed into each public subnet",
+   "justify": "subnet CIDRs derive from the stated base CIDR and suffixes",
+   "from": "nat",
+   "to": "pubsub"
+  },
+  {
+   "id": "nat_eip",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "per-AZ Elastic IPs and NAT Gateways",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "nat",
+     "to": {
+      "types": [
+       "aws_eip"
+      ],
+      "where": []
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "nat",
+     "cond": {
+      "path": [
+       "allocation_id"
+      ],
+      "op": "present"
+     }
+    }
+   ]
+  },
+  {
+   "id": "private_routes_nat",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "Outbound internet connectivity for private subnets must be supplied via per-AZ Elastic IPs and NAT Gateways",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route"
+      ],
+      "where": []
+     },
+     "to": "nat"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route_table"
+      ],
+      "where": []
+     },
+     "to": "nat"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "in",
+        "value": [
+         "aws_route",
+         "aws_route_table"
+        ]
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_nat_gateway"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "nat_param_multi",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "multi_az_nat_gateway set to 1",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": [
+       "name"
+      ],
+      "op": "eq",
+      "value": "multi_az_nat_gateway"
+     }
+    ]
+   },
+   "cond": {
+    "path": [
+     "default"
+    ],
+    "op": "in",
+    "value": [
+     "1",
+     "true"
+    ]
+   },
+   "justify": "set to 1 (a boolean true is the same toggle)"
+  },
+  {
+   "id": "nat_param_single",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "single_nat_gateway set to 0",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": [
+       "name"
+      ],
+      "op": "eq",
+      "value": "single_nat_gateway"
+     }
+    ]
+   },
+   "cond": {
+    "path": [
+     "default"
+    ],
+    "op": "in",
+    "value": [
+     "0",
+     "false"
+    ]
+   },
+   "justify": "set to 0 (a boolean false is the same toggle)"
+  },
+  {
+   "id": "s3_toggle_var",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "conditionally provisioned when enable_s3_vpc_endpoint is set to true",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": [
+       "type"
+      ],
+      "op": "eq",
+      "value": "aws_vpc_endpoint"
+     },
+     {
+      "path": [
+       "properties",
+       "service_name"
+      ],
+      "op": "regex",
+      "value": "(?i)\\.s3$"
+     }
+    ]
+   },
+   "cond": {
+    "path": [
+     "gate"
+    ],
+    "op": "regex",
+    "value": "enable_s3_vpc_endpoint"
+   }
+  },
+  {
+   "id": "s3_endpoint",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "An S3 Gateway VPC Endpoint must be conditionally provisioned",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_vpc_endpoint"
+       },
+       {
+        "path": [
+         "properties",
+         "vpc_endpoint_type"
+        ],
+        "op": "none_eq",
+        "value": "Interface"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "service_name"
+      ],
+      "op": "regex",
+      "value": "(?i)\\.s3$"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_vpc_endpoint"
+      ],
+      "where": [
+       {
+        "path": [
+         "vpc_endpoint_type"
+        ],
+        "op": "eq",
+        "value": "Gateway"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "service_name"
+      ],
+      "op": "regex",
+      "value": "(?i)\\.s3$"
+     }
+    }
+   ],
+   "justify": "Gateway endpoint: type Gateway or omitted (the default), not Interface"
+  },
+  {
+   "id": "s3_endpoint_policy",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "using a full access policy",
+   "justify": "a full access policy is an Allow statement with a wildcard action",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_vpc_endpoint"
+       },
+       {
+        "path": [
+         "properties",
+         "service_name"
+        ],
+        "op": "regex",
+        "value": "(?i)\\.s3$"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "regex",
+        "value": "(?i)allow"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties"
+      ],
+      "op": "regex",
+      "value": "(?i)action\\W{1,8}(s3:)?\\*"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_vpc_endpoint"
+      ],
+      "where": [
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?i)allow"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "policy"
+      ],
+      "op": "regex",
+      "value": "(?i)action\\W{1,8}(s3:)?\\*"
+     }
+    }
+   ]
+  },
+  {
+   "id": "s3_endpoint_route_tables",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "associated with all private route tables",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_vpc_endpoint"
+       }
+      ]
+     },
+     "to": "privrt"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_vpc_endpoint"
+      ],
+      "where": []
+     },
+     "to": "privrt"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_vpc_endpoint_route_table_association"
+      ],
+      "where": []
+     },
+     "to": "privrt"
+    }
+   ]
+  },
+  {
+   "id": "x_subnet_no_public_ip",
+   "kind": "attr",
+   "tier": "extra",
+   "select": "subs",
+   "cond": {
+    "path": [
+     "map_public_ip_on_launch"
+    ],
+    "op": "falsy"
+   },
+   "quantifier": "all"
+  },
+  {
+   "id": "x_tenancy",
+   "kind": "attr",
+   "tier": "extra",
+   "select": "vpc",
+   "cond": {
+    "path": [
+     "instance_tenancy"
+    ],
+    "op": "eq",
+    "value": "default"
+   }
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

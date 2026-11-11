@@ -1,0 +1,413 @@
+{
+ "meta": {
+  "lang": "tf",
+  "mode": "plan",
+  "warnings": [],
+  "gt_hash": "e9fd95e1be2eb278bc02ca3a5c3ea828ebabd98563a3d362339b615053b70c70",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "aws_ecr_repository.zenml-ecr-repository[0]",
+   "cfg": "aws_ecr_repository.zenml-ecr-repository",
+   "type": "aws_ecr_repository",
+   "values": {
+    "encryption_configuration": [],
+    "force_delete": null,
+    "image_scanning_configuration": [
+     {
+      "scan_on_push": true
+     }
+    ],
+    "image_tag_mutability": "IMMUTABLE",
+    "image_tag_mutability_exclusion_filter": [],
+    "name": "zenml-kubernetes",
+    "region": "eu-west-1",
+    "tags": {
+     "application": "demo",
+     "managedBy": "terraform"
+    },
+    "tags_all": {
+     "application": "demo",
+     "managedBy": "terraform"
+    },
+    "timeouts": null
+   },
+   "refs": []
+  },
+  {
+   "id": "aws_kms_key.zenml_artifact_store",
+   "cfg": "aws_kms_key.zenml_artifact_store",
+   "type": "aws_kms_key",
+   "values": {
+    "bypass_policy_lockout_safety_check": false,
+    "custom_key_store_id": null,
+    "customer_master_key_spec": "SYMMETRIC_DEFAULT",
+    "deletion_window_in_days": 7,
+    "description": "CMK for the zenml-artifact-store S3 bucket",
+    "enable_key_rotation": true,
+    "is_enabled": true,
+    "key_usage": "ENCRYPT_DECRYPT",
+    "region": "eu-west-1",
+    "tags": null,
+    "timeouts": null,
+    "xks_key_id": null
+   },
+   "refs": []
+  },
+  {
+   "id": "aws_s3_bucket.zenml-artifact-store",
+   "cfg": "aws_s3_bucket.zenml-artifact-store",
+   "type": "aws_s3_bucket",
+   "values": {
+    "bucket": "demo-artifact-store-000000000000",
+    "force_destroy": true,
+    "region": "eu-west-1",
+    "tags": {
+     "application": "demo",
+     "managedBy": "terraform",
+     "name": "zenml-artifact-store"
+    },
+    "tags_all": {
+     "application": "demo",
+     "managedBy": "terraform",
+     "name": "zenml-artifact-store"
+    },
+    "timeouts": null
+   },
+   "refs": [
+    "data.aws_caller_identity.current"
+   ]
+  },
+  {
+   "id": "aws_s3_bucket_acl.example",
+   "cfg": "aws_s3_bucket_acl.example",
+   "type": "aws_s3_bucket_acl",
+   "values": {
+    "acl": "private",
+    "expected_bucket_owner": null,
+    "region": "eu-west-1"
+   },
+   "refs": [
+    "aws_s3_bucket.zenml-artifact-store",
+    "aws_s3_bucket_ownership_controls.example"
+   ]
+  },
+  {
+   "id": "aws_s3_bucket_ownership_controls.example",
+   "cfg": "aws_s3_bucket_ownership_controls.example",
+   "type": "aws_s3_bucket_ownership_controls",
+   "values": {
+    "region": "eu-west-1",
+    "rule": [
+     {
+      "object_ownership": "BucketOwnerPreferred"
+     }
+    ]
+   },
+   "refs": [
+    "aws_s3_bucket.zenml-artifact-store"
+   ]
+  },
+  {
+   "id": "aws_s3_bucket_public_access_block.example",
+   "cfg": "aws_s3_bucket_public_access_block.example",
+   "type": "aws_s3_bucket_public_access_block",
+   "values": {
+    "block_public_acls": true,
+    "block_public_policy": true,
+    "ignore_public_acls": true,
+    "region": "eu-west-1",
+    "restrict_public_buckets": true,
+    "skip_destroy": null
+   },
+   "refs": [
+    "aws_s3_bucket.zenml-artifact-store"
+   ]
+  },
+  {
+   "id": "aws_s3_bucket_server_side_encryption_configuration.zenml_artifact_store",
+   "cfg": "aws_s3_bucket_server_side_encryption_configuration.zenml_artifact_store",
+   "type": "aws_s3_bucket_server_side_encryption_configuration",
+   "values": {
+    "expected_bucket_owner": null,
+    "region": "eu-west-1",
+    "rule": [
+     {
+      "apply_server_side_encryption_by_default": [
+       {
+        "sse_algorithm": "aws:kms"
+       }
+      ]
+     }
+    ]
+   },
+   "refs": [
+    "aws_kms_key.zenml_artifact_store",
+    "aws_s3_bucket.zenml-artifact-store"
+   ]
+  },
+  {
+   "id": "local_file.stack_file",
+   "cfg": "local_file.stack_file",
+   "type": "local_file",
+   "values": {
+    "content_base64": null,
+    "directory_permission": "0777",
+    "file_permission": "0777",
+    "sensitive_content": null,
+    "source": null
+   },
+   "refs": [
+    "aws_s3_bucket.zenml-artifact-store",
+    "data.aws_caller_identity.current"
+   ]
+  },
+  {
+   "id": "__parameter__.zenml-version",
+   "cfg": "__parameter__.zenml-version",
+   "type": "__parameter__",
+   "values": {
+    "name": "zenml-version",
+    "default": "0.12.0"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.container-registry-URI",
+   "cfg": "__output__.container-registry-URI",
+   "type": "__output__",
+   "values": {
+    "name": "container-registry-URI",
+    "value": "000000000000.dkr.ecr.eu-west-1.amazonaws.com",
+    "description": null
+   },
+   "refs": [
+    "data.aws_caller_identity.current"
+   ]
+  },
+  {
+   "id": "__output__.ecr-registry-name",
+   "cfg": "__output__.ecr-registry-name",
+   "type": "__output__",
+   "values": {
+    "name": "ecr-registry-name",
+    "value": "zenml-kubernetes",
+    "description": "The ECR registry repository for storing your images"
+   },
+   "refs": [
+    "aws_ecr_repository.zenml-ecr-repository"
+   ]
+  },
+  {
+   "id": "__output__.s3-bucket-path",
+   "cfg": "__output__.s3-bucket-path",
+   "type": "__output__",
+   "values": {
+    "name": "s3-bucket-path",
+    "value": "s3://demo-artifact-store-000000000000",
+    "description": "The S3 bucket path for storing your artifacts"
+   },
+   "refs": [
+    "aws_s3_bucket.zenml-artifact-store"
+   ]
+  },
+  {
+   "id": "__output__.stack-yaml-path",
+   "cfg": "__output__.stack-yaml-path",
+   "type": "__output__",
+   "values": {
+    "name": "stack-yaml-path",
+    "value": null,
+    "description": null
+   },
+   "refs": [
+    "local_file.stack_file"
+   ]
+  },
+  {
+   "id": "__declared__.data.aws_caller_identity.current",
+   "cfg": "data.aws_caller_identity.current",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "data.aws_caller_identity",
+    "name": "current",
+    "gated": false,
+    "gate": null,
+    "properties": {}
+   }
+  },
+  {
+   "id": "__declared__.aws_ecr_repository.zenml-ecr-repository",
+   "cfg": "aws_ecr_repository.zenml-ecr-repository",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_ecr_repository",
+    "name": "zenml-ecr-repository",
+    "gated": true,
+    "gate": "local.ecr.enable_container_registry ? 1 : 0",
+    "properties": {
+     "name": "${local.ecr.name}",
+     "image_tag_mutability": "IMMUTABLE",
+     "count": "${local.ecr.enable_container_registry ? 1 : 0}",
+     "tags": "${local.tags}",
+     "image_scanning_configuration": [
+      {
+       "scan_on_push": true
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.local_file.stack_file",
+   "cfg": "local_file.stack_file",
+   "type": "__declared__",
+   "refs": [
+    "aws_s3_bucket.zenml-artifact-store",
+    "data.aws_caller_identity.current"
+   ],
+   "values": {
+    "type": "local_file",
+    "name": "stack_file",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "content": "# Stack configuration YAML\n# Generated by the AWS Minimal MLOps stack recipe.\nzenml_version: ${var.zenml-version}\nstack_name: aws_minimal_stack_${replace(substr(timestamp(), 0, 16), \":\", \"_\")}\ncomponents:\n  orchestrator:\n    id: ${uuid()}\n    flavor: local\n    name: default\n    configuration: {}\n  artifact_store:\n    id: ${uuid()}\n    flavor: s3\n    name: s3_artifact_store\n    configuration: {\"path\": \"s3://${aws_s3_bucket.zenml-artifact-store.bucket}\"}\n  container_registry:\n    id: ${uuid()}\n    flavor: aws\n    name: aws_container_registry\n    configuration: {\"uri\": \"${data.aws_caller_identity.current.account_id}.dkr.ecr.${local.region}.amazonaws.com\"}\n  secrets_manager:\n    id: ${uuid()}\n    flavor: aws\n    name: aws_secrets_manager\n    configuration: {\"region_name\": \"${local.region}\"}",
+     "filename": "${\"./aws_minimal_stack_${replace(substr(timestamp(), 0, 16), \":\", \"_\")}.yaml\"}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_s3_bucket.zenml-artifact-store",
+   "cfg": "aws_s3_bucket.zenml-artifact-store",
+   "type": "__declared__",
+   "refs": [
+    "data.aws_caller_identity.current"
+   ],
+   "values": {
+    "type": "aws_s3_bucket",
+    "name": "zenml-artifact-store",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "bucket": "${local.prefix}-${local.s3.name}-${data.aws_caller_identity.current.account_id}",
+     "force_destroy": true,
+     "tags": "${merge(local.tags,{'name': 'zenml-artifact-store'})}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_s3_bucket_ownership_controls.example",
+   "cfg": "aws_s3_bucket_ownership_controls.example",
+   "type": "__declared__",
+   "refs": [
+    "aws_s3_bucket.zenml-artifact-store"
+   ],
+   "values": {
+    "type": "aws_s3_bucket_ownership_controls",
+    "name": "example",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "bucket": "${aws_s3_bucket.zenml-artifact-store.id}",
+     "rule": [
+      {
+       "object_ownership": "BucketOwnerPreferred"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_s3_bucket_acl.example",
+   "cfg": "aws_s3_bucket_acl.example",
+   "type": "__declared__",
+   "refs": [
+    "aws_s3_bucket.zenml-artifact-store",
+    "aws_s3_bucket_ownership_controls.example"
+   ],
+   "values": {
+    "type": "aws_s3_bucket_acl",
+    "name": "example",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "depends_on": [
+      "${aws_s3_bucket_ownership_controls.example}"
+     ],
+     "bucket": "${aws_s3_bucket.zenml-artifact-store.id}",
+     "acl": "private"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_s3_bucket_public_access_block.example",
+   "cfg": "aws_s3_bucket_public_access_block.example",
+   "type": "__declared__",
+   "refs": [
+    "aws_s3_bucket.zenml-artifact-store"
+   ],
+   "values": {
+    "type": "aws_s3_bucket_public_access_block",
+    "name": "example",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "bucket": "${aws_s3_bucket.zenml-artifact-store.id}",
+     "block_public_acls": true,
+     "block_public_policy": true,
+     "ignore_public_acls": true,
+     "restrict_public_buckets": true
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_kms_key.zenml_artifact_store",
+   "cfg": "aws_kms_key.zenml_artifact_store",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_kms_key",
+    "name": "zenml_artifact_store",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "description": "CMK for the zenml-artifact-store S3 bucket",
+     "deletion_window_in_days": 7,
+     "enable_key_rotation": true
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_s3_bucket_server_side_encryption_configuration.zenml_artifact_store",
+   "cfg": "aws_s3_bucket_server_side_encryption_configuration.zenml_artifact_store",
+   "type": "__declared__",
+   "refs": [
+    "aws_kms_key.zenml_artifact_store",
+    "aws_s3_bucket.zenml-artifact-store"
+   ],
+   "values": {
+    "type": "aws_s3_bucket_server_side_encryption_configuration",
+    "name": "zenml_artifact_store",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "bucket": "${aws_s3_bucket.zenml-artifact-store.id}",
+     "rule": [
+      {
+       "apply_server_side_encryption_by_default": [
+        {
+         "sse_algorithm": "aws:kms",
+         "kms_master_key_id": "${aws_kms_key.zenml_artifact_store.arn}"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  }
+ ]
+}

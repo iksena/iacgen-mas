@@ -1,0 +1,509 @@
+{
+ "lang": "cfn",
+ "row_number": 102,
+ "source_hash": {
+  "gt": "e93a1c1043e2d320c82588a5313519d4fb793950c1130f17f8a2825de2440025",
+  "prompt": "bcf7829db0f42b36f790575639efcac41fea4f2caf9ce3bb7294b965b9893b65"
+ },
+ "selectors": {
+  "all": {
+   "types": [
+    "AWS::Budgets::Budget"
+   ]
+  },
+  "config": {
+   "types": [
+    "AWS::Budgets::Budget"
+   ],
+   "where": [
+    {
+     "path": "Budget.CostFilters",
+     "op": "regex",
+     "value": "(?i)aws config"
+    }
+   ]
+  },
+  "cw": {
+   "types": [
+    "AWS::Budgets::Budget"
+   ],
+   "where": [
+    {
+     "path": "Budget.CostFilters",
+     "op": "regex",
+     "value": "(?i)cloudwatch"
+    }
+   ]
+  },
+  "gd": {
+   "types": [
+    "AWS::Budgets::Budget"
+   ],
+   "where": [
+    {
+     "path": "Budget.CostFilters",
+     "op": "regex",
+     "value": "(?i)guardduty"
+    }
+   ]
+  },
+  "insp": {
+   "types": [
+    "AWS::Budgets::Budget"
+   ],
+   "where": [
+    {
+     "path": "Budget.CostFilters",
+     "op": "regex",
+     "value": "(?i)inspector"
+    }
+   ]
+  },
+  "hub": {
+   "types": [
+    "AWS::Budgets::Budget"
+   ],
+   "where": [
+    {
+     "path": "Budget.CostFilters",
+     "op": "regex",
+     "value": "(?i)security ?hub"
+    }
+   ]
+  },
+  "s3": {
+   "types": [
+    "AWS::Budgets::Budget"
+   ],
+   "where": [
+    {
+     "path": "Budget.CostFilters",
+     "op": "regex",
+     "value": "(?i)(simple storage|s3)"
+    }
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "six_budgets",
+   "tier": "core",
+   "kind": "exists",
+   "select": "all",
+   "min": 6,
+   "quote": "creates six AWS Budgets",
+   "justify": "six budgets"
+  },
+  {
+   "id": "monthly",
+   "tier": "core",
+   "kind": "attr",
+   "select": "all",
+   "cond": {
+    "path": "Budget.TimeUnit",
+    "op": "eq",
+    "value": "MONTHLY"
+   },
+   "quantifier": "all",
+   "quote": "monthly cost"
+  },
+  {
+   "id": "cost_type",
+   "tier": "core",
+   "kind": "attr",
+   "select": "all",
+   "cond": {
+    "path": "Budget.BudgetType",
+    "op": "eq",
+    "value": "COST"
+   },
+   "quantifier": "all",
+   "quote": "each tracking the monthly cost of a specific AWS service"
+  },
+  {
+   "id": "budget_config",
+   "tier": "core",
+   "kind": "exists",
+   "select": "config",
+   "quote": "a 10000 USD monthly budget for AWS Config costs"
+  },
+  {
+   "id": "amount_config",
+   "tier": "core",
+   "kind": "attr",
+   "select": "config",
+   "cond": {
+    "path": "Budget.BudgetLimit",
+    "op": "match",
+    "value": [
+     {
+      "path": "Amount",
+      "op": "gte",
+      "value": 10000
+     },
+     {
+      "path": "Amount",
+      "op": "lte",
+      "value": 10000
+     },
+     {
+      "path": "Unit",
+      "op": "eq",
+      "value": "USD"
+     }
+    ]
+   },
+   "quote": "a 10000 USD monthly budget for AWS Config costs",
+   "justify": "service filter identifies the budget; amount stated in prompt"
+  },
+  {
+   "id": "budget_cloudwatch",
+   "tier": "core",
+   "kind": "exists",
+   "select": "cw",
+   "quote": "a 10000 USD monthly budget for Amazon CloudWatch and CloudWatch Events costs"
+  },
+  {
+   "id": "amount_cw",
+   "tier": "core",
+   "kind": "attr",
+   "select": "cw",
+   "cond": {
+    "path": "Budget.BudgetLimit",
+    "op": "match",
+    "value": [
+     {
+      "path": "Amount",
+      "op": "gte",
+      "value": 10000
+     },
+     {
+      "path": "Amount",
+      "op": "lte",
+      "value": 10000
+     },
+     {
+      "path": "Unit",
+      "op": "eq",
+      "value": "USD"
+     }
+    ]
+   },
+   "quote": "a 10000 USD monthly budget for Amazon CloudWatch and CloudWatch Events costs",
+   "justify": "service filter identifies the budget; amount stated in prompt"
+  },
+  {
+   "id": "cw_events_covered",
+   "tier": "detail",
+   "kind": "attr",
+   "select": "cw",
+   "cond": {
+    "path": "Budget.CostFilters",
+    "op": "regex",
+    "value": "(?i)(cloudwatch events|eventbridge)"
+   },
+   "quote": "Amazon CloudWatch and CloudWatch Events costs",
+   "justify": "CloudWatch Events is billed under that name or as EventBridge"
+  },
+  {
+   "id": "cw_two_accounts",
+   "tier": "detail",
+   "kind": "attr",
+   "select": "cw",
+   "cond": {
+    "path": "Budget.CostFilters.LinkedAccount",
+    "op": "len_gte",
+    "value": 2
+   },
+   "quote": "scoped to two specific linked member accounts",
+   "justify": "two linked accounts"
+  },
+  {
+   "id": "budget_guardduty",
+   "tier": "core",
+   "kind": "exists",
+   "select": "gd",
+   "quote": "four separate 1000 USD monthly budgets covering Amazon GuardDuty"
+  },
+  {
+   "id": "amount_gd",
+   "tier": "core",
+   "kind": "attr",
+   "select": "gd",
+   "cond": {
+    "path": "Budget.BudgetLimit",
+    "op": "match",
+    "value": [
+     {
+      "path": "Amount",
+      "op": "gte",
+      "value": 1000
+     },
+     {
+      "path": "Amount",
+      "op": "lte",
+      "value": 1000
+     },
+     {
+      "path": "Unit",
+      "op": "eq",
+      "value": "USD"
+     }
+    ]
+   },
+   "quote": "four separate 1000 USD monthly budgets covering Amazon GuardDuty",
+   "justify": "service filter identifies the budget; amount stated in prompt"
+  },
+  {
+   "id": "budget_inspector",
+   "tier": "core",
+   "kind": "exists",
+   "select": "insp",
+   "quote": "Amazon Inspector"
+  },
+  {
+   "id": "amount_insp",
+   "tier": "core",
+   "kind": "attr",
+   "select": "insp",
+   "cond": {
+    "path": "Budget.BudgetLimit",
+    "op": "match",
+    "value": [
+     {
+      "path": "Amount",
+      "op": "gte",
+      "value": 1000
+     },
+     {
+      "path": "Amount",
+      "op": "lte",
+      "value": 1000
+     },
+     {
+      "path": "Unit",
+      "op": "eq",
+      "value": "USD"
+     }
+    ]
+   },
+   "quote": "four separate 1000 USD monthly budgets covering Amazon GuardDuty, Amazon Inspector",
+   "justify": "service filter identifies the budget; amount stated in prompt"
+  },
+  {
+   "id": "budget_securityhub",
+   "tier": "core",
+   "kind": "exists",
+   "select": "hub",
+   "quote": "AWS Security Hub"
+  },
+  {
+   "id": "amount_hub",
+   "tier": "core",
+   "kind": "attr",
+   "select": "hub",
+   "cond": {
+    "path": "Budget.BudgetLimit",
+    "op": "match",
+    "value": [
+     {
+      "path": "Amount",
+      "op": "gte",
+      "value": 1000
+     },
+     {
+      "path": "Amount",
+      "op": "lte",
+      "value": 1000
+     },
+     {
+      "path": "Unit",
+      "op": "eq",
+      "value": "USD"
+     }
+    ]
+   },
+   "quote": "four separate 1000 USD monthly budgets covering Amazon GuardDuty, Amazon Inspector, AWS Security Hub",
+   "justify": "service filter identifies the budget; amount stated in prompt"
+  },
+  {
+   "id": "budget_s3_logs",
+   "tier": "core",
+   "kind": "exists",
+   "select": "s3",
+   "quote": "an S3-based security logging budget",
+   "justify": "S3 service filter"
+  },
+  {
+   "id": "amount_s3",
+   "tier": "core",
+   "kind": "attr",
+   "select": "s3",
+   "cond": {
+    "path": "Budget.BudgetLimit",
+    "op": "match",
+    "value": [
+     {
+      "path": "Amount",
+      "op": "gte",
+      "value": 1000
+     },
+     {
+      "path": "Amount",
+      "op": "lte",
+      "value": 1000
+     },
+     {
+      "path": "Unit",
+      "op": "eq",
+      "value": "USD"
+     }
+    ]
+   },
+   "quote": "four separate 1000 USD monthly budgets covering Amazon GuardDuty, Amazon Inspector, AWS Security Hub, and an S3-based security logging budget",
+   "justify": "service filter identifies the budget; amount stated in prompt"
+  },
+  {
+   "id": "s3_one_account",
+   "tier": "detail",
+   "kind": "attr",
+   "select": "s3",
+   "cond": {
+    "path": "Budget.CostFilters.LinkedAccount",
+    "op": "len_gte",
+    "value": 1
+   },
+   "quote": "scoped to one specific linked member account",
+   "justify": "one linked account"
+  },
+  {
+   "id": "excludes_credits_etc",
+   "tier": "core",
+   "kind": "attr",
+   "select": "all",
+   "cond": {
+    "path": "Budget.CostTypes",
+    "op": "match",
+    "value": [
+     {
+      "path": "IncludeCredit",
+      "op": "falsy"
+     },
+     {
+      "path": "IncludeDiscount",
+      "op": "falsy"
+     },
+     {
+      "path": "IncludeRefund",
+      "op": "falsy"
+     },
+     {
+      "path": "IncludeTax",
+      "op": "falsy"
+     }
+    ]
+   },
+   "quantifier": "all",
+   "quote": "excluding credits, discounts, refunds, and taxes",
+   "justify": "excluding = Include flag false"
+  },
+  {
+   "id": "includes_recurring",
+   "tier": "detail",
+   "kind": "attr",
+   "select": "all",
+   "cond": {
+    "path": "Budget.CostTypes.IncludeRecurring",
+    "op": "none_eq",
+    "value": "false"
+   },
+   "quantifier": "all",
+   "quote": "while including recurring, upfront, and other subscription charges as appropriate",
+   "justify": "including = flag not false (default true)"
+  },
+  {
+   "id": "includes_upfront",
+   "tier": "detail",
+   "kind": "attr",
+   "select": "all",
+   "cond": {
+    "path": "Budget.CostTypes.IncludeUpfront",
+    "op": "none_eq",
+    "value": "false"
+   },
+   "quantifier": "all",
+   "quote": "while including recurring, upfront, and other subscription charges as appropriate",
+   "justify": "including = flag not false (default true)"
+  },
+  {
+   "id": "includes_other_subscription",
+   "tier": "detail",
+   "kind": "attr",
+   "select": "all",
+   "cond": {
+    "path": "Budget.CostTypes.IncludeOtherSubscription",
+    "op": "none_eq",
+    "value": "false"
+   },
+   "quantifier": "all",
+   "quote": "while including recurring, upfront, and other subscription charges as appropriate",
+   "justify": "including = flag not false (default true)"
+  },
+  {
+   "id": "retain_on_delete",
+   "tier": "core",
+   "kind": "attr",
+   "select": "all",
+   "cond": {
+    "path": "__resource__.DeletionPolicy",
+    "op": "in",
+    "value": [
+     "Retain",
+     "RetainExceptOnCreate"
+    ]
+   },
+   "quantifier": "all",
+   "quote": "each budget should be protected from accidental deletion",
+   "justify": "protected from deletion = Retain"
+  },
+  {
+   "id": "retain_on_replace",
+   "tier": "core",
+   "kind": "attr",
+   "select": "all",
+   "cond": {
+    "path": "__resource__.UpdateReplacePolicy",
+    "op": "eq",
+    "value": "Retain"
+   },
+   "quantifier": "all",
+   "quote": "protected from accidental deletion or replacement during stack updates",
+   "justify": "protected from replacement = Retain"
+  },
+  {
+   "id": "x_not_blended",
+   "tier": "extra",
+   "kind": "attr",
+   "select": "all",
+   "cond": {
+    "path": "Budget.CostTypes.UseBlended",
+    "op": "none_eq",
+    "value": "true"
+   },
+   "quantifier": "all"
+  },
+  {
+   "id": "x_includes_subscription",
+   "tier": "extra",
+   "kind": "attr",
+   "select": "all",
+   "cond": {
+    "path": "Budget.CostTypes.IncludeSubscription",
+    "op": "none_eq",
+    "value": "false"
+   },
+   "quantifier": "all"
+  }
+ ],
+ "notes": "PROMPT_GT_MISMATCH: prompt says the team 'gets alerted' but the ground truth has no NotificationsWithSubscribers, so no notification check. PROMPT_GT_MISMATCH: prompt says 'actual cost' but two ground-truth budgets set UseAmortized true, so UseAmortized is not checked. Budgets are identified by service CostFilters (whole object regex); amounts compared numerically (10000 vs 10000.0). A budget using the newer FilterExpression instead of CostFilters is not recognised; none of the real templates write that. Omitted Include flags are handled by AWS's defaults: credit, discount, refund and tax default to true so must be set false, while recurring, upfront and other subscription default to true so may be omitted."
+}

@@ -1,0 +1,341 @@
+{
+ "lang": "cfn",
+ "row_number": 78,
+ "source_hash": {
+  "gt": "e2cf054d4cac66ebf280c11368ef152635a0807d4e287cfb8f747c07a2f4d70f",
+  "prompt": "e442a4859a7db21c2adbdc1a1d68e79686260cc433ac1fb55a900769167bc6b4"
+ },
+ "selectors": {
+  "roles": {
+   "types": [
+    "AWS::IAM::Role"
+   ],
+   "where": [
+    {
+     "path": "AssumeRolePolicyDocument.Statement.*.Principal.Service.*",
+     "op": "eq",
+     "value": "events.amazonaws.com"
+    }
+   ]
+  },
+  "allroles": {
+   "types": [
+    "AWS::IAM::Role"
+   ]
+  },
+  "inline_roles": {
+   "types": [
+    "AWS::IAM::Role"
+   ],
+   "where": [
+    {
+     "path": "AssumeRolePolicyDocument.Statement.*.Principal.Service.*",
+     "op": "eq",
+     "value": "events.amazonaws.com"
+    },
+    {
+     "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+     "op": "glob_covers",
+     "value": "events:PutEvents"
+    }
+   ]
+  },
+  "put_pols": {
+   "types": [
+    "AWS::IAM::Policy",
+    "AWS::IAM::ManagedPolicy",
+    "AWS::IAM::RolePolicy"
+   ],
+   "where": [
+    {
+     "path": "PolicyDocument.Statement.*.Action.*",
+     "op": "glob_covers",
+     "value": "events:PutEvents"
+    }
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "six_roles",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "a set of six IAM roles used by Amazon EventBridge",
+   "select": "roles",
+   "min": 6,
+   "max": 6
+  },
+  {
+   "id": "trust_events",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "Each role must trust the EventBridge service to assume it",
+   "select": "allroles",
+   "quantifier": "all",
+   "cond": {
+    "path": "AssumeRolePolicyDocument.Statement.*.Principal.Service.*",
+    "op": "eq",
+    "value": "events.amazonaws.com"
+   }
+  },
+  {
+   "id": "per_source",
+   "kind": "all_of",
+   "tier": "core",
+   "quote": "one role per event source: CloudWatch, CloudFormation, CloudTrail, GuardDuty, Slack notifications, and Auto Scaling",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "AWS::IAM::Role",
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy",
+       "AWS::IAM::RolePolicy",
+       "AWS::Events::EventBus"
+      ],
+      "where": [
+       {
+        "path": "",
+        "op": "regex",
+        "value": "(?i)(event-bus/|\"Name\": \")[^\\s\"]*cloud.?watch"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "AWS::IAM::Role",
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy",
+       "AWS::IAM::RolePolicy",
+       "AWS::Events::EventBus"
+      ],
+      "where": [
+       {
+        "path": "",
+        "op": "regex",
+        "value": "(?i)(event-bus/|\"Name\": \")[^\\s\"]*cloud.?formation"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "AWS::IAM::Role",
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy",
+       "AWS::IAM::RolePolicy",
+       "AWS::Events::EventBus"
+      ],
+      "where": [
+       {
+        "path": "",
+        "op": "regex",
+        "value": "(?i)(event-bus/|\"Name\": \")[^\\s\"]*cloud.?trail"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "AWS::IAM::Role",
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy",
+       "AWS::IAM::RolePolicy",
+       "AWS::Events::EventBus"
+      ],
+      "where": [
+       {
+        "path": "",
+        "op": "regex",
+        "value": "(?i)(event-bus/|\"Name\": \")[^\\s\"]*guard.?duty"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "AWS::IAM::Role",
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy",
+       "AWS::IAM::RolePolicy",
+       "AWS::Events::EventBus"
+      ],
+      "where": [
+       {
+        "path": "",
+        "op": "regex",
+        "value": "(?i)(event-bus/|\"Name\": \")[^\\s\"]*slack"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "AWS::IAM::Role",
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy",
+       "AWS::IAM::RolePolicy",
+       "AWS::Events::EventBus"
+      ],
+      "where": [
+       {
+        "path": "",
+        "op": "regex",
+        "value": "(?i)(event-bus/|\"Name\": \")[^\\s\"]*auto.?scaling"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "put_events",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "granted permission to publish events",
+   "justify": "six roles, each with its own policy",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "roles",
+     "quantifier": "all",
+     "cond": {
+      "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+      "op": "glob_covers",
+      "value": "events:PutEvents"
+     }
+    },
+    {
+     "kind": "exists",
+     "select": "put_pols",
+     "min": 6
+    }
+   ]
+  },
+  {
+   "id": "scoped_to_bus",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "only to its own corresponding named event bus",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "inline_roles",
+     "quantifier": "all",
+     "cond": {
+      "path": "Policies.*.PolicyDocument.Statement.*.Resource",
+      "op": "regex",
+      "value": "(?i)event-bus/[^*\\s\"]+\"|\"ref\":",
+      "every": true
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "put_pols",
+     "quantifier": "all",
+     "cond": {
+      "path": "PolicyDocument.Statement.*.Resource",
+      "op": "regex",
+      "value": "(?i)event-bus/[^*\\s\"]+\"|\"ref\":",
+      "every": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "only_own_bus",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "should only be able to publish to the CloudWatch sink bus",
+   "justify": "each role grants exactly one bus: the regex matches a policy with exactly one event-bus ARN, as RE2 has no negative test",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "inline_roles",
+     "quantifier": "all",
+     "cond": {
+      "path": "Policies",
+      "op": "regex",
+      "value": "(?s)^(?:[^-]|-[^b]|-b[^u]|-bu[^s]|-bus[^/])*-bus/(?:[^-]|-[^b]|-b[^u]|-bu[^s]|-bus[^/])*$"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "inline_roles",
+     "quantifier": "all",
+     "cond": {
+      "path": "Policies.*.PolicyDocument.Statement.*.Resource.ref",
+      "op": "present",
+      "every": true
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "put_pols",
+     "quantifier": "all",
+     "cond": {
+      "path": "PolicyDocument",
+      "op": "regex",
+      "value": "(?s)^(?:[^-]|-[^b]|-b[^u]|-bu[^s]|-bus[^/])*-bus/(?:[^-]|-[^b]|-b[^u]|-bu[^s]|-bus[^/])*$"
+     }
+    }
+   ]
+  },
+  {
+   "id": "buses_not_created",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "centralized event buses maintained in a designated central logging AWS account",
+   "select": {
+    "types": [
+     "__declared__"
+    ]
+   },
+   "quantifier": "all",
+   "cond": {
+    "path": "type",
+    "op": "none_eq",
+    "value": "AWS::Events::EventBus"
+   }
+  },
+  {
+   "id": "role_names",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "with the roles named consistently under a shared naming convention",
+   "select": "roles",
+   "quantifier": "all",
+   "cond": {
+    "path": "RoleName",
+    "op": "present"
+   }
+  },
+  {
+   "id": "tags",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "tagged with a standard set of organizational metadata tags",
+   "justify": "a set of tags implies more than one",
+   "select": "roles",
+   "quantifier": "all",
+   "cond": {
+    "path": "Tags",
+    "op": "len_gte",
+    "value": 2
+   }
+  }
+ ],
+ "notes": "per_source reads each source from the bus ARN (or a local bus's Name), not the whole role, because organizational tags can contain words like cloudformation. The central account itself isn't checked: the adapter renders ${AWS::AccountId} and a parameter defaulting to 123456789012 identically, and two real templates use that default for a separate account, so a test on the ARN's account would reject them. role_names only shows each role is named: ops compare to fixed values, so a shared prefix across roles can't be tested, and the prompt gives no convention to match. tags has the same limit for 'a standard set'."
+}

@@ -1,0 +1,789 @@
+package intent.tf.row_072
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {},
+ "checks": [
+  {
+   "id": "instance",
+   "kind": "exists",
+   "tier": "core",
+   "select": {
+    "types": [
+     "aws_instance"
+    ],
+    "where": []
+   },
+   "quote": "creates a basic Apache web server on an EC2 instance"
+  },
+  {
+   "id": "apache",
+   "kind": "any_of",
+   "tier": "detail",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_instance"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "user_data"
+      ],
+      "op": "regex",
+      "value": "(?i)httpd|apache"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_instance"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "user_data_base64"
+      ],
+      "op": "regex",
+      "value": "(?i)httpd|apache"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_instance"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties"
+      ],
+      "op": "regex",
+      "value": "(?i)httpd|apache"
+     }
+    }
+   ],
+   "quote": "basic Apache web server"
+  },
+  {
+   "id": "latest_al2_ami",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "using the latest Amazon Linux 2 AMI",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_instance"
+      ],
+      "where": []
+     },
+     "to": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "data.aws_ami"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "regex",
+        "value": "(?i)amzn2-ami"
+       },
+       {
+        "path": [
+         "properties",
+         "most_recent"
+        ],
+        "op": "truthy"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_instance"
+      ],
+      "where": []
+     },
+     "to": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "data.aws_ssm_parameter"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "regex",
+        "value": "(?i)ami-amazon-linux-latest/amzn2-ami"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_instance"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "ami"
+      ],
+      "op": "regex",
+      "value": "(?i)ami-amazon-linux-latest/amzn2-ami"
+     }
+    }
+   ],
+   "justify": "latest AL2: a most_recent AMI lookup filtered on the amzn2-ami name, or the public SSM 'ami-amazon-linux-latest/amzn2-ami' parameter, used by the instance"
+  },
+  {
+   "id": "instance_type",
+   "kind": "attr",
+   "tier": "core",
+   "select": {
+    "types": [
+     "aws_instance"
+    ],
+    "where": []
+   },
+   "cond": {
+    "path": [
+     "instance_type"
+    ],
+    "op": "eq",
+    "value": "t3.micro"
+   },
+   "quote": "configurable instance size (defaulting to t3.micro)"
+  },
+  {
+   "id": "instance_type_configurable",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "configurable instance size (defaulting to t3.micro)",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": []
+   },
+   "cond": {
+    "path": [
+     "default"
+    ],
+    "op": "eq",
+    "value": "t3.micro"
+   }
+  },
+  {
+   "id": "server_name_default",
+   "kind": "attr",
+   "tier": "detail",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": [
+       "name"
+      ],
+      "op": "regex",
+      "value": "(?i)name"
+     }
+    ]
+   },
+   "cond": {
+    "path": [
+     "default"
+    ],
+    "op": "eq",
+    "value": "demo"
+   },
+   "quote": "server name (defaulting to demo)"
+  },
+  {
+   "id": "eip",
+   "kind": "exists",
+   "tier": "core",
+   "select": {
+    "types": [
+     "aws_eip"
+    ],
+    "where": []
+   },
+   "quote": "plus an Elastic IP attached to the instance"
+  },
+  {
+   "id": "eip_attached",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_eip"
+      ],
+      "where": []
+     },
+     "to": {
+      "types": [
+       "aws_instance"
+      ],
+      "where": []
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_eip_association"
+      ],
+      "where": []
+     },
+     "to": {
+      "types": [
+       "aws_instance"
+      ],
+      "where": []
+     }
+    }
+   ],
+   "quote": "attached to the instance"
+  },
+  {
+   "id": "vpc",
+   "kind": "exists",
+   "tier": "core",
+   "select": {
+    "types": [
+     "aws_vpc"
+    ],
+    "where": []
+   },
+   "quote": "in a new VPC with CIDR 10.0.0.0/16"
+  },
+  {
+   "id": "vpc_cidr",
+   "kind": "attr",
+   "tier": "core",
+   "select": {
+    "types": [
+     "aws_vpc"
+    ],
+    "where": []
+   },
+   "cond": {
+    "path": [
+     "cidr_block"
+    ],
+    "op": "eq",
+    "value": "10.0.0.0/16"
+   },
+   "quote": "in a new VPC with CIDR 10.0.0.0/16"
+  },
+  {
+   "id": "single_subnet",
+   "kind": "exists",
+   "tier": "core",
+   "select": {
+    "types": [
+     "aws_subnet"
+    ],
+    "where": []
+   },
+   "min": 1,
+   "max": 1,
+   "quote": "a single internet-routed subnet",
+   "justify": "a single subnet means exactly one"
+  },
+  {
+   "id": "subnet_in_vpc",
+   "kind": "ref",
+   "tier": "detail",
+   "from": {
+    "types": [
+     "aws_subnet"
+    ],
+    "where": []
+   },
+   "to": {
+    "types": [
+     "aws_vpc"
+    ],
+    "where": []
+   },
+   "quote": "a single internet-routed subnet"
+  },
+  {
+   "id": "instance_in_subnet",
+   "kind": "ref",
+   "tier": "detail",
+   "from": {
+    "types": [
+     "aws_instance"
+    ],
+    "where": []
+   },
+   "to": {
+    "types": [
+     "aws_subnet"
+    ],
+    "where": []
+   },
+   "quote": "The instance must run in a new VPC"
+  },
+  {
+   "id": "igw",
+   "kind": "exists",
+   "tier": "core",
+   "select": {
+    "types": [
+     "aws_internet_gateway"
+    ],
+    "where": []
+   },
+   "quote": "internet-routed subnet"
+  },
+  {
+   "id": "internet_route",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route_table"
+      ],
+      "where": [
+       {
+        "path": [
+         "route",
+         "*",
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_internet_gateway"
+      ],
+      "where": []
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route"
+      ],
+      "where": [
+       {
+        "path": [
+         "destination_cidr_block"
+        ],
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_internet_gateway"
+      ],
+      "where": []
+     }
+    }
+   ],
+   "quote": "internet-routed subnet",
+   "justify": "internet-routed means a default 0.0.0.0/0 route via the internet gateway"
+  },
+  {
+   "id": "route_assoc_subnet",
+   "kind": "ref",
+   "tier": "detail",
+   "from": {
+    "types": [
+     "aws_route_table_association"
+    ],
+    "where": []
+   },
+   "to": {
+    "types": [
+     "aws_subnet"
+    ],
+    "where": []
+   },
+   "quote": "internet-routed subnet"
+  },
+  {
+   "id": "subnet_no_public_ip",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "map_public_ip_on_launch"
+      ],
+      "op": "falsy"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "map_public_ip_on_launch"
+      ],
+      "op": "absent"
+     }
+    }
+   ],
+   "quote": "does not auto-assign public IPs"
+  },
+  {
+   "id": "imdsv2",
+   "kind": "attr",
+   "tier": "core",
+   "select": {
+    "types": [
+     "aws_instance"
+    ],
+    "where": []
+   },
+   "cond": {
+    "path": [
+     "metadata_options",
+     "*",
+     "http_tokens"
+    ],
+    "op": "eq",
+    "value": "required"
+   },
+   "quote": "require IMDSv2",
+   "justify": "IMDSv2 required means http_tokens required"
+  },
+  {
+   "id": "root_encrypted",
+   "kind": "attr",
+   "tier": "core",
+   "select": {
+    "types": [
+     "aws_instance"
+    ],
+    "where": []
+   },
+   "cond": {
+    "path": [
+     "root_block_device",
+     "*",
+     "encrypted"
+    ],
+    "op": "truthy"
+   },
+   "quote": "use an encrypted root volume"
+  },
+  {
+   "id": "instance_uses_sg",
+   "kind": "ref",
+   "tier": "detail",
+   "from": {
+    "types": [
+     "aws_instance"
+    ],
+    "where": []
+   },
+   "to": {
+    "types": [
+     "aws_security_group"
+    ],
+    "where": []
+   },
+   "quote": "use a security group that allows inbound HTTP from anywhere"
+  },
+  {
+   "id": "ingress_http_anywhere",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_security_group"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "ingress",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [],
+        "op": "port_covers",
+        "value": 80
+       },
+       {
+        "path": [
+         "cidr_blocks",
+         "*"
+        ],
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_security_group_rule"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "ingress"
+       },
+       {
+        "path": [],
+        "op": "port_covers",
+        "value": 80
+       },
+       {
+        "path": [
+         "cidr_blocks",
+         "*"
+        ],
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "type"
+      ],
+      "op": "eq",
+      "value": "ingress"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_vpc_security_group_ingress_rule"
+      ],
+      "where": [
+       {
+        "path": [],
+        "op": "port_covers",
+        "value": 80
+       },
+       {
+        "path": [
+         "cidr_ipv4"
+        ],
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "cidr_ipv4"
+      ],
+      "op": "eq",
+      "value": "0.0.0.0/0"
+     }
+    }
+   ],
+   "quote": "allows inbound HTTP from anywhere",
+   "justify": "HTTP implies port 80; anywhere implies 0.0.0.0/0"
+  },
+  {
+   "id": "egress_vpc_only",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_security_group"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "egress",
+       "*",
+       "cidr_blocks",
+       "*"
+      ],
+      "op": "eq",
+      "value": "10.0.0.0/16",
+      "every": true
+     },
+     "quantifier": "all"
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_security_group_rule"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "egress"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "cidr_blocks",
+       "*"
+      ],
+      "op": "eq",
+      "value": "10.0.0.0/16",
+      "every": true
+     },
+     "quantifier": "all"
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_vpc_security_group_egress_rule"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "cidr_ipv4"
+      ],
+      "op": "eq",
+      "value": "10.0.0.0/16",
+      "every": true
+     },
+     "quantifier": "all"
+    }
+   ],
+   "quote": "restricting egress to the VPC CIDR",
+   "justify": "VPC CIDR is 10.0.0.0/16 per the prompt"
+  },
+  {
+   "id": "vpc_dns_hostnames",
+   "kind": "attr",
+   "tier": "extra",
+   "select": {
+    "types": [
+     "aws_vpc"
+    ],
+    "where": []
+   },
+   "cond": {
+    "path": [
+     "enable_dns_hostnames"
+    ],
+    "op": "truthy"
+   }
+  },
+  {
+   "id": "vpc_dns_support",
+   "kind": "attr",
+   "tier": "extra",
+   "select": {
+    "types": [
+     "aws_vpc"
+    ],
+    "where": []
+   },
+   "cond": {
+    "path": [
+     "enable_dns_support"
+    ],
+    "op": "truthy"
+   }
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

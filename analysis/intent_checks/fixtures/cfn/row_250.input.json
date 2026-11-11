@@ -1,0 +1,1066 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "5c8c8a29b57214192015d4b0d38237ca46a23b0334278a8f3de8f1e438760f38",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "UserPool",
+   "cfg": "UserPool",
+   "type": "AWS::Cognito::UserPool",
+   "values": {
+    "UserPoolName": "agentcore-gateway-pool",
+    "MfaConfiguration": "OFF",
+    "UsernameAttributes": [
+     "email"
+    ],
+    "AutoVerifiedAttributes": [
+     "email"
+    ],
+    "Policies": {
+     "PasswordPolicy": {
+      "MinimumLength": 12,
+      "RequireUppercase": true,
+      "RequireLowercase": true,
+      "RequireNumbers": true,
+      "RequireSymbols": true,
+      "TemporaryPasswordValidityDays": 7
+     }
+    },
+    "Schema": [
+     {
+      "Name": "email",
+      "AttributeDataType": "String",
+      "Required": true,
+      "Mutable": true
+     }
+    ],
+    "EmailConfiguration": {
+     "EmailSendingAccount": "COGNITO_DEFAULT"
+    },
+    "UserPoolTags": {
+     "Project": "protein-engineering",
+     "ManagedBy": "CloudFormation",
+     "Component": "Authentication"
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "UserPoolDomain",
+   "cfg": "UserPoolDomain",
+   "type": "AWS::Cognito::UserPoolDomain",
+   "values": {
+    "Domain": "us-east-1id",
+    "UserPoolId": {
+     "ref": "UserPool"
+    }
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "ResourceServer",
+   "cfg": "ResourceServer",
+   "type": "AWS::Cognito::UserPoolResourceServer",
+   "values": {
+    "UserPoolId": {
+     "ref": "UserPool"
+    },
+    "Identifier": "agentcore-gateway",
+    "Name": "protein-engineering-resource-server",
+    "Scopes": [
+     {
+      "ScopeName": "read",
+      "ScopeDescription": "Read access to gateway resources"
+     },
+     {
+      "ScopeName": "write",
+      "ScopeDescription": "Write access to gateway resources"
+     },
+     {
+      "ScopeName": "admin",
+      "ScopeDescription": "Administrative access to gateway resources"
+     }
+    ]
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "UserPoolClient",
+   "cfg": "UserPoolClient",
+   "type": "AWS::Cognito::UserPoolClient",
+   "values": {
+    "ClientName": "agentcore-gateway-client",
+    "UserPoolId": {
+     "ref": "UserPool"
+    },
+    "GenerateSecret": true,
+    "AllowedOAuthFlows": [
+     "client_credentials"
+    ],
+    "AllowedOAuthFlowsUserPoolClient": true,
+    "AllowedOAuthScopes": [
+     "agentcore-gateway/read",
+     "agentcore-gateway/write",
+     "agentcore-gateway/admin"
+    ],
+    "ExplicitAuthFlows": [
+     "ALLOW_REFRESH_TOKEN_AUTH"
+    ],
+    "PreventUserExistenceErrors": "ENABLED",
+    "SupportedIdentityProviders": [
+     "COGNITO"
+    ],
+    "__resource__": {
+     "DependsOn": [
+      "ResourceServer"
+     ]
+    }
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "ClientSecretLambdaRole",
+   "cfg": "ClientSecretLambdaRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "protein-engineering-cognito-secret-lambda-role",
+    "Description": "Execution role for Lambda function that retrieves and stores Cognito client secret",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+    ],
+    "Policies": [
+     {
+      "PolicyName": "CognitoClientSecretAccess",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "cognito-idp:DescribeUserPoolClient"
+         ],
+         "Resource": {
+          "ref": "UserPool",
+          "attr": "Arn"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "PolicyName": "SecretsManagerAccess",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "secretsmanager:CreateSecret",
+          "secretsmanager:UpdateSecret",
+          "secretsmanager:PutSecretValue",
+          "secretsmanager:DeleteSecret",
+          "secretsmanager:DescribeSecret",
+          "secretsmanager:TagResource"
+         ],
+         "Resource": [
+          "arn:aws:secretsmanager:us-east-1:123456789012:secret:protein-engineering/cognito/client-secret-*"
+         ]
+        }
+       ]
+      }
+     }
+    ],
+    "Tags": [
+     {
+      "Key": "Project",
+      "Value": "protein-engineering"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CloudFormation"
+     }
+    ]
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "ClientSecretLambda",
+   "cfg": "ClientSecretLambda",
+   "type": "AWS::Lambda::Function",
+   "values": {
+    "FunctionName": "protein-engineering-cognito-client-secret",
+    "Description": "Custom resource Lambda to retrieve and store Cognito client secret",
+    "Runtime": "python3.13",
+    "Handler": "index.lambda_handler",
+    "Role": {
+     "ref": "ClientSecretLambdaRole",
+     "attr": "Arn"
+    },
+    "Timeout": 60,
+    "MemorySize": 128,
+    "Code": {
+     "ZipFile": "import json\nimport boto3\nimport cfnresponse\nimport logging\n\nlogger = logging.getLogger()\nlogger.setLevel(logging.INFO)\n\ncognito_client = boto3.client('cognito-idp')\nsecrets_client = boto3.client('secretsmanager')\n\ndef lambda_handler(event, context):\n    logger.info(f'Event: {json.dumps(event)}')\n\n    response_data = {}\n    physical_resource_id = event.get('PhysicalResourceId', 'CognitoClientSecret')\n\n    try:\n        request_type = event['RequestType']\n\n        if request_type == 'Create' or request_type == 'Update':\n            user_pool_id = event['ResourceProperties']['UserPoolId']\n            client_id = event['ResourceProperties']['ClientId']\n            secret_name = event['ResourceProperties']['SecretName']\n\n            # Retrieve client secret from Cognito\n            logger.info(f'Retrieving client secret for UserPoolId: {user_pool_id}, ClientId: {client_id}')\n            response = cognito_client.describe_user_pool_client(\n                UserPoolId=user_pool_id,\n                ClientId=client_id\n            )\n\n            client_secret = response['UserPoolClient']['ClientSecret']\n\n            # Store secret in Secrets Manager\n            secret_value = json.dumps({\n                'client_id': client_id,\n                'client_secret': client_secret,\n                'user_pool_id': user_pool_id\n            })\n\n            try:\n                # Try to create the secret\n                logger.info(f'Creating secret: {secret_name}')\n                secrets_client.create_secret(\n                    Name=secret_name,\n                    Description=f'Cognito client credentials for {user_pool_id}',\n                    SecretString=secret_value,\n                    Tags=[\n                        {'Key': 'Project', 'Value': event['ResourceProperties'].get('ProjectName', 'protein-engineering')},\n                        {'Key': 'ManagedBy', 'Value': 'CloudFormation'}\n                    ]\n                )\n            except secrets_client.exceptions.ResourceExistsException:\n                # Secret already exists, update it\n                logger.info(f'Secret exists, updating: {secret_name}')\n                secrets_client.put_secret_value(\n                    SecretId=secret_name,\n                    SecretString=secret_value\n                )\n\n            response_data['SecretArn'] = f'arn:aws:secretsmanager:{context.invoked_function_arn.split(\":\")[3]}:{context.invoked_function_arn.split(\":\")[4]}:secret:{secret_name}'\n            response_data['SecretName'] = secret_name\n\n            logger.info('Successfully stored client secret')\n            cfnresponse.send(event, context, cfnresponse.SUCCESS, response_data, physical_resource_id)\n\n        elif request_type == 'Delete':\n            secret_name = event['ResourceProperties']['SecretName']\n\n            try:\n                # Delete the secret\n                logger.info(f'Deleting secret: {secret_name}')\n                secrets_client.delete_secret(\n                    SecretId=secret_name,\n                    ForceDeleteWithoutRecovery=True\n                )\n                logger.info('Successfully deleted secret')\n            except secrets_client.exceptions.ResourceNotFoundException:\n                logger.info('Secret not found, nothing to delete')\n\n            cfnresponse.send(event, context, cfnresponse.SUCCESS, response_data, physical_resource_id)\n\n    except Exception as e:\n        logger.error(f'Error: {str(e)}', exc_info=True)\n        cfnresponse.send(event, context, cfnresponse.FAILED, {'Error': str(e)}, physical_resource_id)\n"
+    },
+    "Tags": [
+     {
+      "Key": "Project",
+      "Value": "protein-engineering"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "CloudFormation"
+     }
+    ]
+   },
+   "refs": [
+    "ClientSecretLambdaRole"
+   ]
+  },
+  {
+   "id": "ClientSecretCustomResource",
+   "cfg": "ClientSecretCustomResource",
+   "type": "AWS::CloudFormation::CustomResource",
+   "values": {
+    "ServiceToken": {
+     "ref": "ClientSecretLambda",
+     "attr": "Arn"
+    },
+    "UserPoolId": {
+     "ref": "UserPool"
+    },
+    "ClientId": {
+     "ref": "UserPoolClient"
+    },
+    "SecretName": "protein-engineering/cognito/client-secret",
+    "ProjectName": "protein-engineering"
+   },
+   "refs": [
+    "ClientSecretLambda",
+    "UserPool",
+    "UserPoolClient"
+   ]
+  },
+  {
+   "id": "DiscoveryUrlParameter",
+   "cfg": "DiscoveryUrlParameter",
+   "type": "AWS::SSM::Parameter",
+   "values": {
+    "Name": "/protein-agent/cognito/discovery-url",
+    "Description": "Cognito OIDC discovery URL for AgentCore Gateway",
+    "Type": "String",
+    "Value": "https://cognito-idp.us-east-1.amazonaws.com/${UserPool}/.well-known/openid-configuration",
+    "Tier": "Standard",
+    "Tags": {
+     "Project": "protein-engineering",
+     "ManagedBy": "CloudFormation"
+    }
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "ClientIdParameter",
+   "cfg": "ClientIdParameter",
+   "type": "AWS::SSM::Parameter",
+   "values": {
+    "Name": "/protein-agent/cognito/client-id",
+    "Description": "Cognito User Pool Client ID for AgentCore Gateway",
+    "Type": "String",
+    "Value": {
+     "ref": "UserPoolClient"
+    },
+    "Tier": "Standard",
+    "Tags": {
+     "Project": "protein-engineering",
+     "ManagedBy": "CloudFormation"
+    }
+   },
+   "refs": [
+    "UserPoolClient"
+   ]
+  },
+  {
+   "id": "UserPoolIdParameter",
+   "cfg": "UserPoolIdParameter",
+   "type": "AWS::SSM::Parameter",
+   "values": {
+    "Name": "/protein-agent/cognito/user-pool-id",
+    "Description": "Cognito User Pool ID",
+    "Type": "String",
+    "Value": {
+     "ref": "UserPool"
+    },
+    "Tier": "Standard",
+    "Tags": {
+     "Project": "protein-engineering",
+     "ManagedBy": "CloudFormation"
+    }
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "UserPoolArnParameter",
+   "cfg": "UserPoolArnParameter",
+   "type": "AWS::SSM::Parameter",
+   "values": {
+    "Name": "/protein-agent/cognito/user-pool-arn",
+    "Description": "Cognito User Pool ARN",
+    "Type": "String",
+    "Value": {
+     "ref": "UserPool",
+     "attr": "Arn"
+    },
+    "Tier": "Standard",
+    "Tags": {
+     "Project": "protein-engineering",
+     "ManagedBy": "CloudFormation"
+    }
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "DomainParameter",
+   "cfg": "DomainParameter",
+   "type": "AWS::SSM::Parameter",
+   "values": {
+    "Name": "/protein-agent/cognito/domain",
+    "Description": "Cognito User Pool Domain URL",
+    "Type": "String",
+    "Value": "https://${UserPoolDomain}.auth.us-east-1.amazoncognito.com",
+    "Tier": "Standard",
+    "Tags": {
+     "Project": "protein-engineering",
+     "ManagedBy": "CloudFormation"
+    }
+   },
+   "refs": [
+    "UserPoolDomain"
+   ]
+  },
+  {
+   "id": "__parameter__.ProjectName",
+   "cfg": "__parameter__.ProjectName",
+   "type": "__parameter__",
+   "values": {
+    "name": "ProjectName",
+    "type": "String",
+    "default": "protein-engineering",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.UserPoolName",
+   "cfg": "__parameter__.UserPoolName",
+   "type": "__parameter__",
+   "values": {
+    "name": "UserPoolName",
+    "type": "String",
+    "default": "agentcore-gateway-pool",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.ResourceServerIdentifier",
+   "cfg": "__parameter__.ResourceServerIdentifier",
+   "type": "__parameter__",
+   "values": {
+    "name": "ResourceServerIdentifier",
+    "type": "String",
+    "default": "agentcore-gateway",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.ClientName",
+   "cfg": "__parameter__.ClientName",
+   "type": "__parameter__",
+   "values": {
+    "name": "ClientName",
+    "type": "String",
+    "default": "agentcore-gateway-client",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.MinPasswordLength",
+   "cfg": "__parameter__.MinPasswordLength",
+   "type": "__parameter__",
+   "values": {
+    "name": "MinPasswordLength",
+    "type": "Number",
+    "default": 12,
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.RequireSymbols",
+   "cfg": "__parameter__.RequireSymbols",
+   "type": "__parameter__",
+   "values": {
+    "name": "RequireSymbols",
+    "type": "String",
+    "default": "true",
+    "allowed_values": [
+     "true",
+     "false"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.UserPoolId",
+   "cfg": "__output__.UserPoolId",
+   "type": "__output__",
+   "values": {
+    "name": "UserPoolId",
+    "value": {
+     "ref": "UserPool"
+    },
+    "description": "Cognito User Pool ID",
+    "export": "stack-UserPoolId"
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "__output__.UserPoolArn",
+   "cfg": "__output__.UserPoolArn",
+   "type": "__output__",
+   "values": {
+    "name": "UserPoolArn",
+    "value": {
+     "ref": "UserPool",
+     "attr": "Arn"
+    },
+    "description": "Cognito User Pool ARN",
+    "export": "stack-UserPoolArn"
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "__output__.ClientId",
+   "cfg": "__output__.ClientId",
+   "type": "__output__",
+   "values": {
+    "name": "ClientId",
+    "value": {
+     "ref": "UserPoolClient"
+    },
+    "description": "Cognito User Pool Client ID",
+    "export": "stack-ClientId"
+   },
+   "refs": [
+    "UserPoolClient"
+   ]
+  },
+  {
+   "id": "__output__.DiscoveryUrl",
+   "cfg": "__output__.DiscoveryUrl",
+   "type": "__output__",
+   "values": {
+    "name": "DiscoveryUrl",
+    "value": "https://cognito-idp.us-east-1.amazonaws.com/${UserPool}/.well-known/openid-configuration",
+    "description": "Cognito OIDC discovery URL",
+    "export": "stack-DiscoveryUrl"
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "__output__.DomainUrl",
+   "cfg": "__output__.DomainUrl",
+   "type": "__output__",
+   "values": {
+    "name": "DomainUrl",
+    "value": "https://${UserPoolDomain}.auth.us-east-1.amazoncognito.com",
+    "description": "Cognito User Pool Domain URL",
+    "export": "stack-DomainUrl"
+   },
+   "refs": [
+    "UserPoolDomain"
+   ]
+  },
+  {
+   "id": "__output__.TokenEndpoint",
+   "cfg": "__output__.TokenEndpoint",
+   "type": "__output__",
+   "values": {
+    "name": "TokenEndpoint",
+    "value": "https://${UserPoolDomain}.auth.us-east-1.amazoncognito.com/oauth2/token",
+    "description": "OAuth2 token endpoint URL",
+    "export": "stack-TokenEndpoint"
+   },
+   "refs": [
+    "UserPoolDomain"
+   ]
+  },
+  {
+   "id": "__output__.DiscoveryUrlParameterName",
+   "cfg": "__output__.DiscoveryUrlParameterName",
+   "type": "__output__",
+   "values": {
+    "name": "DiscoveryUrlParameterName",
+    "value": "/protein-agent/cognito/discovery-url",
+    "description": "SSM Parameter name for discovery URL",
+    "export": "stack-DiscoveryUrlParameter"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.ClientIdParameterName",
+   "cfg": "__output__.ClientIdParameterName",
+   "type": "__output__",
+   "values": {
+    "name": "ClientIdParameterName",
+    "value": "/protein-agent/cognito/client-id",
+    "description": "SSM Parameter name for client ID",
+    "export": "stack-ClientIdParameter"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.UserPoolIdParameterName",
+   "cfg": "__output__.UserPoolIdParameterName",
+   "type": "__output__",
+   "values": {
+    "name": "UserPoolIdParameterName",
+    "value": "/protein-agent/cognito/user-pool-id",
+    "description": "SSM Parameter name for user pool ID",
+    "export": "stack-UserPoolIdParameter"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.UserPoolArnParameterName",
+   "cfg": "__output__.UserPoolArnParameterName",
+   "type": "__output__",
+   "values": {
+    "name": "UserPoolArnParameterName",
+    "value": "/protein-agent/cognito/user-pool-arn",
+    "description": "SSM Parameter name for user pool ARN",
+    "export": "stack-UserPoolArnParameter"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.DomainParameterName",
+   "cfg": "__output__.DomainParameterName",
+   "type": "__output__",
+   "values": {
+    "name": "DomainParameterName",
+    "value": "/protein-agent/cognito/domain",
+    "description": "SSM Parameter name for domain URL",
+    "export": "stack-DomainParameter"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.ClientSecretName",
+   "cfg": "__output__.ClientSecretName",
+   "type": "__output__",
+   "values": {
+    "name": "ClientSecretName",
+    "value": "protein-engineering/cognito/client-secret",
+    "description": "Secrets Manager secret name containing client credentials",
+    "export": "stack-ClientSecretName"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.ResourceServerIdentifier",
+   "cfg": "__output__.ResourceServerIdentifier",
+   "type": "__output__",
+   "values": {
+    "name": "ResourceServerIdentifier",
+    "value": "agentcore-gateway",
+    "description": "Resource Server identifier",
+    "export": "stack-ResourceServerIdentifier"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.OAuthScopes",
+   "cfg": "__output__.OAuthScopes",
+   "type": "__output__",
+   "values": {
+    "name": "OAuthScopes",
+    "value": "agentcore-gateway/read,agentcore-gateway/write,agentcore-gateway/admin",
+    "description": "Available OAuth scopes",
+    "export": "stack-OAuthScopes"
+   },
+   "refs": []
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPool.UserPool",
+   "cfg": "UserPool",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Cognito::UserPool",
+    "name": "UserPool",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "UserPoolName": "agentcore-gateway-pool",
+     "MfaConfiguration": "OFF",
+     "UsernameAttributes": [
+      "email"
+     ],
+     "AutoVerifiedAttributes": [
+      "email"
+     ],
+     "Policies": {
+      "PasswordPolicy": {
+       "MinimumLength": 12,
+       "RequireUppercase": true,
+       "RequireLowercase": true,
+       "RequireNumbers": true,
+       "RequireSymbols": true,
+       "TemporaryPasswordValidityDays": 7
+      }
+     },
+     "Schema": [
+      {
+       "Name": "email",
+       "AttributeDataType": "String",
+       "Required": true,
+       "Mutable": true
+      }
+     ],
+     "EmailConfiguration": {
+      "EmailSendingAccount": "COGNITO_DEFAULT"
+     },
+     "UserPoolTags": {
+      "Project": "protein-engineering",
+      "ManagedBy": "CloudFormation",
+      "Component": "Authentication"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolDomain.UserPoolDomain",
+   "cfg": "UserPoolDomain",
+   "type": "__declared__",
+   "refs": [
+    "UserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolDomain",
+    "name": "UserPoolDomain",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Domain": "us-east-1id",
+     "UserPoolId": {
+      "ref": "UserPool"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolResourceServer.ResourceServer",
+   "cfg": "ResourceServer",
+   "type": "__declared__",
+   "refs": [
+    "UserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolResourceServer",
+    "name": "ResourceServer",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "UserPoolId": {
+      "ref": "UserPool"
+     },
+     "Identifier": "agentcore-gateway",
+     "Name": "protein-engineering-resource-server",
+     "Scopes": [
+      {
+       "ScopeName": "read",
+       "ScopeDescription": "Read access to gateway resources"
+      },
+      {
+       "ScopeName": "write",
+       "ScopeDescription": "Write access to gateway resources"
+      },
+      {
+       "ScopeName": "admin",
+       "ScopeDescription": "Administrative access to gateway resources"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolClient.UserPoolClient",
+   "cfg": "UserPoolClient",
+   "type": "__declared__",
+   "refs": [
+    "UserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolClient",
+    "name": "UserPoolClient",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ClientName": "agentcore-gateway-client",
+     "UserPoolId": {
+      "ref": "UserPool"
+     },
+     "GenerateSecret": true,
+     "AllowedOAuthFlows": [
+      "client_credentials"
+     ],
+     "AllowedOAuthFlowsUserPoolClient": true,
+     "AllowedOAuthScopes": [
+      "agentcore-gateway/read",
+      "agentcore-gateway/write",
+      "agentcore-gateway/admin"
+     ],
+     "ExplicitAuthFlows": [
+      "ALLOW_REFRESH_TOKEN_AUTH"
+     ],
+     "PreventUserExistenceErrors": "ENABLED",
+     "SupportedIdentityProviders": [
+      "COGNITO"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.ClientSecretLambdaRole",
+   "cfg": "ClientSecretLambdaRole",
+   "type": "__declared__",
+   "refs": [
+    "UserPool"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "ClientSecretLambdaRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "protein-engineering-cognito-secret-lambda-role",
+     "Description": "Execution role for Lambda function that retrieves and stores Cognito client secret",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+     ],
+     "Policies": [
+      {
+       "PolicyName": "CognitoClientSecretAccess",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "cognito-idp:DescribeUserPoolClient"
+          ],
+          "Resource": {
+           "ref": "UserPool",
+           "attr": "Arn"
+          }
+         }
+        ]
+       }
+      },
+      {
+       "PolicyName": "SecretsManagerAccess",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "secretsmanager:CreateSecret",
+           "secretsmanager:UpdateSecret",
+           "secretsmanager:PutSecretValue",
+           "secretsmanager:DeleteSecret",
+           "secretsmanager:DescribeSecret",
+           "secretsmanager:TagResource"
+          ],
+          "Resource": [
+           "arn:aws:secretsmanager:us-east-1:123456789012:secret:protein-engineering/cognito/client-secret-*"
+          ]
+         }
+        ]
+       }
+      }
+     ],
+     "Tags": [
+      {
+       "Key": "Project",
+       "Value": "protein-engineering"
+      },
+      {
+       "Key": "ManagedBy",
+       "Value": "CloudFormation"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Function.ClientSecretLambda",
+   "cfg": "ClientSecretLambda",
+   "type": "__declared__",
+   "refs": [
+    "ClientSecretLambdaRole"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Function",
+    "name": "ClientSecretLambda",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "FunctionName": "protein-engineering-cognito-client-secret",
+     "Description": "Custom resource Lambda to retrieve and store Cognito client secret",
+     "Runtime": "python3.13",
+     "Handler": "index.lambda_handler",
+     "Role": {
+      "ref": "ClientSecretLambdaRole",
+      "attr": "Arn"
+     },
+     "Timeout": 60,
+     "MemorySize": 128,
+     "Code": {
+      "ZipFile": "import json\nimport boto3\nimport cfnresponse\nimport logging\n\nlogger = logging.getLogger()\nlogger.setLevel(logging.INFO)\n\ncognito_client = boto3.client('cognito-idp')\nsecrets_client = boto3.client('secretsmanager')\n\ndef lambda_handler(event, context):\n    logger.info(f'Event: {json.dumps(event)}')\n\n    response_data = {}\n    physical_resource_id = event.get('PhysicalResourceId', 'CognitoClientSecret')\n\n    try:\n        request_type = event['RequestType']\n\n        if request_type == 'Create' or request_type == 'Update':\n            user_pool_id = event['ResourceProperties']['UserPoolId']\n            client_id = event['ResourceProperties']['ClientId']\n            secret_name = event['ResourceProperties']['SecretName']\n\n            # Retrieve client secret from Cognito\n            logger.info(f'Retrieving client secret for UserPoolId: {user_pool_id}, ClientId: {client_id}')\n            response = cognito_client.describe_user_pool_client(\n                UserPoolId=user_pool_id,\n                ClientId=client_id\n            )\n\n            client_secret = response['UserPoolClient']['ClientSecret']\n\n            # Store secret in Secrets Manager\n            secret_value = json.dumps({\n                'client_id': client_id,\n                'client_secret': client_secret,\n                'user_pool_id': user_pool_id\n            })\n\n            try:\n                # Try to create the secret\n                logger.info(f'Creating secret: {secret_name}')\n                secrets_client.create_secret(\n                    Name=secret_name,\n                    Description=f'Cognito client credentials for {user_pool_id}',\n                    SecretString=secret_value,\n                    Tags=[\n                        {'Key': 'Project', 'Value': event['ResourceProperties'].get('ProjectName', 'protein-engineering')},\n                        {'Key': 'ManagedBy', 'Value': 'CloudFormation'}\n                    ]\n                )\n            except secrets_client.exceptions.ResourceExistsException:\n                # Secret already exists, update it\n                logger.info(f'Secret exists, updating: {secret_name}')\n                secrets_client.put_secret_value(\n                    SecretId=secret_name,\n                    SecretString=secret_value\n                )\n\n            response_data['SecretArn'] = f'arn:aws:secretsmanager:{context.invoked_function_arn.split(\":\")[3]}:{context.invoked_function_arn.split(\":\")[4]}:secret:{secret_name}'\n            response_data['SecretName'] = secret_name\n\n            logger.info('Successfully stored client secret')\n            cfnresponse.send(event, context, cfnresponse.SUCCESS, response_data, physical_resource_id)\n\n        elif request_type == 'Delete':\n            secret_name = event['ResourceProperties']['SecretName']\n\n            try:\n                # Delete the secret\n                logger.info(f'Deleting secret: {secret_name}')\n                secrets_client.delete_secret(\n                    SecretId=secret_name,\n                    ForceDeleteWithoutRecovery=True\n                )\n                logger.info('Successfully deleted secret')\n            except secrets_client.exceptions.ResourceNotFoundException:\n                logger.info('Secret not found, nothing to delete')\n\n            cfnresponse.send(event, context, cfnresponse.SUCCESS, response_data, physical_resource_id)\n\n    except Exception as e:\n        logger.error(f'Error: {str(e)}', exc_info=True)\n        cfnresponse.send(event, context, cfnresponse.FAILED, {'Error': str(e)}, physical_resource_id)\n"
+     },
+     "Tags": [
+      {
+       "Key": "Project",
+       "Value": "protein-engineering"
+      },
+      {
+       "Key": "ManagedBy",
+       "Value": "CloudFormation"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::CloudFormation::CustomResource.ClientSecretCustomResource",
+   "cfg": "ClientSecretCustomResource",
+   "type": "__declared__",
+   "refs": [
+    "ClientSecretLambda",
+    "UserPool",
+    "UserPoolClient"
+   ],
+   "values": {
+    "type": "AWS::CloudFormation::CustomResource",
+    "name": "ClientSecretCustomResource",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ServiceToken": {
+      "ref": "ClientSecretLambda",
+      "attr": "Arn"
+     },
+     "UserPoolId": {
+      "ref": "UserPool"
+     },
+     "ClientId": {
+      "ref": "UserPoolClient"
+     },
+     "SecretName": "protein-engineering/cognito/client-secret",
+     "ProjectName": "protein-engineering"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SSM::Parameter.DiscoveryUrlParameter",
+   "cfg": "DiscoveryUrlParameter",
+   "type": "__declared__",
+   "refs": [
+    "UserPool"
+   ],
+   "values": {
+    "type": "AWS::SSM::Parameter",
+    "name": "DiscoveryUrlParameter",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "/protein-agent/cognito/discovery-url",
+     "Description": "Cognito OIDC discovery URL for AgentCore Gateway",
+     "Type": "String",
+     "Value": "https://cognito-idp.us-east-1.amazonaws.com/${UserPool}/.well-known/openid-configuration",
+     "Tier": "Standard",
+     "Tags": {
+      "Project": "protein-engineering",
+      "ManagedBy": "CloudFormation"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SSM::Parameter.ClientIdParameter",
+   "cfg": "ClientIdParameter",
+   "type": "__declared__",
+   "refs": [
+    "UserPoolClient"
+   ],
+   "values": {
+    "type": "AWS::SSM::Parameter",
+    "name": "ClientIdParameter",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "/protein-agent/cognito/client-id",
+     "Description": "Cognito User Pool Client ID for AgentCore Gateway",
+     "Type": "String",
+     "Value": {
+      "ref": "UserPoolClient"
+     },
+     "Tier": "Standard",
+     "Tags": {
+      "Project": "protein-engineering",
+      "ManagedBy": "CloudFormation"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SSM::Parameter.UserPoolIdParameter",
+   "cfg": "UserPoolIdParameter",
+   "type": "__declared__",
+   "refs": [
+    "UserPool"
+   ],
+   "values": {
+    "type": "AWS::SSM::Parameter",
+    "name": "UserPoolIdParameter",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "/protein-agent/cognito/user-pool-id",
+     "Description": "Cognito User Pool ID",
+     "Type": "String",
+     "Value": {
+      "ref": "UserPool"
+     },
+     "Tier": "Standard",
+     "Tags": {
+      "Project": "protein-engineering",
+      "ManagedBy": "CloudFormation"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SSM::Parameter.UserPoolArnParameter",
+   "cfg": "UserPoolArnParameter",
+   "type": "__declared__",
+   "refs": [
+    "UserPool"
+   ],
+   "values": {
+    "type": "AWS::SSM::Parameter",
+    "name": "UserPoolArnParameter",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "/protein-agent/cognito/user-pool-arn",
+     "Description": "Cognito User Pool ARN",
+     "Type": "String",
+     "Value": {
+      "ref": "UserPool",
+      "attr": "Arn"
+     },
+     "Tier": "Standard",
+     "Tags": {
+      "Project": "protein-engineering",
+      "ManagedBy": "CloudFormation"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SSM::Parameter.DomainParameter",
+   "cfg": "DomainParameter",
+   "type": "__declared__",
+   "refs": [
+    "UserPoolDomain"
+   ],
+   "values": {
+    "type": "AWS::SSM::Parameter",
+    "name": "DomainParameter",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "/protein-agent/cognito/domain",
+     "Description": "Cognito User Pool Domain URL",
+     "Type": "String",
+     "Value": "https://${UserPoolDomain}.auth.us-east-1.amazoncognito.com",
+     "Tier": "Standard",
+     "Tags": {
+      "Project": "protein-engineering",
+      "ManagedBy": "CloudFormation"
+     }
+    }
+   }
+  }
+ ]
+}

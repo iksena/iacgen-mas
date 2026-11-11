@@ -1,0 +1,106 @@
+{
+  "lang": "cfn",
+  "row_number": 260,
+  "source_hash": {
+    "gt": "8df24bf2dde8699d93e495ea016c4bdaf4e1d0cdf26c65ffb7e5a4368607fc1d",
+    "prompt": "c5183f84c8a2183730b045928d6d5c50835d7776b0d7f36bda4d356839d935b2"
+  },
+  "selectors": {
+    "lg": {
+      "types": [
+        "AWS::Logs::LogGroup"
+      ]
+    },
+    "vpc": {
+      "types": [
+        "AWS::EC2::VPC"
+      ]
+    }
+  },
+  "checks": [
+    {
+      "id": "log_group",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "a CloudWatch log group",
+      "select": "lg"
+    },
+    {
+      "id": "vpc",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "a virtual private cloud",
+      "select": "vpc"
+    },
+    {
+      "id": "vpc_cidr",
+      "kind": "attr",
+      "tier": "core",
+      "quote": "the 10.0.0.0/24 address range",
+      "select": "vpc",
+      "cond": {
+        "path": "CidrBlock",
+        "op": "eq",
+        "value": "10.0.0.0/24"
+      }
+    },
+    {
+      "id": "vpc_after_log_group",
+      "kind": "join",
+      "tier": "core",
+      "quote": "the VPC is explicitly created only after the log group",
+      "from": "vpc",
+      "from_path": "__resource__.DependsOn.*",
+      "to": {
+        "types": [
+          "__declared__"
+        ],
+        "where": [
+          {
+            "path": "type",
+            "op": "eq",
+            "value": "AWS::Logs::LogGroup"
+          }
+        ]
+      },
+      "to_path": "name"
+    },
+    {
+      "id": "only_requested_resources",
+      "kind": "all_of",
+      "tier": "core",
+      "quote": "consisting of just a CloudWatch log group and a virtual private cloud",
+      "justify": "'just a log group and a VPC' limits the stack to one of each and nothing else",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "__declared__"
+            ]
+          },
+          "quantifier": "all",
+          "cond": {
+            "path": "type",
+            "op": "in",
+            "value": [
+              "AWS::Logs::LogGroup",
+              "AWS::EC2::VPC"
+            ]
+          }
+        },
+        {
+          "kind": "exists",
+          "select": "lg",
+          "max": 1
+        },
+        {
+          "kind": "exists",
+          "select": "vpc",
+          "max": 1
+        }
+      ]
+    }
+  ],
+  "notes": "vpc_after_log_group joins the VPC's DependsOn entries to the logical ID of the declared log group, so a DependsOn on anything else fails. A Ref from the VPC to the log group is not accepted: the prompt says 'explicitly' and 'otherwise unrelated', and a Ref would be an implicit link between them."
+}

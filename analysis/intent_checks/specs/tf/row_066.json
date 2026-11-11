@@ -1,0 +1,351 @@
+{
+ "lang": "tf",
+ "row_number": 66,
+ "source_hash": {
+  "gt": "406cafb8f020c21fbf37d833a1142a92f2d673bc7b42d67f966b55931ff291ea",
+  "prompt": "1a3527db19af5375ddeb605a5a452a82a039a601c8d95496ce5724d86bd9deee"
+ },
+ "checks": [
+  {
+   "id": "vpc",
+   "kind": "exists",
+   "tier": "core",
+   "select": {
+    "types": [
+     "aws_vpc"
+    ]
+   },
+   "quote": "creates a dedicated VPC (10.0.0.0/16)"
+  },
+  {
+   "id": "vpc_cidr",
+   "kind": "attr",
+   "tier": "core",
+   "select": {
+    "types": [
+     "aws_vpc"
+    ]
+   },
+   "cond": {
+    "path": "cidr_block",
+    "op": "eq",
+    "value": "10.0.0.0/16"
+   },
+   "quote": "creates a dedicated VPC (10.0.0.0/16)"
+  },
+  {
+   "id": "subnet",
+   "kind": "exists",
+   "tier": "core",
+   "select": {
+    "types": [
+     "aws_subnet"
+    ]
+   },
+   "quote": "with a subnet (10.0.0.0/24)"
+  },
+  {
+   "id": "subnet_cidr",
+   "kind": "attr",
+   "tier": "core",
+   "select": {
+    "types": [
+     "aws_subnet"
+    ]
+   },
+   "cond": {
+    "path": "cidr_block",
+    "op": "eq",
+    "value": "10.0.0.0/24"
+   },
+   "quote": "with a subnet (10.0.0.0/24)"
+  },
+  {
+   "id": "subnet_no_public_ip",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": "cidr_block",
+        "op": "eq",
+        "value": "10.0.0.0/24"
+       }
+      ]
+     },
+     "cond": {
+      "path": "map_public_ip_on_launch",
+      "op": "falsy"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": "cidr_block",
+        "op": "eq",
+        "value": "10.0.0.0/24"
+       }
+      ]
+     },
+     "cond": {
+      "path": "map_public_ip_on_launch",
+      "op": "absent"
+     }
+    }
+   ],
+   "quote": "that does not auto-assign public IP addresses"
+  },
+  {
+   "id": "subnet_in_vpc",
+   "kind": "ref",
+   "tier": "detail",
+   "from": {
+    "types": [
+     "aws_subnet"
+    ],
+    "where": [
+     {
+      "path": "cidr_block",
+      "op": "eq",
+      "value": "10.0.0.0/24"
+     }
+    ]
+   },
+   "to": {
+    "types": [
+     "aws_vpc"
+    ],
+    "where": [
+     {
+      "path": "cidr_block",
+      "op": "eq",
+      "value": "10.0.0.0/16"
+     }
+    ]
+   },
+   "quote": "with a subnet (10.0.0.0/24)"
+  },
+  {
+   "id": "igw",
+   "kind": "exists",
+   "tier": "core",
+   "select": {
+    "types": [
+     "aws_internet_gateway"
+    ]
+   },
+   "quote": "an internet gateway"
+  },
+  {
+   "id": "igw_in_vpc",
+   "kind": "ref",
+   "tier": "detail",
+   "from": {
+    "types": [
+     "aws_internet_gateway"
+    ]
+   },
+   "to": {
+    "types": [
+     "aws_vpc"
+    ]
+   },
+   "quote": "an internet gateway"
+  },
+  {
+   "id": "default_route_via_igw",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route_table"
+      ],
+      "where": [
+       {
+        "path": "route.*.cidr_block",
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_internet_gateway"
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route"
+      ],
+      "where": [
+       {
+        "path": "destination_cidr_block",
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_internet_gateway"
+      ]
+     }
+    }
+   ],
+   "quote": "a route table sending default traffic through that gateway",
+   "justify": "default traffic means 0.0.0.0/0"
+  },
+  {
+   "id": "sg_named",
+   "kind": "exists",
+   "tier": "core",
+   "select": {
+    "types": [
+     "aws_security_group"
+    ],
+    "where": [
+     {
+      "path": "name",
+      "op": "eq",
+      "value": "dragondrop-compute-ecs-fargate-sg"
+     }
+    ]
+   },
+   "quote": "a security group named \"dragondrop-compute-ecs-fargate-sg\""
+  },
+  {
+   "id": "sg_in_vpc",
+   "kind": "ref",
+   "tier": "detail",
+   "from": {
+    "types": [
+     "aws_security_group"
+    ],
+    "where": [
+     {
+      "path": "name",
+      "op": "eq",
+      "value": "dragondrop-compute-ecs-fargate-sg"
+     }
+    ]
+   },
+   "to": {
+    "types": [
+     "aws_vpc"
+    ]
+   },
+   "quote": "a security group named \"dragondrop-compute-ecs-fargate-sg\""
+  },
+  {
+   "id": "egress_vpc_cidr",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_security_group"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "eq",
+        "value": "dragondrop-compute-ecs-fargate-sg"
+       }
+      ]
+     },
+     "cond": {
+      "path": "egress.*.cidr_blocks.*",
+      "op": "eq",
+      "value": "10.0.0.0/16",
+      "every": true
+     },
+     "quantifier": "all"
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_security_group_rule"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "egress"
+       }
+      ]
+     },
+     "cond": {
+      "path": "cidr_blocks.*",
+      "op": "eq",
+      "value": "10.0.0.0/16",
+      "every": true
+     },
+     "quantifier": "all"
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_vpc_security_group_egress_rule"
+      ]
+     },
+     "cond": {
+      "path": "cidr_ipv4",
+      "op": "eq",
+      "value": "10.0.0.0/16",
+      "every": true
+     },
+     "quantifier": "all"
+    }
+   ],
+   "quote": "allowing outbound access only within the VPC CIDR",
+   "justify": "VPC CIDR is 10.0.0.0/16 per the prompt; 'only' means every egress CIDR is the VPC CIDR"
+  },
+  {
+   "id": "vpc_dns_support",
+   "kind": "attr",
+   "tier": "extra",
+   "select": {
+    "types": [
+     "aws_vpc"
+    ]
+   },
+   "cond": {
+    "path": "enable_dns_support",
+    "op": "truthy"
+   }
+  },
+  {
+   "id": "extra_type_aws_route_table_association",
+   "kind": "exists",
+   "tier": "extra",
+   "select": {
+    "types": [
+     "aws_route_table_association"
+    ],
+    "where": []
+   }
+  }
+ ],
+ "notes": "Route-table association is not stated in the prompt, so it is not checked. The no-public-IP and in-VPC checks are bound to the 10.0.0.0/24 subnet. Egress 'only within the VPC CIDR': inline egress on the named SG must all be the VPC CIDR; for separate rule resources every egress rule in the template must be the VPC CIDR (a ref leaf cannot also quantify over all rules, so those branches are not bound to the named SG). A separate aws_route branch for the default route is not bound to a route table."
+}

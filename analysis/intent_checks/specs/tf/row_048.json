@@ -1,0 +1,382 @@
+{
+  "lang": "tf",
+  "row_number": 48,
+  "source_hash": {
+    "gt": "47a5a6c24e85415507262245ac611e93a9403db31926f19e4378507de2042333",
+    "prompt": "9924551e17c821d4c5c5e5ef51d08dde77916012ede8f7bcbf1978647db109ea"
+  },
+  "selectors": {
+    "role": {
+      "types": [
+        "aws_iam_role"
+      ]
+    },
+    "prof": {
+      "types": [
+        "aws_iam_instance_profile"
+      ]
+    }
+  },
+  "checks": [
+    {
+      "id": "role",
+      "tier": "core",
+      "quote": "creates an IAM role and instance profile for EC2 instances",
+      "kind": "exists",
+      "select": "role"
+    },
+    {
+      "id": "instance_profile",
+      "tier": "core",
+      "quote": "creates an IAM role and instance profile for EC2 instances",
+      "kind": "exists",
+      "select": "prof"
+    },
+    {
+      "id": "profile_uses_role",
+      "tier": "core",
+      "quote": "IAM role and instance profile",
+      "kind": "ref",
+      "from": "prof",
+      "to": "role"
+    },
+    {
+      "id": "trust_ec2",
+      "tier": "core",
+      "quote": "grants the correct partition-specific EC2 service principal permission to assume the role",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "role",
+          "cond": {
+            "path": "assume_role_policy",
+            "op": "regex",
+            "value": "(?i)ec2\\.amazonaws\\.com"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "data.aws_iam_policy_document"
+            ]
+          },
+          "cond": {
+            "path": "statement.*.principals.*.identifiers.*",
+            "op": "regex",
+            "value": "(?i)^ec2\\."
+          }
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "in",
+                "value": [
+                  "aws_iam_role",
+                  "data.aws_iam_policy_document"
+                ]
+              },
+              {
+                "path": "properties",
+                "op": "regex",
+                "value": "(?i)ec2\\.(amazonaws\\.com|\\$\\{)"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "trust_assume_action",
+      "tier": "detail",
+      "quote": "permission to assume the role",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "role",
+          "cond": {
+            "path": "assume_role_policy",
+            "op": "regex",
+            "value": "(?i)sts:AssumeRole"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "data.aws_iam_policy_document"
+            ]
+          },
+          "cond": {
+            "path": "statement.*.actions.*",
+            "op": "glob_covers",
+            "value": "sts:AssumeRole"
+          }
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "in",
+                "value": [
+                  "aws_iam_role",
+                  "data.aws_iam_policy_document"
+                ]
+              },
+              {
+                "path": "properties",
+                "op": "regex",
+                "value": "(?i)sts:AssumeRole"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "trust_partition_aware",
+      "tier": "detail",
+      "quote": "automatically grants the correct partition-specific EC2 service principal",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "in",
+                "value": [
+                  "data.aws_iam_policy_document",
+                  "aws_iam_role"
+                ]
+              },
+              {
+                "path": "properties",
+                "op": "regex",
+                "value": "(?i)ec2"
+              }
+            ]
+          },
+          "to": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "eq",
+                "value": "data.aws_partition"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "in",
+                "value": [
+                  "data.aws_iam_policy_document",
+                  "aws_iam_role"
+                ]
+              },
+              {
+                "path": "properties",
+                "op": "regex",
+                "value": "(?i)ec2"
+              }
+            ]
+          },
+          "to": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "eq",
+                "value": "data.aws_service_principal"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "inline_policies_supported",
+      "tier": "core",
+      "quote": "support for attaching a configurable set of inline and managed IAM policies",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "in",
+                "value": [
+                  "aws_iam_role_policy",
+                  "aws_iam_role_policies_exclusive"
+                ]
+              }
+            ]
+          },
+          "to": "role"
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "in",
+                "value": [
+                  "aws_iam_role"
+                ]
+              },
+              {
+                "path": "properties",
+                "op": "regex",
+                "value": "inline_policy"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "managed_policies_supported",
+      "tier": "core",
+      "quote": "support for attaching a configurable set of inline and managed IAM policies",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "in",
+                "value": [
+                  "aws_iam_role_policy_attachment",
+                  "aws_iam_policy_attachment",
+                  "aws_iam_role_policy_attachments_exclusive"
+                ]
+              }
+            ]
+          },
+          "to": "role"
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "in",
+                "value": [
+                  "aws_iam_role"
+                ]
+              },
+              {
+                "path": "properties",
+                "op": "regex",
+                "value": "managed_policy_arns"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "policies_configurable",
+      "tier": "detail",
+      "quote": "a configurable set of inline and managed IAM policies",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "in",
+                "value": [
+                  "aws_iam_role_policy",
+                  "aws_iam_role_policy_attachment",
+                  "aws_iam_policy_attachment"
+                ]
+              },
+              {
+                "path": "gated",
+                "op": "eq",
+                "value": true
+              }
+            ]
+          }
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "in",
+                "value": [
+                  "aws_iam_role"
+                ]
+              },
+              {
+                "path": "properties",
+                "op": "regex",
+                "value": "(inline_policy|managed_policy_arns)"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "notes": "'Configurable' is checked as gated (count/for_each) policy resources or role-level inline_policy/managed_policy_arns, since defaults create none."
+}

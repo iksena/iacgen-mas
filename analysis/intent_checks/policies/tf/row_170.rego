@@ -1,0 +1,1182 @@
+package intent.tf.row_170
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {
+  "vpc": {
+   "types": [
+    "aws_vpc"
+   ],
+   "where": []
+  },
+  "igw": {
+   "types": [
+    "aws_internet_gateway"
+   ],
+   "where": []
+  },
+  "eip": {
+   "types": [
+    "aws_eip"
+   ],
+   "where": []
+  },
+  "nat": {
+   "types": [
+    "aws_nat_gateway"
+   ],
+   "where": []
+  },
+  "subnets": {
+   "types": [
+    "aws_subnet"
+   ],
+   "where": []
+  },
+  "assoc": {
+   "types": [
+    "aws_route_table_association"
+   ],
+   "where": []
+  },
+  "rt_priv": {
+   "types": [
+    "aws_route_table"
+   ],
+   "where": [
+    {
+     "path": [
+      "tags",
+      "Name"
+     ],
+     "op": "eq",
+     "value": "rt-private-deploy-me"
+    }
+   ]
+  },
+  "rt_pub": {
+   "types": [
+    "aws_route_table"
+   ],
+   "where": [
+    {
+     "path": [
+      "tags",
+      "Name"
+     ],
+     "op": "eq",
+     "value": "rt-public-deploy-me"
+    }
+   ]
+  },
+  "rt_spare": {
+   "types": [
+    "aws_route_table"
+   ],
+   "where": [
+    {
+     "path": [
+      "tags",
+      "Name"
+     ],
+     "op": "eq",
+     "value": "rt-spare-deploy-me"
+    }
+   ]
+  },
+  "sg": {
+   "types": [
+    "aws_security_group"
+   ],
+   "where": [
+    {
+     "path": [
+      "name"
+     ],
+     "op": "eq",
+     "value": "allow_web_traffic"
+    }
+   ]
+  },
+  "main_assoc": {
+   "types": [
+    "aws_main_route_table_association"
+   ],
+   "where": []
+  }
+ },
+ "checks": [
+  {
+   "id": "vpc_cidr",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "a primary VPC CIDR block defaulting to 10.0.0.0/16",
+   "select": "vpc",
+   "cond": {
+    "path": [
+     "cidr_block"
+    ],
+    "op": "eq",
+    "value": "10.0.0.0/16"
+   }
+  },
+  {
+   "id": "input_variables",
+   "kind": "all_of",
+   "tier": "detail",
+   "quote": "declare configurable input variables for a primary VPC CIDR block defaulting to 10.0.0.0/16 and a complex list of 16 subnet definitions",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": [
+         "default"
+        ],
+        "op": "eq",
+        "value": "10.0.0.0/16"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": [
+         "default"
+        ],
+        "op": "regex",
+        "value": "(?s)10\\.0\\.15\\.0/24.*subnet-15|subnet-15.*10\\.0\\.15\\.0/24"
+       }
+      ]
+     }
+    }
+   ],
+   "justify": "the list runs to 10.0.15.0/24 / subnet-15, both stated"
+  },
+  {
+   "id": "vpc_tenancy",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "The VPC itself must use default instance tenancy",
+   "select": "vpc",
+   "cond": {
+    "path": [
+     "instance_tenancy"
+    ],
+    "op": "eq",
+    "value": "default"
+   }
+  },
+  {
+   "id": "vpc_ipv6",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "automatically request an Amazon-provided IPv6 CIDR block",
+   "select": "vpc",
+   "cond": {
+    "path": [
+     "assign_generated_ipv6_cidr_block"
+    ],
+    "op": "eq",
+    "value": true
+   }
+  },
+  {
+   "id": "vpc_tag",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "be tagged as my-deploy-me-vpc",
+   "select": "vpc",
+   "cond": {
+    "path": [
+     "tags",
+     "Name"
+    ],
+    "op": "eq",
+    "value": "my-deploy-me-vpc"
+   }
+  },
+  {
+   "id": "subnets_sixteen",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "The architecture requires sixteen subnets",
+   "select": "subnets",
+   "min": 16,
+   "justify": "sixteen stated"
+  },
+  {
+   "id": "subnet_cidrs",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "spanning CIDR blocks from 10.0.0.0/24 through 10.0.15.0/24",
+   "select": "subnets",
+   "quantifier": "all",
+   "cond": {
+    "path": [
+     "cidr_block"
+    ],
+    "op": "regex",
+    "value": "^10\\.0\\.([0-9]|1[0-5])\\.0/24$"
+   }
+  },
+  {
+   "id": "subnet_distinct_cidrs",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "a complex list of 16 subnet definitions spanning CIDR blocks from 10.0.0.0/24 through 10.0.15.0/24",
+   "select": "subnets",
+   "distinct_path": [
+    "cidr_block"
+   ],
+   "min": 16,
+   "justify": "sixteen distinct blocks"
+  },
+  {
+   "id": "subnet_azs",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "across three availability zones",
+   "select": "subnets",
+   "distinct_path": [
+    "availability_zone"
+   ],
+   "min": 3,
+   "justify": "three zones stated"
+  },
+  {
+   "id": "subnet_name_tags",
+   "kind": "exists",
+   "tier": "detail",
+   "quote": "a name tag matching subnet-0 through subnet-15",
+   "select": {
+    "types": [
+     "aws_subnet"
+    ],
+    "where": [
+     {
+      "path": [
+       "tags",
+       "Name"
+      ],
+      "op": "regex",
+      "value": "^subnet-([0-9]|1[0-5])$"
+     }
+    ]
+   },
+   "min": 16,
+   "justify": "sixteen subnets named subnet-0..15"
+  },
+  {
+   "id": "public_no_auto_ip",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "one public tier of four subnets that do not auto-assign public IPv4 addresses on launch",
+   "select": {
+    "types": [
+     "aws_subnet"
+    ],
+    "where": [
+     {
+      "path": [
+       "map_public_ip_on_launch"
+      ],
+      "op": "eq",
+      "value": false
+     }
+    ]
+   },
+   "min": 4,
+   "justify": "four such subnets stated"
+  },
+  {
+   "id": "igw_attached",
+   "kind": "ref",
+   "tier": "core",
+   "quote": "create an Internet Gateway tagged igw-deploy-me",
+   "from": "igw",
+   "to": "vpc"
+  },
+  {
+   "id": "igw_tag",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "an Internet Gateway tagged igw-deploy-me",
+   "select": "igw",
+   "cond": {
+    "path": [
+     "tags",
+     "Name"
+    ],
+    "op": "eq",
+    "value": "igw-deploy-me"
+   }
+  },
+  {
+   "id": "eip_vpc",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "an Elastic IP allocated for VPC domain",
+   "select": "eip",
+   "cond": {
+    "path": [
+     "domain"
+    ],
+    "op": "eq",
+    "value": "vpc"
+   }
+  },
+  {
+   "id": "nat_exists",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "a NAT Gateway tagged deployme-natgw",
+   "select": "nat"
+  },
+  {
+   "id": "nat_tag",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "a NAT Gateway tagged deployme-natgw",
+   "select": "nat",
+   "cond": {
+    "path": [
+     "tags",
+     "Name"
+    ],
+    "op": "eq",
+    "value": "deployme-natgw"
+   }
+  },
+  {
+   "id": "nat_uses_eip",
+   "kind": "ref",
+   "tier": "core",
+   "quote": "an Elastic IP allocated for VPC domain, and a NAT Gateway tagged deployme-natgw",
+   "from": "nat",
+   "to": "eip"
+  },
+  {
+   "id": "nat_in_subnet",
+   "kind": "ref",
+   "tier": "detail",
+   "quote": "residing in the first private subnet",
+   "from": "nat",
+   "to": "subnets"
+  },
+  {
+   "id": "nat_depends_igw",
+   "kind": "ref",
+   "tier": "core",
+   "quote": "that explicitly depends on the Internet Gateway",
+   "from": "nat",
+   "to": "igw"
+  },
+  {
+   "id": "rt_private_default_nat",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "a main private route table tagged rt-private-deploy-me that routes 0.0.0.0/0 outbound traffic through the NAT Gateway",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "rt_priv",
+     "to": "nat"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route"
+      ],
+      "where": [
+       {
+        "path": [
+         "destination_cidr_block"
+        ],
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     },
+     "to": "nat"
+    }
+   ]
+  },
+  {
+   "id": "rt_private_exists",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "a main private route table tagged rt-private-deploy-me",
+   "select": "rt_priv"
+  },
+  {
+   "id": "rt_private_main",
+   "kind": "ref",
+   "tier": "core",
+   "quote": "explicitly set as the main route table for the VPC",
+   "from": "main_assoc",
+   "to": "rt_priv"
+  },
+  {
+   "id": "rt_public_exists",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "a public route table tagged rt-public-deploy-me",
+   "select": "rt_pub"
+  },
+  {
+   "id": "rt_public_ipv4_igw",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "routes both IPv4 0.0.0.0/0 and IPv6 ::/0 traffic to the Internet Gateway",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "rt_pub",
+     "cond": {
+      "path": [
+       "route",
+       "*",
+       "cidr_block"
+      ],
+      "op": "eq",
+      "value": "0.0.0.0/0"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route"
+      ],
+      "where": [
+       {
+        "path": [
+         "destination_cidr_block"
+        ],
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     },
+     "to": "rt_pub"
+    }
+   ]
+  },
+  {
+   "id": "rt_public_ipv6",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "routes both IPv4 0.0.0.0/0 and IPv6 ::/0 traffic to the Internet Gateway",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "rt_pub",
+     "cond": {
+      "path": [
+       "route",
+       "*",
+       "ipv6_cidr_block"
+      ],
+      "op": "eq",
+      "value": "::/0"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route"
+      ],
+      "where": [
+       {
+        "path": [
+         "destination_ipv6_cidr_block"
+        ],
+        "op": "eq",
+        "value": "::/0"
+       }
+      ]
+     },
+     "to": "rt_pub"
+    }
+   ]
+  },
+  {
+   "id": "rt_public_to_igw",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "routes both IPv4 0.0.0.0/0 and IPv6 ::/0 traffic to the Internet Gateway",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "rt_pub",
+     "to": "igw"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route"
+      ],
+      "where": [
+       {
+        "path": [
+         "destination_cidr_block"
+        ],
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     },
+     "to": "igw"
+    }
+   ]
+  },
+  {
+   "id": "rt_spare_exists",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "a spare route table tagged rt-spare-deploy-me",
+   "select": "rt_spare"
+  },
+  {
+   "id": "rt_spare_ipv4",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "that also routes IPv4 and IPv6 internet-bound traffic through the Internet Gateway",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "rt_spare",
+     "cond": {
+      "path": [
+       "route",
+       "*",
+       "cidr_block"
+      ],
+      "op": "eq",
+      "value": "0.0.0.0/0"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route"
+      ],
+      "where": [
+       {
+        "path": [
+         "destination_cidr_block"
+        ],
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     },
+     "to": "rt_spare"
+    }
+   ],
+   "justify": "IPv4 internet-bound traffic is the 0.0.0.0/0 default route"
+  },
+  {
+   "id": "rt_spare_ipv6",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "that also routes IPv4 and IPv6 internet-bound traffic through the Internet Gateway",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "rt_spare",
+     "cond": {
+      "path": [
+       "route",
+       "*",
+       "ipv6_cidr_block"
+      ],
+      "op": "eq",
+      "value": "::/0"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route"
+      ],
+      "where": [
+       {
+        "path": [
+         "destination_ipv6_cidr_block"
+        ],
+        "op": "eq",
+        "value": "::/0"
+       }
+      ]
+     },
+     "to": "rt_spare"
+    }
+   ]
+  },
+  {
+   "id": "rt_spare_to_igw",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "that also routes IPv4 and IPv6 internet-bound traffic through the Internet Gateway",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "rt_spare",
+     "to": "igw"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route"
+      ],
+      "where": [
+       {
+        "path": [
+         "destination_cidr_block"
+        ],
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     },
+     "to": "igw"
+    }
+   ]
+  },
+  {
+   "id": "assoc_private",
+   "kind": "ref",
+   "tier": "core",
+   "quote": "associated with all eight private subnets across both private tiers",
+   "from": "assoc",
+   "to": "rt_priv"
+  },
+  {
+   "id": "assoc_public",
+   "kind": "ref",
+   "tier": "core",
+   "quote": "is associated with all four public subnets",
+   "from": "assoc",
+   "to": "rt_pub"
+  },
+  {
+   "id": "assoc_spare",
+   "kind": "ref",
+   "tier": "core",
+   "quote": "is associated with all four spare subnets",
+   "from": "assoc",
+   "to": "rt_spare"
+  },
+  {
+   "id": "assoc_count",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "associated with all eight private subnets across both private tiers",
+   "select": "assoc",
+   "min": 16,
+   "justify": "8 private + 4 public + 4 spare"
+  },
+  {
+   "id": "sg_exists",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "a security group named allow_web_traffic",
+   "select": "sg"
+  },
+  {
+   "id": "sg_tag",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "with tag allow_web_traffic",
+   "select": "sg",
+   "cond": {
+    "path": [
+     "tags",
+     "Name"
+    ],
+    "op": "eq",
+    "value": "allow_web_traffic"
+   }
+  },
+  {
+   "id": "sg_http",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "permits inbound HTTP (port 80) and HTTPS (port 443) from anywhere (0.0.0.0/0)",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "sg",
+     "cond": {
+      "path": [
+       "ingress",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [],
+        "op": "port_covers",
+        "value": 80
+       },
+       {
+        "path": [
+         "cidr_blocks",
+         "*"
+        ],
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_security_group_rule"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "ingress"
+       },
+       {
+        "path": [],
+        "op": "port_covers",
+        "value": 80
+       },
+       {
+        "path": [
+         "cidr_blocks",
+         "*"
+        ],
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_vpc_security_group_ingress_rule"
+      ],
+      "where": [
+       {
+        "path": [],
+        "op": "port_covers",
+        "value": 80
+       },
+       {
+        "path": [
+         "cidr_ipv4"
+        ],
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     }
+    }
+   ],
+   "justify": "HTTP is port 80, from anywhere is 0.0.0.0/0"
+  },
+  {
+   "id": "sg_https",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "permits inbound HTTP (port 80) and HTTPS (port 443) from anywhere (0.0.0.0/0)",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "sg",
+     "cond": {
+      "path": [
+       "ingress",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [],
+        "op": "port_covers",
+        "value": 443
+       },
+       {
+        "path": [
+         "cidr_blocks",
+         "*"
+        ],
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_security_group_rule"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "ingress"
+       },
+       {
+        "path": [],
+        "op": "port_covers",
+        "value": 443
+       },
+       {
+        "path": [
+         "cidr_blocks",
+         "*"
+        ],
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_vpc_security_group_ingress_rule"
+      ],
+      "where": [
+       {
+        "path": [],
+        "op": "port_covers",
+        "value": 443
+       },
+       {
+        "path": [
+         "cidr_ipv4"
+        ],
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "sg_ssh",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "SSH (port 22) only from the VPC CIDR block",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "sg",
+     "cond": {
+      "path": [
+       "ingress",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [],
+        "op": "port_covers",
+        "value": 22
+       },
+       {
+        "path": [
+         "cidr_blocks",
+         "*"
+        ],
+        "op": "eq",
+        "value": "10.0.0.0/16"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_security_group_rule"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "ingress"
+       },
+       {
+        "path": [],
+        "op": "port_covers",
+        "value": 22
+       },
+       {
+        "path": [
+         "cidr_blocks",
+         "*"
+        ],
+        "op": "eq",
+        "value": "10.0.0.0/16"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_vpc_security_group_ingress_rule"
+      ],
+      "where": [
+       {
+        "path": [],
+        "op": "port_covers",
+        "value": 22
+       },
+       {
+        "path": [
+         "cidr_ipv4"
+        ],
+        "op": "eq",
+        "value": "10.0.0.0/16"
+       }
+      ]
+     }
+    }
+   ],
+   "justify": "SSH is port 22; VPC CIDR is 10.0.0.0/16"
+  },
+  {
+   "id": "sg_ssh_not_wider",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "SSH (port 22) only from the VPC CIDR block",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "sg",
+     "cond": {
+      "path": [
+       "ingress",
+       "*"
+      ],
+      "op": "regex",
+      "value": "\"cidr_blocks\": \\[(\"10\\.0\\.0\\.0/16\")?\\]|\"from_port\": (2[3-9]|[3-9][0-9]|[1-9][0-9]{2,4}),.*\"protocol\": \"(tcp|udp|6|17)\"|\"protocol\": \"(tcp|udp|6|17)\".*\"to_port\": ([0-9]|1[0-9]|2[01])[,}]",
+      "every": true
+     }
+    },
+    {
+     "kind": "attr",
+     "quantifier": "all",
+     "select": {
+      "types": [
+       "aws_security_group_rule"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "ingress"
+       }
+      ]
+     },
+     "cond": {
+      "path": [],
+      "op": "regex",
+      "value": "\"cidr_blocks\": \\[(\"10\\.0\\.0\\.0/16\")?\\]|\"from_port\": (2[3-9]|[3-9][0-9]|[1-9][0-9]{2,4}),.*\"protocol\": \"(tcp|udp|6|17)\"|\"protocol\": \"(tcp|udp|6|17)\".*\"to_port\": ([0-9]|1[0-9]|2[01])[,}]"
+     }
+    },
+    {
+     "kind": "attr",
+     "quantifier": "all",
+     "select": {
+      "types": [
+       "aws_vpc_security_group_ingress_rule"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [],
+      "op": "regex",
+      "value": "\"cidr_ipv4\": (null|\"10\\.0\\.0\\.0/16\")|\"from_port\": (2[3-9]|[3-9][0-9]|[1-9][0-9]{2,4}),.*\"ip_protocol\": \"(tcp|udp|6|17)\"|\"ip_protocol\": \"(tcp|udp|6|17)\".*\"to_port\": ([0-9]|1[0-9]|2[01])[,}]"
+     }
+    }
+   ],
+   "justify": "every ingress rule either is limited to the VPC CIDR 10.0.0.0/16 (the VPC CIDR stated) or is a TCP/UDP range that excludes port 22"
+  },
+  {
+   "id": "sg_egress_vpc",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "alongside outbound egress limited to the VPC CIDR",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "sg",
+     "cond": {
+      "path": [
+       "egress",
+       "*",
+       "cidr_blocks",
+       "*"
+      ],
+      "op": "eq",
+      "value": "10.0.0.0/16",
+      "every": true
+     }
+    },
+    {
+     "kind": "attr",
+     "quantifier": "all",
+     "select": {
+      "types": [
+       "aws_security_group_rule"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "egress"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "cidr_blocks",
+       "*"
+      ],
+      "op": "eq",
+      "value": "10.0.0.0/16",
+      "every": true
+     }
+    },
+    {
+     "kind": "attr",
+     "quantifier": "all",
+     "select": {
+      "types": [
+       "aws_vpc_security_group_egress_rule"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "cidr_ipv4"
+      ],
+      "op": "eq",
+      "value": "10.0.0.0/16"
+     }
+    }
+   ],
+   "justify": "VPC CIDR is 10.0.0.0/16"
+  },
+  {
+   "id": "output_server_public_ip",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "export the NAT Elastic IP's public IP address as a top-level output variable named server_public_ip",
+   "select": {
+    "types": [
+     "__output__"
+    ],
+    "where": [
+     {
+      "path": [
+       "name"
+      ],
+      "op": "eq",
+      "value": "server_public_ip"
+     }
+    ]
+   }
+  },
+  {
+   "id": "output_refs_eip",
+   "kind": "ref",
+   "tier": "core",
+   "quote": "export the NAT Elastic IP's public IP address",
+   "from": {
+    "types": [
+     "__output__"
+    ],
+    "where": [
+     {
+      "path": [
+       "name"
+      ],
+      "op": "eq",
+      "value": "server_public_ip"
+     }
+    ]
+   },
+   "to": "eip"
+  },
+  {
+   "id": "x_nat_public",
+   "kind": "attr",
+   "tier": "extra",
+   "select": "nat",
+   "cond": {
+    "path": [
+     "connectivity_type"
+    ],
+    "op": "eq",
+    "value": "public"
+   }
+  },
+  {
+   "id": "x_vpc_dns_support",
+   "kind": "attr",
+   "tier": "extra",
+   "select": "vpc",
+   "cond": {
+    "path": [
+     "enable_dns_support"
+    ],
+    "op": "eq",
+    "value": true
+   }
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

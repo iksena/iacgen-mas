@@ -1,0 +1,964 @@
+{
+ "meta": {
+  "lang": "tf",
+  "mode": "plan",
+  "warnings": [],
+  "gt_hash": "4a81fc62662422fa51f0e98e5ac7143121db6d24e8deeec1f76e3c415584405f",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "data.aws_iam_policy_document.vpc_flow_logs",
+   "cfg": "data.aws_iam_policy_document.vpc_flow_logs",
+   "type": "data.aws_iam_policy_document",
+   "values": {
+    "override_json": null,
+    "override_policy_documents": null,
+    "policy_id": null,
+    "source_json": null,
+    "source_policy_documents": null,
+    "statement": [
+     {
+      "actions": [
+       "logs:CreateLogGroup",
+       "logs:CreateLogStream",
+       "logs:DescribeLogGroups",
+       "logs:DescribeLogStreams",
+       "logs:PutLogEvents"
+      ],
+      "condition": [],
+      "effect": "Allow",
+      "not_actions": null,
+      "not_principals": [],
+      "not_resources": null,
+      "principals": [],
+      "resources": [
+       null
+      ],
+      "sid": "VpcFlowLogsbenchmarkvpc"
+     }
+    ],
+    "version": null
+   },
+   "refs": [
+    "aws_cloudwatch_log_group.vpc_flow_logs"
+   ]
+  },
+  {
+   "id": "aws_cloudwatch_log_group.vpc_flow_logs",
+   "cfg": "aws_cloudwatch_log_group.vpc_flow_logs",
+   "type": "aws_cloudwatch_log_group",
+   "values": {
+    "kms_key_id": null,
+    "name": "/aws/vpc-flow-logs/benchmark-vpc",
+    "region": "us-east-1",
+    "retention_in_days": 180,
+    "skip_destroy": false,
+    "tags": {
+     "Name": "benchmark-vpc"
+    },
+    "tags_all": {
+     "Name": "benchmark-vpc"
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "aws_default_security_group.default",
+   "cfg": "aws_default_security_group.default",
+   "type": "aws_default_security_group",
+   "values": {
+    "region": "us-east-1",
+    "revoke_rules_on_delete": false,
+    "tags": null
+   },
+   "refs": [
+    "aws_vpc.vpc"
+   ]
+  },
+  {
+   "id": "aws_flow_log.flow_log",
+   "cfg": "aws_flow_log.flow_log",
+   "type": "aws_flow_log",
+   "values": {
+    "deliver_cross_account_role": null,
+    "destination_options": [],
+    "eni_id": null,
+    "log_destination_type": "cloud-watch-logs",
+    "max_aggregation_interval": 600,
+    "region": "us-east-1",
+    "regional_nat_gateway_id": null,
+    "subnet_id": null,
+    "tag_field_specification": [],
+    "tags": null,
+    "traffic_type": "ALL",
+    "transit_gateway_attachment_id": null,
+    "transit_gateway_id": null
+   },
+   "refs": [
+    "aws_cloudwatch_log_group.vpc_flow_logs",
+    "aws_iam_role.vpc_flow_logs",
+    "aws_vpc.vpc"
+   ]
+  },
+  {
+   "id": "aws_iam_role.vpc_flow_logs",
+   "cfg": "aws_iam_role.vpc_flow_logs",
+   "type": "aws_iam_role",
+   "values": {
+    "assume_role_policy": "{\"Statement\":[{\"Action\":\"sts:AssumeRole\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"vpc-flow-logs.amazonaws.com\"},\"Sid\":\"VpcFlowLogsAssumeRole\"}],\"Version\":\"2012-10-17\"}",
+    "description": null,
+    "force_detach_policies": false,
+    "max_session_duration": 3600,
+    "name": "vpc_flow_logs_benchmark-vpc",
+    "path": "/",
+    "permissions_boundary": null,
+    "tags": {
+     "Name": "benchmark-vpc"
+    },
+    "tags_all": {
+     "Name": "benchmark-vpc"
+    }
+   },
+   "refs": [
+    "data.aws_iam_policy_document.vpc_flow_logs_assume_role"
+   ]
+  },
+  {
+   "id": "aws_iam_role_policy.vpc_flow_logs",
+   "cfg": "aws_iam_role_policy.vpc_flow_logs",
+   "type": "aws_iam_role_policy",
+   "values": {
+    "name": "vpc_flow_logs_benchmark-vpc"
+   },
+   "refs": [
+    "aws_iam_role.vpc_flow_logs",
+    "data.aws_iam_policy_document.vpc_flow_logs"
+   ]
+  },
+  {
+   "id": "aws_security_group.custom_vpc_endpoints",
+   "cfg": "aws_security_group.custom_vpc_endpoints",
+   "type": "aws_security_group",
+   "values": {
+    "description": "Allows instances to reach Custom VPC endpoints",
+    "region": "us-east-1",
+    "revoke_rules_on_delete": false,
+    "tags": null,
+    "timeouts": null
+   },
+   "refs": [
+    "aws_vpc.vpc"
+   ]
+  },
+  {
+   "id": "aws_security_group.vpc_endpoints",
+   "cfg": "aws_security_group.vpc_endpoints",
+   "type": "aws_security_group",
+   "values": {
+    "description": "Allows instances to reach Interface VPC endpoints",
+    "name": "vpc-endpoints-benchmark-vpc",
+    "region": "us-east-1",
+    "revoke_rules_on_delete": false,
+    "tags": {
+     "Name": "benchmark-vpc"
+    },
+    "tags_all": {
+     "Name": "benchmark-vpc"
+    },
+    "timeouts": null
+   },
+   "refs": [
+    "aws_vpc.vpc"
+   ]
+  },
+  {
+   "id": "aws_vpc.vpc",
+   "cfg": "aws_vpc.vpc",
+   "type": "aws_vpc",
+   "values": {
+    "assign_generated_ipv6_cidr_block": null,
+    "cidr_block": "10.0.0.0/16",
+    "enable_dns_hostnames": true,
+    "enable_dns_support": true,
+    "instance_tenancy": "default",
+    "ipv4_ipam_pool_id": null,
+    "ipv4_netmask_length": null,
+    "ipv6_ipam_pool_id": null,
+    "ipv6_netmask_length": null,
+    "region": "us-east-1",
+    "tags": {
+     "Name": "benchmark-vpc"
+    },
+    "tags_all": {
+     "Name": "benchmark-vpc"
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "aws_vpc_endpoint.aws_interface_vpc_endpoints[\"logs\"]",
+   "cfg": "aws_vpc_endpoint.aws_interface_vpc_endpoints",
+   "type": "aws_vpc_endpoint",
+   "values": {
+    "auto_accept": null,
+    "private_dns_enabled": true,
+    "region": "us-east-1",
+    "resource_configuration_arn": null,
+    "service_name": "com.amazonaws.us-east-1.logs",
+    "service_network_arn": null,
+    "tags": {
+     "Name": "benchmark-vpc"
+    },
+    "tags_all": {
+     "Name": "benchmark-vpc"
+    },
+    "timeouts": null,
+    "vpc_endpoint_type": "Interface"
+   },
+   "refs": [
+    "aws_security_group.vpc_endpoints",
+    "aws_vpc.vpc"
+   ]
+  },
+  {
+   "id": "__parameter__.aws_vpce_services",
+   "cfg": "__parameter__.aws_vpce_services",
+   "type": "__parameter__",
+   "values": {
+    "name": "aws_vpce_services",
+    "default": [
+     "logs"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.common_tags",
+   "cfg": "__parameter__.common_tags",
+   "type": "__parameter__",
+   "values": {
+    "name": "common_tags",
+    "default": {}
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.custom_vpce_services",
+   "cfg": "__parameter__.custom_vpce_services",
+   "type": "__parameter__",
+   "values": {
+    "name": "custom_vpce_services",
+    "default": []
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.gateway_vpce_route_table_ids",
+   "cfg": "__parameter__.gateway_vpce_route_table_ids",
+   "type": "__parameter__",
+   "values": {
+    "name": "gateway_vpce_route_table_ids",
+    "default": []
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.hcs_tags",
+   "cfg": "__parameter__.hcs_tags",
+   "type": "__parameter__",
+   "values": {
+    "name": "hcs_tags",
+    "default": {}
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.interface_vpce_source_security_group_ids",
+   "cfg": "__parameter__.interface_vpce_source_security_group_ids",
+   "type": "__parameter__",
+   "values": {
+    "name": "interface_vpce_source_security_group_ids",
+    "default": []
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.interface_vpce_subnet_ids",
+   "cfg": "__parameter__.interface_vpce_subnet_ids",
+   "type": "__parameter__",
+   "values": {
+    "name": "interface_vpce_subnet_ids",
+    "default": []
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.region",
+   "cfg": "__parameter__.region",
+   "type": "__parameter__",
+   "values": {
+    "name": "region",
+    "default": "us-east-1"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.vpc_cidr_block",
+   "cfg": "__parameter__.vpc_cidr_block",
+   "type": "__parameter__",
+   "values": {
+    "name": "vpc_cidr_block",
+    "default": "10.0.0.0/16"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.vpc_enable_dns_hostnames",
+   "cfg": "__parameter__.vpc_enable_dns_hostnames",
+   "type": "__parameter__",
+   "values": {
+    "name": "vpc_enable_dns_hostnames",
+    "default": true
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.vpc_flow_log_retention_days",
+   "cfg": "__parameter__.vpc_flow_log_retention_days",
+   "type": "__parameter__",
+   "values": {
+    "name": "vpc_flow_log_retention_days",
+    "default": "180"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.vpc_flow_log_traffic_type",
+   "cfg": "__parameter__.vpc_flow_log_traffic_type",
+   "type": "__parameter__",
+   "values": {
+    "name": "vpc_flow_log_traffic_type",
+    "default": "ALL"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.vpc_instance_tenancy",
+   "cfg": "__parameter__.vpc_instance_tenancy",
+   "type": "__parameter__",
+   "values": {
+    "name": "vpc_instance_tenancy",
+    "default": "default"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.vpc_name",
+   "cfg": "__parameter__.vpc_name",
+   "type": "__parameter__",
+   "values": {
+    "name": "vpc_name",
+    "default": "benchmark-vpc"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.custom_vpce_dns_names",
+   "cfg": "__output__.custom_vpce_dns_names",
+   "type": "__output__",
+   "values": {
+    "name": "custom_vpce_dns_names",
+    "value": {},
+    "description": "Custom VPCE DNS Names"
+   },
+   "refs": [
+    "aws_vpc_endpoint.custom_vpc_endpoints"
+   ]
+  },
+  {
+   "id": "__output__.custom_vpce_sg_id",
+   "cfg": "__output__.custom_vpce_sg_id",
+   "type": "__output__",
+   "values": {
+    "name": "custom_vpce_sg_id",
+    "value": null,
+    "description": "Custom VPCE SG endpoint ID"
+   },
+   "refs": [
+    "aws_security_group.custom_vpc_endpoints"
+   ]
+  },
+  {
+   "id": "__output__.ecr_dkr_domain_name",
+   "cfg": "__output__.ecr_dkr_domain_name",
+   "type": "__output__",
+   "values": {
+    "name": "ecr_dkr_domain_name",
+    "value": "dkr.ecr.us-east-1.amazonaws.com",
+    "description": "ECR dkr domain name"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.interface_vpce_sg_id",
+   "cfg": "__output__.interface_vpce_sg_id",
+   "type": "__output__",
+   "values": {
+    "name": "interface_vpce_sg_id",
+    "value": null,
+    "description": "VPCE SG endpoint ID"
+   },
+   "refs": [
+    "aws_security_group.vpc_endpoints"
+   ]
+  },
+  {
+   "id": "__output__.no_proxy_list",
+   "cfg": "__output__.no_proxy_list",
+   "type": "__output__",
+   "values": {
+    "name": "no_proxy_list",
+    "value": [
+     "169.254.169.254",
+     "127.0.0.1",
+     "localhost",
+     "logs.us-east-1.amazonaws.com"
+    ],
+    "description": "No_proxy List"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.prefix_list_ids",
+   "cfg": "__output__.prefix_list_ids",
+   "type": "__output__",
+   "values": {
+    "name": "prefix_list_ids",
+    "value": {},
+    "description": "Prefix List ID's"
+   },
+   "refs": [
+    "aws_vpc_endpoint.aws_gateway_vpc_endpoints"
+   ]
+  },
+  {
+   "id": "__output__.ssm_iam_role_name",
+   "cfg": "__output__.ssm_iam_role_name",
+   "type": "__output__",
+   "values": {
+    "name": "ssm_iam_role_name",
+    "value": "",
+    "description": "SSM IAM Role Name"
+   },
+   "refs": [
+    "aws_iam_role.ssm"
+   ]
+  },
+  {
+   "id": "__output__.ssm_instance_profile_name",
+   "cfg": "__output__.ssm_instance_profile_name",
+   "type": "__output__",
+   "values": {
+    "name": "ssm_instance_profile_name",
+    "value": "",
+    "description": "SSM IAM instance profile Name"
+   },
+   "refs": [
+    "aws_iam_instance_profile.ssm"
+   ]
+  },
+  {
+   "id": "__output__.vpc",
+   "cfg": "__output__.vpc",
+   "type": "__output__",
+   "values": {
+    "name": "vpc",
+    "value": null,
+    "description": "VPC Details"
+   },
+   "refs": [
+    "aws_vpc.vpc"
+   ]
+  },
+  {
+   "id": "__declared__.aws_iam_role.ssm",
+   "cfg": "aws_iam_role.ssm",
+   "type": "__declared__",
+   "refs": [
+    "data.aws_iam_policy_document.ec2_assume_role"
+   ],
+   "values": {
+    "type": "aws_iam_role",
+    "name": "ssm",
+    "gated": true,
+    "gate": "contains(var.aws_vpce_services, \"ssm\") ? 1 : 0",
+    "properties": {
+     "count": "${contains(var.aws_vpce_services,\"ssm\") ? 1 : 0}",
+     "name": "ssm_${var.vpc_name}",
+     "assume_role_policy": "${data.aws_iam_policy_document.ec2_assume_role.json}",
+     "tags": [
+      {}
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role_policy_attachment.ec2_for_ssm_attachment",
+   "cfg": "aws_iam_role_policy_attachment.ec2_for_ssm_attachment",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_role.ssm"
+   ],
+   "values": {
+    "type": "aws_iam_role_policy_attachment",
+    "name": "ec2_for_ssm_attachment",
+    "gated": true,
+    "gate": "contains(var.aws_vpce_services, \"ssm\") ? 1 : 0",
+    "properties": {
+     "count": "${contains(var.aws_vpce_services,\"ssm\") ? 1 : 0}",
+     "role": "${aws_iam_role.ssm[count.index].name}",
+     "policy_arn": "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+    }
+   }
+  },
+  {
+   "id": "__declared__.data.aws_iam_policy_document.ec2_assume_role",
+   "cfg": "data.aws_iam_policy_document.ec2_assume_role",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "data.aws_iam_policy_document",
+    "name": "ec2_assume_role",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "statement": [
+      {
+       "effect": "Allow",
+       "principals": [
+        {
+         "type": "Service",
+         "identifiers": [
+          "ec2.amazonaws.com"
+         ]
+        }
+       ],
+       "actions": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_instance_profile.ssm",
+   "cfg": "aws_iam_instance_profile.ssm",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_role.ssm"
+   ],
+   "values": {
+    "type": "aws_iam_instance_profile",
+    "name": "ssm",
+    "gated": true,
+    "gate": "contains(var.aws_vpce_services, \"ssm\") ? 1 : 0",
+    "properties": {
+     "count": "${contains(var.aws_vpce_services,\"ssm\") ? 1 : 0}",
+     "name": "ssm_${var.vpc_name}",
+     "role": "${aws_iam_role.ssm[count.index].name}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_vpc.vpc",
+   "cfg": "aws_vpc.vpc",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_vpc",
+    "name": "vpc",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "cidr_block": "10.0.0.0/16",
+     "instance_tenancy": "default",
+     "enable_dns_hostnames": true,
+     "tags": "${merge(var.common_tags,var.hcs_tags,{'Name': '${var.vpc_name}'})}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_default_security_group.default",
+   "cfg": "aws_default_security_group.default",
+   "type": "__declared__",
+   "refs": [
+    "aws_vpc.vpc"
+   ],
+   "values": {
+    "type": "aws_default_security_group",
+    "name": "default",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "vpc_id": "${aws_vpc.vpc.id}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_flow_log.flow_log",
+   "cfg": "aws_flow_log.flow_log",
+   "type": "__declared__",
+   "refs": [
+    "aws_cloudwatch_log_group.vpc_flow_logs",
+    "aws_iam_role.vpc_flow_logs",
+    "aws_vpc.vpc"
+   ],
+   "values": {
+    "type": "aws_flow_log",
+    "name": "flow_log",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "iam_role_arn": "${aws_iam_role.vpc_flow_logs.arn}",
+     "log_destination": "${aws_cloudwatch_log_group.vpc_flow_logs.arn}",
+     "traffic_type": "ALL",
+     "vpc_id": "${aws_vpc.vpc.id}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_cloudwatch_log_group.vpc_flow_logs",
+   "cfg": "aws_cloudwatch_log_group.vpc_flow_logs",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_cloudwatch_log_group",
+    "name": "vpc_flow_logs",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "/aws/vpc-flow-logs/${var.vpc_name}",
+     "retention_in_days": 180,
+     "tags": "${merge(var.common_tags,{'Name': '${var.vpc_name}'})}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.data.aws_iam_policy_document.vpc_flow_logs_assume_role",
+   "cfg": "data.aws_iam_policy_document.vpc_flow_logs_assume_role",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "data.aws_iam_policy_document",
+    "name": "vpc_flow_logs_assume_role",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "statement": [
+      {
+       "sid": "VpcFlowLogsAssumeRole",
+       "effect": "Allow",
+       "principals": [
+        {
+         "type": "Service",
+         "identifiers": [
+          "vpc-flow-logs.amazonaws.com"
+         ]
+        }
+       ],
+       "actions": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.data.aws_iam_policy_document.vpc_flow_logs",
+   "cfg": "data.aws_iam_policy_document.vpc_flow_logs",
+   "type": "__declared__",
+   "refs": [
+    "aws_cloudwatch_log_group.vpc_flow_logs"
+   ],
+   "values": {
+    "type": "data.aws_iam_policy_document",
+    "name": "vpc_flow_logs",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "statement": [
+      {
+       "sid": "${\"VpcFlowLogs${replace(var.vpc_name, \"-\", \"\")}\"}",
+       "effect": "Allow",
+       "resources": [
+        "${format(\"%s:*\",aws_cloudwatch_log_group.vpc_flow_logs.arn)}"
+       ],
+       "actions": [
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents",
+        "logs:DescribeLogGroups",
+        "logs:DescribeLogStreams"
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role.vpc_flow_logs",
+   "cfg": "aws_iam_role.vpc_flow_logs",
+   "type": "__declared__",
+   "refs": [
+    "data.aws_iam_policy_document.vpc_flow_logs_assume_role"
+   ],
+   "values": {
+    "type": "aws_iam_role",
+    "name": "vpc_flow_logs",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "vpc_flow_logs_${var.vpc_name}",
+     "assume_role_policy": "${data.aws_iam_policy_document.vpc_flow_logs_assume_role.json}",
+     "tags": "${merge(var.common_tags,{'Name': '${var.vpc_name}'})}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role_policy.vpc_flow_logs",
+   "cfg": "aws_iam_role_policy.vpc_flow_logs",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_role.vpc_flow_logs",
+    "data.aws_iam_policy_document.vpc_flow_logs"
+   ],
+   "values": {
+    "type": "aws_iam_role_policy",
+    "name": "vpc_flow_logs",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "vpc_flow_logs_${var.vpc_name}",
+     "role": "${aws_iam_role.vpc_flow_logs.id}",
+     "policy": "${data.aws_iam_policy_document.vpc_flow_logs.json}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_vpc_endpoint.aws_interface_vpc_endpoints",
+   "cfg": "aws_vpc_endpoint.aws_interface_vpc_endpoints",
+   "type": "__declared__",
+   "refs": [
+    "aws_security_group.vpc_endpoints",
+    "aws_vpc.vpc"
+   ],
+   "values": {
+    "type": "aws_vpc_endpoint",
+    "name": "aws_interface_vpc_endpoints",
+    "gated": true,
+    "gate": "local.interface_endpoints_to_create",
+    "properties": {
+     "for_each": "${local.interface_endpoints_to_create}",
+     "service_name": "com.amazonaws.${var.region}.${each.value}",
+     "vpc_id": "${aws_vpc.vpc.id}",
+     "vpc_endpoint_type": "Interface",
+     "security_group_ids": [
+      "${aws_security_group.vpc_endpoints.id}"
+     ],
+     "subnet_ids": [],
+     "private_dns_enabled": true,
+     "tags": "${merge(var.common_tags,{'Name': '${var.vpc_name}'})}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_vpc_endpoint.aws_gateway_vpc_endpoints",
+   "cfg": "aws_vpc_endpoint.aws_gateway_vpc_endpoints",
+   "type": "__declared__",
+   "refs": [
+    "aws_vpc.vpc"
+   ],
+   "values": {
+    "type": "aws_vpc_endpoint",
+    "name": "aws_gateway_vpc_endpoints",
+    "gated": true,
+    "gate": "local.gateway_endpoints_to_create",
+    "properties": {
+     "for_each": "${local.gateway_endpoints_to_create}",
+     "service_name": "com.amazonaws.${var.region}.${each.value}",
+     "vpc_id": "${aws_vpc.vpc.id}",
+     "vpc_endpoint_type": "Gateway",
+     "route_table_ids": [],
+     "tags": "${merge(var.common_tags,{'Name': '${var.vpc_name}'})}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_vpc_endpoint.custom_vpc_endpoints",
+   "cfg": "aws_vpc_endpoint.custom_vpc_endpoints",
+   "type": "__declared__",
+   "refs": [
+    "aws_security_group.custom_vpc_endpoints",
+    "aws_vpc.vpc"
+   ],
+   "values": {
+    "type": "aws_vpc_endpoint",
+    "name": "custom_vpc_endpoints",
+    "gated": true,
+    "gate": "{",
+    "properties": {
+     "for_each": "${{for service in var.custom_vpce_services : service[\"key\"] => service[\"service_name\"]}}",
+     "service_name": "${each.value}",
+     "vpc_id": "${aws_vpc.vpc.id}",
+     "vpc_endpoint_type": "Interface",
+     "security_group_ids": [
+      "${aws_security_group.custom_vpc_endpoints.id}"
+     ],
+     "subnet_ids": [],
+     "private_dns_enabled": false,
+     "tags": "${merge(var.common_tags,{'Name': '${var.vpc_name}'})}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_security_group.vpc_endpoints",
+   "cfg": "aws_security_group.vpc_endpoints",
+   "type": "__declared__",
+   "refs": [
+    "aws_vpc.vpc"
+   ],
+   "values": {
+    "type": "aws_security_group",
+    "name": "vpc_endpoints",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "vpc-endpoints-${var.vpc_name}",
+     "description": "Allows instances to reach Interface VPC endpoints",
+     "vpc_id": "${aws_vpc.vpc.id}",
+     "tags": "${merge(var.common_tags,{'Name': '${var.vpc_name}'})}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_security_group_rule.vpce_source_https_ingress",
+   "cfg": "aws_security_group_rule.vpce_source_https_ingress",
+   "type": "__declared__",
+   "refs": [
+    "aws_security_group.vpc_endpoints"
+   ],
+   "values": {
+    "type": "aws_security_group_rule",
+    "name": "vpce_source_https_ingress",
+    "gated": true,
+    "gate": "length(var.interface_vpce_source_security_group_ids)",
+    "properties": {
+     "count": "${length(var.interface_vpce_source_security_group_ids)}",
+     "description": "Accept VPCE traffic",
+     "type": "ingress",
+     "protocol": "tcp",
+     "from_port": 443,
+     "to_port": 443,
+     "source_security_group_id": "${var.interface_vpce_source_security_group_ids[count.index]}",
+     "security_group_id": "${aws_security_group.vpc_endpoints.id}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_security_group_rule.source_vpce_https_egress",
+   "cfg": "aws_security_group_rule.source_vpce_https_egress",
+   "type": "__declared__",
+   "refs": [
+    "aws_security_group.vpc_endpoints"
+   ],
+   "values": {
+    "type": "aws_security_group_rule",
+    "name": "source_vpce_https_egress",
+    "gated": true,
+    "gate": "length(var.interface_vpce_source_security_group_ids)",
+    "properties": {
+     "count": "${length(var.interface_vpce_source_security_group_ids)}",
+     "description": "Allow outbound requests to VPC endpoints",
+     "type": "egress",
+     "protocol": "tcp",
+     "from_port": 443,
+     "to_port": 443,
+     "source_security_group_id": "${aws_security_group.vpc_endpoints.id}",
+     "security_group_id": "${var.interface_vpce_source_security_group_ids[count.index]}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_security_group.custom_vpc_endpoints",
+   "cfg": "aws_security_group.custom_vpc_endpoints",
+   "type": "__declared__",
+   "refs": [
+    "aws_vpc.vpc"
+   ],
+   "values": {
+    "type": "aws_security_group",
+    "name": "custom_vpc_endpoints",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "description": "Allows instances to reach Custom VPC endpoints",
+     "vpc_id": "${aws_vpc.vpc.id}",
+     "tags": [
+      {}
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_security_group_rule.custom_vpce_source_ingress",
+   "cfg": "aws_security_group_rule.custom_vpce_source_ingress",
+   "type": "__declared__",
+   "refs": [
+    "aws_security_group.custom_vpc_endpoints"
+   ],
+   "values": {
+    "type": "aws_security_group_rule",
+    "name": "custom_vpce_source_ingress",
+    "gated": true,
+    "gate": "length(local.sg_id_to_port_mapping)",
+    "properties": {
+     "count": "${length(local.sg_id_to_port_mapping)}",
+     "description": "Allow instance traffic to Custom VPCE",
+     "type": "ingress",
+     "protocol": "tcp",
+     "from_port": "${local.sg_id_to_port_mapping[count.index][1]}",
+     "to_port": "${local.sg_id_to_port_mapping[count.index][1]}",
+     "source_security_group_id": "${local.sg_id_to_port_mapping[count.index][0]}",
+     "security_group_id": "${aws_security_group.custom_vpc_endpoints.id}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_security_group_rule.source_custom_vpce_egress",
+   "cfg": "aws_security_group_rule.source_custom_vpce_egress",
+   "type": "__declared__",
+   "refs": [
+    "aws_security_group.custom_vpc_endpoints"
+   ],
+   "values": {
+    "type": "aws_security_group_rule",
+    "name": "source_custom_vpce_egress",
+    "gated": true,
+    "gate": "length(local.sg_id_to_port_mapping)",
+    "properties": {
+     "count": "${length(local.sg_id_to_port_mapping)}",
+     "description": "Accept Custom VPCE traffic",
+     "type": "egress",
+     "protocol": "tcp",
+     "from_port": "${local.sg_id_to_port_mapping[count.index][1]}",
+     "to_port": "${local.sg_id_to_port_mapping[count.index][1]}",
+     "source_security_group_id": "${aws_security_group.custom_vpc_endpoints.id}",
+     "security_group_id": "${local.sg_id_to_port_mapping[count.index][0]}"
+    }
+   }
+  }
+ ]
+}

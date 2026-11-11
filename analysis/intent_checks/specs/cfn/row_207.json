@@ -1,0 +1,503 @@
+{
+ "lang": "cfn",
+ "row_number": 207,
+ "source_hash": {
+  "gt": "503ca848abbb58d1d459f567664c807e6c500ff682e6b11f6d433d8e7e4f3419",
+  "prompt": "a7849c3d9cac94ebe6bba59fa068bebb65ca8ae515a29806ebd513e2ed149679"
+ },
+ "selectors": {
+  "vpc": {
+   "types": [
+    "AWS::EC2::VPC"
+   ]
+  },
+  "subnets": {
+   "types": [
+    "AWS::EC2::Subnet"
+   ]
+  },
+  "rt": {
+   "types": [
+    "AWS::EC2::RouteTable"
+   ]
+  },
+  "sg": {
+   "types": [
+    "AWS::EC2::SecurityGroup"
+   ]
+  },
+  "ep": {
+   "types": [
+    "AWS::EC2::VPCEndpoint"
+   ]
+  },
+  "s3ep": {
+   "types": [
+    "AWS::EC2::VPCEndpoint"
+   ],
+   "where": [
+    {
+     "path": "ServiceName",
+     "op": "regex",
+     "value": "\\.s3$"
+    }
+   ]
+  },
+  "fhep": {
+   "types": [
+    "AWS::EC2::VPCEndpoint"
+   ],
+   "where": [
+    {
+     "path": "ServiceName",
+     "op": "regex",
+     "value": "kinesis-firehose$"
+    }
+   ]
+  },
+  "ksep": {
+   "types": [
+    "AWS::EC2::VPCEndpoint"
+   ],
+   "where": [
+    {
+     "path": "ServiceName",
+     "op": "regex",
+     "value": "kinesis-streams$"
+    }
+   ]
+  },
+  "outs": {
+   "types": [
+    "__output__"
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "vpc",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "creates a small VPC for a lab environment",
+   "select": "vpc",
+   "min": 1
+  },
+  {
+   "id": "subnets4",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "two subnets designated for a web tier and two subnets designated for an application tier",
+   "select": "subnets",
+   "min": 4,
+   "justify": "2 web + 2 app"
+  },
+  {
+   "id": "subnets_vpc",
+   "kind": "ref",
+   "tier": "detail",
+   "quote": "two subnets designated for a web tier",
+   "from": "subnets",
+   "to": "vpc"
+  },
+  {
+   "id": "subnets_azs",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "spread across two Availability Zones",
+   "select": "subnets",
+   "distinct_path": "AvailabilityZone",
+   "min": 2,
+   "justify": "two AZs"
+  },
+  {
+   "id": "rt",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "all associated with a single shared route table",
+   "select": "rt",
+   "min": 1,
+   "max": 1,
+   "justify": "a single shared route table: the VPC's subnets all use one route table"
+  },
+  {
+   "id": "rt_assoc",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "all associated with a single shared route table",
+   "select": {
+    "types": [
+     "AWS::EC2::SubnetRouteTableAssociation"
+    ]
+   },
+   "min": 4,
+   "justify": "all four subnets each associated",
+   "distinct_path": "SubnetId.ref"
+  },
+  {
+   "id": "rt_assoc_ref",
+   "kind": "ref",
+   "tier": "detail",
+   "quote": "all associated with a single shared route table",
+   "from": {
+    "types": [
+     "AWS::EC2::SubnetRouteTableAssociation"
+    ]
+   },
+   "to": "rt"
+  },
+  {
+   "id": "sg",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "Create a security group for the web tier",
+   "select": "sg",
+   "min": 1
+  },
+  {
+   "id": "https_in",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "allows inbound HTTPS traffic from within the VPC's own address range",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "sg",
+     "cond": {
+      "path": "SecurityGroupIngress.*",
+      "op": "match",
+      "value": [
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 443
+       },
+       {
+        "path": "IpProtocol",
+        "op": "in",
+        "value": [
+         "tcp",
+         "6"
+        ]
+       },
+       {
+        "path": "CidrIp.attr",
+        "op": "eq",
+        "value": "CidrBlock"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "join",
+     "from": {
+      "types": [
+       "AWS::EC2::SecurityGroup"
+      ],
+      "where": [
+       {
+        "path": "SecurityGroupIngress.*",
+        "op": "match",
+        "value": [
+         {
+          "path": "",
+          "op": "port_covers",
+          "value": 443
+         },
+         {
+          "path": "IpProtocol",
+          "op": "in",
+          "value": [
+           "tcp",
+           "6"
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     "from_path": "SecurityGroupIngress.*.CidrIp",
+     "to": "vpc",
+     "to_path": "CidrBlock"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::EC2::SecurityGroupIngress"
+      ],
+      "where": [
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 443
+       },
+       {
+        "path": "IpProtocol",
+        "op": "in",
+        "value": [
+         "tcp",
+         "6"
+        ]
+       },
+       {
+        "path": "CidrIp.attr",
+        "op": "eq",
+        "value": "CidrBlock"
+       }
+      ]
+     },
+     "to": "sg"
+    },
+    {
+     "kind": "join",
+     "from": {
+      "types": [
+       "AWS::EC2::SecurityGroupIngress"
+      ],
+      "where": [
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 443
+       },
+       {
+        "path": "IpProtocol",
+        "op": "in",
+        "value": [
+         "tcp",
+         "6"
+        ]
+       }
+      ]
+     },
+     "from_path": "CidrIp",
+     "to": "vpc",
+     "to_path": "CidrBlock"
+    }
+   ],
+   "justify": "HTTPS implies TCP port 443; the VPC's own address range is the VPC's CidrBlock (GetAtt or the same literal)"
+  },
+  {
+   "id": "s3ep",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "a gateway VPC endpoint for S3",
+   "select": "s3ep",
+   "min": 1
+  },
+  {
+   "id": "s3ep_gateway",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "a gateway VPC endpoint for S3",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "s3ep",
+     "cond": {
+      "path": "VpcEndpointType",
+      "op": "eq",
+      "value": "gateway"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "s3ep",
+     "cond": {
+      "path": "VpcEndpointType",
+      "op": "absent"
+     }
+    }
+   ],
+   "justify": "VpcEndpointType defaults to Gateway when omitted"
+  },
+  {
+   "id": "s3ep_rt",
+   "kind": "ref",
+   "tier": "detail",
+   "quote": "a gateway VPC endpoint for S3",
+   "from": "s3ep",
+   "to": "rt"
+  },
+  {
+   "id": "s3ep_read",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "allows read access from any principal",
+   "select": "s3ep",
+   "cond": {
+    "path": "PolicyDocument.Statement.*",
+    "op": "match",
+    "value": [
+     {
+      "path": "Effect",
+      "op": "eq",
+      "value": "allow"
+     },
+     {
+      "path": "Action.*",
+      "op": "glob_covers",
+      "value": "s3:GetObject"
+     },
+     {
+      "path": "Principal",
+      "op": "regex",
+      "value": "^(\\*|\\{\"AWS\": ?\\[?\"\\*\"\\]?\\})$"
+     }
+    ]
+   },
+   "justify": "read access = s3:GetObject (s3:Get*, s3:* and * also count); any principal = * in one Allow statement"
+  },
+  {
+   "id": "fh_ep",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "interface VPC endpoints for Kinesis Data Firehose",
+   "select": "fhep",
+   "min": 1
+  },
+  {
+   "id": "ks_ep",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "interface VPC endpoints for Kinesis Data Firehose and Kinesis Data Streams",
+   "select": "ksep",
+   "min": 1
+  },
+  {
+   "id": "fh_iface",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "interface VPC endpoints for Kinesis Data Firehose",
+   "select": "fhep",
+   "cond": {
+    "path": "VpcEndpointType",
+    "op": "eq",
+    "value": "interface"
+   }
+  },
+  {
+   "id": "ks_iface",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "interface VPC endpoints for Kinesis Data Firehose and Kinesis Data Streams",
+   "select": "ksep",
+   "cond": {
+    "path": "VpcEndpointType",
+    "op": "eq",
+    "value": "interface"
+   }
+  },
+  {
+   "id": "fh_subnets",
+   "kind": "ref",
+   "tier": "core",
+   "quote": "placed in the web-tier subnets",
+   "from": "fhep",
+   "to": "subnets"
+  },
+  {
+   "id": "ks_subnets",
+   "kind": "ref",
+   "tier": "core",
+   "quote": "placed in the web-tier subnets",
+   "from": "ksep",
+   "to": "subnets"
+  },
+  {
+   "id": "fh_sg",
+   "kind": "ref",
+   "tier": "core",
+   "quote": "associated with the web security group",
+   "from": "fhep",
+   "to": "sg"
+  },
+  {
+   "id": "ks_sg",
+   "kind": "ref",
+   "tier": "core",
+   "quote": "associated with the web security group",
+   "from": "ksep",
+   "to": "sg"
+  },
+  {
+   "id": "ep_subnet_azs",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "placed in the web-tier subnets",
+   "select": {
+    "types": [
+     "AWS::EC2::VPCEndpoint"
+    ],
+    "where": [
+     {
+      "path": "ServiceName",
+      "op": "regex",
+      "value": "kinesis-(firehose|streams)$"
+     }
+    ]
+   },
+   "cond": {
+    "path": "SubnetIds",
+    "op": "len_gte",
+    "value": 2
+   },
+   "justify": "the web tier has two subnets, so both interface endpoints sit in two",
+   "quantifier": "all"
+  },
+  {
+   "id": "out_vpc",
+   "kind": "ref",
+   "tier": "detail",
+   "quote": "Expose the VPC ID",
+   "from": "outs",
+   "to": "vpc"
+  },
+  {
+   "id": "out_sg",
+   "kind": "ref",
+   "tier": "detail",
+   "quote": "the web security group ID as stack outputs",
+   "from": "outs",
+   "to": "sg"
+  },
+  {
+   "id": "out_subnets",
+   "kind": "ref",
+   "tier": "detail",
+   "quote": "all four subnet IDs",
+   "from": "outs",
+   "to": "subnets"
+  },
+  {
+   "id": "out_count",
+   "kind": "exists",
+   "tier": "detail",
+   "quote": "Expose the VPC ID, all four subnet IDs, and the web security group ID as stack outputs",
+   "select": "outs",
+   "min": 6,
+   "justify": "VPC + 4 subnets + SG = six"
+  },
+  {
+   "id": "x_dns",
+   "kind": "attr",
+   "tier": "extra",
+   "select": "vpc",
+   "cond": {
+    "path": "EnableDnsHostnames",
+    "op": "truthy"
+   }
+  },
+  {
+   "id": "x_pdns",
+   "kind": "attr",
+   "tier": "extra",
+   "select": "fhep",
+   "cond": {
+    "path": "PrivateDnsEnabled",
+    "op": "truthy"
+   }
+  }
+ ],
+ "notes": "Web vs app subnets are distinguished only by tags/names in the GT, so the interface endpoints are checked against subnets generally (at least two each). The S3 policy check binds Allow, any principal and a read action to one statement; extra write actions are not rejected because the prompt does not say read-only. out_count requires six outputs; a single joined subnet-list output would fail it (detail, kept)."
+}

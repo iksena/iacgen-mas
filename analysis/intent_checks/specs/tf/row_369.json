@@ -199,7 +199,7 @@
           {
             "path": "bucket",
             "op": "regex",
-            "value": "^log[12][ab]\\.veerum-replica1-\\d{12}$"
+            "value": "^log[12][ab]\\.veerum-(\\d{12}-)?replica1-\\d{12}$"
           }
         ]
       },
@@ -219,7 +219,7 @@
           {
             "path": "bucket",
             "op": "regex",
-            "value": "^log[12][ab]\\.veerum-replica2-\\d{12}$"
+            "value": "^log[12][ab]\\.veerum-(\\d{12}-)?replica2-\\d{12}$"
           }
         ]
       },
@@ -610,29 +610,29 @@
     },
     {
       "id": "replica_reencryption_key",
-      "kind": "any_of",
+      "kind": "attr",
       "tier": "detail",
       "quote": "re-encrypting with that region's replica key",
-      "checks": [
-        {
-          "kind": "ref",
-          "from": "src",
-          "to": {
-            "types": [
-              "aws_kms_key"
+      "select": {
+        "types": [
+          "__declared__"
+        ],
+        "where": [
+          {
+            "path": "type",
+            "op": "in",
+            "value": [
+              "aws_s3_bucket",
+              "aws_s3_bucket_replication_configuration"
             ]
           }
-        },
-        {
-          "kind": "ref",
-          "from": "repl_cfg",
-          "to": {
-            "types": [
-              "aws_kms_key"
-            ]
-          }
-        }
-      ]
+        ]
+      },
+      "cond": {
+        "path": "properties",
+        "op": "contains",
+        "value": "replica_kms_key_id"
+      }
     },
     {
       "id": "replication_role_s3_trust",
@@ -751,7 +751,7 @@
               {
                 "path": "properties.policy",
                 "op": "regex",
-                "value": "(?i)s3:(\\*|Get\\*|GetObjectVersion\\*?|GetObjectVersionForReplication)\\b"
+                "value": "(?i)s3:(\\*|Get\\*|GetObjectVersion\\*?|GetObjectVersionForReplication)([^A-Za-z0-9_]|$)"
               }
             ]
           }
@@ -797,12 +797,12 @@
               {
                 "path": "properties.policy",
                 "op": "regex",
-                "value": "(?i)s3:(\\*|Replicate\\*|ReplicateObject)\\b"
+                "value": "(?i)s3:(\\*|Replicate\\*|ReplicateObject)([^A-Za-z0-9_]|$)"
               },
               {
                 "path": "properties.policy",
                 "op": "regex",
-                "value": "(?i)s3:(\\*|Replicate\\*|ReplicateDelete)\\b"
+                "value": "(?i)s3:(\\*|Replicate\\*|ReplicateDelete)([^A-Za-z0-9_]|$)"
               }
             ]
           }
@@ -853,12 +853,12 @@
               {
                 "path": "properties.policy",
                 "op": "regex",
-                "value": "(?i)kms:(\\*|Decrypt)\\b"
+                "value": "(?i)kms:(\\*|Decrypt)([^A-Za-z0-9_]|$)"
               },
               {
                 "path": "properties.policy",
                 "op": "regex",
-                "value": "(?i)kms:(\\*|Encrypt)\\b"
+                "value": "(?i)kms:(\\*|Encrypt)([^A-Za-z0-9_]|$)"
               }
             ]
           }
@@ -886,5 +886,5 @@
       ]
     }
   ],
-  "notes": "The replication IAM policy is unknown at plan (it interpolates ARNs), so its actions are checked on the declared literal HCL (__declared__.properties.policy) or an aws_iam_policy_document data source. Replica-region distinctness and each KMS key living in its bucket's region are not expressible; the us-east-1 check uses the AWS provider >=6 `region` attribute when present and passes when it is absent (provider<6; provider blocks/aliases are not exposed by the adapter). Replication destination bucket/KMS key IDs are unknown at plan, so matching is by refs, and the replica-key re-encryption ref cannot be distinguished from the source bucket's own SSE key ref. | 2026-10-03 review: replica names may keep the source bucket account suffix (\"named after the source bucket\")."
+  "notes": "The replication IAM policy is unknown at plan (it interpolates ARNs), so its actions are checked on the declared literal HCL (__declared__.properties.policy) or an aws_iam_policy_document data source. Replica-region distinctness and each KMS key living in its bucket's region are not expressible; the us-east-1 check uses the AWS provider >=6 `region` attribute when present and passes when it is absent (provider<6; provider blocks/aliases are not exposed by the adapter). Replication destination bucket/KMS key IDs are unknown at plan, so matching is by refs, so replica-key re-encryption is checked on the declared destination setting (replica_kms_key_id); that the key is the destination region's own is not expressible. | 2026-10-03 review: replica names may keep the source bucket account suffix (\"named after the source bucket\"). | 2026-11-09 review: replica bucket checks now accept the account suffix the notes already allowed; policy regexes no longer use \\b after a wildcard, which rejected s3:* and kms:*."
 }

@@ -1,0 +1,540 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "167734a0461f2cfd6d9a291957ded2ca96e3b327d04c0aaa660901d143920aae",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "SmtpUserGroup",
+   "cfg": "SmtpUserGroup",
+   "type": "AWS::IAM::Group",
+   "values": {
+    "GroupName": "SMTPUserGroup"
+   },
+   "refs": []
+  },
+  {
+   "id": "SmtpUser",
+   "cfg": "SmtpUser",
+   "type": "AWS::IAM::User",
+   "values": {
+    "UserName": "SMTPUser",
+    "Groups": [
+     {
+      "ref": "SmtpUserGroup"
+     }
+    ]
+   },
+   "refs": [
+    "SmtpUserGroup"
+   ]
+  },
+  {
+   "id": "SmtpUserPolicy",
+   "cfg": "SmtpUserPolicy",
+   "type": "AWS::IAM::Policy",
+   "values": {
+    "PolicyName": "SMTPUserPolicy",
+    "PolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Action": [
+        "ses:SendEmail",
+        "ses:SendRawEmail"
+       ],
+       "Resource": [
+        "*"
+       ]
+      }
+     ]
+    },
+    "Groups": [
+     {
+      "ref": "SmtpUserGroup"
+     }
+    ]
+   },
+   "refs": [
+    "SmtpUserGroup"
+   ]
+  },
+  {
+   "id": "SmtpUserAccessKey",
+   "cfg": "SmtpUserAccessKey",
+   "type": "AWS::IAM::AccessKey",
+   "values": {
+    "Serial": 1,
+    "Status": "Active",
+    "UserName": {
+     "ref": "SmtpUser"
+    }
+   },
+   "refs": [
+    "SmtpUser"
+   ]
+  },
+  {
+   "id": "SmtpPassword",
+   "cfg": "SmtpPassword",
+   "type": "Custom::SmtpPassword",
+   "values": {
+    "ServiceToken": {
+     "ref": "SMTPCredentialsLambdaFunction",
+     "attr": "Arn"
+    },
+    "Key": {
+     "ref": "SmtpUserAccessKey",
+     "attr": "SecretAccessKey"
+    },
+    "ParameterType": "password",
+    "UserName": "SMTPUser",
+    "__resource__": {
+     "DependsOn": [
+      "SmtpLambdaLogGroup"
+     ]
+    }
+   },
+   "refs": [
+    "SMTPCredentialsLambdaFunction",
+    "SmtpUserAccessKey"
+   ]
+  },
+  {
+   "id": "SmtpUsername",
+   "cfg": "SmtpUsername",
+   "type": "Custom::SmtpUsername",
+   "values": {
+    "ServiceToken": {
+     "ref": "SMTPCredentialsLambdaFunction",
+     "attr": "Arn"
+    },
+    "Key": {
+     "ref": "SmtpUserAccessKey"
+    },
+    "ParameterType": "username",
+    "UserName": "SMTPUser",
+    "__resource__": {
+     "DependsOn": [
+      "SmtpLambdaLogGroup"
+     ]
+    }
+   },
+   "refs": [
+    "SMTPCredentialsLambdaFunction",
+    "SmtpUserAccessKey"
+   ]
+  },
+  {
+   "id": "SMTPLambdaExecutionRole",
+   "cfg": "SMTPLambdaExecutionRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "Description": "Role assumed by Lambda to generate SMTP credentials",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+    ],
+    "Policies": [
+     {
+      "PolicyName": "InlineSMTPLambdaExecutionRolePolicy",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "ssm:PutParameter",
+          "ssm:DeleteParameter"
+         ],
+         "Resource": [
+          "arn:aws:ssm:us-east-1:123456789012:parameter/*-smtp-username",
+          "arn:aws:ssm:us-east-1:123456789012:parameter/*-smtp-password"
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "SmtpLambdaLogGroup",
+   "cfg": "SmtpLambdaLogGroup",
+   "type": "AWS::Logs::LogGroup",
+   "values": {
+    "LogGroupName": "/aws/lambda/${SMTPCredentialsLambdaFunction}",
+    "RetentionInDays": 14,
+    "__resource__": {
+     "DeletionPolicy": "Delete",
+     "UpdateReplacePolicy": "Delete"
+    }
+   },
+   "refs": [
+    "SMTPCredentialsLambdaFunction"
+   ]
+  },
+  {
+   "id": "SMTPCredentialsLambdaFunction",
+   "cfg": "SMTPCredentialsLambdaFunction",
+   "type": "AWS::Lambda::Function",
+   "values": {
+    "Description": "Generates SMTP credentials and stores in Parameter Store",
+    "Handler": "index.lambda_handler",
+    "MemorySize": 128,
+    "Environment": {
+     "Variables": {
+      "KMS_KEY_ARN": ""
+     }
+    },
+    "Role": {
+     "ref": "SMTPLambdaExecutionRole",
+     "attr": "Arn"
+    },
+    "Runtime": "python3.13",
+    "Timeout": 30,
+    "Code": {
+     "ZipFile": "import hmac\nimport hashlib\nimport base64\nimport boto3\nfrom botocore.exceptions import ClientError\nimport cfnresponse\nimport logging\nimport os\nimport logging\nfrom sys import exit\n\n# Configure logging\nlogging.basicConfig(level=logging.DEBUG)\nlog = logging.getLogger(__name__)\n\n# Constants\nREGION = os.environ['AWS_REGION']\nSMTP_REGIONS = [\n    \"us-east-2\",  # US East (Ohio)\n    \"us-east-1\",  # US East (N. Virginia)\n    \"us-west-2\",  # US West (Oregon)\n    \"ap-south-1\",  # Asia Pacific (Mumbai)\n    \"ap-northeast-2\",  # Asia Pacific (Seoul)\n    \"ap-southeast-1\",  # Asia Pacific (Singapore)\n    \"ap-southeast-2\",  # Asia Pacific (Sydney)\n    \"ap-northeast-1\",  # Asia Pacific (Tokyo)\n    \"ca-central-1\",  # Canada (Central)\n    \"eu-central-1\",  # Europe (Frankfurt)\n    \"eu-west-1\",  # Europe (Ireland)\n    \"eu-west-2\",  # Europe (London)\n    \"eu-south-1\",  # Europe (Milan)\n    \"eu-north-1\",  # Europe (Stockholm)\n    \"sa-east-1\",  # South America (Sao Paulo)\n    \"us-gov-west-1\",  # AWS GovCloud (US)\n    \"us-gov-east-1\",  # AWS GovCloud (US)\n]\nCUSTOM_KMS_KEY = not os.environ['KMS_KEY_ARN'] == \"\"\n\n# Boto3 Clients\nssm = boto3.client('ssm', region_name=REGION)\n\n# Boto3 Decorators\n\"\"\"\nThese Python decorators signal the success or failure of Lambda-backed CloudFormation\ncustom resources. To use these resources:\n\n1. Since the signal requires data that will be provided by the inputs to the lambda\nhandler (i.e., 'event' and 'context'), the long form of a decorator needs to be used.\nFor example, if you have the following function defined in your code:\n\ndef sample_function(params):\n    ....\n\nCall the decorator by stating something like:\n'outcome = assess_cfn_status(event, context, data, id, False)(sample_function)(params)'\n\n3. The last parameter (final_step) of the assess_cfn_status function/decorator indicates\nif this is the final step of the custom resource logic. If set to \"True\", the decorator will\nsend a success signal to CloudFormation if the result is successful. Please note that the\nfunction will exit without returning the result, so set it to \"False\" and call\ncfnresponse.send outside of the function if you need to use the result before signaling (i.e.,\nadding the output to the resource output attributes)\n\"\"\"\ndef send_cfn_signal(event, context, data, id, final_step=False):\n    def inner(func):\n        def wrapper(*args, **kwargs):\n            error = None\n            outcome = func(*args, **kwargs)\n            err_msg = \"Custom resource execution failed. See the further details in CloudWatch Log Stream: {}.\".format(context.log_stream_name)\n            if isinstance(outcome, dict):\n                if \"CFN_Response_Status\" in outcome:\n                    if \"Error_Message\" in outcome:\n                        err_msg = outcome[\"Error_Message\"]\n                    elif \"Error\" in outcome:\n                        error = outcome[\"Error\"]\n                        log.error(err_msg)\n                    cfnresponse.send(event, context, cfnresponse.FAILED, data, id, reason=err_msg)\n                    if error is not None:\n                        raise error\n                    else:\n                        exit()\n                else:\n                    return outcome\n            if final_step:\n                cfnresponse.send(event, context, cfnresponse.SUCCESS, data, id)\n                exit()\n            else:\n                return outcome\n        return wrapper\n    return inner\n\ndef boto3_err_msg(func):\n    def wrapper(*args, **kwargs):\n        try:\n            response = func(*args, **kwargs)\n            return response\n        except ClientError as err:\n            message = err.response['Error']['Message']\n            log.error(message)\n            payload = {\n                \"CFN_Response_Status\": cfnresponse.FAILED,\n                \"Error_Message\": message\n            }\n            return payload\n        except Exception as err:\n            payload = {\n                \"CFN_Response_Status\": cfnresponse.FAILED,\n                \"Error\": err\n            }\n            log.error(\"Encountered error that was not a boto3 ClientError.\")\n            return payload\n    return wrapper\n\ndef assess_cfn_status(event, context, data, id, final_step=False):\n    def inner(boto_func):\n        def wrapper(*args, **kwargs):\n            new_func = send_cfn_signal(event, context, data, id, final_step)(boto3_err_msg(boto_func))\n            result = new_func(*args, **kwargs)\n            return result\n        return wrapper\n    return inner\n\n# These values are required to calculate the signature. Do not change them.\nDATE = \"11111111\"\nSERVICE = \"ses\"\nMESSAGE = \"SendRawEmail\"\nTERMINAL = \"aws4_request\"\nVERSION = 0x04\n\ndef sign(key, msg):\n    return hmac.new(key, msg.encode('utf-8'), hashlib.sha256).digest()\n\ndef calculate_key(secret_access_key, region):\n    if region not in SMTP_REGIONS:\n        raise ValueError(f\"The {region} Region doesn't have an SMTP endpoint.\")\n\n    signature = sign((\"AWS4\" + secret_access_key).encode('utf-8'), DATE)\n    signature = sign(signature, region)\n    signature = sign(signature, SERVICE)\n    signature = sign(signature, TERMINAL)\n    signature = sign(signature, MESSAGE)\n    signature_and_version = bytes([VERSION]) + signature\n    smtp_password = base64.b64encode(signature_and_version)\n    return smtp_password.decode('utf-8')\n\ndef put_parameter(username, value, type):\n        if CUSTOM_KMS_KEY:\n            ssm.put_parameter(\n                    Name=f\"{username}-smtp-{type}\",\n                    Description=f\"SMTP {type} for email communications\",\n                    Value=value,\n                    Type='SecureString',\n                    KeyId=os.environ['KMS_KEY_ARN'],\n                    Overwrite=True,\n                    Tier='Standard'\n                )\n        else:\n            ssm.put_parameter(\n                    Name=f\"{username}-smtp-{type}\",\n                    Description=f\"SMTP {type} for email communications\",\n                    Value=value,\n                    Type='SecureString',\n                    Overwrite=True,\n                    Tier='Standard'\n                )\n        return None\n\ndef delete_smtp_credentials(username, type):\n    ssm.delete_parameter(Name=f\"{username}-smtp-{type}\")\n    return None\n\ndef lambda_handler(event, context):\n    parameter_type = event['ResourceProperties']['ParameterType']\n    username = event['ResourceProperties']['UserName']\n    key = event['ResourceProperties']['Key']\n    parameter_arn = \"arn:aws:ssm:us-east-1:123456789012:parameter/\" + f\"{username}-smtp-{parameter_type}\"\n    cfn_data ={}\n\n    if event['RequestType'] == 'Create':\n        if parameter_type == 'username':\n            assess_cfn_status(event, context, cfn_data, parameter_arn, True)(put_parameter)(username, key, parameter_type)\n        elif parameter_type == 'password':\n            pwd = assess_cfn_status(event, context, cfn_data, parameter_arn, False)(calculate_key)(key, REGION)\n            assess_cfn_status(event, context, cfn_data, parameter_arn, True)(put_parameter)(username, pwd, parameter_type)\n    elif event['RequestType'] == 'Update':\n        name_change = False\n        if \"OldResourceProperties\" in event:\n            old_username = event['OldResourceProperties']['UserName']\n            if username != old_username:\n                name_change = True\n        final = not name_change\n        if parameter_type == 'username':\n            assess_cfn_status(event, context, cfn_data, parameter_arn, final)(put_parameter)(username, key, parameter_type)\n        elif parameter_type == 'password':\n            pwd = assess_cfn_status(event, context, cfn_data, parameter_arn, False)(calculate_key)(key, REGION)\n            assess_cfn_status(event, context, cfn_data, parameter_arn, final)(put_parameter)(username, pwd, parameter_type)\n        if name_change:\n            assess_cfn_status(event, context, cfn_data, parameter_arn, name_change)(delete_smtp_credentials)(old_username, parameter_type)\n    elif event['RequestType'] == 'Delete':\n        assess_cfn_status(event, context, cfn_data, parameter_arn, True)(delete_smtp_credentials)(username, parameter_type)"
+    }
+   },
+   "refs": [
+    "SMTPLambdaExecutionRole"
+   ]
+  },
+  {
+   "id": "__parameter__.IamAccessKeyVersion",
+   "cfg": "__parameter__.IamAccessKeyVersion",
+   "type": "__parameter__",
+   "values": {
+    "name": "IamAccessKeyVersion",
+    "type": "Number",
+    "default": 1,
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.KmsKeyArn",
+   "cfg": "__parameter__.KmsKeyArn",
+   "type": "__parameter__",
+   "values": {
+    "name": "KmsKeyArn",
+    "type": "String",
+    "default": "",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.Username",
+   "cfg": "__parameter__.Username",
+   "type": "__parameter__",
+   "values": {
+    "name": "Username",
+    "type": "String",
+    "default": "SMTPUser",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.LambdaLogRetentionTime",
+   "cfg": "__parameter__.LambdaLogRetentionTime",
+   "type": "__parameter__",
+   "values": {
+    "name": "LambdaLogRetentionTime",
+    "type": "Number",
+    "default": 14,
+    "allowed_values": [
+     1,
+     3,
+     5,
+     7,
+     14,
+     30,
+     60,
+     90,
+     120,
+     150,
+     180,
+     365
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__declared__.AWS::IAM::Group.SmtpUserGroup",
+   "cfg": "SmtpUserGroup",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Group",
+    "name": "SmtpUserGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "GroupName": "SMTPUserGroup"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::User.SmtpUser",
+   "cfg": "SmtpUser",
+   "type": "__declared__",
+   "refs": [
+    "SmtpUserGroup"
+   ],
+   "values": {
+    "type": "AWS::IAM::User",
+    "name": "SmtpUser",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "UserName": "SMTPUser",
+     "Groups": [
+      {
+       "ref": "SmtpUserGroup"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Policy.SmtpUserPolicy",
+   "cfg": "SmtpUserPolicy",
+   "type": "__declared__",
+   "refs": [
+    "SmtpUserGroup"
+   ],
+   "values": {
+    "type": "AWS::IAM::Policy",
+    "name": "SmtpUserPolicy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "PolicyName": "SMTPUserPolicy",
+     "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Action": [
+         "ses:SendEmail",
+         "ses:SendRawEmail"
+        ],
+        "Resource": [
+         "*"
+        ]
+       }
+      ]
+     },
+     "Groups": [
+      {
+       "ref": "SmtpUserGroup"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::AccessKey.SmtpUserAccessKey",
+   "cfg": "SmtpUserAccessKey",
+   "type": "__declared__",
+   "refs": [
+    "SmtpUser"
+   ],
+   "values": {
+    "type": "AWS::IAM::AccessKey",
+    "name": "SmtpUserAccessKey",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Serial": 1,
+     "Status": "Active",
+     "UserName": {
+      "ref": "SmtpUser"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.Custom::SmtpPassword.SmtpPassword",
+   "cfg": "SmtpPassword",
+   "type": "__declared__",
+   "refs": [
+    "SMTPCredentialsLambdaFunction",
+    "SmtpUserAccessKey"
+   ],
+   "values": {
+    "type": "Custom::SmtpPassword",
+    "name": "SmtpPassword",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ServiceToken": {
+      "ref": "SMTPCredentialsLambdaFunction",
+      "attr": "Arn"
+     },
+     "Key": {
+      "ref": "SmtpUserAccessKey",
+      "attr": "SecretAccessKey"
+     },
+     "ParameterType": "password",
+     "UserName": "SMTPUser"
+    }
+   }
+  },
+  {
+   "id": "__declared__.Custom::SmtpUsername.SmtpUsername",
+   "cfg": "SmtpUsername",
+   "type": "__declared__",
+   "refs": [
+    "SMTPCredentialsLambdaFunction",
+    "SmtpUserAccessKey"
+   ],
+   "values": {
+    "type": "Custom::SmtpUsername",
+    "name": "SmtpUsername",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ServiceToken": {
+      "ref": "SMTPCredentialsLambdaFunction",
+      "attr": "Arn"
+     },
+     "Key": {
+      "ref": "SmtpUserAccessKey"
+     },
+     "ParameterType": "username",
+     "UserName": "SMTPUser"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.SMTPLambdaExecutionRole",
+   "cfg": "SMTPLambdaExecutionRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "SMTPLambdaExecutionRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Description": "Role assumed by Lambda to generate SMTP credentials",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+     ],
+     "Policies": [
+      {
+       "PolicyName": "InlineSMTPLambdaExecutionRolePolicy",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "ssm:PutParameter",
+           "ssm:DeleteParameter"
+          ],
+          "Resource": [
+           "arn:aws:ssm:us-east-1:123456789012:parameter/*-smtp-username",
+           "arn:aws:ssm:us-east-1:123456789012:parameter/*-smtp-password"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::LogGroup.SmtpLambdaLogGroup",
+   "cfg": "SmtpLambdaLogGroup",
+   "type": "__declared__",
+   "refs": [
+    "SMTPCredentialsLambdaFunction"
+   ],
+   "values": {
+    "type": "AWS::Logs::LogGroup",
+    "name": "SmtpLambdaLogGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "LogGroupName": "/aws/lambda/${SMTPCredentialsLambdaFunction}",
+     "RetentionInDays": 14
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Function.SMTPCredentialsLambdaFunction",
+   "cfg": "SMTPCredentialsLambdaFunction",
+   "type": "__declared__",
+   "refs": [
+    "SMTPLambdaExecutionRole"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Function",
+    "name": "SMTPCredentialsLambdaFunction",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Description": "Generates SMTP credentials and stores in Parameter Store",
+     "Handler": "index.lambda_handler",
+     "MemorySize": 128,
+     "Environment": {
+      "Variables": {
+       "KMS_KEY_ARN": ""
+      }
+     },
+     "Role": {
+      "ref": "SMTPLambdaExecutionRole",
+      "attr": "Arn"
+     },
+     "Runtime": "python3.13",
+     "Timeout": 30,
+     "Code": {
+      "ZipFile": "import hmac\nimport hashlib\nimport base64\nimport boto3\nfrom botocore.exceptions import ClientError\nimport cfnresponse\nimport logging\nimport os\nimport logging\nfrom sys import exit\n\n# Configure logging\nlogging.basicConfig(level=logging.DEBUG)\nlog = logging.getLogger(__name__)\n\n# Constants\nREGION = os.environ['AWS_REGION']\nSMTP_REGIONS = [\n    \"us-east-2\",  # US East (Ohio)\n    \"us-east-1\",  # US East (N. Virginia)\n    \"us-west-2\",  # US West (Oregon)\n    \"ap-south-1\",  # Asia Pacific (Mumbai)\n    \"ap-northeast-2\",  # Asia Pacific (Seoul)\n    \"ap-southeast-1\",  # Asia Pacific (Singapore)\n    \"ap-southeast-2\",  # Asia Pacific (Sydney)\n    \"ap-northeast-1\",  # Asia Pacific (Tokyo)\n    \"ca-central-1\",  # Canada (Central)\n    \"eu-central-1\",  # Europe (Frankfurt)\n    \"eu-west-1\",  # Europe (Ireland)\n    \"eu-west-2\",  # Europe (London)\n    \"eu-south-1\",  # Europe (Milan)\n    \"eu-north-1\",  # Europe (Stockholm)\n    \"sa-east-1\",  # South America (Sao Paulo)\n    \"us-gov-west-1\",  # AWS GovCloud (US)\n    \"us-gov-east-1\",  # AWS GovCloud (US)\n]\nCUSTOM_KMS_KEY = not os.environ['KMS_KEY_ARN'] == \"\"\n\n# Boto3 Clients\nssm = boto3.client('ssm', region_name=REGION)\n\n# Boto3 Decorators\n\"\"\"\nThese Python decorators signal the success or failure of Lambda-backed CloudFormation\ncustom resources. To use these resources:\n\n1. Since the signal requires data that will be provided by the inputs to the lambda\nhandler (i.e., 'event' and 'context'), the long form of a decorator needs to be used.\nFor example, if you have the following function defined in your code:\n\ndef sample_function(params):\n    ....\n\nCall the decorator by stating something like:\n'outcome = assess_cfn_status(event, context, data, id, False)(sample_function)(params)'\n\n3. The last parameter (final_step) of the assess_cfn_status function/decorator indicates\nif this is the final step of the custom resource logic. If set to \"True\", the decorator will\nsend a success signal to CloudFormation if the result is successful. Please note that the\nfunction will exit without returning the result, so set it to \"False\" and call\ncfnresponse.send outside of the function if you need to use the result before signaling (i.e.,\nadding the output to the resource output attributes)\n\"\"\"\ndef send_cfn_signal(event, context, data, id, final_step=False):\n    def inner(func):\n        def wrapper(*args, **kwargs):\n            error = None\n            outcome = func(*args, **kwargs)\n            err_msg = \"Custom resource execution failed. See the further details in CloudWatch Log Stream: {}.\".format(context.log_stream_name)\n            if isinstance(outcome, dict):\n                if \"CFN_Response_Status\" in outcome:\n                    if \"Error_Message\" in outcome:\n                        err_msg = outcome[\"Error_Message\"]\n                    elif \"Error\" in outcome:\n                        error = outcome[\"Error\"]\n                        log.error(err_msg)\n                    cfnresponse.send(event, context, cfnresponse.FAILED, data, id, reason=err_msg)\n                    if error is not None:\n                        raise error\n                    else:\n                        exit()\n                else:\n                    return outcome\n            if final_step:\n                cfnresponse.send(event, context, cfnresponse.SUCCESS, data, id)\n                exit()\n            else:\n                return outcome\n        return wrapper\n    return inner\n\ndef boto3_err_msg(func):\n    def wrapper(*args, **kwargs):\n        try:\n            response = func(*args, **kwargs)\n            return response\n        except ClientError as err:\n            message = err.response['Error']['Message']\n            log.error(message)\n            payload = {\n                \"CFN_Response_Status\": cfnresponse.FAILED,\n                \"Error_Message\": message\n            }\n            return payload\n        except Exception as err:\n            payload = {\n                \"CFN_Response_Status\": cfnresponse.FAILED,\n                \"Error\": err\n            }\n            log.error(\"Encountered error that was not a boto3 ClientError.\")\n            return payload\n    return wrapper\n\ndef assess_cfn_status(event, context, data, id, final_step=False):\n    def inner(boto_func):\n        def wrapper(*args, **kwargs):\n            new_func = send_cfn_signal(event, context, data, id, final_step)(boto3_err_msg(boto_func))\n            result = new_func(*args, **kwargs)\n            return result\n        return wrapper\n    return inner\n\n# These values are required to calculate the signature. Do not change them.\nDATE = \"11111111\"\nSERVICE = \"ses\"\nMESSAGE = \"SendRawEmail\"\nTERMINAL = \"aws4_request\"\nVERSION = 0x04\n\ndef sign(key, msg):\n    return hmac.new(key, msg.encode('utf-8'), hashlib.sha256).digest()\n\ndef calculate_key(secret_access_key, region):\n    if region not in SMTP_REGIONS:\n        raise ValueError(f\"The {region} Region doesn't have an SMTP endpoint.\")\n\n    signature = sign((\"AWS4\" + secret_access_key).encode('utf-8'), DATE)\n    signature = sign(signature, region)\n    signature = sign(signature, SERVICE)\n    signature = sign(signature, TERMINAL)\n    signature = sign(signature, MESSAGE)\n    signature_and_version = bytes([VERSION]) + signature\n    smtp_password = base64.b64encode(signature_and_version)\n    return smtp_password.decode('utf-8')\n\ndef put_parameter(username, value, type):\n        if CUSTOM_KMS_KEY:\n            ssm.put_parameter(\n                    Name=f\"{username}-smtp-{type}\",\n                    Description=f\"SMTP {type} for email communications\",\n                    Value=value,\n                    Type='SecureString',\n                    KeyId=os.environ['KMS_KEY_ARN'],\n                    Overwrite=True,\n                    Tier='Standard'\n                )\n        else:\n            ssm.put_parameter(\n                    Name=f\"{username}-smtp-{type}\",\n                    Description=f\"SMTP {type} for email communications\",\n                    Value=value,\n                    Type='SecureString',\n                    Overwrite=True,\n                    Tier='Standard'\n                )\n        return None\n\ndef delete_smtp_credentials(username, type):\n    ssm.delete_parameter(Name=f\"{username}-smtp-{type}\")\n    return None\n\ndef lambda_handler(event, context):\n    parameter_type = event['ResourceProperties']['ParameterType']\n    username = event['ResourceProperties']['UserName']\n    key = event['ResourceProperties']['Key']\n    parameter_arn = \"arn:aws:ssm:us-east-1:123456789012:parameter/\" + f\"{username}-smtp-{parameter_type}\"\n    cfn_data ={}\n\n    if event['RequestType'] == 'Create':\n        if parameter_type == 'username':\n            assess_cfn_status(event, context, cfn_data, parameter_arn, True)(put_parameter)(username, key, parameter_type)\n        elif parameter_type == 'password':\n            pwd = assess_cfn_status(event, context, cfn_data, parameter_arn, False)(calculate_key)(key, REGION)\n            assess_cfn_status(event, context, cfn_data, parameter_arn, True)(put_parameter)(username, pwd, parameter_type)\n    elif event['RequestType'] == 'Update':\n        name_change = False\n        if \"OldResourceProperties\" in event:\n            old_username = event['OldResourceProperties']['UserName']\n            if username != old_username:\n                name_change = True\n        final = not name_change\n        if parameter_type == 'username':\n            assess_cfn_status(event, context, cfn_data, parameter_arn, final)(put_parameter)(username, key, parameter_type)\n        elif parameter_type == 'password':\n            pwd = assess_cfn_status(event, context, cfn_data, parameter_arn, False)(calculate_key)(key, REGION)\n            assess_cfn_status(event, context, cfn_data, parameter_arn, final)(put_parameter)(username, pwd, parameter_type)\n        if name_change:\n            assess_cfn_status(event, context, cfn_data, parameter_arn, name_change)(delete_smtp_credentials)(old_username, parameter_type)\n    elif event['RequestType'] == 'Delete':\n        assess_cfn_status(event, context, cfn_data, parameter_arn, True)(delete_smtp_credentials)(username, parameter_type)"
+     }
+    }
+   }
+  }
+ ]
+}

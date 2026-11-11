@@ -1,0 +1,765 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "2ff6cd656a9c986eb4ba932494e544b8c95b3ff8969e2cdce4cbbc46915b3700",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "VPC",
+   "cfg": "VPC",
+   "type": "AWS::EC2::VPC",
+   "values": {
+    "CidrBlock": "10.0.0.0/22",
+    "EnableDnsSupport": true,
+    "EnableDnsHostnames": true
+   },
+   "refs": []
+  },
+  {
+   "id": "PrivateSubnetAZ1",
+   "cfg": "PrivateSubnetAZ1",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "AvailabilityZone": "us-east-1a",
+    "CidrBlock": "10.0.0.0/24",
+    "MapPublicIpOnLaunch": false,
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "Private subnet for ElastiCache Redis (AZ1)"
+     }
+    ]
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "PrivateSubnetAZ2",
+   "cfg": "PrivateSubnetAZ2",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "AvailabilityZone": "us-east-1b",
+    "CidrBlock": "10.0.1.0/24",
+    "MapPublicIpOnLaunch": false,
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "Private subnet for ElastiCache Redis (AZ2)"
+     }
+    ]
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "PrivateSecurityGroup",
+   "cfg": "PrivateSecurityGroup",
+   "type": "AWS::EC2::SecurityGroup",
+   "values": {
+    "GroupDescription": "Private security group for ElastiCache",
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "SecurityGroupIngress": [
+     {
+      "IpProtocol": "-1",
+      "CidrIp": "10.0.0.0/24"
+     },
+     {
+      "IpProtocol": "-1",
+      "CidrIp": "10.0.1.0/24"
+     }
+    ],
+    "SecurityGroupEgress": [
+     {
+      "IpProtocol": "-1",
+      "CidrIp": "10.0.0.0/24"
+     },
+     {
+      "IpProtocol": "-1",
+      "CidrIp": "10.0.1.0/24"
+     }
+    ]
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "ElastiCacheSubnetGroup",
+   "cfg": "ElastiCacheSubnetGroup",
+   "type": "AWS::ElastiCache::SubnetGroup",
+   "values": {
+    "Description": "ElastiCache subnet group",
+    "SubnetIds": [
+     {
+      "ref": "PrivateSubnetAZ1"
+     },
+     {
+      "ref": "PrivateSubnetAZ2"
+     }
+    ]
+   },
+   "refs": [
+    "PrivateSubnetAZ1",
+    "PrivateSubnetAZ2"
+   ]
+  },
+  {
+   "id": "ElastiCacheReplicationGroup",
+   "cfg": "ElastiCacheReplicationGroup",
+   "type": "AWS::ElastiCache::ReplicationGroup",
+   "values": {
+    "AtRestEncryptionEnabled": true,
+    "AutomaticFailoverEnabled": true,
+    "CacheNodeType": "cache.t3.micro",
+    "CacheParameterGroupName": "default.redis6.x.cluster.on",
+    "CacheSubnetGroupName": {
+     "ref": "ElastiCacheSubnetGroup"
+    },
+    "Engine": "redis",
+    "EngineVersion": "6.x",
+    "KmsKeyId": {
+     "ref": "KmsKey"
+    },
+    "MultiAZEnabled": true,
+    "NumNodeGroups": 2,
+    "ReplicasPerNodeGroup": 1,
+    "ReplicationGroupDescription": "ElastiCache Redis with cluster mode enabled in multi AZ deployment",
+    "ReplicationGroupId": "redis-cluster-multi-az-id",
+    "SecurityGroupIds": [
+     {
+      "ref": "PrivateSecurityGroup"
+     }
+    ],
+    "TransitEncryptionEnabled": true,
+    "__resource__": {
+     "UpdatePolicy": {
+      "UseOnlineResharding": true
+     }
+    }
+   },
+   "refs": [
+    "ElastiCacheSubnetGroup",
+    "KmsKey",
+    "PrivateSecurityGroup"
+   ]
+  },
+  {
+   "id": "KmsKey",
+   "cfg": "KmsKey",
+   "type": "AWS::KMS::Key",
+   "values": {
+    "KeyPolicy": {
+     "Version": "2012-10-17",
+     "Id": "kms-key-policy-id",
+     "Statement": [
+      {
+       "Sid": "Enable IAM User Permissions",
+       "Effect": "Allow",
+       "Principal": {
+        "AWS": [
+         "arn:aws:iam::123456789012:root"
+        ]
+       },
+       "Action": [
+        "kms:*"
+       ],
+       "Resource": [
+        "*"
+       ]
+      }
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "SNSTopic",
+   "cfg": "SNSTopic",
+   "type": "AWS::SNS::Topic",
+   "values": {
+    "KmsMasterKeyId": {
+     "ref": "KmsKey"
+    }
+   },
+   "refs": [
+    "KmsKey"
+   ]
+  },
+  {
+   "id": "SNSTopicPolicy",
+   "cfg": "SNSTopicPolicy",
+   "type": "AWS::SNS::TopicPolicy",
+   "values": {
+    "PolicyDocument": {
+     "Version": "2012-10-17",
+     "Id": "SNSTopicPolicy",
+     "Statement": [
+      {
+       "Sid": "SNSTopicPolicyStatement",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "cloudwatch.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "SNS:Publish"
+       ],
+       "Resource": {
+        "ref": "SNSTopic"
+       },
+       "Condition": {
+        "StringEquals": {
+         "AWS:SourceAccount": "123456789012"
+        }
+       }
+      }
+     ]
+    },
+    "Topics": [
+     {
+      "ref": "SNSTopic"
+     }
+    ]
+   },
+   "refs": [
+    "SNSTopic"
+   ]
+  },
+  {
+   "id": "RoleApproveChangeCacheParameterBucket",
+   "cfg": "RoleApproveChangeCacheParameterBucket",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "AWS": [
+         "123456789012"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "PolicyApproveChangeCacheParameterBucket",
+   "cfg": "PolicyApproveChangeCacheParameterBucket",
+   "type": "AWS::IAM::Policy",
+   "values": {
+    "PolicyName": "DigitoRestoreFromBackupAssumePolicy",
+    "PolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Resource": [
+        "*"
+       ],
+       "Action": [
+        "ssm:SendAutomationSignal"
+       ]
+      }
+     ]
+    },
+    "Roles": [
+     {
+      "ref": "RoleApproveChangeCacheParameterBucket"
+     }
+    ]
+   },
+   "refs": [
+    "RoleApproveChangeCacheParameterBucket"
+   ]
+  },
+  {
+   "id": "__parameter__.EngineVersion",
+   "cfg": "__parameter__.EngineVersion",
+   "type": "__parameter__",
+   "values": {
+    "name": "EngineVersion",
+    "type": "String",
+    "default": "6.x",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.ParameterGroupName",
+   "cfg": "__parameter__.ParameterGroupName",
+   "type": "__parameter__",
+   "values": {
+    "name": "ParameterGroupName",
+    "type": "String",
+    "default": "default.redis6.x.cluster.on",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.NodeType",
+   "cfg": "__parameter__.NodeType",
+   "type": "__parameter__",
+   "values": {
+    "name": "NodeType",
+    "type": "String",
+    "default": "cache.t3.micro",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.VpcCIDR",
+   "cfg": "__parameter__.VpcCIDR",
+   "type": "__parameter__",
+   "values": {
+    "name": "VpcCIDR",
+    "type": "String",
+    "default": "10.0.0.0/22",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.PrivateSubnetCIDR1",
+   "cfg": "__parameter__.PrivateSubnetCIDR1",
+   "type": "__parameter__",
+   "values": {
+    "name": "PrivateSubnetCIDR1",
+    "type": "String",
+    "default": "10.0.0.0/24",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.PrivateSubnetCIDR2",
+   "cfg": "__parameter__.PrivateSubnetCIDR2",
+   "type": "__parameter__",
+   "values": {
+    "name": "PrivateSubnetCIDR2",
+    "type": "String",
+    "default": "10.0.1.0/24",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.ReplicationGroupId",
+   "cfg": "__output__.ReplicationGroupId",
+   "type": "__output__",
+   "values": {
+    "name": "ReplicationGroupId",
+    "value": {
+     "ref": "ElastiCacheReplicationGroup"
+    },
+    "description": "The ID of the Replication group",
+    "export": null
+   },
+   "refs": [
+    "ElastiCacheReplicationGroup"
+   ]
+  },
+  {
+   "id": "__output__.SNSTopicName",
+   "cfg": "__output__.SNSTopicName",
+   "type": "__output__",
+   "values": {
+    "name": "SNSTopicName",
+    "value": {
+     "ref": "SNSTopic"
+    },
+    "description": "SNS Topic Name",
+    "export": null
+   },
+   "refs": [
+    "SNSTopic"
+   ]
+  },
+  {
+   "id": "__output__.RoleApproveChangeCacheParameterGroupArn",
+   "cfg": "__output__.RoleApproveChangeCacheParameterGroupArn",
+   "type": "__output__",
+   "values": {
+    "name": "RoleApproveChangeCacheParameterGroupArn",
+    "value": {
+     "ref": "RoleApproveChangeCacheParameterBucket",
+     "attr": "Arn"
+    },
+    "description": "ARN of RoleApproveChangeCacheParameterBucket",
+    "export": null
+   },
+   "refs": [
+    "RoleApproveChangeCacheParameterBucket"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPC.VPC",
+   "cfg": "VPC",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::VPC",
+    "name": "VPC",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "CidrBlock": "10.0.0.0/22",
+     "EnableDnsSupport": true,
+     "EnableDnsHostnames": true
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.PrivateSubnetAZ1",
+   "cfg": "PrivateSubnetAZ1",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "PrivateSubnetAZ1",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "AvailabilityZone": "us-east-1a",
+     "CidrBlock": "10.0.0.0/24",
+     "MapPublicIpOnLaunch": false,
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "Private subnet for ElastiCache Redis (AZ1)"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.PrivateSubnetAZ2",
+   "cfg": "PrivateSubnetAZ2",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "PrivateSubnetAZ2",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "AvailabilityZone": "us-east-1b",
+     "CidrBlock": "10.0.1.0/24",
+     "MapPublicIpOnLaunch": false,
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "Private subnet for ElastiCache Redis (AZ2)"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SecurityGroup.PrivateSecurityGroup",
+   "cfg": "PrivateSecurityGroup",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::SecurityGroup",
+    "name": "PrivateSecurityGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "GroupDescription": "Private security group for ElastiCache",
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "SecurityGroupIngress": [
+      {
+       "IpProtocol": "-1",
+       "CidrIp": "10.0.0.0/24"
+      },
+      {
+       "IpProtocol": "-1",
+       "CidrIp": "10.0.1.0/24"
+      }
+     ],
+     "SecurityGroupEgress": [
+      {
+       "IpProtocol": "-1",
+       "CidrIp": "10.0.0.0/24"
+      },
+      {
+       "IpProtocol": "-1",
+       "CidrIp": "10.0.1.0/24"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ElastiCache::SubnetGroup.ElastiCacheSubnetGroup",
+   "cfg": "ElastiCacheSubnetGroup",
+   "type": "__declared__",
+   "refs": [
+    "PrivateSubnetAZ1",
+    "PrivateSubnetAZ2"
+   ],
+   "values": {
+    "type": "AWS::ElastiCache::SubnetGroup",
+    "name": "ElastiCacheSubnetGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Description": "ElastiCache subnet group",
+     "SubnetIds": [
+      {
+       "ref": "PrivateSubnetAZ1"
+      },
+      {
+       "ref": "PrivateSubnetAZ2"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ElastiCache::ReplicationGroup.ElastiCacheReplicationGroup",
+   "cfg": "ElastiCacheReplicationGroup",
+   "type": "__declared__",
+   "refs": [
+    "ElastiCacheSubnetGroup",
+    "KmsKey",
+    "PrivateSecurityGroup"
+   ],
+   "values": {
+    "type": "AWS::ElastiCache::ReplicationGroup",
+    "name": "ElastiCacheReplicationGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AtRestEncryptionEnabled": true,
+     "AutomaticFailoverEnabled": true,
+     "CacheNodeType": "cache.t3.micro",
+     "CacheParameterGroupName": "default.redis6.x.cluster.on",
+     "CacheSubnetGroupName": {
+      "ref": "ElastiCacheSubnetGroup"
+     },
+     "Engine": "redis",
+     "EngineVersion": "6.x",
+     "KmsKeyId": {
+      "ref": "KmsKey"
+     },
+     "MultiAZEnabled": true,
+     "NumNodeGroups": 2,
+     "ReplicasPerNodeGroup": 1,
+     "ReplicationGroupDescription": "ElastiCache Redis with cluster mode enabled in multi AZ deployment",
+     "ReplicationGroupId": "redis-cluster-multi-az-id",
+     "SecurityGroupIds": [
+      {
+       "ref": "PrivateSecurityGroup"
+      }
+     ],
+     "TransitEncryptionEnabled": true
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::KMS::Key.KmsKey",
+   "cfg": "KmsKey",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::KMS::Key",
+    "name": "KmsKey",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "KeyPolicy": {
+      "Version": "2012-10-17",
+      "Id": "kms-key-policy-id",
+      "Statement": [
+       {
+        "Sid": "Enable IAM User Permissions",
+        "Effect": "Allow",
+        "Principal": {
+         "AWS": [
+          "arn:aws:iam::123456789012:root"
+         ]
+        },
+        "Action": [
+         "kms:*"
+        ],
+        "Resource": [
+         "*"
+        ]
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SNS::Topic.SNSTopic",
+   "cfg": "SNSTopic",
+   "type": "__declared__",
+   "refs": [
+    "KmsKey"
+   ],
+   "values": {
+    "type": "AWS::SNS::Topic",
+    "name": "SNSTopic",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "KmsMasterKeyId": {
+      "ref": "KmsKey"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SNS::TopicPolicy.SNSTopicPolicy",
+   "cfg": "SNSTopicPolicy",
+   "type": "__declared__",
+   "refs": [
+    "SNSTopic"
+   ],
+   "values": {
+    "type": "AWS::SNS::TopicPolicy",
+    "name": "SNSTopicPolicy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Id": "SNSTopicPolicy",
+      "Statement": [
+       {
+        "Sid": "SNSTopicPolicyStatement",
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "cloudwatch.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "SNS:Publish"
+        ],
+        "Resource": {
+         "ref": "SNSTopic"
+        },
+        "Condition": {
+         "StringEquals": {
+          "AWS:SourceAccount": "123456789012"
+         }
+        }
+       }
+      ]
+     },
+     "Topics": [
+      {
+       "ref": "SNSTopic"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.RoleApproveChangeCacheParameterBucket",
+   "cfg": "RoleApproveChangeCacheParameterBucket",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "RoleApproveChangeCacheParameterBucket",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "AWS": [
+          "123456789012"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Policy.PolicyApproveChangeCacheParameterBucket",
+   "cfg": "PolicyApproveChangeCacheParameterBucket",
+   "type": "__declared__",
+   "refs": [
+    "RoleApproveChangeCacheParameterBucket"
+   ],
+   "values": {
+    "type": "AWS::IAM::Policy",
+    "name": "PolicyApproveChangeCacheParameterBucket",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "PolicyName": "DigitoRestoreFromBackupAssumePolicy",
+     "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Resource": [
+         "*"
+        ],
+        "Action": [
+         "ssm:SendAutomationSignal"
+        ]
+       }
+      ]
+     },
+     "Roles": [
+      {
+       "ref": "RoleApproveChangeCacheParameterBucket"
+      }
+     ]
+    }
+   }
+  }
+ ]
+}

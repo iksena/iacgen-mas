@@ -1,0 +1,2297 @@
+package intent.cfn.row_109
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {
+  "lambda_role": {
+   "types": [
+    "AWS::IAM::Role"
+   ],
+   "where": [
+    {
+     "path": [
+      "AssumeRolePolicyDocument",
+      "Statement",
+      "*",
+      "Principal",
+      "Service",
+      "*"
+     ],
+     "op": "eq",
+     "value": "lambda.amazonaws.com"
+    }
+   ]
+  },
+  "apigw_role": {
+   "types": [
+    "AWS::IAM::Role"
+   ],
+   "where": [
+    {
+     "path": [
+      "AssumeRolePolicyDocument",
+      "Statement",
+      "*",
+      "Principal",
+      "Service",
+      "*"
+     ],
+     "op": "eq",
+     "value": "apigateway.amazonaws.com"
+    }
+   ]
+  },
+  "mp": {
+   "types": [
+    "AWS::IAM::ManagedPolicy"
+   ],
+   "where": []
+  }
+ },
+ "checks": [
+  {
+   "id": "two_lambda_roles",
+   "kind": "exists",
+   "select": "lambda_role",
+   "min": 2,
+   "tier": "core",
+   "quote": "a second role for a Lambda function",
+   "justify": "one role per Lambda function"
+  },
+  {
+   "id": "apigw_role",
+   "kind": "exists",
+   "select": "apigw_role",
+   "tier": "core",
+   "quote": "a third role for API Gateway to send messages to the SQS queue"
+  },
+  {
+   "id": "sqs_read",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "a role for a Lambda function that reads from an SQS queue",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "lambda_role",
+     "cond": {
+      "path": [
+       "Policies",
+       "*",
+       "PolicyDocument",
+       "Statement",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "Effect"
+        ],
+        "op": "eq",
+        "value": "Allow"
+       },
+       {
+        "path": [
+         "Action",
+         "*"
+        ],
+        "op": "glob_covers",
+        "value": "sqs:ReceiveMessage"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": "lambda_role",
+     "to": {
+      "types": [
+       "AWS::IAM::ManagedPolicy",
+       "AWS::IAM::Policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "PolicyDocument",
+         "Statement",
+         "*"
+        ],
+        "op": "match",
+        "value": [
+         {
+          "path": [
+           "Effect"
+          ],
+          "op": "eq",
+          "value": "Allow"
+         },
+         {
+          "path": [
+           "Action",
+           "*"
+          ],
+          "op": "glob_covers",
+          "value": "sqs:ReceiveMessage"
+         }
+        ]
+       }
+      ]
+     },
+     "bidirectional": true
+    },
+    {
+     "kind": "attr",
+     "select": "lambda_role",
+     "cond": {
+      "path": [
+       "ManagedPolicyArns",
+       "*"
+      ],
+      "op": "regex",
+      "value": "AWSLambdaSQSQueueExecutionRole|AmazonSQSFullAccess"
+     }
+    }
+   ]
+  },
+  {
+   "id": "ddb_write",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "writes to a DynamoDB table",
+   "justify": "writing to a table is PutItem, UpdateItem or BatchWriteItem",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "lambda_role",
+     "cond": {
+      "path": [
+       "Policies",
+       "*",
+       "PolicyDocument",
+       "Statement",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "Effect"
+        ],
+        "op": "eq",
+        "value": "Allow"
+       },
+       {
+        "path": [
+         "Action",
+         "*"
+        ],
+        "op": "glob_covers",
+        "value": "dynamodb:PutItem"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": "lambda_role",
+     "to": {
+      "types": [
+       "AWS::IAM::ManagedPolicy",
+       "AWS::IAM::Policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "PolicyDocument",
+         "Statement",
+         "*"
+        ],
+        "op": "match",
+        "value": [
+         {
+          "path": [
+           "Effect"
+          ],
+          "op": "eq",
+          "value": "Allow"
+         },
+         {
+          "path": [
+           "Action",
+           "*"
+          ],
+          "op": "glob_covers",
+          "value": "dynamodb:PutItem"
+         }
+        ]
+       }
+      ]
+     },
+     "bidirectional": true
+    },
+    {
+     "kind": "attr",
+     "select": "lambda_role",
+     "cond": {
+      "path": [
+       "Policies",
+       "*",
+       "PolicyDocument",
+       "Statement",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "Effect"
+        ],
+        "op": "eq",
+        "value": "Allow"
+       },
+       {
+        "path": [
+         "Action",
+         "*"
+        ],
+        "op": "glob_covers",
+        "value": "dynamodb:UpdateItem"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": "lambda_role",
+     "to": {
+      "types": [
+       "AWS::IAM::ManagedPolicy",
+       "AWS::IAM::Policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "PolicyDocument",
+         "Statement",
+         "*"
+        ],
+        "op": "match",
+        "value": [
+         {
+          "path": [
+           "Effect"
+          ],
+          "op": "eq",
+          "value": "Allow"
+         },
+         {
+          "path": [
+           "Action",
+           "*"
+          ],
+          "op": "glob_covers",
+          "value": "dynamodb:UpdateItem"
+         }
+        ]
+       }
+      ]
+     },
+     "bidirectional": true
+    },
+    {
+     "kind": "attr",
+     "select": "lambda_role",
+     "cond": {
+      "path": [
+       "Policies",
+       "*",
+       "PolicyDocument",
+       "Statement",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "Effect"
+        ],
+        "op": "eq",
+        "value": "Allow"
+       },
+       {
+        "path": [
+         "Action",
+         "*"
+        ],
+        "op": "glob_covers",
+        "value": "dynamodb:BatchWriteItem"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": "lambda_role",
+     "to": {
+      "types": [
+       "AWS::IAM::ManagedPolicy",
+       "AWS::IAM::Policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "PolicyDocument",
+         "Statement",
+         "*"
+        ],
+        "op": "match",
+        "value": [
+         {
+          "path": [
+           "Effect"
+          ],
+          "op": "eq",
+          "value": "Allow"
+         },
+         {
+          "path": [
+           "Action",
+           "*"
+          ],
+          "op": "glob_covers",
+          "value": "dynamodb:BatchWriteItem"
+         }
+        ]
+       }
+      ]
+     },
+     "bidirectional": true
+    },
+    {
+     "kind": "attr",
+     "select": "lambda_role",
+     "cond": {
+      "path": [
+       "ManagedPolicyArns",
+       "*"
+      ],
+      "op": "regex",
+      "value": "AmazonDynamoDBFullAccess"
+     }
+    }
+   ]
+  },
+  {
+   "id": "ddb_stream_read",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "a second role for a Lambda function that reads from DynamoDB Streams",
+   "justify": "reading from a DynamoDB stream is GetRecords",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "lambda_role",
+     "cond": {
+      "path": [
+       "Policies",
+       "*",
+       "PolicyDocument",
+       "Statement",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "Effect"
+        ],
+        "op": "eq",
+        "value": "Allow"
+       },
+       {
+        "path": [
+         "Action",
+         "*"
+        ],
+        "op": "glob_covers",
+        "value": "dynamodb:GetRecords"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": "lambda_role",
+     "to": {
+      "types": [
+       "AWS::IAM::ManagedPolicy",
+       "AWS::IAM::Policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "PolicyDocument",
+         "Statement",
+         "*"
+        ],
+        "op": "match",
+        "value": [
+         {
+          "path": [
+           "Effect"
+          ],
+          "op": "eq",
+          "value": "Allow"
+         },
+         {
+          "path": [
+           "Action",
+           "*"
+          ],
+          "op": "glob_covers",
+          "value": "dynamodb:GetRecords"
+         }
+        ]
+       }
+      ]
+     },
+     "bidirectional": true
+    },
+    {
+     "kind": "attr",
+     "select": "lambda_role",
+     "cond": {
+      "path": [
+       "ManagedPolicyArns",
+       "*"
+      ],
+      "op": "regex",
+      "value": "AWSLambdaDynamoDBExecutionRole|AWSLambdaInvocation-DynamoDB|AmazonDynamoDBFullAccess"
+     }
+    }
+   ]
+  },
+  {
+   "id": "sns_publish",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "publishes to an SNS topic",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "lambda_role",
+     "cond": {
+      "path": [
+       "Policies",
+       "*",
+       "PolicyDocument",
+       "Statement",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "Effect"
+        ],
+        "op": "eq",
+        "value": "Allow"
+       },
+       {
+        "path": [
+         "Action",
+         "*"
+        ],
+        "op": "glob_covers",
+        "value": "sns:Publish"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": "lambda_role",
+     "to": {
+      "types": [
+       "AWS::IAM::ManagedPolicy",
+       "AWS::IAM::Policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "PolicyDocument",
+         "Statement",
+         "*"
+        ],
+        "op": "match",
+        "value": [
+         {
+          "path": [
+           "Effect"
+          ],
+          "op": "eq",
+          "value": "Allow"
+         },
+         {
+          "path": [
+           "Action",
+           "*"
+          ],
+          "op": "glob_covers",
+          "value": "sns:Publish"
+         }
+        ]
+       }
+      ]
+     },
+     "bidirectional": true
+    },
+    {
+     "kind": "attr",
+     "select": "lambda_role",
+     "cond": {
+      "path": [
+       "ManagedPolicyArns",
+       "*"
+      ],
+      "op": "regex",
+      "value": "AmazonSNSFullAccess"
+     }
+    }
+   ]
+  },
+  {
+   "id": "apigw_sqs_send",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "a third role for API Gateway to send messages to the SQS queue",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "apigw_role",
+     "cond": {
+      "path": [
+       "Policies",
+       "*",
+       "PolicyDocument",
+       "Statement",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "Effect"
+        ],
+        "op": "eq",
+        "value": "Allow"
+       },
+       {
+        "path": [
+         "Action",
+         "*"
+        ],
+        "op": "glob_covers",
+        "value": "sqs:SendMessage"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": "apigw_role",
+     "to": {
+      "types": [
+       "AWS::IAM::ManagedPolicy",
+       "AWS::IAM::Policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "PolicyDocument",
+         "Statement",
+         "*"
+        ],
+        "op": "match",
+        "value": [
+         {
+          "path": [
+           "Effect"
+          ],
+          "op": "eq",
+          "value": "Allow"
+         },
+         {
+          "path": [
+           "Action",
+           "*"
+          ],
+          "op": "glob_covers",
+          "value": "sqs:SendMessage"
+         }
+        ]
+       }
+      ]
+     },
+     "bidirectional": true
+    },
+    {
+     "kind": "attr",
+     "select": "apigw_role",
+     "cond": {
+      "path": [
+       "ManagedPolicyArns",
+       "*"
+      ],
+      "op": "regex",
+      "value": "AmazonSQSFullAccess"
+     }
+    }
+   ]
+  },
+  {
+   "id": "sqs_read_queue_name",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "an SQS queue named `POC-Queue-{env}`",
+   "justify": "env defaults to dev",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "lambda_role",
+     "cond": {
+      "path": [
+       "Policies",
+       "*",
+       "PolicyDocument",
+       "Statement",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "Effect"
+        ],
+        "op": "eq",
+        "value": "Allow"
+       },
+       {
+        "path": [
+         "Action",
+         "*"
+        ],
+        "op": "glob_covers",
+        "value": "sqs:ReceiveMessage"
+       },
+       {
+        "path": [
+         "Resource",
+         "*"
+        ],
+        "op": "regex",
+        "value": "POC-Queue-dev"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": "lambda_role",
+     "to": {
+      "types": [
+       "AWS::IAM::ManagedPolicy",
+       "AWS::IAM::Policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "PolicyDocument",
+         "Statement",
+         "*"
+        ],
+        "op": "match",
+        "value": [
+         {
+          "path": [
+           "Effect"
+          ],
+          "op": "eq",
+          "value": "Allow"
+         },
+         {
+          "path": [
+           "Action",
+           "*"
+          ],
+          "op": "glob_covers",
+          "value": "sqs:ReceiveMessage"
+         },
+         {
+          "path": [
+           "Resource",
+           "*"
+          ],
+          "op": "regex",
+          "value": "POC-Queue-dev"
+         }
+        ]
+       }
+      ]
+     },
+     "bidirectional": true
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::IAM::ManagedPolicy",
+       "AWS::IAM::Policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "PolicyDocument",
+         "Statement",
+         "*"
+        ],
+        "op": "match",
+        "value": [
+         {
+          "path": [
+           "Effect"
+          ],
+          "op": "eq",
+          "value": "Allow"
+         },
+         {
+          "path": [
+           "Action",
+           "*"
+          ],
+          "op": "glob_covers",
+          "value": "sqs:ReceiveMessage"
+         }
+        ]
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "AWS::SQS::Queue"
+      ],
+      "where": [
+       {
+        "path": [
+         "QueueName"
+        ],
+        "op": "eq",
+        "value": "POC-Queue-dev"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::IAM::Role"
+      ],
+      "where": [
+       {
+        "path": [
+         "Policies",
+         "*",
+         "PolicyDocument",
+         "Statement",
+         "*"
+        ],
+        "op": "match",
+        "value": [
+         {
+          "path": [
+           "Effect"
+          ],
+          "op": "eq",
+          "value": "Allow"
+         },
+         {
+          "path": [
+           "Action",
+           "*"
+          ],
+          "op": "glob_covers",
+          "value": "sqs:ReceiveMessage"
+         }
+        ]
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "AWS::SQS::Queue"
+      ],
+      "where": [
+       {
+        "path": [
+         "QueueName"
+        ],
+        "op": "eq",
+        "value": "POC-Queue-dev"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "ddb_write_table_name",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "a DynamoDB table named `ecommerce-orders-{env}`",
+   "justify": "env defaults to dev",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "lambda_role",
+     "cond": {
+      "path": [
+       "Policies",
+       "*",
+       "PolicyDocument",
+       "Statement",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "Effect"
+        ],
+        "op": "eq",
+        "value": "Allow"
+       },
+       {
+        "path": [
+         "Action",
+         "*"
+        ],
+        "op": "glob_covers",
+        "value": "dynamodb:PutItem"
+       },
+       {
+        "path": [
+         "Resource",
+         "*"
+        ],
+        "op": "regex",
+        "value": "ecommerce-orders-dev"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": "lambda_role",
+     "to": {
+      "types": [
+       "AWS::IAM::ManagedPolicy",
+       "AWS::IAM::Policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "PolicyDocument",
+         "Statement",
+         "*"
+        ],
+        "op": "match",
+        "value": [
+         {
+          "path": [
+           "Effect"
+          ],
+          "op": "eq",
+          "value": "Allow"
+         },
+         {
+          "path": [
+           "Action",
+           "*"
+          ],
+          "op": "glob_covers",
+          "value": "dynamodb:PutItem"
+         },
+         {
+          "path": [
+           "Resource",
+           "*"
+          ],
+          "op": "regex",
+          "value": "ecommerce-orders-dev"
+         }
+        ]
+       }
+      ]
+     },
+     "bidirectional": true
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::IAM::ManagedPolicy",
+       "AWS::IAM::Policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "PolicyDocument",
+         "Statement",
+         "*"
+        ],
+        "op": "match",
+        "value": [
+         {
+          "path": [
+           "Effect"
+          ],
+          "op": "eq",
+          "value": "Allow"
+         },
+         {
+          "path": [
+           "Action",
+           "*"
+          ],
+          "op": "glob_covers",
+          "value": "dynamodb:PutItem"
+         }
+        ]
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "AWS::DynamoDB::Table"
+      ],
+      "where": [
+       {
+        "path": [
+         "TableName"
+        ],
+        "op": "eq",
+        "value": "ecommerce-orders-dev"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::IAM::Role"
+      ],
+      "where": [
+       {
+        "path": [
+         "Policies",
+         "*",
+         "PolicyDocument",
+         "Statement",
+         "*"
+        ],
+        "op": "match",
+        "value": [
+         {
+          "path": [
+           "Effect"
+          ],
+          "op": "eq",
+          "value": "Allow"
+         },
+         {
+          "path": [
+           "Action",
+           "*"
+          ],
+          "op": "glob_covers",
+          "value": "dynamodb:PutItem"
+         }
+        ]
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "AWS::DynamoDB::Table"
+      ],
+      "where": [
+       {
+        "path": [
+         "TableName"
+        ],
+        "op": "eq",
+        "value": "ecommerce-orders-dev"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "lambda_role",
+     "cond": {
+      "path": [
+       "Policies",
+       "*",
+       "PolicyDocument",
+       "Statement",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "Effect"
+        ],
+        "op": "eq",
+        "value": "Allow"
+       },
+       {
+        "path": [
+         "Action",
+         "*"
+        ],
+        "op": "glob_covers",
+        "value": "dynamodb:UpdateItem"
+       },
+       {
+        "path": [
+         "Resource",
+         "*"
+        ],
+        "op": "regex",
+        "value": "ecommerce-orders-dev"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": "lambda_role",
+     "to": {
+      "types": [
+       "AWS::IAM::ManagedPolicy",
+       "AWS::IAM::Policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "PolicyDocument",
+         "Statement",
+         "*"
+        ],
+        "op": "match",
+        "value": [
+         {
+          "path": [
+           "Effect"
+          ],
+          "op": "eq",
+          "value": "Allow"
+         },
+         {
+          "path": [
+           "Action",
+           "*"
+          ],
+          "op": "glob_covers",
+          "value": "dynamodb:UpdateItem"
+         },
+         {
+          "path": [
+           "Resource",
+           "*"
+          ],
+          "op": "regex",
+          "value": "ecommerce-orders-dev"
+         }
+        ]
+       }
+      ]
+     },
+     "bidirectional": true
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::IAM::ManagedPolicy",
+       "AWS::IAM::Policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "PolicyDocument",
+         "Statement",
+         "*"
+        ],
+        "op": "match",
+        "value": [
+         {
+          "path": [
+           "Effect"
+          ],
+          "op": "eq",
+          "value": "Allow"
+         },
+         {
+          "path": [
+           "Action",
+           "*"
+          ],
+          "op": "glob_covers",
+          "value": "dynamodb:UpdateItem"
+         }
+        ]
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "AWS::DynamoDB::Table"
+      ],
+      "where": [
+       {
+        "path": [
+         "TableName"
+        ],
+        "op": "eq",
+        "value": "ecommerce-orders-dev"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::IAM::Role"
+      ],
+      "where": [
+       {
+        "path": [
+         "Policies",
+         "*",
+         "PolicyDocument",
+         "Statement",
+         "*"
+        ],
+        "op": "match",
+        "value": [
+         {
+          "path": [
+           "Effect"
+          ],
+          "op": "eq",
+          "value": "Allow"
+         },
+         {
+          "path": [
+           "Action",
+           "*"
+          ],
+          "op": "glob_covers",
+          "value": "dynamodb:UpdateItem"
+         }
+        ]
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "AWS::DynamoDB::Table"
+      ],
+      "where": [
+       {
+        "path": [
+         "TableName"
+        ],
+        "op": "eq",
+        "value": "ecommerce-orders-dev"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "lambda_role",
+     "cond": {
+      "path": [
+       "Policies",
+       "*",
+       "PolicyDocument",
+       "Statement",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "Effect"
+        ],
+        "op": "eq",
+        "value": "Allow"
+       },
+       {
+        "path": [
+         "Action",
+         "*"
+        ],
+        "op": "glob_covers",
+        "value": "dynamodb:BatchWriteItem"
+       },
+       {
+        "path": [
+         "Resource",
+         "*"
+        ],
+        "op": "regex",
+        "value": "ecommerce-orders-dev"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": "lambda_role",
+     "to": {
+      "types": [
+       "AWS::IAM::ManagedPolicy",
+       "AWS::IAM::Policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "PolicyDocument",
+         "Statement",
+         "*"
+        ],
+        "op": "match",
+        "value": [
+         {
+          "path": [
+           "Effect"
+          ],
+          "op": "eq",
+          "value": "Allow"
+         },
+         {
+          "path": [
+           "Action",
+           "*"
+          ],
+          "op": "glob_covers",
+          "value": "dynamodb:BatchWriteItem"
+         },
+         {
+          "path": [
+           "Resource",
+           "*"
+          ],
+          "op": "regex",
+          "value": "ecommerce-orders-dev"
+         }
+        ]
+       }
+      ]
+     },
+     "bidirectional": true
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::IAM::ManagedPolicy",
+       "AWS::IAM::Policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "PolicyDocument",
+         "Statement",
+         "*"
+        ],
+        "op": "match",
+        "value": [
+         {
+          "path": [
+           "Effect"
+          ],
+          "op": "eq",
+          "value": "Allow"
+         },
+         {
+          "path": [
+           "Action",
+           "*"
+          ],
+          "op": "glob_covers",
+          "value": "dynamodb:BatchWriteItem"
+         }
+        ]
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "AWS::DynamoDB::Table"
+      ],
+      "where": [
+       {
+        "path": [
+         "TableName"
+        ],
+        "op": "eq",
+        "value": "ecommerce-orders-dev"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::IAM::Role"
+      ],
+      "where": [
+       {
+        "path": [
+         "Policies",
+         "*",
+         "PolicyDocument",
+         "Statement",
+         "*"
+        ],
+        "op": "match",
+        "value": [
+         {
+          "path": [
+           "Effect"
+          ],
+          "op": "eq",
+          "value": "Allow"
+         },
+         {
+          "path": [
+           "Action",
+           "*"
+          ],
+          "op": "glob_covers",
+          "value": "dynamodb:BatchWriteItem"
+         }
+        ]
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "AWS::DynamoDB::Table"
+      ],
+      "where": [
+       {
+        "path": [
+         "TableName"
+        ],
+        "op": "eq",
+        "value": "ecommerce-orders-dev"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "ddb_stream_table_name",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "reads from DynamoDB Streams on that same table",
+   "justify": "reading a stream is GetRecords; env defaults to dev",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "lambda_role",
+     "cond": {
+      "path": [
+       "Policies",
+       "*",
+       "PolicyDocument",
+       "Statement",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "Effect"
+        ],
+        "op": "eq",
+        "value": "Allow"
+       },
+       {
+        "path": [
+         "Action",
+         "*"
+        ],
+        "op": "glob_covers",
+        "value": "dynamodb:GetRecords"
+       },
+       {
+        "path": [
+         "Resource",
+         "*"
+        ],
+        "op": "regex",
+        "value": "ecommerce-orders-dev"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": "lambda_role",
+     "to": {
+      "types": [
+       "AWS::IAM::ManagedPolicy",
+       "AWS::IAM::Policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "PolicyDocument",
+         "Statement",
+         "*"
+        ],
+        "op": "match",
+        "value": [
+         {
+          "path": [
+           "Effect"
+          ],
+          "op": "eq",
+          "value": "Allow"
+         },
+         {
+          "path": [
+           "Action",
+           "*"
+          ],
+          "op": "glob_covers",
+          "value": "dynamodb:GetRecords"
+         },
+         {
+          "path": [
+           "Resource",
+           "*"
+          ],
+          "op": "regex",
+          "value": "ecommerce-orders-dev"
+         }
+        ]
+       }
+      ]
+     },
+     "bidirectional": true
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::IAM::ManagedPolicy",
+       "AWS::IAM::Policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "PolicyDocument",
+         "Statement",
+         "*"
+        ],
+        "op": "match",
+        "value": [
+         {
+          "path": [
+           "Effect"
+          ],
+          "op": "eq",
+          "value": "Allow"
+         },
+         {
+          "path": [
+           "Action",
+           "*"
+          ],
+          "op": "glob_covers",
+          "value": "dynamodb:GetRecords"
+         }
+        ]
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "AWS::DynamoDB::Table"
+      ],
+      "where": [
+       {
+        "path": [
+         "TableName"
+        ],
+        "op": "eq",
+        "value": "ecommerce-orders-dev"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::IAM::Role"
+      ],
+      "where": [
+       {
+        "path": [
+         "Policies",
+         "*",
+         "PolicyDocument",
+         "Statement",
+         "*"
+        ],
+        "op": "match",
+        "value": [
+         {
+          "path": [
+           "Effect"
+          ],
+          "op": "eq",
+          "value": "Allow"
+         },
+         {
+          "path": [
+           "Action",
+           "*"
+          ],
+          "op": "glob_covers",
+          "value": "dynamodb:GetRecords"
+         }
+        ]
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "AWS::DynamoDB::Table"
+      ],
+      "where": [
+       {
+        "path": [
+         "TableName"
+        ],
+        "op": "eq",
+        "value": "ecommerce-orders-dev"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "sns_topic_name",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "an SNS topic named `POC-Topic-{env}`",
+   "justify": "env defaults to dev",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "lambda_role",
+     "cond": {
+      "path": [
+       "Policies",
+       "*",
+       "PolicyDocument",
+       "Statement",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "Effect"
+        ],
+        "op": "eq",
+        "value": "Allow"
+       },
+       {
+        "path": [
+         "Action",
+         "*"
+        ],
+        "op": "glob_covers",
+        "value": "sns:Publish"
+       },
+       {
+        "path": [
+         "Resource",
+         "*"
+        ],
+        "op": "regex",
+        "value": "POC-Topic-dev"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": "lambda_role",
+     "to": {
+      "types": [
+       "AWS::IAM::ManagedPolicy",
+       "AWS::IAM::Policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "PolicyDocument",
+         "Statement",
+         "*"
+        ],
+        "op": "match",
+        "value": [
+         {
+          "path": [
+           "Effect"
+          ],
+          "op": "eq",
+          "value": "Allow"
+         },
+         {
+          "path": [
+           "Action",
+           "*"
+          ],
+          "op": "glob_covers",
+          "value": "sns:Publish"
+         },
+         {
+          "path": [
+           "Resource",
+           "*"
+          ],
+          "op": "regex",
+          "value": "POC-Topic-dev"
+         }
+        ]
+       }
+      ]
+     },
+     "bidirectional": true
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::IAM::ManagedPolicy",
+       "AWS::IAM::Policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "PolicyDocument",
+         "Statement",
+         "*"
+        ],
+        "op": "match",
+        "value": [
+         {
+          "path": [
+           "Effect"
+          ],
+          "op": "eq",
+          "value": "Allow"
+         },
+         {
+          "path": [
+           "Action",
+           "*"
+          ],
+          "op": "glob_covers",
+          "value": "sns:Publish"
+         }
+        ]
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "AWS::SNS::Topic"
+      ],
+      "where": [
+       {
+        "path": [
+         "TopicName"
+        ],
+        "op": "eq",
+        "value": "POC-Topic-dev"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::IAM::Role"
+      ],
+      "where": [
+       {
+        "path": [
+         "Policies",
+         "*",
+         "PolicyDocument",
+         "Statement",
+         "*"
+        ],
+        "op": "match",
+        "value": [
+         {
+          "path": [
+           "Effect"
+          ],
+          "op": "eq",
+          "value": "Allow"
+         },
+         {
+          "path": [
+           "Action",
+           "*"
+          ],
+          "op": "glob_covers",
+          "value": "sns:Publish"
+         }
+        ]
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "AWS::SNS::Topic"
+      ],
+      "where": [
+       {
+        "path": [
+         "TopicName"
+        ],
+        "op": "eq",
+        "value": "POC-Topic-dev"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "managed_policies",
+   "kind": "exists",
+   "select": "mp",
+   "min": 2,
+   "tier": "core",
+   "quote": "the necessary managed policies for these actions",
+   "justify": "plural managed policies"
+  },
+  {
+   "id": "lambda_role_uses_managed_policy",
+   "kind": "ref",
+   "from": "lambda_role",
+   "to": "mp",
+   "bidirectional": true,
+   "tier": "detail",
+   "quote": "along with the necessary managed policies for these actions"
+  },
+  {
+   "id": "apigw_role_uses_managed_policy",
+   "kind": "ref",
+   "from": "apigw_role",
+   "to": "mp",
+   "bidirectional": true,
+   "tier": "detail",
+   "quote": "along with the necessary managed policies for these actions"
+  },
+  {
+   "id": "lambda_basic_execution",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "a basic Lambda execution policy for CloudWatch logs",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "lambda_role",
+     "cond": {
+      "path": [
+       "Policies",
+       "*",
+       "PolicyDocument",
+       "Statement",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "Effect"
+        ],
+        "op": "eq",
+        "value": "Allow"
+       },
+       {
+        "path": [
+         "Action",
+         "*"
+        ],
+        "op": "glob_covers",
+        "value": "logs:PutLogEvents"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": "lambda_role",
+     "to": {
+      "types": [
+       "AWS::IAM::ManagedPolicy",
+       "AWS::IAM::Policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "PolicyDocument",
+         "Statement",
+         "*"
+        ],
+        "op": "match",
+        "value": [
+         {
+          "path": [
+           "Effect"
+          ],
+          "op": "eq",
+          "value": "Allow"
+         },
+         {
+          "path": [
+           "Action",
+           "*"
+          ],
+          "op": "glob_covers",
+          "value": "logs:PutLogEvents"
+         }
+        ]
+       }
+      ]
+     },
+     "bidirectional": true
+    },
+    {
+     "kind": "attr",
+     "select": "lambda_role",
+     "cond": {
+      "path": [
+       "ManagedPolicyArns",
+       "*"
+      ],
+      "op": "regex",
+      "value": "AWSLambdaBasicExecutionRole"
+     }
+    }
+   ]
+  },
+  {
+   "id": "environment_parameter",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": [
+       "name"
+      ],
+      "op": "eq",
+      "value": "Environment"
+     },
+     {
+      "path": [
+       "default"
+      ],
+      "op": "eq",
+      "value": "dev"
+     }
+    ]
+   },
+   "tier": "core",
+   "quote": "an Environment parameter with a default of `dev`"
+  },
+  {
+   "id": "environment_allowed_values",
+   "kind": "all_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "eq",
+        "value": "Environment"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "allowed_values",
+       "*"
+      ],
+      "op": "eq",
+      "value": "dev"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "eq",
+        "value": "Environment"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "allowed_values",
+       "*"
+      ],
+      "op": "eq",
+      "value": "test"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "eq",
+        "value": "Environment"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "allowed_values",
+       "*"
+      ],
+      "op": "eq",
+      "value": "prod"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "eq",
+        "value": "Environment"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "allowed_values"
+      ],
+      "op": "len_eq",
+      "value": 3
+     }
+    }
+   ],
+   "tier": "detail",
+   "quote": "allowed values `dev`, `test`, `prod`",
+   "justify": "the prompt lists exactly three allowed values"
+  },
+  {
+   "id": "role_arn_exports",
+   "kind": "all_of",
+   "tier": "detail",
+   "quote": "the role ARNs exported for cross-stack references",
+   "justify": "one exported ARN per role (three roles)",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__output__"
+      ],
+      "where": [
+       {
+        "path": [
+         "export"
+        ],
+        "op": "present"
+       },
+       {
+        "path": [
+         "value"
+        ],
+        "op": "regex",
+        "value": "(?i)\"attr\": \"Arn\"|arn:"
+       }
+      ]
+     },
+     "min": 3
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__output__"
+      ],
+      "where": [
+       {
+        "path": [
+         "export"
+        ],
+        "op": "present"
+       },
+       {
+        "path": [
+         "value"
+        ],
+        "op": "regex",
+        "value": "(?i)\"attr\": \"Arn\"|arn:"
+       }
+      ]
+     },
+     "to": "lambda_role"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__output__"
+      ],
+      "where": [
+       {
+        "path": [
+         "export"
+        ],
+        "op": "present"
+       },
+       {
+        "path": [
+         "value"
+        ],
+        "op": "regex",
+        "value": "(?i)\"attr\": \"Arn\"|arn:"
+       }
+      ]
+     },
+     "to": "apigw_role"
+    }
+   ]
+  },
+  {
+   "id": "x_sqs_delete_message",
+   "kind": "any_of",
+   "tier": "extra",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "lambda_role",
+     "cond": {
+      "path": [
+       "Policies",
+       "*",
+       "PolicyDocument",
+       "Statement",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "Effect"
+        ],
+        "op": "eq",
+        "value": "Allow"
+       },
+       {
+        "path": [
+         "Action",
+         "*"
+        ],
+        "op": "glob_covers",
+        "value": "sqs:DeleteMessage"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": "lambda_role",
+     "to": {
+      "types": [
+       "AWS::IAM::ManagedPolicy",
+       "AWS::IAM::Policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "PolicyDocument",
+         "Statement",
+         "*"
+        ],
+        "op": "match",
+        "value": [
+         {
+          "path": [
+           "Effect"
+          ],
+          "op": "eq",
+          "value": "Allow"
+         },
+         {
+          "path": [
+           "Action",
+           "*"
+          ],
+          "op": "glob_covers",
+          "value": "sqs:DeleteMessage"
+         }
+        ]
+       }
+      ]
+     },
+     "bidirectional": true
+    }
+   ]
+  },
+  {
+   "id": "x_ddb_stream_shard_iterator",
+   "kind": "any_of",
+   "tier": "extra",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "lambda_role",
+     "cond": {
+      "path": [
+       "Policies",
+       "*",
+       "PolicyDocument",
+       "Statement",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "Effect"
+        ],
+        "op": "eq",
+        "value": "Allow"
+       },
+       {
+        "path": [
+         "Action",
+         "*"
+        ],
+        "op": "glob_covers",
+        "value": "dynamodb:GetShardIterator"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": "lambda_role",
+     "to": {
+      "types": [
+       "AWS::IAM::ManagedPolicy",
+       "AWS::IAM::Policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "PolicyDocument",
+         "Statement",
+         "*"
+        ],
+        "op": "match",
+        "value": [
+         {
+          "path": [
+           "Effect"
+          ],
+          "op": "eq",
+          "value": "Allow"
+         },
+         {
+          "path": [
+           "Action",
+           "*"
+          ],
+          "op": "glob_covers",
+          "value": "dynamodb:GetShardIterator"
+         }
+        ]
+       }
+      ]
+     },
+     "bidirectional": true
+    }
+   ]
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

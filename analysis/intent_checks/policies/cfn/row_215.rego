@@ -1,0 +1,1040 @@
+package intent.cfn.row_215
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {
+  "api": {
+   "types": [
+    "AWS::ApiGatewayV2::Api"
+   ],
+   "where": []
+  },
+  "routes": {
+   "types": [
+    "AWS::ApiGatewayV2::Route"
+   ],
+   "where": []
+  },
+  "integ": {
+   "types": [
+    "AWS::ApiGatewayV2::Integration"
+   ],
+   "where": []
+  },
+  "fn": {
+   "types": [
+    "AWS::Lambda::Function"
+   ],
+   "where": []
+  },
+  "keys": {
+   "types": [
+    "AWS::KMS::Key"
+   ],
+   "where": []
+  },
+  "lkey": {
+   "types": [
+    "AWS::KMS::Key"
+   ],
+   "where": [
+    {
+     "path": [
+      "EnableKeyRotation"
+     ],
+     "op": "eq",
+     "value": true
+    }
+   ]
+  },
+  "apirole": {
+   "types": [
+    "AWS::IAM::Role"
+   ],
+   "where": [
+    {
+     "path": [
+      "AssumeRolePolicyDocument"
+     ],
+     "op": "contains",
+     "value": "apigateway.amazonaws.com"
+    }
+   ]
+  },
+  "perm": {
+   "types": [
+    "AWS::Lambda::Permission"
+   ],
+   "where": [
+    {
+     "path": [
+      "Principal"
+     ],
+     "op": "eq",
+     "value": "apigateway.amazonaws.com"
+    }
+   ]
+  },
+  "exec": {
+   "types": [
+    "AWS::IAM::Role"
+   ],
+   "where": [
+    {
+     "path": [
+      "AssumeRolePolicyDocument",
+      "Statement",
+      "*",
+      "Principal",
+      "Service",
+      "*"
+     ],
+     "op": "eq",
+     "value": "lambda.amazonaws.com"
+    }
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "websocket_api",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "creates a WebSocket API using API Gateway",
+   "select": "api",
+   "cond": {
+    "path": [
+     "ProtocolType"
+    ],
+    "op": "eq",
+    "value": "WEBSOCKET"
+   }
+  },
+  {
+   "id": "lambda_fn",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "backed by a single Python Lambda function",
+   "select": "fn"
+  },
+  {
+   "id": "python_runtime",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "backed by a single Python Lambda function",
+   "select": "fn",
+   "cond": {
+    "path": [
+     "Runtime"
+    ],
+    "op": "regex",
+    "value": "^python"
+   },
+   "quantifier": "all"
+  },
+  {
+   "id": "single_fn",
+   "kind": "exists",
+   "tier": "detail",
+   "quote": "backed by a single Python Lambda function",
+   "justify": "single means one function",
+   "select": "fn",
+   "max": 1
+  },
+  {
+   "id": "route_connect",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "handles the connect, disconnect, default, and a custom message route",
+   "select": "routes",
+   "cond": {
+    "path": [
+     "RouteKey"
+    ],
+    "op": "regex",
+    "value": "^\\$connect$"
+   }
+  },
+  {
+   "id": "route_disconnect",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "handles the connect, disconnect, default, and a custom message route",
+   "select": "routes",
+   "cond": {
+    "path": [
+     "RouteKey"
+    ],
+    "op": "regex",
+    "value": "^\\$disconnect$"
+   }
+  },
+  {
+   "id": "route_default",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "handles the connect, disconnect, default, and a custom message route",
+   "select": "routes",
+   "cond": {
+    "path": [
+     "RouteKey"
+    ],
+    "op": "regex",
+    "value": "^\\$default$"
+   }
+  },
+  {
+   "id": "route_custom",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "handles the connect, disconnect, default, and a custom message route",
+   "select": "routes",
+   "cond": {
+    "path": [
+     "RouteKey"
+    ],
+    "op": "regex",
+    "value": "^[A-Za-z0-9]"
+   }
+  },
+  {
+   "id": "integration_to_fn",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "backed by a single Python Lambda function",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::ApiGatewayV2::Integration"
+      ],
+      "where": []
+     },
+     "to": "fn"
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "AWS::ApiGatewayV2::Integration"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "IntegrationUri"
+      ],
+      "op": "regex",
+      "value": "(?i)lambda"
+     }
+    }
+   ]
+  },
+  {
+   "id": "routes_target_integration",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "handles the connect, disconnect, default, and a custom message route",
+   "justify": "a route reaches its function through an integrations/ target",
+   "select": "routes",
+   "cond": {
+    "path": [
+     "Target"
+    ],
+    "op": "regex",
+    "value": "integrations"
+   },
+   "quantifier": "all"
+  },
+  {
+   "id": "exec_role",
+   "kind": "ref",
+   "tier": "core",
+   "quote": "an IAM execution role",
+   "from": "fn",
+   "to": "exec"
+  },
+  {
+   "id": "basic_logging",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "basic logging permissions",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy",
+       "AWS::IAM::RolePolicy"
+      ],
+      "where": [
+       {
+        "path": [
+         "PolicyDocument",
+         "Statement",
+         "*",
+         "Action",
+         "*"
+        ],
+        "op": "glob_covers",
+        "value": "logs:PutLogEvents"
+       }
+      ]
+     },
+     "to": "exec",
+     "bidirectional": true
+    },
+    {
+     "kind": "attr",
+     "select": "exec",
+     "cond": {
+      "path": [
+       "Policies",
+       "*",
+       "PolicyDocument",
+       "Statement",
+       "*",
+       "Action",
+       "*"
+      ],
+      "op": "glob_covers",
+      "value": "logs:PutLogEvents"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "exec",
+     "cond": {
+      "path": [
+       "ManagedPolicyArns",
+       "*"
+      ],
+      "op": "regex",
+      "value": "AWSLambda(Basic|VPCAccess)ExecutionRole$"
+     }
+    }
+   ],
+   "justify": "basic logging is PutLogEvents, which the AWS-managed Lambda execution policies include"
+  },
+  {
+   "id": "ddb_read",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "allowing it to read and write items in a DynamoDB table",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy",
+       "AWS::IAM::RolePolicy"
+      ],
+      "where": [
+       {
+        "path": [
+         "PolicyDocument",
+         "Statement",
+         "*",
+         "Action",
+         "*"
+        ],
+        "op": "regex",
+        "value": "(?i)^(\\*|dynamodb:(\\*|GetItem|Get\\*|Query|Scan|BatchGetItem|BatchGet\\*|Batch\\*))$"
+       }
+      ]
+     },
+     "to": "exec",
+     "bidirectional": true
+    },
+    {
+     "kind": "attr",
+     "select": "exec",
+     "cond": {
+      "path": [
+       "Policies",
+       "*",
+       "PolicyDocument",
+       "Statement",
+       "*",
+       "Action",
+       "*"
+      ],
+      "op": "regex",
+      "value": "(?i)^(\\*|dynamodb:(\\*|GetItem|Get\\*|Query|Scan|BatchGetItem|BatchGet\\*|Batch\\*))$"
+     }
+    }
+   ]
+  },
+  {
+   "id": "ddb_write",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "allowing it to read and write items in a DynamoDB table",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy",
+       "AWS::IAM::RolePolicy"
+      ],
+      "where": [
+       {
+        "path": [
+         "PolicyDocument",
+         "Statement",
+         "*",
+         "Action",
+         "*"
+        ],
+        "op": "regex",
+        "value": "(?i)^(\\*|dynamodb:(\\*|PutItem|Put\\*|UpdateItem|Update\\*|BatchWriteItem|BatchWrite\\*|Batch\\*))$"
+       }
+      ]
+     },
+     "to": "exec",
+     "bidirectional": true
+    },
+    {
+     "kind": "attr",
+     "select": "exec",
+     "cond": {
+      "path": [
+       "Policies",
+       "*",
+       "PolicyDocument",
+       "Statement",
+       "*",
+       "Action",
+       "*"
+      ],
+      "op": "regex",
+      "value": "(?i)^(\\*|dynamodb:(\\*|PutItem|Put\\*|UpdateItem|Update\\*|BatchWriteItem|BatchWrite\\*|Batch\\*))$"
+     }
+    }
+   ]
+  },
+  {
+   "id": "ddb_scoped",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "a scoped policy allowing it to read and write items in a DynamoDB table",
+   "justify": "scoped means the DynamoDB statement does not apply to every resource",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy",
+       "AWS::IAM::RolePolicy"
+      ],
+      "where": [
+       {
+        "path": [
+         "PolicyDocument",
+         "Statement",
+         "*"
+        ],
+        "op": "match",
+        "value": [
+         {
+          "path": [
+           "Action",
+           "*"
+          ],
+          "op": "regex",
+          "value": "(?i)^dynamodb:"
+         },
+         {
+          "path": [
+           "Resource",
+           "*"
+          ],
+          "op": "none_eq",
+          "value": "*"
+         }
+        ]
+       }
+      ]
+     },
+     "to": "exec",
+     "bidirectional": true
+    },
+    {
+     "kind": "attr",
+     "select": "exec",
+     "cond": {
+      "path": [
+       "Policies",
+       "*",
+       "PolicyDocument",
+       "Statement",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "Action",
+         "*"
+        ],
+        "op": "regex",
+        "value": "(?i)^dynamodb:"
+       },
+       {
+        "path": [
+         "Resource",
+         "*"
+        ],
+        "op": "none_eq",
+        "value": "*"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "kms_decrypt",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "to decrypt using KMS",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy",
+       "AWS::IAM::RolePolicy"
+      ],
+      "where": [
+       {
+        "path": [
+         "PolicyDocument",
+         "Statement",
+         "*",
+         "Action",
+         "*"
+        ],
+        "op": "glob_covers",
+        "value": "kms:Decrypt"
+       }
+      ]
+     },
+     "to": "exec",
+     "bidirectional": true
+    },
+    {
+     "kind": "attr",
+     "select": "exec",
+     "cond": {
+      "path": [
+       "Policies",
+       "*",
+       "PolicyDocument",
+       "Statement",
+       "*",
+       "Action",
+       "*"
+      ],
+      "op": "glob_covers",
+      "value": "kms:Decrypt"
+     }
+    }
+   ]
+  },
+  {
+   "id": "two_cmks",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "a second, separate customer-managed KMS key",
+   "justify": "a second, separate key means two keys in total",
+   "select": "keys",
+   "min": 2
+  },
+  {
+   "id": "env_key",
+   "kind": "ref",
+   "tier": "core",
+   "quote": "its environment variables should be encrypted with a dedicated customer-managed KMS key, with key rotation enabled",
+   "from": {
+    "types": [
+     "AWS::Lambda::Function"
+    ],
+    "where": [
+     {
+      "path": [
+       "KmsKeyArn"
+      ],
+      "op": "present"
+     }
+    ]
+   },
+   "to": "lkey"
+  },
+  {
+   "id": "logs_key",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "the underlying CloudWatch Logs log group encrypted using a second, separate customer-managed KMS key created for that purpose",
+   "justify": "encrypting a log group with a CMK needs the CloudWatch Logs service principal in its key policy",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::Logs::LogGroup"
+      ],
+      "where": [
+       {
+        "path": [
+         "KmsKeyId"
+        ],
+        "op": "present"
+       }
+      ]
+     },
+     "to": "keys"
+    },
+    {
+     "kind": "attr",
+     "select": "keys",
+     "cond": {
+      "path": [
+       "KeyPolicy",
+       "Statement",
+       "*",
+       "Principal",
+       "Service",
+       "*"
+      ],
+      "op": "regex",
+      "value": "^logs\\."
+     }
+    }
+   ]
+  },
+  {
+   "id": "lkey_policy_decrypt",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "that only that function and a short list of related functions in this same account are allowed to use for decryption",
+   "justify": "a grant to the functions names the Lambda service, a role or a function, in the principal or a condition, rather than the account root alone",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "lkey",
+     "cond": {
+      "path": [
+       "KeyPolicy",
+       "Statement",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "Action",
+         "*"
+        ],
+        "op": "glob_covers",
+        "value": "kms:Decrypt"
+       },
+       {
+        "path": [
+         "Principal"
+        ],
+        "op": "regex",
+        "value": "(?i)lambda|role|function"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "lkey",
+     "cond": {
+      "path": [
+       "KeyPolicy",
+       "Statement",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "Action",
+         "*"
+        ],
+        "op": "glob_covers",
+        "value": "kms:Decrypt"
+       },
+       {
+        "path": [
+         "Condition"
+        ],
+        "op": "regex",
+        "value": "(?i)lambda|role|function"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "invoke_permission_fn",
+   "kind": "ref",
+   "tier": "core",
+   "quote": "grant API Gateway permission to invoke the function for every route",
+   "from": "perm",
+   "to": "fn"
+  },
+  {
+   "id": "invoke_every_route",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "grant API Gateway permission to invoke the function for every route",
+   "justify": "four routes need four route-scoped permissions, or one permission whose source covers all routes or is unrestricted",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": "perm",
+     "min": 4
+    },
+    {
+     "kind": "attr",
+     "select": "perm",
+     "cond": {
+      "path": [
+       "SourceArn"
+      ],
+      "op": "regex",
+      "value": "/\\*($|\")"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "perm",
+     "cond": {
+      "path": [
+       "SourceArn"
+      ],
+      "op": "absent"
+     }
+    }
+   ]
+  },
+  {
+   "id": "stage",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "Deploy the API to a stage",
+   "select": {
+    "types": [
+     "AWS::ApiGatewayV2::Stage"
+    ],
+    "where": []
+   }
+  },
+  {
+   "id": "stage_for_api",
+   "kind": "ref",
+   "tier": "core",
+   "quote": "Deploy the API to a stage",
+   "from": {
+    "types": [
+     "AWS::ApiGatewayV2::Stage"
+    ],
+    "where": []
+   },
+   "to": "api"
+  },
+  {
+   "id": "deployment",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "Deploy the API to a stage",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "AWS::ApiGatewayV2::Deployment"
+      ],
+      "where": []
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "AWS::ApiGatewayV2::Stage"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "AutoDeploy"
+      ],
+      "op": "truthy"
+     }
+    }
+   ]
+  },
+  {
+   "id": "account_logging",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "configure API Gateway account-level CloudWatch logging",
+   "select": {
+    "types": [
+     "AWS::ApiGateway::Account"
+    ],
+    "where": []
+   }
+  },
+  {
+   "id": "account_role",
+   "kind": "ref",
+   "tier": "core",
+   "quote": "through a dedicated IAM role",
+   "from": {
+    "types": [
+     "AWS::ApiGateway::Account"
+    ],
+    "where": []
+   },
+   "to": "apirole"
+  },
+  {
+   "id": "account_role_logs",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "configure API Gateway account-level CloudWatch logging through a dedicated IAM role",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy",
+       "AWS::IAM::RolePolicy"
+      ],
+      "where": [
+       {
+        "path": [
+         "PolicyDocument",
+         "Statement",
+         "*",
+         "Action",
+         "*"
+        ],
+        "op": "glob_covers",
+        "value": "logs:PutLogEvents"
+       }
+      ]
+     },
+     "to": "apirole",
+     "bidirectional": true
+    },
+    {
+     "kind": "attr",
+     "select": "apirole",
+     "cond": {
+      "path": [
+       "Policies",
+       "*",
+       "PolicyDocument",
+       "Statement",
+       "*",
+       "Action",
+       "*"
+      ],
+      "op": "glob_covers",
+      "value": "logs:PutLogEvents"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "apirole",
+     "cond": {
+      "path": [
+       "ManagedPolicyArns",
+       "*"
+      ],
+      "op": "contains",
+      "value": "PushToCloudWatchLogs"
+     }
+    }
+   ],
+   "justify": "API Gateway logging needs PutLogEvents, which AmazonAPIGatewayPushToCloudWatchLogs includes"
+  },
+  {
+   "id": "out_wss",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "the secure WSS endpoint URL",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__output__"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "value"
+      ],
+      "op": "contains",
+      "value": "wss://"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__output__"
+      ],
+      "where": [
+       {
+        "path": [
+         "value",
+         "attr"
+        ],
+        "op": "eq",
+        "value": "ApiEndpoint"
+       }
+      ]
+     },
+     "to": "api"
+    }
+   ],
+   "justify": "a WebSocket API ApiEndpoint attribute is its wss:// URL"
+  },
+  {
+   "id": "out_urls",
+   "kind": "exists",
+   "tier": "detail",
+   "quote": "Expose the WebSocket connection URL, the secure WSS endpoint URL",
+   "justify": "connection URL and WSS endpoint are two URL outputs; the ApiEndpoint attribute is the wss:// URL",
+   "select": {
+    "types": [
+     "__output__"
+    ],
+    "where": [
+     {
+      "path": [
+       "value"
+      ],
+      "op": "regex",
+      "value": "(?i)(wss?|https?)://|ApiEndpoint"
+     }
+    ]
+   },
+   "min": 2
+  },
+  {
+   "id": "out_api_arn",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "and the API's ARN as stack outputs",
+   "select": {
+    "types": [
+     "__output__"
+    ],
+    "where": []
+   },
+   "cond": {
+    "path": [
+     "value"
+    ],
+    "op": "regex",
+    "value": "(?i)arn:.{0,60}(execute-api|apigateway)"
+   }
+  },
+  {
+   "id": "x_rotation_all",
+   "kind": "exists",
+   "tier": "extra",
+   "select": {
+    "types": [
+     "AWS::KMS::Key"
+    ],
+    "where": [
+     {
+      "path": [
+       "EnableKeyRotation"
+      ],
+      "op": "eq",
+      "value": true
+     }
+    ]
+   },
+   "min": 2
+  },
+  {
+   "id": "x_connect_iam_auth",
+   "kind": "attr",
+   "tier": "extra",
+   "select": {
+    "types": [
+     "AWS::ApiGatewayV2::Route"
+    ],
+    "where": [
+     {
+      "path": [
+       "RouteKey"
+      ],
+      "op": "eq",
+      "value": "$connect"
+     }
+    ]
+   },
+   "cond": {
+    "path": [
+     "AuthorizationType"
+    ],
+    "op": "eq",
+    "value": "AWS_IAM"
+   }
+  },
+  {
+   "id": "x_route_selection",
+   "kind": "attr",
+   "tier": "extra",
+   "select": "api",
+   "cond": {
+    "path": [
+     "RouteSelectionExpression"
+    ],
+    "op": "present"
+   }
+  },
+  {
+   "id": "extra_type_aws_kms_alias",
+   "kind": "exists",
+   "tier": "extra",
+   "select": {
+    "types": [
+     "AWS::KMS::Alias"
+    ],
+    "where": []
+   }
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

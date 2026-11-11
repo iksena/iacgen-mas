@@ -1,0 +1,316 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "1a845194220cba8472a2e4d10e551f798534175f42535182129140601f93c7dc",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "ApiF70053CD",
+   "cfg": "ApiF70053CD",
+   "type": "AWS::AppSync::GraphQLApi",
+   "values": {
+    "AuthenticationType": "API_KEY",
+    "Name": "WS-API",
+    "__resource__": {
+     "Metadata": {
+      "aws:cdk:path": "WebSocketAPI/Api/Resource"
+     }
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "ApiSchema510EECD7",
+   "cfg": "ApiSchema510EECD7",
+   "type": "AWS::AppSync::GraphQLSchema",
+   "values": {
+    "ApiId": {
+     "ref": "ApiF70053CD",
+     "attr": "ApiId"
+    },
+    "Definition": "schema {\n  query: Query\n  mutation: Mutation\n  subscription: Subscription\n}\ntype Channel {\n  name: String!\n  data: AWSJSON!\n}\ntype Query {\n  getChannel: Channel\n}\ntype Mutation {\n  publish2channel(name: String! data: AWSJSON!): Channel\n}\ntype Subscription {\n  subscribe2channel(name: String!): Channel\n  @aws_subscribe(mutations: [\"publish2channel\"])\n}\n",
+    "__resource__": {
+     "Metadata": {
+      "aws:cdk:path": "WebSocketAPI/Api/Schema"
+     }
+    }
+   },
+   "refs": [
+    "ApiF70053CD"
+   ]
+  },
+  {
+   "id": "ApiDefaultApiKeyF991C37B",
+   "cfg": "ApiDefaultApiKeyF991C37B",
+   "type": "AWS::AppSync::ApiKey",
+   "values": {
+    "ApiId": {
+     "ref": "ApiF70053CD",
+     "attr": "ApiId"
+    },
+    "__resource__": {
+     "DependsOn": [
+      "ApiSchema510EECD7"
+     ],
+     "Metadata": {
+      "aws:cdk:path": "WebSocketAPI/Api/DefaultApiKey"
+     }
+    }
+   },
+   "refs": [
+    "ApiF70053CD"
+   ]
+  },
+  {
+   "id": "ApipubsubEA7CE847",
+   "cfg": "ApipubsubEA7CE847",
+   "type": "AWS::AppSync::DataSource",
+   "values": {
+    "ApiId": {
+     "ref": "ApiF70053CD",
+     "attr": "ApiId"
+    },
+    "Name": "pubsub",
+    "Type": "NONE",
+    "__resource__": {
+     "Metadata": {
+      "aws:cdk:path": "WebSocketAPI/Api/pubsub/Resource"
+     }
+    }
+   },
+   "refs": [
+    "ApiF70053CD"
+   ]
+  },
+  {
+   "id": "ApiMutationpublish2channelResolver38610912",
+   "cfg": "ApiMutationpublish2channelResolver38610912",
+   "type": "AWS::AppSync::Resolver",
+   "values": {
+    "ApiId": {
+     "ref": "ApiF70053CD",
+     "attr": "ApiId"
+    },
+    "FieldName": "publish2channel",
+    "TypeName": "Mutation",
+    "DataSourceName": "pubsub",
+    "Kind": "UNIT",
+    "RequestMappingTemplate": "\n        {\n          \"version\": \"2017-02-28\",\n          \"payload\": {\n              \"name\": \"$context.arguments.name\",\n              \"data\": $util.toJson($context.arguments.data)\n          }\n        }",
+    "ResponseMappingTemplate": "$util.toJson($context.result)",
+    "__resource__": {
+     "DependsOn": [
+      "ApipubsubEA7CE847",
+      "ApiSchema510EECD7"
+     ],
+     "Metadata": {
+      "aws:cdk:path": "WebSocketAPI/Api/Mutationpublish2channelResolver/Resource"
+     }
+    }
+   },
+   "refs": [
+    "ApiF70053CD"
+   ]
+  },
+  {
+   "id": "CDKMetadata",
+   "cfg": "CDKMetadata",
+   "type": "AWS::CDK::Metadata",
+   "values": {
+    "Analytics": "v2:deflate64:H4sIAAAAAAAA/1WOwQ6CMBBEv4V7WSxePGow8aDRCF/QlDUUtK3tFkMI/y7VaPS082Y3M8uBL3NYJGvx8Kmsu2yUxiGMFQnZseKiT4FsIFYY7ckFSdEr0ZvgJEY9L2pFyuiJxQhhrR+0hHHnhG3u141V8epF58M/VbLBm4jG7O9xYEejcStIVN/0H4ql1x7d54Gop4lpUyO0Puv5CngOPGm9UqkLmtQNoXzPJyF9EC/mAAAA",
+    "__resource__": {
+     "Condition": "CDKMetadataAvailable",
+     "Metadata": {
+      "aws:cdk:path": "WebSocketAPI/CDKMetadata/Default"
+     }
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.graphqlUrl",
+   "cfg": "__output__.graphqlUrl",
+   "type": "__output__",
+   "values": {
+    "name": "graphqlUrl",
+    "value": {
+     "ref": "ApiF70053CD",
+     "attr": "GraphQLUrl"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "ApiF70053CD"
+   ]
+  },
+  {
+   "id": "__output__.apiKey",
+   "cfg": "__output__.apiKey",
+   "type": "__output__",
+   "values": {
+    "name": "apiKey",
+    "value": {
+     "ref": "ApiDefaultApiKeyF991C37B",
+     "attr": "ApiKey"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "ApiDefaultApiKeyF991C37B"
+   ]
+  },
+  {
+   "id": "__output__.apiId",
+   "cfg": "__output__.apiId",
+   "type": "__output__",
+   "values": {
+    "name": "apiId",
+    "value": {
+     "ref": "ApiF70053CD",
+     "attr": "ApiId"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "ApiF70053CD"
+   ]
+  },
+  {
+   "id": "__output__.region",
+   "cfg": "__output__.region",
+   "type": "__output__",
+   "values": {
+    "name": "region",
+    "value": "us-east-1",
+    "description": null,
+    "export": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__declared__.AWS::AppSync::GraphQLApi.ApiF70053CD",
+   "cfg": "ApiF70053CD",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::AppSync::GraphQLApi",
+    "name": "ApiF70053CD",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AuthenticationType": "API_KEY",
+     "Name": "WS-API"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::AppSync::GraphQLSchema.ApiSchema510EECD7",
+   "cfg": "ApiSchema510EECD7",
+   "type": "__declared__",
+   "refs": [
+    "ApiF70053CD"
+   ],
+   "values": {
+    "type": "AWS::AppSync::GraphQLSchema",
+    "name": "ApiSchema510EECD7",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "ApiF70053CD",
+      "attr": "ApiId"
+     },
+     "Definition": "schema {\n  query: Query\n  mutation: Mutation\n  subscription: Subscription\n}\ntype Channel {\n  name: String!\n  data: AWSJSON!\n}\ntype Query {\n  getChannel: Channel\n}\ntype Mutation {\n  publish2channel(name: String! data: AWSJSON!): Channel\n}\ntype Subscription {\n  subscribe2channel(name: String!): Channel\n  @aws_subscribe(mutations: [\"publish2channel\"])\n}\n"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::AppSync::ApiKey.ApiDefaultApiKeyF991C37B",
+   "cfg": "ApiDefaultApiKeyF991C37B",
+   "type": "__declared__",
+   "refs": [
+    "ApiF70053CD"
+   ],
+   "values": {
+    "type": "AWS::AppSync::ApiKey",
+    "name": "ApiDefaultApiKeyF991C37B",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "ApiF70053CD",
+      "attr": "ApiId"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::AppSync::DataSource.ApipubsubEA7CE847",
+   "cfg": "ApipubsubEA7CE847",
+   "type": "__declared__",
+   "refs": [
+    "ApiF70053CD"
+   ],
+   "values": {
+    "type": "AWS::AppSync::DataSource",
+    "name": "ApipubsubEA7CE847",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "ApiF70053CD",
+      "attr": "ApiId"
+     },
+     "Name": "pubsub",
+     "Type": "NONE"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::AppSync::Resolver.ApiMutationpublish2channelResolver38610912",
+   "cfg": "ApiMutationpublish2channelResolver38610912",
+   "type": "__declared__",
+   "refs": [
+    "ApiF70053CD"
+   ],
+   "values": {
+    "type": "AWS::AppSync::Resolver",
+    "name": "ApiMutationpublish2channelResolver38610912",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "ApiF70053CD",
+      "attr": "ApiId"
+     },
+     "FieldName": "publish2channel",
+     "TypeName": "Mutation",
+     "DataSourceName": "pubsub",
+     "Kind": "UNIT",
+     "RequestMappingTemplate": "\n        {\n          \"version\": \"2017-02-28\",\n          \"payload\": {\n              \"name\": \"$context.arguments.name\",\n              \"data\": $util.toJson($context.arguments.data)\n          }\n        }",
+     "ResponseMappingTemplate": "$util.toJson($context.result)"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::CDK::Metadata.CDKMetadata",
+   "cfg": "CDKMetadata",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::CDK::Metadata",
+    "name": "CDKMetadata",
+    "gated": true,
+    "gate": "CDKMetadataAvailable",
+    "properties": {
+     "Analytics": "v2:deflate64:H4sIAAAAAAAA/1WOwQ6CMBBEv4V7WSxePGow8aDRCF/QlDUUtK3tFkMI/y7VaPS082Y3M8uBL3NYJGvx8Kmsu2yUxiGMFQnZseKiT4FsIFYY7ckFSdEr0ZvgJEY9L2pFyuiJxQhhrR+0hHHnhG3u141V8epF58M/VbLBm4jG7O9xYEejcStIVN/0H4ql1x7d54Gop4lpUyO0Puv5CngOPGm9UqkLmtQNoXzPJyF9EC/mAAAA"
+    }
+   }
+  }
+ ]
+}

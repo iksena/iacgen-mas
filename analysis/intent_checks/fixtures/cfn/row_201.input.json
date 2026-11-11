@@ -1,0 +1,1771 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "3ad9591ba383b5c62fd880546fba2972e569ad3cf199caeef0850fc816cf8e00",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "VPC",
+   "cfg": "VPC",
+   "type": "AWS::EC2::VPC",
+   "values": {
+    "CidrBlock": "172.25.0.0/16",
+    "EnableDnsSupport": true,
+    "EnableDnsHostnames": true,
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "kameshs-gloo-demos-vpc"
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "InternetGateway",
+   "cfg": "InternetGateway",
+   "type": "AWS::EC2::InternetGateway",
+   "values": {
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "kameshs-gloo-demos-igw"
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "VPCGatewayAttachment",
+   "cfg": "VPCGatewayAttachment",
+   "type": "AWS::EC2::VPCGatewayAttachment",
+   "values": {
+    "InternetGatewayId": {
+     "ref": "InternetGateway"
+    },
+    "VpcId": {
+     "ref": "VPC"
+    }
+   },
+   "refs": [
+    "InternetGateway",
+    "VPC"
+   ]
+  },
+  {
+   "id": "PublicRouteTable",
+   "cfg": "PublicRouteTable",
+   "type": "AWS::EC2::RouteTable",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "kameshs-gloo-demos-public-rt"
+     },
+     {
+      "Key": "Network",
+      "Value": "Public"
+     }
+    ]
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "PublicRoute",
+   "cfg": "PublicRoute",
+   "type": "AWS::EC2::Route",
+   "values": {
+    "RouteTableId": {
+     "ref": "PublicRouteTable"
+    },
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "GatewayId": {
+     "ref": "InternetGateway"
+    },
+    "__resource__": {
+     "DependsOn": [
+      "VPCGatewayAttachment"
+     ]
+    }
+   },
+   "refs": [
+    "InternetGateway",
+    "PublicRouteTable"
+   ]
+  },
+  {
+   "id": "PrivateRouteTableAZ1",
+   "cfg": "PrivateRouteTableAZ1",
+   "type": "AWS::EC2::RouteTable",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "kameshs-gloo-demos-private-rt-zone1"
+     },
+     {
+      "Key": "Network",
+      "Value": "PrivateSubnetAZ1"
+     }
+    ]
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "PrivateRouteTableAZ2",
+   "cfg": "PrivateRouteTableAZ2",
+   "type": "AWS::EC2::RouteTable",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "kameshs-gloo-demos-private-rt-zone2"
+     },
+     {
+      "Key": "Network",
+      "Value": "PrivateSubnetAZ2"
+     }
+    ]
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "PrivateRouteTableAZ3",
+   "cfg": "PrivateRouteTableAZ3",
+   "type": "AWS::EC2::RouteTable",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "kameshs-gloo-demos-private-rt-zone3"
+     },
+     {
+      "Key": "Network",
+      "Value": "PrivateSubnetAZ3"
+     }
+    ]
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "PrivateRouteAZ1",
+   "cfg": "PrivateRouteAZ1",
+   "type": "AWS::EC2::Route",
+   "values": {
+    "RouteTableId": {
+     "ref": "PrivateRouteTableAZ1"
+    },
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "NatGatewayId": {
+     "ref": "NatGatewayAZ1"
+    },
+    "__resource__": {
+     "DependsOn": [
+      "NatGatewayAZ1"
+     ]
+    }
+   },
+   "refs": [
+    "NatGatewayAZ1",
+    "PrivateRouteTableAZ1"
+   ]
+  },
+  {
+   "id": "PrivateRouteAZ2",
+   "cfg": "PrivateRouteAZ2",
+   "type": "AWS::EC2::Route",
+   "values": {
+    "RouteTableId": {
+     "ref": "PrivateRouteTableAZ2"
+    },
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "NatGatewayId": {
+     "ref": "NatGatewayAZ2"
+    },
+    "__resource__": {
+     "DependsOn": [
+      "NatGatewayAZ2"
+     ]
+    }
+   },
+   "refs": [
+    "NatGatewayAZ2",
+    "PrivateRouteTableAZ2"
+   ]
+  },
+  {
+   "id": "PrivateRouteAZ3",
+   "cfg": "PrivateRouteAZ3",
+   "type": "AWS::EC2::Route",
+   "values": {
+    "RouteTableId": {
+     "ref": "PrivateRouteTableAZ3"
+    },
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "NatGatewayId": {
+     "ref": "NatGatewayAZ3"
+    },
+    "__resource__": {
+     "DependsOn": [
+      "NatGatewayAZ3"
+     ]
+    }
+   },
+   "refs": [
+    "NatGatewayAZ3",
+    "PrivateRouteTableAZ3"
+   ]
+  },
+  {
+   "id": "NatGatewayAZ1",
+   "cfg": "NatGatewayAZ1",
+   "type": "AWS::EC2::NatGateway",
+   "values": {
+    "AllocationId": {
+     "ref": "NatGatewayEIPA",
+     "attr": "AllocationId"
+    },
+    "SubnetId": {
+     "ref": "PublicSubnetAZ1"
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "kameshs-gloo-demos-natgateway-az1"
+     }
+    ],
+    "__resource__": {
+     "DependsOn": [
+      "NatGatewayEIPA",
+      "PublicSubnetAZ1"
+     ]
+    }
+   },
+   "refs": [
+    "NatGatewayEIPA",
+    "PublicSubnetAZ1"
+   ]
+  },
+  {
+   "id": "NatGatewayAZ2",
+   "cfg": "NatGatewayAZ2",
+   "type": "AWS::EC2::NatGateway",
+   "values": {
+    "AllocationId": {
+     "ref": "NatGatewayEIPB",
+     "attr": "AllocationId"
+    },
+    "SubnetId": {
+     "ref": "PublicSubnetAZ2"
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "kameshs-gloo-demos-natgateway-az2"
+     }
+    ],
+    "__resource__": {
+     "DependsOn": [
+      "NatGatewayEIPB",
+      "PublicSubnetAZ2"
+     ]
+    }
+   },
+   "refs": [
+    "NatGatewayEIPB",
+    "PublicSubnetAZ2"
+   ]
+  },
+  {
+   "id": "NatGatewayAZ3",
+   "cfg": "NatGatewayAZ3",
+   "type": "AWS::EC2::NatGateway",
+   "values": {
+    "AllocationId": {
+     "ref": "NatGatewayEIPC",
+     "attr": "AllocationId"
+    },
+    "SubnetId": {
+     "ref": "PublicSubnetAZ3"
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "kameshs-gloo-demos-natgateway-az3"
+     }
+    ],
+    "__resource__": {
+     "DependsOn": [
+      "NatGatewayEIPC",
+      "PublicSubnetAZ3"
+     ]
+    }
+   },
+   "refs": [
+    "NatGatewayEIPC",
+    "PublicSubnetAZ3"
+   ]
+  },
+  {
+   "id": "NatGatewayEIPA",
+   "cfg": "NatGatewayEIPA",
+   "type": "AWS::EC2::EIP",
+   "values": {
+    "Domain": "vpc",
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "kameshs-gloo-demos-eip-a"
+     }
+    ],
+    "__resource__": {
+     "DependsOn": [
+      "VPCGatewayAttachment"
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "NatGatewayEIPB",
+   "cfg": "NatGatewayEIPB",
+   "type": "AWS::EC2::EIP",
+   "values": {
+    "Domain": "vpc",
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "kameshs-gloo-demos-eip-b"
+     }
+    ],
+    "__resource__": {
+     "DependsOn": [
+      "VPCGatewayAttachment"
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "NatGatewayEIPC",
+   "cfg": "NatGatewayEIPC",
+   "type": "AWS::EC2::EIP",
+   "values": {
+    "Domain": "vpc",
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "kameshs-gloo-demos-eip-c"
+     }
+    ],
+    "__resource__": {
+     "DependsOn": [
+      "VPCGatewayAttachment"
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "PublicSubnetAZ1",
+   "cfg": "PublicSubnetAZ1",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "AvailabilityZone": "us-east-1a",
+    "CidrBlock": "172.25.5.0/24",
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "kameshs-gloo-demos-subnet-zone1"
+     }
+    ]
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "PublicSubnetAZ1RouteTableAssociation",
+   "cfg": "PublicSubnetAZ1RouteTableAssociation",
+   "type": "AWS::EC2::SubnetRouteTableAssociation",
+   "values": {
+    "SubnetId": {
+     "ref": "PublicSubnetAZ1"
+    },
+    "RouteTableId": {
+     "ref": "PublicRouteTable"
+    }
+   },
+   "refs": [
+    "PublicRouteTable",
+    "PublicSubnetAZ1"
+   ]
+  },
+  {
+   "id": "PublicSubnetAZ2",
+   "cfg": "PublicSubnetAZ2",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "AvailabilityZone": "us-east-1b",
+    "CidrBlock": "172.25.6.0/24",
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "kameshs-gloo-demos-subnet-zone2"
+     }
+    ]
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "PublicSubnetAZ2RouteTableAssociation",
+   "cfg": "PublicSubnetAZ2RouteTableAssociation",
+   "type": "AWS::EC2::SubnetRouteTableAssociation",
+   "values": {
+    "SubnetId": {
+     "ref": "PublicSubnetAZ2"
+    },
+    "RouteTableId": {
+     "ref": "PublicRouteTable"
+    }
+   },
+   "refs": [
+    "PublicRouteTable",
+    "PublicSubnetAZ2"
+   ]
+  },
+  {
+   "id": "PublicSubnetAZ3",
+   "cfg": "PublicSubnetAZ3",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "AvailabilityZone": "us-east-1c",
+    "CidrBlock": "172.25.7.0/24",
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "kameshs-gloo-demos-subnet-zone3"
+     }
+    ]
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "PublicSubnetAZ3RouteTableAssociation",
+   "cfg": "PublicSubnetAZ3RouteTableAssociation",
+   "type": "AWS::EC2::SubnetRouteTableAssociation",
+   "values": {
+    "SubnetId": {
+     "ref": "PublicSubnetAZ3"
+    },
+    "RouteTableId": {
+     "ref": "PublicRouteTable"
+    }
+   },
+   "refs": [
+    "PublicRouteTable",
+    "PublicSubnetAZ3"
+   ]
+  },
+  {
+   "id": "PrivateSubnetAZ1",
+   "cfg": "PrivateSubnetAZ1",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "AvailabilityZone": "us-east-1a",
+    "CidrBlock": "172.25.1.0/24",
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "kameshs-gloo-demos-private-subnet-zone1"
+     },
+     {
+      "Key": "kubernetes.io/role/internal-elb",
+      "Value": 1
+     }
+    ],
+    "__resource__": {
+     "Metadata": {
+      "Comment": "Subnet AZ 1"
+     }
+    }
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "PrivateSubnetAZ1RouteTableAssociation",
+   "cfg": "PrivateSubnetAZ1RouteTableAssociation",
+   "type": "AWS::EC2::SubnetRouteTableAssociation",
+   "values": {
+    "SubnetId": {
+     "ref": "PrivateSubnetAZ1"
+    },
+    "RouteTableId": {
+     "ref": "PrivateRouteTableAZ1"
+    }
+   },
+   "refs": [
+    "PrivateRouteTableAZ1",
+    "PrivateSubnetAZ1"
+   ]
+  },
+  {
+   "id": "PrivateSubnetAZ2",
+   "cfg": "PrivateSubnetAZ2",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "AvailabilityZone": "us-east-1b",
+    "CidrBlock": "172.25.2.0/24",
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "kameshs-gloo-demos-private-subnet-zone2"
+     },
+     {
+      "Key": "kubernetes.io/role/internal-elb",
+      "Value": 1
+     }
+    ],
+    "__resource__": {
+     "Metadata": {
+      "Comment": "Subnet AZ 2"
+     }
+    }
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "PrivateSubnetAZ2RouteTableAssociation",
+   "cfg": "PrivateSubnetAZ2RouteTableAssociation",
+   "type": "AWS::EC2::SubnetRouteTableAssociation",
+   "values": {
+    "SubnetId": {
+     "ref": "PrivateSubnetAZ2"
+    },
+    "RouteTableId": {
+     "ref": "PrivateRouteTableAZ2"
+    }
+   },
+   "refs": [
+    "PrivateRouteTableAZ2",
+    "PrivateSubnetAZ2"
+   ]
+  },
+  {
+   "id": "PrivateSubnetAZ3",
+   "cfg": "PrivateSubnetAZ3",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "AvailabilityZone": "us-east-1c",
+    "CidrBlock": "172.25.3.0/24",
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "kameshs-gloo-demos-private-subnet-zone3"
+     },
+     {
+      "Key": "kubernetes.io/role/internal-elb",
+      "Value": 1
+     }
+    ],
+    "__resource__": {
+     "Metadata": {
+      "Comment": "Subnet AZ 3"
+     }
+    }
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "PrivateSubnetAZ3RouteTableAssociation",
+   "cfg": "PrivateSubnetAZ3RouteTableAssociation",
+   "type": "AWS::EC2::SubnetRouteTableAssociation",
+   "values": {
+    "SubnetId": {
+     "ref": "PrivateSubnetAZ3"
+    },
+    "RouteTableId": {
+     "ref": "PrivateRouteTableAZ3"
+    }
+   },
+   "refs": [
+    "PrivateRouteTableAZ3",
+    "PrivateSubnetAZ3"
+   ]
+  },
+  {
+   "id": "ControlPlaneSecurityGroup",
+   "cfg": "ControlPlaneSecurityGroup",
+   "type": "AWS::EC2::SecurityGroup",
+   "values": {
+    "GroupDescription": "Cluster communication with worker nodes",
+    "VpcId": {
+     "ref": "VPC"
+    }
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "SGGlooK8sIngress",
+   "cfg": "SGGlooK8sIngress",
+   "type": "AWS::EC2::SecurityGroup",
+   "values": {
+    "GroupDescription": "Gloo Security Group",
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "GroupName": "kameshs-gloo-demos-security-group",
+    "SecurityGroupIngress": [
+     {
+      "IpProtocol": "tcp",
+      "CidrIp": "0.0.0.0/0",
+      "FromPort": 80,
+      "ToPort": 80
+     },
+     {
+      "IpProtocol": "tcp",
+      "CidrIp": "0.0.0.0/0",
+      "FromPort": 443,
+      "ToPort": 443
+     },
+     {
+      "IpProtocol": "tcp",
+      "CidrIp": "0.0.0.0/0",
+      "FromPort": 8080,
+      "ToPort": 8080
+     },
+     {
+      "IpProtocol": "tcp",
+      "CidrIp": "0.0.0.0/0",
+      "FromPort": 8443,
+      "ToPort": 8443
+     },
+     {
+      "IpProtocol": "tcp",
+      "CidrIp": "0.0.0.0/0",
+      "FromPort": 9900,
+      "ToPort": 9900
+     },
+     {
+      "IpProtocol": "tcp",
+      "CidrIp": "0.0.0.0/0",
+      "FromPort": 15021,
+      "ToPort": 15021
+     },
+     {
+      "IpProtocol": "tcp",
+      "CidrIp": "0.0.0.0/0",
+      "FromPort": 15443,
+      "ToPort": 15443
+     },
+     {
+      "IpProtocol": "tcp",
+      "CidrIp": "0.0.0.0/0",
+      "FromPort": 15012,
+      "ToPort": 15012
+     },
+     {
+      "IpProtocol": "tcp",
+      "CidrIp": "0.0.0.0/0",
+      "FromPort": 15012,
+      "ToPort": 15017
+     }
+    ]
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "__parameter__.Name",
+   "cfg": "__parameter__.Name",
+   "type": "__parameter__",
+   "values": {
+    "name": "Name",
+    "type": "String",
+    "default": "kameshs-gloo-demos",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.VpcCidr",
+   "cfg": "__parameter__.VpcCidr",
+   "type": "__parameter__",
+   "values": {
+    "name": "VpcCidr",
+    "type": "String",
+    "default": "172.25.0.0/16",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.PrivateSubneta",
+   "cfg": "__parameter__.PrivateSubneta",
+   "type": "__parameter__",
+   "values": {
+    "name": "PrivateSubneta",
+    "type": "String",
+    "default": "172.25.1.0/24",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.PrivateSubnetb",
+   "cfg": "__parameter__.PrivateSubnetb",
+   "type": "__parameter__",
+   "values": {
+    "name": "PrivateSubnetb",
+    "type": "String",
+    "default": "172.25.2.0/24",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.PrivateSubnetc",
+   "cfg": "__parameter__.PrivateSubnetc",
+   "type": "__parameter__",
+   "values": {
+    "name": "PrivateSubnetc",
+    "type": "String",
+    "default": "172.25.3.0/24",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.PublicSubneta",
+   "cfg": "__parameter__.PublicSubneta",
+   "type": "__parameter__",
+   "values": {
+    "name": "PublicSubneta",
+    "type": "String",
+    "default": "172.25.5.0/24",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.PublicSubnetb",
+   "cfg": "__parameter__.PublicSubnetb",
+   "type": "__parameter__",
+   "values": {
+    "name": "PublicSubnetb",
+    "type": "String",
+    "default": "172.25.6.0/24",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.PublicSubnetc",
+   "cfg": "__parameter__.PublicSubnetc",
+   "type": "__parameter__",
+   "values": {
+    "name": "PublicSubnetc",
+    "type": "String",
+    "default": "172.25.7.0/24",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.VpcId",
+   "cfg": "__output__.VpcId",
+   "type": "__output__",
+   "values": {
+    "name": "VpcId",
+    "value": {
+     "ref": "VPC"
+    },
+    "description": "VPC id",
+    "export": null
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "__output__.ControlPlaneSecurityGroupId",
+   "cfg": "__output__.ControlPlaneSecurityGroupId",
+   "type": "__output__",
+   "values": {
+    "name": "ControlPlaneSecurityGroupId",
+    "value": {
+     "ref": "ControlPlaneSecurityGroup"
+    },
+    "description": "The Cluster Control Plane GroupId",
+    "export": null
+   },
+   "refs": [
+    "ControlPlaneSecurityGroup"
+   ]
+  },
+  {
+   "id": "__output__.SecurityGroupIds",
+   "cfg": "__output__.SecurityGroupIds",
+   "type": "__output__",
+   "values": {
+    "name": "SecurityGroupIds",
+    "value": {
+     "Fn::Join": [
+      ",",
+      [
+       {
+        "ref": "ControlPlaneSecurityGroup"
+       },
+       {
+        "ref": "SGGlooK8sIngress"
+       }
+      ]
+     ]
+    },
+    "description": "Security Group id",
+    "export": null
+   },
+   "refs": [
+    "ControlPlaneSecurityGroup",
+    "SGGlooK8sIngress"
+   ]
+  },
+  {
+   "id": "__output__.SubnetIds",
+   "cfg": "__output__.SubnetIds",
+   "type": "__output__",
+   "values": {
+    "name": "SubnetIds",
+    "value": {
+     "Fn::Join": [
+      ",",
+      [
+       {
+        "ref": "PublicSubnetAZ1"
+       },
+       {
+        "ref": "PublicSubnetAZ2"
+       },
+       {
+        "ref": "PublicSubnetAZ3"
+       },
+       {
+        "ref": "PrivateSubnetAZ1"
+       },
+       {
+        "ref": "PrivateSubnetAZ2"
+       },
+       {
+        "ref": "PrivateSubnetAZ3"
+       }
+      ]
+     ]
+    },
+    "description": "List of Subnets in the VPC",
+    "export": null
+   },
+   "refs": [
+    "PrivateSubnetAZ1",
+    "PrivateSubnetAZ2",
+    "PrivateSubnetAZ3",
+    "PublicSubnetAZ1",
+    "PublicSubnetAZ2",
+    "PublicSubnetAZ3"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPC.VPC",
+   "cfg": "VPC",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::VPC",
+    "name": "VPC",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "CidrBlock": "172.25.0.0/16",
+     "EnableDnsSupport": true,
+     "EnableDnsHostnames": true,
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "kameshs-gloo-demos-vpc"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::InternetGateway.InternetGateway",
+   "cfg": "InternetGateway",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::InternetGateway",
+    "name": "InternetGateway",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "kameshs-gloo-demos-igw"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCGatewayAttachment.VPCGatewayAttachment",
+   "cfg": "VPCGatewayAttachment",
+   "type": "__declared__",
+   "refs": [
+    "InternetGateway",
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::VPCGatewayAttachment",
+    "name": "VPCGatewayAttachment",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "InternetGatewayId": {
+      "ref": "InternetGateway"
+     },
+     "VpcId": {
+      "ref": "VPC"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::RouteTable.PublicRouteTable",
+   "cfg": "PublicRouteTable",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::RouteTable",
+    "name": "PublicRouteTable",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "kameshs-gloo-demos-public-rt"
+      },
+      {
+       "Key": "Network",
+       "Value": "Public"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Route.PublicRoute",
+   "cfg": "PublicRoute",
+   "type": "__declared__",
+   "refs": [
+    "InternetGateway",
+    "PublicRouteTable"
+   ],
+   "values": {
+    "type": "AWS::EC2::Route",
+    "name": "PublicRoute",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RouteTableId": {
+      "ref": "PublicRouteTable"
+     },
+     "DestinationCidrBlock": "0.0.0.0/0",
+     "GatewayId": {
+      "ref": "InternetGateway"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::RouteTable.PrivateRouteTableAZ1",
+   "cfg": "PrivateRouteTableAZ1",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::RouteTable",
+    "name": "PrivateRouteTableAZ1",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "kameshs-gloo-demos-private-rt-zone1"
+      },
+      {
+       "Key": "Network",
+       "Value": "PrivateSubnetAZ1"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::RouteTable.PrivateRouteTableAZ2",
+   "cfg": "PrivateRouteTableAZ2",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::RouteTable",
+    "name": "PrivateRouteTableAZ2",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "kameshs-gloo-demos-private-rt-zone2"
+      },
+      {
+       "Key": "Network",
+       "Value": "PrivateSubnetAZ2"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::RouteTable.PrivateRouteTableAZ3",
+   "cfg": "PrivateRouteTableAZ3",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::RouteTable",
+    "name": "PrivateRouteTableAZ3",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "kameshs-gloo-demos-private-rt-zone3"
+      },
+      {
+       "Key": "Network",
+       "Value": "PrivateSubnetAZ3"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Route.PrivateRouteAZ1",
+   "cfg": "PrivateRouteAZ1",
+   "type": "__declared__",
+   "refs": [
+    "NatGatewayAZ1",
+    "PrivateRouteTableAZ1"
+   ],
+   "values": {
+    "type": "AWS::EC2::Route",
+    "name": "PrivateRouteAZ1",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RouteTableId": {
+      "ref": "PrivateRouteTableAZ1"
+     },
+     "DestinationCidrBlock": "0.0.0.0/0",
+     "NatGatewayId": {
+      "ref": "NatGatewayAZ1"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Route.PrivateRouteAZ2",
+   "cfg": "PrivateRouteAZ2",
+   "type": "__declared__",
+   "refs": [
+    "NatGatewayAZ2",
+    "PrivateRouteTableAZ2"
+   ],
+   "values": {
+    "type": "AWS::EC2::Route",
+    "name": "PrivateRouteAZ2",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RouteTableId": {
+      "ref": "PrivateRouteTableAZ2"
+     },
+     "DestinationCidrBlock": "0.0.0.0/0",
+     "NatGatewayId": {
+      "ref": "NatGatewayAZ2"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Route.PrivateRouteAZ3",
+   "cfg": "PrivateRouteAZ3",
+   "type": "__declared__",
+   "refs": [
+    "NatGatewayAZ3",
+    "PrivateRouteTableAZ3"
+   ],
+   "values": {
+    "type": "AWS::EC2::Route",
+    "name": "PrivateRouteAZ3",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RouteTableId": {
+      "ref": "PrivateRouteTableAZ3"
+     },
+     "DestinationCidrBlock": "0.0.0.0/0",
+     "NatGatewayId": {
+      "ref": "NatGatewayAZ3"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::NatGateway.NatGatewayAZ1",
+   "cfg": "NatGatewayAZ1",
+   "type": "__declared__",
+   "refs": [
+    "NatGatewayEIPA",
+    "PublicSubnetAZ1"
+   ],
+   "values": {
+    "type": "AWS::EC2::NatGateway",
+    "name": "NatGatewayAZ1",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AllocationId": {
+      "ref": "NatGatewayEIPA",
+      "attr": "AllocationId"
+     },
+     "SubnetId": {
+      "ref": "PublicSubnetAZ1"
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "kameshs-gloo-demos-natgateway-az1"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::NatGateway.NatGatewayAZ2",
+   "cfg": "NatGatewayAZ2",
+   "type": "__declared__",
+   "refs": [
+    "NatGatewayEIPB",
+    "PublicSubnetAZ2"
+   ],
+   "values": {
+    "type": "AWS::EC2::NatGateway",
+    "name": "NatGatewayAZ2",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AllocationId": {
+      "ref": "NatGatewayEIPB",
+      "attr": "AllocationId"
+     },
+     "SubnetId": {
+      "ref": "PublicSubnetAZ2"
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "kameshs-gloo-demos-natgateway-az2"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::NatGateway.NatGatewayAZ3",
+   "cfg": "NatGatewayAZ3",
+   "type": "__declared__",
+   "refs": [
+    "NatGatewayEIPC",
+    "PublicSubnetAZ3"
+   ],
+   "values": {
+    "type": "AWS::EC2::NatGateway",
+    "name": "NatGatewayAZ3",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AllocationId": {
+      "ref": "NatGatewayEIPC",
+      "attr": "AllocationId"
+     },
+     "SubnetId": {
+      "ref": "PublicSubnetAZ3"
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "kameshs-gloo-demos-natgateway-az3"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::EIP.NatGatewayEIPA",
+   "cfg": "NatGatewayEIPA",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::EIP",
+    "name": "NatGatewayEIPA",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Domain": "vpc",
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "kameshs-gloo-demos-eip-a"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::EIP.NatGatewayEIPB",
+   "cfg": "NatGatewayEIPB",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::EIP",
+    "name": "NatGatewayEIPB",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Domain": "vpc",
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "kameshs-gloo-demos-eip-b"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::EIP.NatGatewayEIPC",
+   "cfg": "NatGatewayEIPC",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::EIP",
+    "name": "NatGatewayEIPC",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Domain": "vpc",
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "kameshs-gloo-demos-eip-c"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.PublicSubnetAZ1",
+   "cfg": "PublicSubnetAZ1",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "PublicSubnetAZ1",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "AvailabilityZone": "us-east-1a",
+     "CidrBlock": "172.25.5.0/24",
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "kameshs-gloo-demos-subnet-zone1"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetRouteTableAssociation.PublicSubnetAZ1RouteTableAssociation",
+   "cfg": "PublicSubnetAZ1RouteTableAssociation",
+   "type": "__declared__",
+   "refs": [
+    "PublicRouteTable",
+    "PublicSubnetAZ1"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetRouteTableAssociation",
+    "name": "PublicSubnetAZ1RouteTableAssociation",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "SubnetId": {
+      "ref": "PublicSubnetAZ1"
+     },
+     "RouteTableId": {
+      "ref": "PublicRouteTable"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.PublicSubnetAZ2",
+   "cfg": "PublicSubnetAZ2",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "PublicSubnetAZ2",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "AvailabilityZone": "us-east-1b",
+     "CidrBlock": "172.25.6.0/24",
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "kameshs-gloo-demos-subnet-zone2"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetRouteTableAssociation.PublicSubnetAZ2RouteTableAssociation",
+   "cfg": "PublicSubnetAZ2RouteTableAssociation",
+   "type": "__declared__",
+   "refs": [
+    "PublicRouteTable",
+    "PublicSubnetAZ2"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetRouteTableAssociation",
+    "name": "PublicSubnetAZ2RouteTableAssociation",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "SubnetId": {
+      "ref": "PublicSubnetAZ2"
+     },
+     "RouteTableId": {
+      "ref": "PublicRouteTable"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.PublicSubnetAZ3",
+   "cfg": "PublicSubnetAZ3",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "PublicSubnetAZ3",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "AvailabilityZone": "us-east-1c",
+     "CidrBlock": "172.25.7.0/24",
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "kameshs-gloo-demos-subnet-zone3"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetRouteTableAssociation.PublicSubnetAZ3RouteTableAssociation",
+   "cfg": "PublicSubnetAZ3RouteTableAssociation",
+   "type": "__declared__",
+   "refs": [
+    "PublicRouteTable",
+    "PublicSubnetAZ3"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetRouteTableAssociation",
+    "name": "PublicSubnetAZ3RouteTableAssociation",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "SubnetId": {
+      "ref": "PublicSubnetAZ3"
+     },
+     "RouteTableId": {
+      "ref": "PublicRouteTable"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.PrivateSubnetAZ1",
+   "cfg": "PrivateSubnetAZ1",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "PrivateSubnetAZ1",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AvailabilityZone": "us-east-1a",
+     "CidrBlock": "172.25.1.0/24",
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "kameshs-gloo-demos-private-subnet-zone1"
+      },
+      {
+       "Key": "kubernetes.io/role/internal-elb",
+       "Value": 1
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetRouteTableAssociation.PrivateSubnetAZ1RouteTableAssociation",
+   "cfg": "PrivateSubnetAZ1RouteTableAssociation",
+   "type": "__declared__",
+   "refs": [
+    "PrivateRouteTableAZ1",
+    "PrivateSubnetAZ1"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetRouteTableAssociation",
+    "name": "PrivateSubnetAZ1RouteTableAssociation",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "SubnetId": {
+      "ref": "PrivateSubnetAZ1"
+     },
+     "RouteTableId": {
+      "ref": "PrivateRouteTableAZ1"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.PrivateSubnetAZ2",
+   "cfg": "PrivateSubnetAZ2",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "PrivateSubnetAZ2",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AvailabilityZone": "us-east-1b",
+     "CidrBlock": "172.25.2.0/24",
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "kameshs-gloo-demos-private-subnet-zone2"
+      },
+      {
+       "Key": "kubernetes.io/role/internal-elb",
+       "Value": 1
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetRouteTableAssociation.PrivateSubnetAZ2RouteTableAssociation",
+   "cfg": "PrivateSubnetAZ2RouteTableAssociation",
+   "type": "__declared__",
+   "refs": [
+    "PrivateRouteTableAZ2",
+    "PrivateSubnetAZ2"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetRouteTableAssociation",
+    "name": "PrivateSubnetAZ2RouteTableAssociation",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "SubnetId": {
+      "ref": "PrivateSubnetAZ2"
+     },
+     "RouteTableId": {
+      "ref": "PrivateRouteTableAZ2"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.PrivateSubnetAZ3",
+   "cfg": "PrivateSubnetAZ3",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "PrivateSubnetAZ3",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AvailabilityZone": "us-east-1c",
+     "CidrBlock": "172.25.3.0/24",
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "kameshs-gloo-demos-private-subnet-zone3"
+      },
+      {
+       "Key": "kubernetes.io/role/internal-elb",
+       "Value": 1
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetRouteTableAssociation.PrivateSubnetAZ3RouteTableAssociation",
+   "cfg": "PrivateSubnetAZ3RouteTableAssociation",
+   "type": "__declared__",
+   "refs": [
+    "PrivateRouteTableAZ3",
+    "PrivateSubnetAZ3"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetRouteTableAssociation",
+    "name": "PrivateSubnetAZ3RouteTableAssociation",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "SubnetId": {
+      "ref": "PrivateSubnetAZ3"
+     },
+     "RouteTableId": {
+      "ref": "PrivateRouteTableAZ3"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SecurityGroup.ControlPlaneSecurityGroup",
+   "cfg": "ControlPlaneSecurityGroup",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::SecurityGroup",
+    "name": "ControlPlaneSecurityGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "GroupDescription": "Cluster communication with worker nodes",
+     "VpcId": {
+      "ref": "VPC"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SecurityGroup.SGGlooK8sIngress",
+   "cfg": "SGGlooK8sIngress",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::SecurityGroup",
+    "name": "SGGlooK8sIngress",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "GroupDescription": "Gloo Security Group",
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "GroupName": "kameshs-gloo-demos-security-group",
+     "SecurityGroupIngress": [
+      {
+       "IpProtocol": "tcp",
+       "CidrIp": "0.0.0.0/0",
+       "FromPort": 80,
+       "ToPort": 80
+      },
+      {
+       "IpProtocol": "tcp",
+       "CidrIp": "0.0.0.0/0",
+       "FromPort": 443,
+       "ToPort": 443
+      },
+      {
+       "IpProtocol": "tcp",
+       "CidrIp": "0.0.0.0/0",
+       "FromPort": 8080,
+       "ToPort": 8080
+      },
+      {
+       "IpProtocol": "tcp",
+       "CidrIp": "0.0.0.0/0",
+       "FromPort": 8443,
+       "ToPort": 8443
+      },
+      {
+       "IpProtocol": "tcp",
+       "CidrIp": "0.0.0.0/0",
+       "FromPort": 9900,
+       "ToPort": 9900
+      },
+      {
+       "IpProtocol": "tcp",
+       "CidrIp": "0.0.0.0/0",
+       "FromPort": 15021,
+       "ToPort": 15021
+      },
+      {
+       "IpProtocol": "tcp",
+       "CidrIp": "0.0.0.0/0",
+       "FromPort": 15443,
+       "ToPort": 15443
+      },
+      {
+       "IpProtocol": "tcp",
+       "CidrIp": "0.0.0.0/0",
+       "FromPort": 15012,
+       "ToPort": 15012
+      },
+      {
+       "IpProtocol": "tcp",
+       "CidrIp": "0.0.0.0/0",
+       "FromPort": 15012,
+       "ToPort": 15017
+      }
+     ]
+    }
+   }
+  }
+ ]
+}

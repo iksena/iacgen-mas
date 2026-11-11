@@ -189,6 +189,28 @@ variable "n" { default = "api" }'''
             or vals.get('lifecycle') != [{'prevent_destroy': True}] or 'content' not in vals.get('dynamic', {}).get('entry', {}):
         failures.append(f'static HCL shape differs from plan shape: {vals}')
 
+    spec = {'checks': [
+        {'id': 'c', 'kind': 'exists', 'tier': 'core', 'select': SG},
+        {'id': 'x', 'kind': 'exists', 'tier': 'extra', 'select': {'types': ['aws_kms_key']}}]}
+    s = ic.score(spec, {'c': True, 'x': False})
+    if not (s['intent_strict'] and s['intent_score'] == 1 and s['n_checks'] == 1 and s['extra_score'] == 0
+            and s['failed_extra'] == ['x'] and s['failed_checks'] == []):
+        failures.append(f'extra tier leaked into core scores: {s}')
+    info = {'lang': 'tf', 'row_number': 0, 'prompt': 'a security group'}
+    spec2 = {'lang': 'tf', 'row_number': 0, 'checks': [
+        {'id': 'c', 'kind': 'exists', 'tier': 'core', 'quote': 'a security group', 'select': SG},
+        {'id': 'x', 'kind': 'attr', 'tier': 'extra', 'select': {'types': ['aws_vpc']},
+         'cond': {'path': 'cidr_block', 'op': 'eq', 'value': '10.9.9.0/24'}}]}
+    if ic.structural_errors(spec2, info) or ic.strictness_flags(spec2, info):
+        failures.append('extra tier rejected by structural check or prompt lint')
+    fx = {'resources': [{'id': 'a', 'cfg': 'a', 'type': 'aws_vpc', 'refs': [], 'values': {}},
+                        {'id': 'b', 'cfg': 'b', 'type': 'random_pet', 'refs': [], 'values': {}},
+                        {'id': 'd', 'cfg': 'd', 'type': '__declared__', 'refs': [],
+                         'values': {'type': 'aws_kms_key', 'name': 'k', 'gated': True}}]}
+    sp3 = {'checks': [{'id': 'c', 'kind': 'exists', 'tier': 'core', 'select': SG}]}
+    if ic.add_extra_type_checks(sp3, fx) != ['aws_vpc', 'aws_kms_key'] or ic.add_extra_type_checks(sp3, fx):
+        failures.append('add_extra_type_checks wrong or not idempotent')
+
     if failures:
         print('FAILED:\n  ' + '\n  '.join(failures))
         sys.exit(1)

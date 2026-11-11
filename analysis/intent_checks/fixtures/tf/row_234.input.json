@@ -1,0 +1,991 @@
+{
+ "meta": {
+  "lang": "tf",
+  "mode": "plan",
+  "warnings": [],
+  "gt_hash": "ef690f1855b99d74f1b635882cfe51d152c81004f9f36bff257c7999be8acc27",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "data.aws_iam_policy_document.health_omics_service_policy",
+   "cfg": "data.aws_iam_policy_document.health_omics_service_policy",
+   "type": "data.aws_iam_policy_document",
+   "values": {
+    "override_json": null,
+    "override_policy_documents": null,
+    "policy_id": null,
+    "source_json": null,
+    "source_policy_documents": null,
+    "statement": [
+     {
+      "actions": [
+       "s3:GetObject",
+       "s3:ListBucket"
+      ],
+      "condition": [],
+      "effect": null,
+      "not_actions": null,
+      "not_principals": [],
+      "not_resources": null,
+      "principals": [],
+      "resources": [
+       null,
+       null
+      ],
+      "sid": "AllowS3ReadOnlyAccess"
+     },
+     {
+      "actions": [
+       "s3:PutObject"
+      ],
+      "condition": [],
+      "effect": null,
+      "not_actions": null,
+      "not_principals": [],
+      "not_resources": null,
+      "principals": [],
+      "resources": [
+       null,
+       null
+      ],
+      "sid": "UploadFilesToS3"
+     },
+     {
+      "actions": [
+       "ecr:BatchCheckLayerAvailability",
+       "ecr:BatchGetImage",
+       "ecr:GetDownloadUrlForLayer"
+      ],
+      "condition": [],
+      "effect": null,
+      "not_actions": null,
+      "not_principals": [],
+      "not_resources": null,
+      "principals": [],
+      "resources": [
+       "arn:aws:ecr:us-east-1:000000000000:*"
+      ],
+      "sid": "AllowECRActions"
+     },
+     {
+      "actions": [
+       "logs:CreateLogGroup",
+       "logs:CreateLogStream",
+       "logs:DescribeLogStreams",
+       "logs:PutLogEvents"
+      ],
+      "condition": [],
+      "effect": null,
+      "not_actions": null,
+      "not_principals": [],
+      "not_resources": null,
+      "principals": [],
+      "resources": [
+       "arn:aws:logs:us-east-1:000000000000:log-group:/aws/omics/*"
+      ],
+      "sid": "AllowLogs"
+     }
+    ],
+    "version": null
+   },
+   "refs": [
+    "aws_s3_bucket.output_bucket",
+    "data.aws_caller_identity.current",
+    "data.aws_region.current"
+   ]
+  },
+  {
+   "id": "data.aws_iam_policy_document.health_omics_user_policy",
+   "cfg": "data.aws_iam_policy_document.health_omics_user_policy",
+   "type": "data.aws_iam_policy_document",
+   "values": {
+    "override_json": null,
+    "override_policy_documents": null,
+    "policy_id": null,
+    "source_json": null,
+    "source_policy_documents": null,
+    "statement": [
+     {
+      "actions": [
+       "iam:PassRole"
+      ],
+      "condition": [
+       {
+        "test": "StringEquals",
+        "values": [
+         "omics.amazonaws.com"
+        ],
+        "variable": "iam:PassedToService"
+       }
+      ],
+      "effect": null,
+      "not_actions": null,
+      "not_principals": [],
+      "not_resources": null,
+      "principals": [],
+      "resources": [
+       "*"
+      ],
+      "sid": "AllowPassRole"
+     },
+     {
+      "actions": [
+       "omics:*"
+      ],
+      "condition": [],
+      "effect": null,
+      "not_actions": null,
+      "not_principals": [],
+      "not_resources": null,
+      "principals": [],
+      "resources": [
+       "*"
+      ],
+      "sid": "AllowOmicsActions"
+     },
+     {
+      "actions": [
+       "s3:GetObject",
+       "s3:ListBucket"
+      ],
+      "condition": [],
+      "effect": null,
+      "not_actions": null,
+      "not_principals": [],
+      "not_resources": null,
+      "principals": [],
+      "resources": [
+       null,
+       null
+      ],
+      "sid": "AllowS3ReadOnlyAccess"
+     },
+     {
+      "actions": [
+       "logs:DescribeLogStreams",
+       "logs:GetLogEvents"
+      ],
+      "condition": [],
+      "effect": null,
+      "not_actions": null,
+      "not_principals": [],
+      "not_resources": null,
+      "principals": [],
+      "resources": [
+       "arn:aws:logs:us-east-1:000000000000:log-group:/aws/omics/*"
+      ],
+      "sid": "AllowReadLogs"
+     }
+    ],
+    "version": null
+   },
+   "refs": [
+    "aws_s3_bucket.output_bucket",
+    "data.aws_caller_identity.current"
+   ]
+  },
+  {
+   "id": "aws_iam_access_key.workbench_service_account_secret_key",
+   "cfg": "aws_iam_access_key.workbench_service_account_secret_key",
+   "type": "aws_iam_access_key",
+   "values": {
+    "pgp_key": null,
+    "status": "Active",
+    "user": "workbench-health-omics"
+   },
+   "refs": [
+    "aws_iam_user.workbench_service_account"
+   ]
+  },
+  {
+   "id": "aws_iam_policy.health_omics_service_policy",
+   "cfg": "aws_iam_policy.health_omics_service_policy",
+   "type": "aws_iam_policy",
+   "values": {
+    "delay_after_policy_creation_in_ms": null,
+    "description": "Policy for health omics service",
+    "name": "HealthOmicsServicePolicy",
+    "path": "/",
+    "tags": {
+     "created_by": "terraform"
+    },
+    "tags_all": {
+     "created_by": "terraform"
+    }
+   },
+   "refs": [
+    "data.aws_iam_policy_document.health_omics_service_policy"
+   ]
+  },
+  {
+   "id": "aws_iam_policy.health_omics_user_policy",
+   "cfg": "aws_iam_policy.health_omics_user_policy",
+   "type": "aws_iam_policy",
+   "values": {
+    "delay_after_policy_creation_in_ms": null,
+    "description": "Policy for health omics service",
+    "name": "HealthOmicsUserPolicy",
+    "path": "/",
+    "tags": {
+     "created_by": "terraform"
+    },
+    "tags_all": {
+     "created_by": "terraform"
+    }
+   },
+   "refs": [
+    "data.aws_iam_policy_document.health_omics_user_policy"
+   ]
+  },
+  {
+   "id": "aws_iam_role.health_omics_role",
+   "cfg": "aws_iam_role.health_omics_role",
+   "type": "aws_iam_role",
+   "values": {
+    "assume_role_policy": "{\"Statement\":[{\"Action\":\"sts:AssumeRole\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"omics.amazonaws.com\"},\"Sid\":\"AllowHealthOmicsService\"}],\"Version\":\"2012-10-17\"}",
+    "description": null,
+    "force_detach_policies": false,
+    "max_session_duration": 3600,
+    "name": "HealthOmicsRole",
+    "path": "/",
+    "permissions_boundary": null,
+    "tags": {
+     "created_by": "terraform"
+    },
+    "tags_all": {
+     "created_by": "terraform"
+    }
+   },
+   "refs": [
+    "aws_iam_policy.health_omics_service_policy",
+    "data.aws_iam_policy_document.health_omics_trust_policy"
+   ]
+  },
+  {
+   "id": "aws_iam_user.workbench_service_account",
+   "cfg": "aws_iam_user.workbench_service_account",
+   "type": "aws_iam_user",
+   "values": {
+    "force_destroy": false,
+    "name": "workbench-health-omics",
+    "path": "/",
+    "permissions_boundary": null,
+    "tags": {
+     "created_by": "terraform"
+    },
+    "tags_all": {
+     "created_by": "terraform"
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "aws_iam_user_policy_attachment.workbench_service_account_policy",
+   "cfg": "aws_iam_user_policy_attachment.workbench_service_account_policy",
+   "type": "aws_iam_user_policy_attachment",
+   "values": {
+    "user": "workbench-health-omics"
+   },
+   "refs": [
+    "aws_iam_policy.health_omics_user_policy",
+    "aws_iam_user.workbench_service_account"
+   ]
+  },
+  {
+   "id": "aws_kms_key.output_bucket",
+   "cfg": "aws_kms_key.output_bucket",
+   "type": "aws_kms_key",
+   "values": {
+    "bypass_policy_lockout_safety_check": false,
+    "custom_key_store_id": null,
+    "customer_master_key_spec": "SYMMETRIC_DEFAULT",
+    "deletion_window_in_days": null,
+    "description": "CMK for the HealthOmics output bucket",
+    "enable_key_rotation": true,
+    "is_enabled": true,
+    "key_usage": "ENCRYPT_DECRYPT",
+    "region": "us-east-1",
+    "tags": null,
+    "timeouts": null,
+    "xks_key_id": null
+   },
+   "refs": []
+  },
+  {
+   "id": "aws_s3_bucket.output_bucket",
+   "cfg": "aws_s3_bucket.output_bucket",
+   "type": "aws_s3_bucket",
+   "values": {
+    "bucket": "tf-benchmark-omics-output-bucket",
+    "force_destroy": false,
+    "region": "us-east-1",
+    "tags": {
+     "created_by": "terraform"
+    },
+    "tags_all": {
+     "created_by": "terraform"
+    },
+    "timeouts": null
+   },
+   "refs": []
+  },
+  {
+   "id": "aws_s3_bucket_public_access_block.output_bucket",
+   "cfg": "aws_s3_bucket_public_access_block.output_bucket",
+   "type": "aws_s3_bucket_public_access_block",
+   "values": {
+    "block_public_acls": true,
+    "block_public_policy": true,
+    "ignore_public_acls": true,
+    "region": "us-east-1",
+    "restrict_public_buckets": true,
+    "skip_destroy": null
+   },
+   "refs": [
+    "aws_s3_bucket.output_bucket"
+   ]
+  },
+  {
+   "id": "aws_s3_bucket_server_side_encryption_configuration.output_bucket",
+   "cfg": "aws_s3_bucket_server_side_encryption_configuration.output_bucket",
+   "type": "aws_s3_bucket_server_side_encryption_configuration",
+   "values": {
+    "expected_bucket_owner": null,
+    "region": "us-east-1",
+    "rule": [
+     {
+      "apply_server_side_encryption_by_default": [
+       {
+        "sse_algorithm": "aws:kms"
+       }
+      ]
+     }
+    ]
+   },
+   "refs": [
+    "aws_kms_key.output_bucket",
+    "aws_s3_bucket.output_bucket"
+   ]
+  },
+  {
+   "id": "__parameter__.additional_buckets",
+   "cfg": "__parameter__.additional_buckets",
+   "type": "__parameter__",
+   "values": {
+    "name": "additional_buckets",
+    "default": []
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.ecr_repositories",
+   "cfg": "__parameter__.ecr_repositories",
+   "type": "__parameter__",
+   "values": {
+    "name": "ecr_repositories",
+    "default": []
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.external_ecr_accounts",
+   "cfg": "__parameter__.external_ecr_accounts",
+   "type": "__parameter__",
+   "values": {
+    "name": "external_ecr_accounts",
+    "default": []
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.force_destroy",
+   "cfg": "__parameter__.force_destroy",
+   "type": "__parameter__",
+   "values": {
+    "name": "force_destroy",
+    "default": false
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.health_omics_role_name",
+   "cfg": "__parameter__.health_omics_role_name",
+   "type": "__parameter__",
+   "values": {
+    "name": "health_omics_role_name",
+    "default": "HealthOmicsRole"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.health_omics_service_policy_name",
+   "cfg": "__parameter__.health_omics_service_policy_name",
+   "type": "__parameter__",
+   "values": {
+    "name": "health_omics_service_policy_name",
+    "default": "HealthOmicsServicePolicy"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.health_omics_user_policy_name",
+   "cfg": "__parameter__.health_omics_user_policy_name",
+   "type": "__parameter__",
+   "values": {
+    "name": "health_omics_user_policy_name",
+    "default": "HealthOmicsUserPolicy"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.output_bucket_name",
+   "cfg": "__parameter__.output_bucket_name",
+   "type": "__parameter__",
+   "values": {
+    "name": "output_bucket_name",
+    "default": "tf-benchmark-omics-output-bucket"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.region",
+   "cfg": "__parameter__.region",
+   "type": "__parameter__",
+   "values": {
+    "name": "region",
+    "default": "us-east-1"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.workbench_service_account_name",
+   "cfg": "__parameter__.workbench_service_account_name",
+   "type": "__parameter__",
+   "values": {
+    "name": "workbench_service_account_name",
+    "default": "workbench-health-omics"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.access_key_id",
+   "cfg": "__output__.access_key_id",
+   "type": "__output__",
+   "values": {
+    "name": "access_key_id",
+    "value": null,
+    "description": "Access key ID for Workbench to use"
+   },
+   "refs": [
+    "aws_iam_access_key.workbench_service_account_secret_key"
+   ]
+  },
+  {
+   "id": "__output__.docker_repositories",
+   "cfg": "__output__.docker_repositories",
+   "type": "__output__",
+   "values": {
+    "name": "docker_repositories",
+    "value": [],
+    "description": "The name of the docker repositories"
+   },
+   "refs": [
+    "aws_ecr_repository.ecr_repositories"
+   ]
+  },
+  {
+   "id": "__output__.output_bucket",
+   "cfg": "__output__.output_bucket",
+   "type": "__output__",
+   "values": {
+    "name": "output_bucket",
+    "value": "tf-benchmark-omics-output-bucket",
+    "description": "The name of the output bucket"
+   },
+   "refs": [
+    "aws_s3_bucket.output_bucket"
+   ]
+  },
+  {
+   "id": "__output__.role_arn",
+   "cfg": "__output__.role_arn",
+   "type": "__output__",
+   "values": {
+    "name": "role_arn",
+    "value": null,
+    "description": "ARN of the role used by HealthOmics"
+   },
+   "refs": [
+    "aws_iam_role.health_omics_role"
+   ]
+  },
+  {
+   "id": "__output__.secret_access_key",
+   "cfg": "__output__.secret_access_key",
+   "type": "__output__",
+   "values": {
+    "name": "secret_access_key",
+    "value": null,
+    "description": "Secret access key for Workbench to use"
+   },
+   "refs": [
+    "aws_iam_access_key.workbench_service_account_secret_key"
+   ]
+  },
+  {
+   "id": "__declared__.data.aws_caller_identity.current",
+   "cfg": "data.aws_caller_identity.current",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "data.aws_caller_identity",
+    "name": "current",
+    "gated": false,
+    "gate": null,
+    "properties": {}
+   }
+  },
+  {
+   "id": "__declared__.data.aws_region.current",
+   "cfg": "data.aws_region.current",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "data.aws_region",
+    "name": "current",
+    "gated": false,
+    "gate": null,
+    "properties": {}
+   }
+  },
+  {
+   "id": "__declared__.data.aws_iam_policy_document.health_omics_user_policy",
+   "cfg": "data.aws_iam_policy_document.health_omics_user_policy",
+   "type": "__declared__",
+   "refs": [
+    "aws_s3_bucket.output_bucket",
+    "data.aws_caller_identity.current"
+   ],
+   "values": {
+    "type": "data.aws_iam_policy_document",
+    "name": "health_omics_user_policy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "statement": [
+      {
+       "sid": "AllowPassRole",
+       "actions": [
+        "iam:PassRole"
+       ],
+       "resources": [
+        "*"
+       ],
+       "condition": [
+        {
+         "test": "StringEquals",
+         "variable": "iam:PassedToService",
+         "values": [
+          "omics.amazonaws.com"
+         ]
+        }
+       ]
+      },
+      {
+       "sid": "AllowOmicsActions",
+       "actions": [
+        "omics:*"
+       ],
+       "resources": [
+        "*"
+       ]
+      },
+      {
+       "sid": "AllowS3ReadOnlyAccess",
+       "actions": [
+        "s3:GetObject",
+        "s3:ListBucket"
+       ],
+       "resources": "${local.buckets}"
+      },
+      {
+       "sid": "AllowReadLogs",
+       "actions": [
+        "logs:DescribeLogStreams",
+        "logs:GetLogEvents"
+       ],
+       "resources": [
+        "arn:aws:logs:${var.region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/omics/*"
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.data.aws_iam_policy_document.health_omics_trust_policy",
+   "cfg": "data.aws_iam_policy_document.health_omics_trust_policy",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "data.aws_iam_policy_document",
+    "name": "health_omics_trust_policy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "statement": [
+      {
+       "sid": "AllowHealthOmicsService",
+       "actions": [
+        "sts:AssumeRole"
+       ],
+       "principals": [
+        {
+         "type": "Service",
+         "identifiers": [
+          "omics.amazonaws.com"
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.data.aws_iam_policy_document.health_omics_service_policy",
+   "cfg": "data.aws_iam_policy_document.health_omics_service_policy",
+   "type": "__declared__",
+   "refs": [
+    "aws_s3_bucket.output_bucket",
+    "data.aws_caller_identity.current",
+    "data.aws_region.current"
+   ],
+   "values": {
+    "type": "data.aws_iam_policy_document",
+    "name": "health_omics_service_policy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "statement": [
+      {
+       "sid": "AllowS3ReadOnlyAccess",
+       "actions": [
+        "s3:GetObject",
+        "s3:ListBucket"
+       ],
+       "resources": "${local.buckets}"
+      },
+      {
+       "sid": "UploadFilesToS3",
+       "actions": [
+        "s3:PutObject"
+       ],
+       "resources": [
+        "${aws_s3_bucket.output_bucket.arn}",
+        "${aws_s3_bucket.output_bucket.arn}/*"
+       ]
+      },
+      {
+       "sid": "AllowECRActions",
+       "actions": [
+        "ecr:BatchCheckLayerAvailability",
+        "ecr:BatchGetImage",
+        "ecr:GetDownloadUrlForLayer"
+       ],
+       "resources": "${local.ecr_resources}"
+      },
+      {
+       "sid": "AllowLogs",
+       "actions": [
+        "logs:CreateLogStream",
+        "logs:PutLogEvents",
+        "logs:CreateLogGroup",
+        "logs:DescribeLogStreams"
+       ],
+       "resources": [
+        "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/aws/omics/*"
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.data.aws_iam_policy_document.health_omics_ecr_policy",
+   "cfg": "data.aws_iam_policy_document.health_omics_ecr_policy",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "data.aws_iam_policy_document",
+    "name": "health_omics_ecr_policy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "statement": [
+      {
+       "sid": "OmicsWorkflow Access",
+       "effect": "Allow",
+       "principals": [
+        {
+         "type": "Service",
+         "identifiers": [
+          "omics.amazonaws.com"
+         ]
+        }
+       ],
+       "actions": [
+        "ecr:BatchCheckLayerAvailability",
+        "ecr:BatchGetImage",
+        "ecr:GetDownloadUrlForLayer"
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_s3_bucket.output_bucket",
+   "cfg": "aws_s3_bucket.output_bucket",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_s3_bucket",
+    "name": "output_bucket",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "bucket": "tf-benchmark-omics-output-bucket",
+     "tags": {
+      "created_by": "terraform"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_s3_bucket_public_access_block.output_bucket",
+   "cfg": "aws_s3_bucket_public_access_block.output_bucket",
+   "type": "__declared__",
+   "refs": [
+    "aws_s3_bucket.output_bucket"
+   ],
+   "values": {
+    "type": "aws_s3_bucket_public_access_block",
+    "name": "output_bucket",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "bucket": "${aws_s3_bucket.output_bucket.id}",
+     "block_public_acls": true,
+     "block_public_policy": true,
+     "ignore_public_acls": true,
+     "restrict_public_buckets": true
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_kms_key.output_bucket",
+   "cfg": "aws_kms_key.output_bucket",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_kms_key",
+    "name": "output_bucket",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "description": "CMK for the HealthOmics output bucket",
+     "enable_key_rotation": true
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_s3_bucket_server_side_encryption_configuration.output_bucket",
+   "cfg": "aws_s3_bucket_server_side_encryption_configuration.output_bucket",
+   "type": "__declared__",
+   "refs": [
+    "aws_kms_key.output_bucket",
+    "aws_s3_bucket.output_bucket"
+   ],
+   "values": {
+    "type": "aws_s3_bucket_server_side_encryption_configuration",
+    "name": "output_bucket",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "bucket": "${aws_s3_bucket.output_bucket.id}",
+     "rule": [
+      {
+       "apply_server_side_encryption_by_default": [
+        {
+         "sse_algorithm": "aws:kms",
+         "kms_master_key_id": "${aws_kms_key.output_bucket.arn}"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_user.workbench_service_account",
+   "cfg": "aws_iam_user.workbench_service_account",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_iam_user",
+    "name": "workbench_service_account",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "workbench-health-omics",
+     "tags": {
+      "created_by": "terraform"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_user_policy_attachment.workbench_service_account_policy",
+   "cfg": "aws_iam_user_policy_attachment.workbench_service_account_policy",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_policy.health_omics_user_policy",
+    "aws_iam_user.workbench_service_account"
+   ],
+   "values": {
+    "type": "aws_iam_user_policy_attachment",
+    "name": "workbench_service_account_policy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "user": "${aws_iam_user.workbench_service_account.name}",
+     "policy_arn": "${aws_iam_policy.health_omics_user_policy.arn}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_access_key.workbench_service_account_secret_key",
+   "cfg": "aws_iam_access_key.workbench_service_account_secret_key",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_user.workbench_service_account"
+   ],
+   "values": {
+    "type": "aws_iam_access_key",
+    "name": "workbench_service_account_secret_key",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "user": "${aws_iam_user.workbench_service_account.name}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_policy.health_omics_user_policy",
+   "cfg": "aws_iam_policy.health_omics_user_policy",
+   "type": "__declared__",
+   "refs": [
+    "data.aws_iam_policy_document.health_omics_user_policy"
+   ],
+   "values": {
+    "type": "aws_iam_policy",
+    "name": "health_omics_user_policy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "HealthOmicsUserPolicy",
+     "description": "Policy for health omics service",
+     "policy": "${data.aws_iam_policy_document.health_omics_user_policy.json}",
+     "tags": {
+      "created_by": "terraform"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_policy.health_omics_service_policy",
+   "cfg": "aws_iam_policy.health_omics_service_policy",
+   "type": "__declared__",
+   "refs": [
+    "data.aws_iam_policy_document.health_omics_service_policy"
+   ],
+   "values": {
+    "type": "aws_iam_policy",
+    "name": "health_omics_service_policy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "HealthOmicsServicePolicy",
+     "description": "Policy for health omics service",
+     "policy": "${data.aws_iam_policy_document.health_omics_service_policy.json}",
+     "tags": {
+      "created_by": "terraform"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role.health_omics_role",
+   "cfg": "aws_iam_role.health_omics_role",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_policy.health_omics_service_policy",
+    "data.aws_iam_policy_document.health_omics_trust_policy"
+   ],
+   "values": {
+    "type": "aws_iam_role",
+    "name": "health_omics_role",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "HealthOmicsRole",
+     "assume_role_policy": "${data.aws_iam_policy_document.health_omics_trust_policy.json}",
+     "managed_policy_arns": [
+      "${aws_iam_policy.health_omics_service_policy.arn}"
+     ],
+     "tags": {
+      "created_by": "terraform"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_ecr_repository.ecr_repositories",
+   "cfg": "aws_ecr_repository.ecr_repositories",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_ecr_repository",
+    "name": "ecr_repositories",
+    "gated": true,
+    "gate": "var.ecr_repositories",
+    "properties": {
+     "for_each": [],
+     "name": "${each.value}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_ecr_repository_policy.docker_repository_policy",
+   "cfg": "aws_ecr_repository_policy.docker_repository_policy",
+   "type": "__declared__",
+   "refs": [
+    "aws_ecr_repository.ecr_repositories",
+    "data.aws_iam_policy_document.health_omics_ecr_policy"
+   ],
+   "values": {
+    "type": "aws_ecr_repository_policy",
+    "name": "docker_repository_policy",
+    "gated": true,
+    "gate": "var.ecr_repositories",
+    "properties": {
+     "for_each": [],
+     "repository": "${aws_ecr_repository.ecr_repositories[each.key].name}",
+     "policy": "${data.aws_iam_policy_document.health_omics_ecr_policy.json}"
+    }
+   }
+  }
+ ]
+}

@@ -1,0 +1,1204 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "25faa8eab012643e03dea5809d01baf1acbe899451f2ec1bb25a353a26c8f722",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "StandbyVpc",
+   "cfg": "StandbyVpc",
+   "type": "AWS::EC2::VPC",
+   "values": {
+    "CidrBlock": "10.82.0.0/16",
+    "EnableDnsSupport": true,
+    "EnableDnsHostnames": true,
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "stack-vpc-dr-standby"
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "StandbyLogKey",
+   "cfg": "StandbyLogKey",
+   "type": "AWS::KMS::Key",
+   "values": {
+    "Description": "stack VPC flow log encryption key",
+    "EnableKeyRotation": true,
+    "KeyPolicy": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Sid": "EnableAccountAdministration",
+       "Effect": "Allow",
+       "Principal": {
+        "AWS": [
+         "arn:aws:iam::123456789012:root"
+        ]
+       },
+       "Action": [
+        "kms:*"
+       ],
+       "Resource": [
+        "*"
+       ]
+      },
+      {
+       "Sid": "AllowCloudWatchLogsUse",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "logs.us-east-1.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "kms:Decrypt",
+        "kms:DescribeKey",
+        "kms:Encrypt",
+        "kms:GenerateDataKey",
+        "kms:ReEncrypt*"
+       ],
+       "Resource": [
+        "*"
+       ]
+      }
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "StandbyFlowLogGroup",
+   "cfg": "StandbyFlowLogGroup",
+   "type": "AWS::Logs::LogGroup",
+   "values": {
+    "KmsKeyId": {
+     "ref": "StandbyLogKey",
+     "attr": "Arn"
+    },
+    "RetentionInDays": 30
+   },
+   "refs": [
+    "StandbyLogKey"
+   ]
+  },
+  {
+   "id": "StandbyFlowLogRole",
+   "cfg": "StandbyFlowLogRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "vpc-flow-logs.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Policies": [
+     {
+      "PolicyName": "write-vpc-flow-logs",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "logs:CreateLogStream",
+          "logs:DescribeLogGroups",
+          "logs:DescribeLogStreams",
+          "logs:PutLogEvents"
+         ],
+         "Resource": [
+          "${StandbyFlowLogGroup.Arn}:*"
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": [
+    "StandbyFlowLogGroup"
+   ]
+  },
+  {
+   "id": "StandbyVpcFlowLog",
+   "cfg": "StandbyVpcFlowLog",
+   "type": "AWS::EC2::FlowLog",
+   "values": {
+    "DeliverLogsPermissionArn": {
+     "ref": "StandbyFlowLogRole",
+     "attr": "Arn"
+    },
+    "LogDestinationType": "cloud-watch-logs",
+    "LogGroupName": {
+     "ref": "StandbyFlowLogGroup"
+    },
+    "ResourceId": {
+     "ref": "StandbyVpc"
+    },
+    "ResourceType": "VPC",
+    "TrafficType": "ALL"
+   },
+   "refs": [
+    "StandbyFlowLogGroup",
+    "StandbyFlowLogRole",
+    "StandbyVpc"
+   ]
+  },
+  {
+   "id": "InternetGateway",
+   "cfg": "InternetGateway",
+   "type": "AWS::EC2::InternetGateway",
+   "values": {
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "stack-igw-dr-standby"
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "VpcIgwAttachment",
+   "cfg": "VpcIgwAttachment",
+   "type": "AWS::EC2::VPCGatewayAttachment",
+   "values": {
+    "VpcId": {
+     "ref": "StandbyVpc"
+    },
+    "InternetGatewayId": {
+     "ref": "InternetGateway"
+    }
+   },
+   "refs": [
+    "InternetGateway",
+    "StandbyVpc"
+   ]
+  },
+  {
+   "id": "StandbyRouteTable",
+   "cfg": "StandbyRouteTable",
+   "type": "AWS::EC2::RouteTable",
+   "values": {
+    "VpcId": {
+     "ref": "StandbyVpc"
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "stack-rt-dr-standby"
+     }
+    ]
+   },
+   "refs": [
+    "StandbyVpc"
+   ]
+  },
+  {
+   "id": "DefaultRoute",
+   "cfg": "DefaultRoute",
+   "type": "AWS::EC2::Route",
+   "values": {
+    "RouteTableId": {
+     "ref": "StandbyRouteTable"
+    },
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "GatewayId": {
+     "ref": "InternetGateway"
+    },
+    "__resource__": {
+     "DependsOn": [
+      "VpcIgwAttachment"
+     ]
+    }
+   },
+   "refs": [
+    "InternetGateway",
+    "StandbyRouteTable"
+   ]
+  },
+  {
+   "id": "StandbySubnet",
+   "cfg": "StandbySubnet",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "VpcId": {
+     "ref": "StandbyVpc"
+    },
+    "CidrBlock": "10.82.10.0/24",
+    "AvailabilityZone": "us-east-1a",
+    "MapPublicIpOnLaunch": false,
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "stack-sn-dr-standby"
+     }
+    ]
+   },
+   "refs": [
+    "StandbyVpc"
+   ]
+  },
+  {
+   "id": "SubnetRouteAssociation",
+   "cfg": "SubnetRouteAssociation",
+   "type": "AWS::EC2::SubnetRouteTableAssociation",
+   "values": {
+    "SubnetId": {
+     "ref": "StandbySubnet"
+    },
+    "RouteTableId": {
+     "ref": "StandbyRouteTable"
+    }
+   },
+   "refs": [
+    "StandbyRouteTable",
+    "StandbySubnet"
+   ]
+  },
+  {
+   "id": "StandbySecurityGroup",
+   "cfg": "StandbySecurityGroup",
+   "type": "AWS::EC2::SecurityGroup",
+   "values": {
+    "GroupDescription": "Allow HTTP and HTTPS ingress to DR standby endpoint.",
+    "VpcId": {
+     "ref": "StandbyVpc"
+    },
+    "SecurityGroupIngress": [
+     {
+      "Description": "Allow approved HTTP ingress to the standby endpoint.",
+      "IpProtocol": "tcp",
+      "FromPort": 80,
+      "ToPort": 80,
+      "CidrIp": "10.0.0.0/8"
+     },
+     {
+      "Description": "Allow approved HTTPS ingress to the standby endpoint.",
+      "IpProtocol": "tcp",
+      "FromPort": 443,
+      "ToPort": 443,
+      "CidrIp": "10.0.0.0/8"
+     }
+    ],
+    "SecurityGroupEgress": [
+     {
+      "Description": "Allow HTTPS egress to approved package, SSM, or managed endpoint ranges.",
+      "IpProtocol": "tcp",
+      "FromPort": 443,
+      "ToPort": 443,
+      "CidrIp": "10.0.0.0/8"
+     }
+    ],
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "stack-sg-dr-standby"
+     }
+    ]
+   },
+   "refs": [
+    "StandbyVpc"
+   ]
+  },
+  {
+   "id": "StandbyInstanceRole",
+   "cfg": "StandbyInstanceRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "ec2.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "StandbyInstanceProfile",
+   "cfg": "StandbyInstanceProfile",
+   "type": "AWS::IAM::InstanceProfile",
+   "values": {
+    "Roles": [
+     {
+      "ref": "StandbyInstanceRole"
+     }
+    ]
+   },
+   "refs": [
+    "StandbyInstanceRole"
+   ]
+  },
+  {
+   "id": "StandbyLaunchTemplate",
+   "cfg": "StandbyLaunchTemplate",
+   "type": "AWS::EC2::LaunchTemplate",
+   "values": {
+    "LaunchTemplateName": "stack-lt-dr-standby",
+    "LaunchTemplateData": {
+     "ImageId": "{{resolve:ssm:/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64}}",
+     "InstanceType": "t3.micro",
+     "IamInstanceProfile": {
+      "Name": {
+       "ref": "StandbyInstanceProfile"
+      }
+     },
+     "MetadataOptions": {
+      "HttpEndpoint": "enabled",
+      "HttpPutResponseHopLimit": 1,
+      "HttpTokens": "required",
+      "InstanceMetadataTags": "disabled"
+     },
+     "BlockDeviceMappings": [
+      {
+       "DeviceName": "/dev/xvda",
+       "Ebs": {
+        "Encrypted": true,
+        "VolumeSize": 8,
+        "VolumeType": "gp3"
+       }
+      }
+     ],
+     "NetworkInterfaces": [
+      {
+       "AssociatePublicIpAddress": true,
+       "DeviceIndex": 0,
+       "Groups": [
+        {
+         "ref": "StandbySecurityGroup"
+        }
+       ],
+       "SubnetId": {
+        "ref": "StandbySubnet"
+       }
+      }
+     ],
+     "UserData": "#!/bin/bash\nset -e\ndnf install -y python3\ncat > /home/ec2-user/index.html <<'HTML'\n<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\" />\n  <title>AWS Standby - OCI Primary DR</title>\n</head>\n<body>\n  <h1>Hello from AWS Standby</h1>\n  <p>Blueprint: aws-oci-cross-cloud-dr</p>\n  <p>Role: AWS standby</p>\n  <p>Primary cloud: OCI</p>\n</body>\n</html>\nHTML\nnohup python3 -m http.server 80 --directory /home/ec2-user >/var/log/standby-http.log 2>&1 &\n"
+    }
+   },
+   "refs": [
+    "StandbyInstanceProfile",
+    "StandbySecurityGroup",
+    "StandbySubnet"
+   ]
+  },
+  {
+   "id": "StandbyInstance",
+   "cfg": "StandbyInstance",
+   "type": "AWS::EC2::Instance",
+   "values": {
+    "LaunchTemplate": {
+     "LaunchTemplateId": {
+      "ref": "StandbyLaunchTemplate"
+     },
+     "Version": {
+      "ref": "StandbyLaunchTemplate",
+      "attr": "LatestVersionNumber"
+     }
+    },
+    "BlockDeviceMappings": [
+     {
+      "DeviceName": "/dev/xvda",
+      "Ebs": {
+       "Encrypted": true,
+       "VolumeSize": 8,
+       "VolumeType": "gp3"
+      }
+     }
+    ],
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "stack-inst-dr-standby"
+     }
+    ]
+   },
+   "refs": [
+    "StandbyLaunchTemplate"
+   ]
+  },
+  {
+   "id": "StandbyElasticIp",
+   "cfg": "StandbyElasticIp",
+   "type": "AWS::EC2::EIP",
+   "values": {
+    "Domain": "vpc"
+   },
+   "refs": []
+  },
+  {
+   "id": "StandbyElasticIpAssociation",
+   "cfg": "StandbyElasticIpAssociation",
+   "type": "AWS::EC2::EIPAssociation",
+   "values": {
+    "AllocationId": {
+     "ref": "StandbyElasticIp",
+     "attr": "AllocationId"
+    },
+    "InstanceId": {
+     "ref": "StandbyInstance"
+    }
+   },
+   "refs": [
+    "StandbyElasticIp",
+    "StandbyInstance"
+   ]
+  },
+  {
+   "id": "__parameter__.VpcCidr",
+   "cfg": "__parameter__.VpcCidr",
+   "type": "__parameter__",
+   "values": {
+    "name": "VpcCidr",
+    "type": "String",
+    "default": "10.82.0.0/16",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.StandbySubnetCidr",
+   "cfg": "__parameter__.StandbySubnetCidr",
+   "type": "__parameter__",
+   "values": {
+    "name": "StandbySubnetCidr",
+    "type": "String",
+    "default": "10.82.10.0/24",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.InstanceType",
+   "cfg": "__parameter__.InstanceType",
+   "type": "__parameter__",
+   "values": {
+    "name": "InstanceType",
+    "type": "String",
+    "default": "t3.micro",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.AllowedIngressCidr",
+   "cfg": "__parameter__.AllowedIngressCidr",
+   "type": "__parameter__",
+   "values": {
+    "name": "AllowedIngressCidr",
+    "type": "String",
+    "default": "10.0.0.0/8",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.AllowedEgressCidr",
+   "cfg": "__parameter__.AllowedEgressCidr",
+   "type": "__parameter__",
+   "values": {
+    "name": "AllowedEgressCidr",
+    "type": "String",
+    "default": "10.0.0.0/8",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.AwsStandbyEndpoint",
+   "cfg": "__output__.AwsStandbyEndpoint",
+   "type": "__output__",
+   "values": {
+    "name": "AwsStandbyEndpoint",
+    "value": "http://${StandbyElasticIp}",
+    "description": "Standby endpoint URL for DNS failover contract.",
+    "export": null
+   },
+   "refs": [
+    "StandbyElasticIp"
+   ]
+  },
+  {
+   "id": "__output__.AwsStandbyInstanceId",
+   "cfg": "__output__.AwsStandbyInstanceId",
+   "type": "__output__",
+   "values": {
+    "name": "AwsStandbyInstanceId",
+    "value": {
+     "ref": "StandbyInstance"
+    },
+    "description": "EC2 instance ID for standby service.",
+    "export": null
+   },
+   "refs": [
+    "StandbyInstance"
+   ]
+  },
+  {
+   "id": "__output__.AwsStandbyVpcId",
+   "cfg": "__output__.AwsStandbyVpcId",
+   "type": "__output__",
+   "values": {
+    "name": "AwsStandbyVpcId",
+    "value": {
+     "ref": "StandbyVpc"
+    },
+    "description": "Standby VPC ID.",
+    "export": null
+   },
+   "refs": [
+    "StandbyVpc"
+   ]
+  },
+  {
+   "id": "__output__.AwsStandbySubnetId",
+   "cfg": "__output__.AwsStandbySubnetId",
+   "type": "__output__",
+   "values": {
+    "name": "AwsStandbySubnetId",
+    "value": {
+     "ref": "StandbySubnet"
+    },
+    "description": "Standby subnet ID.",
+    "export": null
+   },
+   "refs": [
+    "StandbySubnet"
+   ]
+  },
+  {
+   "id": "__output__.AwsStandbyRouteTableId",
+   "cfg": "__output__.AwsStandbyRouteTableId",
+   "type": "__output__",
+   "values": {
+    "name": "AwsStandbyRouteTableId",
+    "value": {
+     "ref": "StandbyRouteTable"
+    },
+    "description": "Standby route table ID.",
+    "export": null
+   },
+   "refs": [
+    "StandbyRouteTable"
+   ]
+  },
+  {
+   "id": "__output__.AwsStandbySecurityGroupId",
+   "cfg": "__output__.AwsStandbySecurityGroupId",
+   "type": "__output__",
+   "values": {
+    "name": "AwsStandbySecurityGroupId",
+    "value": {
+     "ref": "StandbySecurityGroup"
+    },
+    "description": "Standby security group ID.",
+    "export": null
+   },
+   "refs": [
+    "StandbySecurityGroup"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPC.StandbyVpc",
+   "cfg": "StandbyVpc",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::VPC",
+    "name": "StandbyVpc",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "CidrBlock": "10.82.0.0/16",
+     "EnableDnsSupport": true,
+     "EnableDnsHostnames": true,
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "stack-vpc-dr-standby"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::KMS::Key.StandbyLogKey",
+   "cfg": "StandbyLogKey",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::KMS::Key",
+    "name": "StandbyLogKey",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Description": "stack VPC flow log encryption key",
+     "EnableKeyRotation": true,
+     "KeyPolicy": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Sid": "EnableAccountAdministration",
+        "Effect": "Allow",
+        "Principal": {
+         "AWS": [
+          "arn:aws:iam::123456789012:root"
+         ]
+        },
+        "Action": [
+         "kms:*"
+        ],
+        "Resource": [
+         "*"
+        ]
+       },
+       {
+        "Sid": "AllowCloudWatchLogsUse",
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "logs.us-east-1.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "kms:Decrypt",
+         "kms:DescribeKey",
+         "kms:Encrypt",
+         "kms:GenerateDataKey",
+         "kms:ReEncrypt*"
+        ],
+        "Resource": [
+         "*"
+        ]
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::LogGroup.StandbyFlowLogGroup",
+   "cfg": "StandbyFlowLogGroup",
+   "type": "__declared__",
+   "refs": [
+    "StandbyLogKey"
+   ],
+   "values": {
+    "type": "AWS::Logs::LogGroup",
+    "name": "StandbyFlowLogGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "KmsKeyId": {
+      "ref": "StandbyLogKey",
+      "attr": "Arn"
+     },
+     "RetentionInDays": 30
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.StandbyFlowLogRole",
+   "cfg": "StandbyFlowLogRole",
+   "type": "__declared__",
+   "refs": [
+    "StandbyFlowLogGroup"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "StandbyFlowLogRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "vpc-flow-logs.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Policies": [
+      {
+       "PolicyName": "write-vpc-flow-logs",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "logs:CreateLogStream",
+           "logs:DescribeLogGroups",
+           "logs:DescribeLogStreams",
+           "logs:PutLogEvents"
+          ],
+          "Resource": [
+           "${StandbyFlowLogGroup.Arn}:*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::FlowLog.StandbyVpcFlowLog",
+   "cfg": "StandbyVpcFlowLog",
+   "type": "__declared__",
+   "refs": [
+    "StandbyFlowLogGroup",
+    "StandbyFlowLogRole",
+    "StandbyVpc"
+   ],
+   "values": {
+    "type": "AWS::EC2::FlowLog",
+    "name": "StandbyVpcFlowLog",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "DeliverLogsPermissionArn": {
+      "ref": "StandbyFlowLogRole",
+      "attr": "Arn"
+     },
+     "LogDestinationType": "cloud-watch-logs",
+     "LogGroupName": {
+      "ref": "StandbyFlowLogGroup"
+     },
+     "ResourceId": {
+      "ref": "StandbyVpc"
+     },
+     "ResourceType": "VPC",
+     "TrafficType": "ALL"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::InternetGateway.InternetGateway",
+   "cfg": "InternetGateway",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::InternetGateway",
+    "name": "InternetGateway",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "stack-igw-dr-standby"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCGatewayAttachment.VpcIgwAttachment",
+   "cfg": "VpcIgwAttachment",
+   "type": "__declared__",
+   "refs": [
+    "InternetGateway",
+    "StandbyVpc"
+   ],
+   "values": {
+    "type": "AWS::EC2::VPCGatewayAttachment",
+    "name": "VpcIgwAttachment",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "StandbyVpc"
+     },
+     "InternetGatewayId": {
+      "ref": "InternetGateway"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::RouteTable.StandbyRouteTable",
+   "cfg": "StandbyRouteTable",
+   "type": "__declared__",
+   "refs": [
+    "StandbyVpc"
+   ],
+   "values": {
+    "type": "AWS::EC2::RouteTable",
+    "name": "StandbyRouteTable",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "StandbyVpc"
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "stack-rt-dr-standby"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Route.DefaultRoute",
+   "cfg": "DefaultRoute",
+   "type": "__declared__",
+   "refs": [
+    "InternetGateway",
+    "StandbyRouteTable"
+   ],
+   "values": {
+    "type": "AWS::EC2::Route",
+    "name": "DefaultRoute",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RouteTableId": {
+      "ref": "StandbyRouteTable"
+     },
+     "DestinationCidrBlock": "0.0.0.0/0",
+     "GatewayId": {
+      "ref": "InternetGateway"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.StandbySubnet",
+   "cfg": "StandbySubnet",
+   "type": "__declared__",
+   "refs": [
+    "StandbyVpc"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "StandbySubnet",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "StandbyVpc"
+     },
+     "CidrBlock": "10.82.10.0/24",
+     "AvailabilityZone": "us-east-1a",
+     "MapPublicIpOnLaunch": false,
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "stack-sn-dr-standby"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetRouteTableAssociation.SubnetRouteAssociation",
+   "cfg": "SubnetRouteAssociation",
+   "type": "__declared__",
+   "refs": [
+    "StandbyRouteTable",
+    "StandbySubnet"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetRouteTableAssociation",
+    "name": "SubnetRouteAssociation",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "SubnetId": {
+      "ref": "StandbySubnet"
+     },
+     "RouteTableId": {
+      "ref": "StandbyRouteTable"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SecurityGroup.StandbySecurityGroup",
+   "cfg": "StandbySecurityGroup",
+   "type": "__declared__",
+   "refs": [
+    "StandbyVpc"
+   ],
+   "values": {
+    "type": "AWS::EC2::SecurityGroup",
+    "name": "StandbySecurityGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "GroupDescription": "Allow HTTP and HTTPS ingress to DR standby endpoint.",
+     "VpcId": {
+      "ref": "StandbyVpc"
+     },
+     "SecurityGroupIngress": [
+      {
+       "Description": "Allow approved HTTP ingress to the standby endpoint.",
+       "IpProtocol": "tcp",
+       "FromPort": 80,
+       "ToPort": 80,
+       "CidrIp": "10.0.0.0/8"
+      },
+      {
+       "Description": "Allow approved HTTPS ingress to the standby endpoint.",
+       "IpProtocol": "tcp",
+       "FromPort": 443,
+       "ToPort": 443,
+       "CidrIp": "10.0.0.0/8"
+      }
+     ],
+     "SecurityGroupEgress": [
+      {
+       "Description": "Allow HTTPS egress to approved package, SSM, or managed endpoint ranges.",
+       "IpProtocol": "tcp",
+       "FromPort": 443,
+       "ToPort": 443,
+       "CidrIp": "10.0.0.0/8"
+      }
+     ],
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "stack-sg-dr-standby"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.StandbyInstanceRole",
+   "cfg": "StandbyInstanceRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "StandbyInstanceRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "ec2.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::InstanceProfile.StandbyInstanceProfile",
+   "cfg": "StandbyInstanceProfile",
+   "type": "__declared__",
+   "refs": [
+    "StandbyInstanceRole"
+   ],
+   "values": {
+    "type": "AWS::IAM::InstanceProfile",
+    "name": "StandbyInstanceProfile",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Roles": [
+      {
+       "ref": "StandbyInstanceRole"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::LaunchTemplate.StandbyLaunchTemplate",
+   "cfg": "StandbyLaunchTemplate",
+   "type": "__declared__",
+   "refs": [
+    "StandbyInstanceProfile",
+    "StandbySecurityGroup",
+    "StandbySubnet"
+   ],
+   "values": {
+    "type": "AWS::EC2::LaunchTemplate",
+    "name": "StandbyLaunchTemplate",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "LaunchTemplateName": "stack-lt-dr-standby",
+     "LaunchTemplateData": {
+      "ImageId": "{{resolve:ssm:/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64}}",
+      "InstanceType": "t3.micro",
+      "IamInstanceProfile": {
+       "Name": {
+        "ref": "StandbyInstanceProfile"
+       }
+      },
+      "MetadataOptions": {
+       "HttpEndpoint": "enabled",
+       "HttpPutResponseHopLimit": 1,
+       "HttpTokens": "required",
+       "InstanceMetadataTags": "disabled"
+      },
+      "BlockDeviceMappings": [
+       {
+        "DeviceName": "/dev/xvda",
+        "Ebs": {
+         "Encrypted": true,
+         "VolumeSize": 8,
+         "VolumeType": "gp3"
+        }
+       }
+      ],
+      "NetworkInterfaces": [
+       {
+        "AssociatePublicIpAddress": true,
+        "DeviceIndex": 0,
+        "Groups": [
+         {
+          "ref": "StandbySecurityGroup"
+         }
+        ],
+        "SubnetId": {
+         "ref": "StandbySubnet"
+        }
+       }
+      ],
+      "UserData": "#!/bin/bash\nset -e\ndnf install -y python3\ncat > /home/ec2-user/index.html <<'HTML'\n<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\" />\n  <title>AWS Standby - OCI Primary DR</title>\n</head>\n<body>\n  <h1>Hello from AWS Standby</h1>\n  <p>Blueprint: aws-oci-cross-cloud-dr</p>\n  <p>Role: AWS standby</p>\n  <p>Primary cloud: OCI</p>\n</body>\n</html>\nHTML\nnohup python3 -m http.server 80 --directory /home/ec2-user >/var/log/standby-http.log 2>&1 &\n"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Instance.StandbyInstance",
+   "cfg": "StandbyInstance",
+   "type": "__declared__",
+   "refs": [
+    "StandbyLaunchTemplate"
+   ],
+   "values": {
+    "type": "AWS::EC2::Instance",
+    "name": "StandbyInstance",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "LaunchTemplate": {
+      "LaunchTemplateId": {
+       "ref": "StandbyLaunchTemplate"
+      },
+      "Version": {
+       "ref": "StandbyLaunchTemplate",
+       "attr": "LatestVersionNumber"
+      }
+     },
+     "BlockDeviceMappings": [
+      {
+       "DeviceName": "/dev/xvda",
+       "Ebs": {
+        "Encrypted": true,
+        "VolumeSize": 8,
+        "VolumeType": "gp3"
+       }
+      }
+     ],
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "stack-inst-dr-standby"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::EIP.StandbyElasticIp",
+   "cfg": "StandbyElasticIp",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::EIP",
+    "name": "StandbyElasticIp",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Domain": "vpc"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::EIPAssociation.StandbyElasticIpAssociation",
+   "cfg": "StandbyElasticIpAssociation",
+   "type": "__declared__",
+   "refs": [
+    "StandbyElasticIp",
+    "StandbyInstance"
+   ],
+   "values": {
+    "type": "AWS::EC2::EIPAssociation",
+    "name": "StandbyElasticIpAssociation",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AllocationId": {
+      "ref": "StandbyElasticIp",
+      "attr": "AllocationId"
+     },
+     "InstanceId": {
+      "ref": "StandbyInstance"
+     }
+    }
+   }
+  }
+ ]
+}

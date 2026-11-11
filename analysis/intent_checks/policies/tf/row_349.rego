@@ -1,0 +1,670 @@
+package intent.tf.row_349
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {
+  "kms": {
+   "types": [
+    "aws_kms_key"
+   ],
+   "where": []
+  },
+  "sse": {
+   "types": [
+    "aws_s3_bucket_server_side_encryption_configuration"
+   ],
+   "where": []
+  },
+  "ecr": {
+   "types": [
+    "aws_ecr_repository"
+   ],
+   "where": [
+    {
+     "path": [
+      "name"
+     ],
+     "op": "eq",
+     "value": "zenml-kubernetes"
+    }
+   ]
+  },
+  "lf": {
+   "types": [
+    "local_file"
+   ],
+   "where": []
+  },
+  "lf_decl": {
+   "types": [
+    "__declared__"
+   ],
+   "where": [
+    {
+     "path": [
+      "type"
+     ],
+     "op": "eq",
+     "value": "local_file"
+    }
+   ]
+  },
+  "art_b": {
+   "types": [
+    "aws_s3_bucket"
+   ],
+   "where": [
+    {
+     "path": [
+      "bucket"
+     ],
+     "op": "regex",
+     "value": "^demo-artifact-store-"
+    }
+   ]
+  },
+  "sse_kms": {
+   "types": [
+    "aws_s3_bucket_server_side_encryption_configuration"
+   ],
+   "where": [
+    {
+     "path": [
+      "rule",
+      "*",
+      "apply_server_side_encryption_by_default",
+      "*",
+      "sse_algorithm"
+     ],
+     "op": "eq",
+     "value": "aws:kms"
+    }
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "bucket",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "an S3 artifact store bucket named \"demo-artifact-store\" followed by the current AWS account ID",
+   "justify": "\"followed by the current AWS account ID\" implies a 12-digit suffix (planned) or a caller-identity/account reference (declared)",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "art_b",
+     "cond": {
+      "path": [
+       "bucket"
+      ],
+      "op": "regex",
+      "value": "^demo-artifact-store-[0-9]{12}$"
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_s3_bucket"
+       },
+       {
+        "path": [
+         "properties",
+         "bucket"
+        ],
+        "op": "regex",
+        "value": "^demo-artifact-store-\\$\\{(data\\.aws_caller_identity\\.[A-Za-z0-9_]+\\.account_id|(local|var)\\.[A-Za-z0-9_]*account[A-Za-z0-9_]*)\\}$"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "force_destroy",
+   "kind": "attr",
+   "select": "art_b",
+   "tier": "core",
+   "quote": "with force destroy enabled",
+   "cond": {
+    "path": [
+     "force_destroy"
+    ],
+    "op": "truthy"
+   }
+  },
+  {
+   "id": "ownership",
+   "kind": "ref",
+   "tier": "detail",
+   "quote": "bucket-owner-preferred object ownership",
+   "to": "art_b",
+   "from": {
+    "types": [
+     "aws_s3_bucket_ownership_controls"
+    ],
+    "where": [
+     {
+      "path": [
+       "rule",
+       "*",
+       "object_ownership"
+      ],
+      "op": "eq",
+      "value": "BucketOwnerPreferred"
+     }
+    ]
+   }
+  },
+  {
+   "id": "acl",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "a private ACL",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_s3_bucket_acl"
+      ],
+      "where": [
+       {
+        "path": [
+         "acl"
+        ],
+        "op": "eq",
+        "value": "private"
+       }
+      ]
+     },
+     "to": "art_b"
+    },
+    {
+     "kind": "attr",
+     "select": "art_b",
+     "cond": {
+      "path": [
+       "acl"
+      ],
+      "op": "eq",
+      "value": "private"
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_s3_bucket",
+       "aws_s3_bucket_acl"
+      ],
+      "where": []
+     },
+     "min": 1,
+     "max": 1
+    }
+   ],
+   "justify": "the prompt asks for one artifact bucket; an omitted ACL (one bucket and no separate ACL resource) means the default private ACL"
+  },
+  {
+   "id": "public_block",
+   "kind": "ref",
+   "tier": "core",
+   "quote": "all public access blocked",
+   "to": "art_b",
+   "from": {
+    "types": [
+     "aws_s3_bucket_public_access_block"
+    ],
+    "where": [
+     {
+      "path": [
+       "block_public_acls"
+      ],
+      "op": "truthy"
+     },
+     {
+      "path": [
+       "block_public_policy"
+      ],
+      "op": "truthy"
+     },
+     {
+      "path": [
+       "ignore_public_acls"
+      ],
+      "op": "truthy"
+     },
+     {
+      "path": [
+       "restrict_public_buckets"
+      ],
+      "op": "truthy"
+     }
+    ]
+   }
+  },
+  {
+   "id": "sse_kms",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "default SSE-KMS encryption",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "sse_kms",
+     "to": "art_b"
+    },
+    {
+     "kind": "attr",
+     "select": "art_b",
+     "cond": {
+      "path": [
+       "server_side_encryption_configuration"
+      ],
+      "op": "regex",
+      "value": "aws:kms"
+     }
+    }
+   ]
+  },
+  {
+   "id": "kms_key",
+   "kind": "exists",
+   "select": "kms",
+   "tier": "core",
+   "quote": "a new customer-managed KMS key"
+  },
+  {
+   "id": "kms_rotation",
+   "kind": "attr",
+   "select": "kms",
+   "tier": "detail",
+   "quote": "with rotation enabled",
+   "cond": {
+    "path": [
+     "enable_key_rotation"
+    ],
+    "op": "truthy"
+   }
+  },
+  {
+   "id": "sse_uses_key",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "default SSE-KMS encryption using a new customer-managed KMS key",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "sse_kms",
+     "to": "kms"
+    },
+    {
+     "kind": "ref",
+     "from": "art_b",
+     "to": "kms"
+    }
+   ]
+  },
+  {
+   "id": "ecr",
+   "kind": "exists",
+   "select": "ecr",
+   "tier": "core",
+   "quote": "an ECR repository named \"zenml-kubernetes\""
+  },
+  {
+   "id": "ecr_immutable",
+   "kind": "attr",
+   "select": "ecr",
+   "tier": "core",
+   "quote": "immutable image tags",
+   "cond": {
+    "path": [
+     "image_tag_mutability"
+    ],
+    "op": "eq",
+    "value": "IMMUTABLE"
+   }
+  },
+  {
+   "id": "ecr_scan",
+   "kind": "attr",
+   "select": "ecr",
+   "tier": "core",
+   "quote": "scan on push enabled",
+   "cond": {
+    "path": [
+     "image_scanning_configuration",
+     "*",
+     "scan_on_push"
+    ],
+    "op": "truthy"
+   }
+  },
+  {
+   "id": "bucket_tag_managed",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "tag resources with managedBy \"terraform\"",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "art_b",
+     "cond": {
+      "path": [
+       "tags",
+       "managedBy"
+      ],
+      "op": "eq",
+      "value": "terraform"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "art_b",
+     "cond": {
+      "path": [
+       "tags_all",
+       "managedBy"
+      ],
+      "op": "eq",
+      "value": "terraform"
+     }
+    }
+   ]
+  },
+  {
+   "id": "bucket_tag_app",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "application \"demo\"",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "art_b",
+     "cond": {
+      "path": [
+       "tags",
+       "application"
+      ],
+      "op": "eq",
+      "value": "demo"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "art_b",
+     "cond": {
+      "path": [
+       "tags_all",
+       "application"
+      ],
+      "op": "eq",
+      "value": "demo"
+     }
+    }
+   ]
+  },
+  {
+   "id": "ecr_tag_managed",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "tag resources with managedBy \"terraform\"",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "ecr",
+     "cond": {
+      "path": [
+       "tags",
+       "managedBy"
+      ],
+      "op": "eq",
+      "value": "terraform"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "ecr",
+     "cond": {
+      "path": [
+       "tags_all",
+       "managedBy"
+      ],
+      "op": "eq",
+      "value": "terraform"
+     }
+    }
+   ]
+  },
+  {
+   "id": "ecr_tag_app",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "application \"demo\"",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "ecr",
+     "cond": {
+      "path": [
+       "tags",
+       "application"
+      ],
+      "op": "eq",
+      "value": "demo"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "ecr",
+     "cond": {
+      "path": [
+       "tags_all",
+       "application"
+      ],
+      "op": "eq",
+      "value": "demo"
+     }
+    }
+   ]
+  },
+  {
+   "id": "stack_file",
+   "kind": "exists",
+   "select": "lf",
+   "tier": "core",
+   "quote": "write a local ZenML stack YAML file"
+  },
+  {
+   "id": "stack_version",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "for ZenML version \"0.12.0\"",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "lf",
+     "cond": {
+      "path": [
+       "content"
+      ],
+      "op": "regex",
+      "value": "0\\.12\\.0"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "lf_decl",
+     "cond": {
+      "path": [
+       "properties",
+       "content"
+      ],
+      "op": "regex",
+      "value": "0\\.12\\.0"
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "regex",
+        "value": "(?i)version"
+       },
+       {
+        "path": [
+         "default"
+        ],
+        "op": "eq",
+        "value": "0.12.0"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "stack_bucket_path",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "references the artifact bucket path",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "lf",
+     "cond": {
+      "path": [
+       "content"
+      ],
+      "op": "regex",
+      "value": "s3://(demo-artifact-store|\\$\\{aws_s3_bucket\\.)"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "lf_decl",
+     "cond": {
+      "path": [
+       "properties",
+       "content"
+      ],
+      "op": "regex",
+      "value": "s3://(demo-artifact-store|\\$\\{aws_s3_bucket\\.)"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "local_file"
+       },
+       {
+        "path": [
+         "properties",
+         "content"
+        ],
+        "op": "contains",
+        "value": "s3://"
+       }
+      ]
+     },
+     "to": "art_b"
+    }
+   ]
+  },
+  {
+   "id": "stack_ecr_uri",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "the account's ECR registry URI",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "lf",
+     "cond": {
+      "path": [
+       "content"
+      ],
+      "op": "regex",
+      "value": "(?i)(dkr\\.ecr\\.|aws_ecr_repository\\.[A-Za-z0-9_-]+\\.(repository_url|registry_id))"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "lf_decl",
+     "cond": {
+      "path": [
+       "properties",
+       "content"
+      ],
+      "op": "regex",
+      "value": "(?i)(dkr\\.ecr\\.|aws_ecr_repository\\.[A-Za-z0-9_-]+\\.(repository_url|registry_id))"
+     }
+    }
+   ]
+  },
+  {
+   "id": "stack_secrets_manager",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "AWS Secrets Manager as the secrets manager",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "lf",
+     "cond": {
+      "path": [
+       "content"
+      ],
+      "op": "regex",
+      "value": "(?is)(secrets[_ -]?manager[\"']?:.{0,300}flavor[\"']?\\s*[:=]\\s*[\"']?aws|aws[_ -]?secrets[_ -]?manager)"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "lf_decl",
+     "cond": {
+      "path": [
+       "properties",
+       "content"
+      ],
+      "op": "regex",
+      "value": "(?is)(secrets[_ -]?manager[\"']?:.{0,300}flavor[\"']?\\s*[:=]\\s*[\"']?aws|aws[_ -]?secrets[_ -]?manager)"
+     }
+    }
+   ]
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

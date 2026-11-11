@@ -1,0 +1,1835 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "sam_expanded",
+  "warnings": [],
+  "gt_hash": "57906ed2f8b84a1f26e29e8a256d2cf44a5d9c3969a50809e0994ac5b8eda755",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "CognitoUserPool",
+   "cfg": "CognitoUserPool",
+   "type": "AWS::Cognito::UserPool",
+   "values": {
+    "UserPoolName": "PooledTenant-SaaSOperationsUserPool",
+    "AutoVerifiedAttributes": [
+     "email"
+    ],
+    "AccountRecoverySetting": {
+     "RecoveryMechanisms": [
+      {
+       "Name": "verified_email",
+       "Priority": 1
+      }
+     ]
+    },
+    "AdminCreateUserConfig": {
+     "InviteMessageTemplate": {
+      "EmailMessage": "Login into tenant UI application at https://<param:TenantUserPoolCallbackURLParameter>/ with username {username} and temporary password {####}",
+      "EmailSubject": "Your temporary password for tenant UI application"
+     }
+    },
+    "Schema": [
+     {
+      "AttributeDataType": "String",
+      "Name": "email",
+      "Required": true,
+      "Mutable": true
+     },
+     {
+      "AttributeDataType": "String",
+      "Name": "tenantId"
+     },
+     {
+      "AttributeDataType": "String",
+      "Name": "userRole",
+      "Required": false,
+      "Mutable": true
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "CognitoUserPoolClient",
+   "cfg": "CognitoUserPoolClient",
+   "type": "AWS::Cognito::UserPoolClient",
+   "values": {
+    "ClientName": "SaaSOperationsClient",
+    "GenerateSecret": false,
+    "UserPoolId": {
+     "ref": "CognitoUserPool"
+    },
+    "AllowedOAuthFlowsUserPoolClient": true,
+    "AllowedOAuthFlows": [
+     "code",
+     "implicit"
+    ],
+    "ExplicitAuthFlows": [
+     "ALLOW_REFRESH_TOKEN_AUTH",
+     "ALLOW_USER_SRP_AUTH",
+     "ALLOW_CUSTOM_AUTH",
+     "ALLOW_USER_PASSWORD_AUTH"
+    ],
+    "SupportedIdentityProviders": [
+     "COGNITO"
+    ],
+    "CallbackURLs": [
+     "https://<param:TenantUserPoolCallbackURLParameter>/"
+    ],
+    "LogoutURLs": [
+     "https://<param:TenantUserPoolCallbackURLParameter>/"
+    ],
+    "AllowedOAuthScopes": [
+     "email",
+     "openid",
+     "profile"
+    ],
+    "WriteAttributes": [
+     "email",
+     "custom:tenantId",
+     "custom:userRole"
+    ],
+    "IdTokenValidity": 12
+   },
+   "refs": [
+    "CognitoUserPool"
+   ]
+  },
+  {
+   "id": "CognitoUserPoolDomain",
+   "cfg": "CognitoUserPoolDomain",
+   "type": "AWS::Cognito::UserPoolDomain",
+   "values": {
+    "Domain": "pooledtenant-saasoperations-123456789012",
+    "UserPoolId": {
+     "ref": "CognitoUserPool"
+    }
+   },
+   "refs": [
+    "CognitoUserPool"
+   ]
+  },
+  {
+   "id": "CognitoIdentityPool",
+   "cfg": "CognitoIdentityPool",
+   "type": "AWS::Cognito::IdentityPool",
+   "values": {
+    "IdentityPoolName": "PooledTenant-SaaSOperationsIdentityPool",
+    "AllowUnauthenticatedIdentities": false,
+    "CognitoIdentityProviders": [
+     {
+      "ClientId": {
+       "ref": "CognitoUserPoolClient"
+      },
+      "ProviderName": {
+       "ref": "CognitoUserPool",
+       "attr": "ProviderName"
+      },
+      "ServerSideTokenCheck": true
+     }
+    ]
+   },
+   "refs": [
+    "CognitoUserPool",
+    "CognitoUserPoolClient"
+   ]
+  },
+  {
+   "id": "AuthenticatedPooledUserRole",
+   "cfg": "AuthenticatedPooledUserRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "authenticated-pooled-user-role",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Federated": [
+         "cognito-identity.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRoleWithWebIdentity"
+       ],
+       "Condition": {
+        "ForAnyValue:StringLike": {
+         "cognito-identity.amazonaws.com:amr": "authenticated"
+        },
+        "StringEquals": {
+         "cognito-identity.amazonaws.com:aud": {
+          "ref": "CognitoIdentityPool"
+         }
+        }
+       }
+      },
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Federated": [
+         "cognito-identity.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:TagSession"
+       ],
+       "Condition": {
+        "ForAnyValue:StringLike": {
+         "cognito-identity.amazonaws.com:amr": "authenticated"
+        },
+        "StringEquals": {
+         "cognito-identity.amazonaws.com:aud": {
+          "ref": "CognitoIdentityPool"
+         }
+        }
+       }
+      }
+     ]
+    },
+    "Policies": [
+     {
+      "PolicyName": "authenticated-pooled-user-policy",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "dynamodb:UpdateItem",
+          "dynamodb:GetItem",
+          "dynamodb:PutItem",
+          "dynamodb:DeleteItem",
+          "dynamodb:Query"
+         ],
+         "Resource": [
+          "arn:aws:dynamodb:us-east-1:123456789012:table/Product-pooled"
+         ],
+         "Condition": {
+          "ForAllValues:StringLike": {
+           "dynamodb:LeadingKeys": [
+            "${aws:PrincipalTag/tenantId}-*"
+           ]
+          }
+         }
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "dynamodb:UpdateItem",
+          "dynamodb:GetItem",
+          "dynamodb:PutItem",
+          "dynamodb:DeleteItem",
+          "dynamodb:Query"
+         ],
+         "Resource": [
+          "arn:aws:dynamodb:us-east-1:123456789012:table/Order-pooled"
+         ],
+         "Condition": {
+          "ForAllValues:StringLike": {
+           "dynamodb:LeadingKeys": [
+            "${aws:PrincipalTag/tenantId}-*"
+           ]
+          }
+         }
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "dynamodb:UpdateItem",
+          "dynamodb:GetItem",
+          "dynamodb:PutItem",
+          "dynamodb:Query"
+         ],
+         "Resource": [
+          "arn:aws:dynamodb:us-east-1:123456789012:table/SaaSOperations-TenantUserMapping",
+          "arn:aws:dynamodb:us-east-1:123456789012:table/SaaSOperations-TenantDetails"
+         ],
+         "Condition": {
+          "ForAllValues:StringLike": {
+           "dynamodb:LeadingKeys": [
+            "${aws:PrincipalTag/tenantId}"
+           ]
+          },
+          "StringEquals": {
+           "TenantAdmin": "${aws:PrincipalTag/userRole}"
+          }
+         }
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "dynamodb:UpdateItem",
+          "dynamodb:GetItem",
+          "dynamodb:PutItem",
+          "dynamodb:Query",
+          "dynamodb:DeleteItem"
+         ],
+         "Resource": [
+          "arn:aws:dynamodb:us-east-1:123456789012:table/SaaSOperations-TenantStackMapping",
+          "arn:aws:dynamodb:us-east-1:123456789012:table/SaaSOperations-Settings"
+         ],
+         "Condition": {
+          "StringEquals": {
+           "TenantAdmin": "${aws:PrincipalTag/userRole}"
+          }
+         }
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "dynamodb:UpdateItem",
+          "dynamodb:GetItem",
+          "dynamodb:PutItem",
+          "dynamodb:Query",
+          "dynamodb:DeleteItem",
+          "dynamodb:Scan"
+         ],
+         "Resource": [
+          "arn:aws:dynamodb:us-east-1:123456789012:table/*",
+          "arn:aws:dynamodb:us-east-1:123456789012:table/*/index/*"
+         ],
+         "Condition": {
+          "StringEquals": {
+           "SystemAdmin": "${aws:PrincipalTag/userRole}"
+          }
+         }
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": [
+    "CognitoIdentityPool"
+   ]
+  },
+  {
+   "id": "AuthenticatedSiloedUserRole",
+   "cfg": "AuthenticatedSiloedUserRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "authenticated-siloed-user-role",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Federated": [
+         "cognito-identity.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRoleWithWebIdentity"
+       ],
+       "Condition": {
+        "ForAnyValue:StringLike": {
+         "cognito-identity.amazonaws.com:amr": "authenticated"
+        },
+        "StringEquals": {
+         "cognito-identity.amazonaws.com:aud": []
+        }
+       }
+      },
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Federated": [
+         "cognito-identity.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:TagSession"
+       ],
+       "Condition": {
+        "ForAnyValue:StringLike": {
+         "cognito-identity.amazonaws.com:amr": "authenticated"
+        },
+        "StringEquals": {
+         "cognito-identity.amazonaws.com:aud": []
+        }
+       }
+      }
+     ]
+    },
+    "Policies": [
+     {
+      "PolicyName": "authenticated-siloed-user-policy",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "dynamodb:UpdateItem",
+          "dynamodb:GetItem",
+          "dynamodb:PutItem",
+          "dynamodb:DeleteItem",
+          "dynamodb:Query"
+         ],
+         "Resource": [
+          "arn:aws:dynamodb:us-east-1:123456789012:table/Product-${aws:PrincipalTag/tenantId}"
+         ],
+         "Condition": {
+          "ForAllValues:StringLike": {
+           "dynamodb:LeadingKeys": [
+            "${aws:PrincipalTag/tenantId}-*"
+           ]
+          }
+         }
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "dynamodb:UpdateItem",
+          "dynamodb:GetItem",
+          "dynamodb:PutItem",
+          "dynamodb:DeleteItem",
+          "dynamodb:Query"
+         ],
+         "Resource": [
+          "arn:aws:dynamodb:us-east-1:123456789012:table/Order-${aws:PrincipalTag/tenantId}"
+         ],
+         "Condition": {
+          "ForAllValues:StringLike": {
+           "dynamodb:LeadingKeys": [
+            "${aws:PrincipalTag/tenantId}-*"
+           ]
+          }
+         }
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "dynamodb:UpdateItem",
+          "dynamodb:GetItem",
+          "dynamodb:PutItem",
+          "dynamodb:Query"
+         ],
+         "Resource": [
+          "arn:aws:dynamodb:us-east-1:123456789012:table/SaaSOperations-TenantUserMapping",
+          "arn:aws:dynamodb:us-east-1:123456789012:table/SaaSOperations-TenantDetails"
+         ],
+         "Condition": {
+          "ForAllValues:StringLike": {
+           "dynamodb:LeadingKeys": [
+            "${aws:PrincipalTag/tenantId}"
+           ]
+          },
+          "StringEquals": {
+           "TenantAdmin": "${aws:PrincipalTag/userRole}"
+          }
+         }
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "dynamodb:UpdateItem",
+          "dynamodb:GetItem",
+          "dynamodb:PutItem",
+          "dynamodb:Query",
+          "dynamodb:DeleteItem"
+         ],
+         "Resource": [
+          "arn:aws:dynamodb:us-east-1:123456789012:table/SaaSOperations-TenantStackMapping",
+          "arn:aws:dynamodb:us-east-1:123456789012:table/SaaSOperations-Settings"
+         ],
+         "Condition": {
+          "StringEquals": {
+           "TenantAdmin": "${aws:PrincipalTag/userRole}"
+          }
+         }
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "dynamodb:UpdateItem",
+          "dynamodb:GetItem",
+          "dynamodb:PutItem",
+          "dynamodb:Query",
+          "dynamodb:DeleteItem",
+          "dynamodb:Scan"
+         ],
+         "Resource": [
+          "arn:aws:dynamodb:us-east-1:123456789012:table/*",
+          "arn:aws:dynamodb:us-east-1:123456789012:table/*/index/*"
+         ],
+         "Condition": {
+          "StringEquals": {
+           "SystemAdmin": "${aws:PrincipalTag/userRole}"
+          }
+         }
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "CognitoIdentityPoolRoleAttachement",
+   "cfg": "CognitoIdentityPoolRoleAttachement",
+   "type": "AWS::Cognito::IdentityPoolRoleAttachment",
+   "values": {
+    "IdentityPoolId": {
+     "ref": "CognitoIdentityPool"
+    },
+    "Roles": {
+     "authenticated": {
+      "ref": "AuthenticatedPooledUserRole",
+      "attr": "Arn"
+     }
+    }
+   },
+   "refs": [
+    "AuthenticatedPooledUserRole",
+    "CognitoIdentityPool"
+   ]
+  },
+  {
+   "id": "CognitoUserPoolIdentityProvider",
+   "cfg": "CognitoUserPoolIdentityProvider",
+   "type": "AWS::Cognito::UserPoolIdentityProvider",
+   "values": {
+    "ProviderName": "Cognito",
+    "ProviderType": "OIDC",
+    "UserPoolId": {
+     "ref": "CognitoUserPool"
+    },
+    "ProviderDetails": {
+     "client_id": {
+      "ref": "CognitoUserPoolClient"
+     },
+     "authorize_scopes": "email openid profile",
+     "attributes_request_method": "GET",
+     "oidc_issuer": {
+      "ref": "CognitoUserPool",
+      "attr": "ProviderURL"
+     }
+    }
+   },
+   "refs": [
+    "CognitoUserPool",
+    "CognitoUserPoolClient"
+   ]
+  },
+  {
+   "id": "PooledUserPrincipalTagMapping",
+   "cfg": "PooledUserPrincipalTagMapping",
+   "type": "AWS::Cognito::IdentityPoolPrincipalTag",
+   "values": {
+    "IdentityPoolId": {
+     "ref": "CognitoIdentityPool"
+    },
+    "IdentityProviderName": {
+     "Fn::Join": [
+      "",
+      [
+       "cognito-idp.",
+       "us-east-1",
+       ".amazonaws.com/",
+       {
+        "ref": "CognitoUserPool"
+       }
+      ]
+     ]
+    },
+    "UseDefaults": false,
+    "PrincipalTags": {
+     "tenantId": "custom:tenantId",
+     "userRole": "custom:userRole"
+    }
+   },
+   "refs": [
+    "CognitoIdentityPool",
+    "CognitoUserPool"
+   ]
+  },
+  {
+   "id": "CognitoOperationUsersUserPool",
+   "cfg": "CognitoOperationUsersUserPool",
+   "type": "AWS::Cognito::UserPool",
+   "values": {
+    "UserPoolName": "OperationUsers-SaaSOperationsUserPool",
+    "AutoVerifiedAttributes": [
+     "email"
+    ],
+    "AccountRecoverySetting": {
+     "RecoveryMechanisms": [
+      {
+       "Name": "verified_email",
+       "Priority": 1
+      }
+     ]
+    },
+    "AdminCreateUserConfig": {
+     "InviteMessageTemplate": {
+      "EmailMessage": "Login into admin UI application at https://<param:AdminUserPoolCallbackURLParameter>/ with username {username} and temporary password {####}",
+      "EmailSubject": "Your temporary password for admin UI application"
+     }
+    },
+    "Schema": [
+     {
+      "AttributeDataType": "String",
+      "Name": "email",
+      "Required": true,
+      "Mutable": true
+     },
+     {
+      "AttributeDataType": "String",
+      "Name": "tenantId"
+     },
+     {
+      "AttributeDataType": "String",
+      "Name": "userRole",
+      "Required": false,
+      "Mutable": true
+     },
+     {
+      "AttributeDataType": "String",
+      "Name": "apiKey",
+      "Required": false,
+      "Mutable": true
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "CognitoOperationUsersUserPoolClient",
+   "cfg": "CognitoOperationUsersUserPoolClient",
+   "type": "AWS::Cognito::UserPoolClient",
+   "values": {
+    "ClientName": "SaaSOperationsOperationUsersPoolClient",
+    "GenerateSecret": false,
+    "UserPoolId": {
+     "ref": "CognitoOperationUsersUserPool"
+    },
+    "AllowedOAuthFlowsUserPoolClient": true,
+    "AllowedOAuthFlows": [
+     "code",
+     "implicit"
+    ],
+    "SupportedIdentityProviders": [
+     "COGNITO"
+    ],
+    "CallbackURLs": [
+     "https://<param:AdminUserPoolCallbackURLParameter>/"
+    ],
+    "LogoutURLs": [
+     "https://<param:AdminUserPoolCallbackURLParameter>/"
+    ],
+    "AllowedOAuthScopes": [
+     "email",
+     "openid",
+     "profile"
+    ],
+    "WriteAttributes": [
+     "email",
+     "custom:tenantId",
+     "custom:userRole",
+     "custom:apiKey"
+    ]
+   },
+   "refs": [
+    "CognitoOperationUsersUserPool"
+   ]
+  },
+  {
+   "id": "CognitoOperationUsersUserPoolDomain",
+   "cfg": "CognitoOperationUsersUserPoolDomain",
+   "type": "AWS::Cognito::UserPoolDomain",
+   "values": {
+    "Domain": "operationsusers-saasoperations-123456789012",
+    "UserPoolId": {
+     "ref": "CognitoOperationUsersUserPool"
+    }
+   },
+   "refs": [
+    "CognitoOperationUsersUserPool"
+   ]
+  },
+  {
+   "id": "CognitoAdminUserGroup",
+   "cfg": "CognitoAdminUserGroup",
+   "type": "AWS::Cognito::UserPoolGroup",
+   "values": {
+    "GroupName": "SystemAdmins",
+    "Description": "Admin user group",
+    "Precedence": 0,
+    "UserPoolId": {
+     "ref": "CognitoOperationUsersUserPool"
+    }
+   },
+   "refs": [
+    "CognitoOperationUsersUserPool"
+   ]
+  },
+  {
+   "id": "CognitoOperationUsersIdentityPool",
+   "cfg": "CognitoOperationUsersIdentityPool",
+   "type": "AWS::Cognito::IdentityPool",
+   "values": {
+    "IdentityPoolName": "OperationsUser-SaaSOperationsIdentityPool",
+    "AllowUnauthenticatedIdentities": false,
+    "CognitoIdentityProviders": [
+     {
+      "ClientId": {
+       "ref": "CognitoOperationUsersUserPoolClient"
+      },
+      "ProviderName": {
+       "ref": "CognitoOperationUsersUserPool",
+       "attr": "ProviderName"
+      },
+      "ServerSideTokenCheck": true
+     }
+    ]
+   },
+   "refs": [
+    "CognitoOperationUsersUserPool",
+    "CognitoOperationUsersUserPoolClient"
+   ]
+  },
+  {
+   "id": "CognitoOperationUsersIdentityPoolRoleAttachement",
+   "cfg": "CognitoOperationUsersIdentityPoolRoleAttachement",
+   "type": "AWS::Cognito::IdentityPoolRoleAttachment",
+   "values": {
+    "IdentityPoolId": {
+     "ref": "CognitoOperationUsersIdentityPool"
+    },
+    "Roles": {
+     "authenticated": {
+      "ref": "AuthenticatedPooledUserRole",
+      "attr": "Arn"
+     }
+    }
+   },
+   "refs": [
+    "AuthenticatedPooledUserRole",
+    "CognitoOperationUsersIdentityPool"
+   ]
+  },
+  {
+   "id": "CognitoOperationsUsersUserPoolIdentityProvider",
+   "cfg": "CognitoOperationsUsersUserPoolIdentityProvider",
+   "type": "AWS::Cognito::UserPoolIdentityProvider",
+   "values": {
+    "ProviderName": "Cognito",
+    "ProviderType": "OIDC",
+    "UserPoolId": {
+     "ref": "CognitoOperationUsersUserPool"
+    },
+    "ProviderDetails": {
+     "client_id": {
+      "ref": "CognitoOperationUsersUserPoolClient"
+     },
+     "authorize_scopes": "email openid profile",
+     "attributes_request_method": "GET",
+     "oidc_issuer": {
+      "ref": "CognitoOperationUsersUserPool",
+      "attr": "ProviderURL"
+     }
+    }
+   },
+   "refs": [
+    "CognitoOperationUsersUserPool",
+    "CognitoOperationUsersUserPoolClient"
+   ]
+  },
+  {
+   "id": "OperationsUserPrincipalTagMapping",
+   "cfg": "OperationsUserPrincipalTagMapping",
+   "type": "AWS::Cognito::IdentityPoolPrincipalTag",
+   "values": {
+    "IdentityPoolId": {
+     "ref": "CognitoOperationUsersIdentityPool"
+    },
+    "IdentityProviderName": {
+     "Fn::Join": [
+      "",
+      [
+       "cognito-idp.",
+       "us-east-1",
+       ".amazonaws.com/",
+       {
+        "ref": "CognitoOperationUsersUserPool"
+       }
+      ]
+     ]
+    },
+    "UseDefaults": false,
+    "PrincipalTags": {
+     "tenantId": "custom:tenantId",
+     "userRole": "custom:userRole"
+    }
+   },
+   "refs": [
+    "CognitoOperationUsersIdentityPool",
+    "CognitoOperationUsersUserPool"
+   ]
+  },
+  {
+   "id": "__parameter__.ApiKeyOperationUsersParameter",
+   "cfg": "__parameter__.ApiKeyOperationUsersParameter",
+   "type": "__parameter__",
+   "values": {
+    "name": "ApiKeyOperationUsersParameter",
+    "type": "String",
+    "default": "9a7743fa-3ae7-11eb-adc1-0242ac120002",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.AdminUserPoolCallbackURLParameter",
+   "cfg": "__parameter__.AdminUserPoolCallbackURLParameter",
+   "type": "__parameter__",
+   "values": {
+    "name": "AdminUserPoolCallbackURLParameter",
+    "type": "String",
+    "default": null,
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.TenantUserPoolCallbackURLParameter",
+   "cfg": "__parameter__.TenantUserPoolCallbackURLParameter",
+   "type": "__parameter__",
+   "values": {
+    "name": "TenantUserPoolCallbackURLParameter",
+    "type": "String",
+    "default": null,
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.SiloedTenantRoleName",
+   "cfg": "__parameter__.SiloedTenantRoleName",
+   "type": "__parameter__",
+   "values": {
+    "name": "SiloedTenantRoleName",
+    "type": "String",
+    "default": "authenticated-siloed-user-role",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.CognitoUserPoolId",
+   "cfg": "__output__.CognitoUserPoolId",
+   "type": "__output__",
+   "values": {
+    "name": "CognitoUserPoolId",
+    "value": {
+     "ref": "CognitoUserPool"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "CognitoUserPool"
+   ]
+  },
+  {
+   "id": "__output__.CognitoIdentityPoolId",
+   "cfg": "__output__.CognitoIdentityPoolId",
+   "type": "__output__",
+   "values": {
+    "name": "CognitoIdentityPoolId",
+    "value": {
+     "ref": "CognitoIdentityPool"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "CognitoIdentityPool"
+   ]
+  },
+  {
+   "id": "__output__.SiloedTenantRoleArn",
+   "cfg": "__output__.SiloedTenantRoleArn",
+   "type": "__output__",
+   "values": {
+    "name": "SiloedTenantRoleArn",
+    "value": {
+     "ref": "AuthenticatedSiloedUserRole",
+     "attr": "Arn"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "AuthenticatedSiloedUserRole"
+   ]
+  },
+  {
+   "id": "__output__.SiloedTenantRoleName",
+   "cfg": "__output__.SiloedTenantRoleName",
+   "type": "__output__",
+   "values": {
+    "name": "SiloedTenantRoleName",
+    "value": "authenticated-siloed-user-role",
+    "description": null,
+    "export": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.CognitoUserPoolClientId",
+   "cfg": "__output__.CognitoUserPoolClientId",
+   "type": "__output__",
+   "values": {
+    "name": "CognitoUserPoolClientId",
+    "value": {
+     "ref": "CognitoUserPoolClient"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "CognitoUserPoolClient"
+   ]
+  },
+  {
+   "id": "__output__.CognitoOperationUsersUserPoolId",
+   "cfg": "__output__.CognitoOperationUsersUserPoolId",
+   "type": "__output__",
+   "values": {
+    "name": "CognitoOperationUsersUserPoolId",
+    "value": {
+     "ref": "CognitoOperationUsersUserPool"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "CognitoOperationUsersUserPool"
+   ]
+  },
+  {
+   "id": "__output__.CognitoOperationUsersIdentityPoolId",
+   "cfg": "__output__.CognitoOperationUsersIdentityPoolId",
+   "type": "__output__",
+   "values": {
+    "name": "CognitoOperationUsersIdentityPoolId",
+    "value": {
+     "ref": "CognitoOperationUsersIdentityPool"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "CognitoOperationUsersIdentityPool"
+   ]
+  },
+  {
+   "id": "__output__.CognitoOperationUsersUserPoolClientId",
+   "cfg": "__output__.CognitoOperationUsersUserPoolClientId",
+   "type": "__output__",
+   "values": {
+    "name": "CognitoOperationUsersUserPoolClientId",
+    "value": {
+     "ref": "CognitoOperationUsersUserPoolClient"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "CognitoOperationUsersUserPoolClient"
+   ]
+  },
+  {
+   "id": "__output__.CognitoOperationUsersUserPoolProviderURL",
+   "cfg": "__output__.CognitoOperationUsersUserPoolProviderURL",
+   "type": "__output__",
+   "values": {
+    "name": "CognitoOperationUsersUserPoolProviderURL",
+    "value": {
+     "ref": "CognitoOperationUsersUserPool",
+     "attr": "ProviderURL"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "CognitoOperationUsersUserPool"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPool.CognitoUserPool",
+   "cfg": "CognitoUserPool",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Cognito::UserPool",
+    "name": "CognitoUserPool",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "UserPoolName": "PooledTenant-SaaSOperationsUserPool",
+     "AutoVerifiedAttributes": [
+      "email"
+     ],
+     "AccountRecoverySetting": {
+      "RecoveryMechanisms": [
+       {
+        "Name": "verified_email",
+        "Priority": 1
+       }
+      ]
+     },
+     "AdminCreateUserConfig": {
+      "InviteMessageTemplate": {
+       "EmailMessage": "Login into tenant UI application at https://<param:TenantUserPoolCallbackURLParameter>/ with username {username} and temporary password {####}",
+       "EmailSubject": "Your temporary password for tenant UI application"
+      }
+     },
+     "Schema": [
+      {
+       "AttributeDataType": "String",
+       "Name": "email",
+       "Required": true,
+       "Mutable": true
+      },
+      {
+       "AttributeDataType": "String",
+       "Name": "tenantId"
+      },
+      {
+       "AttributeDataType": "String",
+       "Name": "userRole",
+       "Required": false,
+       "Mutable": true
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolClient.CognitoUserPoolClient",
+   "cfg": "CognitoUserPoolClient",
+   "type": "__declared__",
+   "refs": [
+    "CognitoUserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolClient",
+    "name": "CognitoUserPoolClient",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ClientName": "SaaSOperationsClient",
+     "GenerateSecret": false,
+     "UserPoolId": {
+      "ref": "CognitoUserPool"
+     },
+     "AllowedOAuthFlowsUserPoolClient": true,
+     "AllowedOAuthFlows": [
+      "code",
+      "implicit"
+     ],
+     "ExplicitAuthFlows": [
+      "ALLOW_REFRESH_TOKEN_AUTH",
+      "ALLOW_USER_SRP_AUTH",
+      "ALLOW_CUSTOM_AUTH",
+      "ALLOW_USER_PASSWORD_AUTH"
+     ],
+     "SupportedIdentityProviders": [
+      "COGNITO"
+     ],
+     "CallbackURLs": [
+      "https://<param:TenantUserPoolCallbackURLParameter>/"
+     ],
+     "LogoutURLs": [
+      "https://<param:TenantUserPoolCallbackURLParameter>/"
+     ],
+     "AllowedOAuthScopes": [
+      "email",
+      "openid",
+      "profile"
+     ],
+     "WriteAttributes": [
+      "email",
+      "custom:tenantId",
+      "custom:userRole"
+     ],
+     "IdTokenValidity": 12
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolDomain.CognitoUserPoolDomain",
+   "cfg": "CognitoUserPoolDomain",
+   "type": "__declared__",
+   "refs": [
+    "CognitoUserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolDomain",
+    "name": "CognitoUserPoolDomain",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Domain": "pooledtenant-saasoperations-123456789012",
+     "UserPoolId": {
+      "ref": "CognitoUserPool"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::IdentityPool.CognitoIdentityPool",
+   "cfg": "CognitoIdentityPool",
+   "type": "__declared__",
+   "refs": [
+    "CognitoUserPool",
+    "CognitoUserPoolClient"
+   ],
+   "values": {
+    "type": "AWS::Cognito::IdentityPool",
+    "name": "CognitoIdentityPool",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "IdentityPoolName": "PooledTenant-SaaSOperationsIdentityPool",
+     "AllowUnauthenticatedIdentities": false,
+     "CognitoIdentityProviders": [
+      {
+       "ClientId": {
+        "ref": "CognitoUserPoolClient"
+       },
+       "ProviderName": {
+        "ref": "CognitoUserPool",
+        "attr": "ProviderName"
+       },
+       "ServerSideTokenCheck": true
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.AuthenticatedPooledUserRole",
+   "cfg": "AuthenticatedPooledUserRole",
+   "type": "__declared__",
+   "refs": [
+    "CognitoIdentityPool"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "AuthenticatedPooledUserRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "authenticated-pooled-user-role",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Federated": [
+          "cognito-identity.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRoleWithWebIdentity"
+        ],
+        "Condition": {
+         "ForAnyValue:StringLike": {
+          "cognito-identity.amazonaws.com:amr": "authenticated"
+         },
+         "StringEquals": {
+          "cognito-identity.amazonaws.com:aud": {
+           "ref": "CognitoIdentityPool"
+          }
+         }
+        }
+       },
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Federated": [
+          "cognito-identity.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:TagSession"
+        ],
+        "Condition": {
+         "ForAnyValue:StringLike": {
+          "cognito-identity.amazonaws.com:amr": "authenticated"
+         },
+         "StringEquals": {
+          "cognito-identity.amazonaws.com:aud": {
+           "ref": "CognitoIdentityPool"
+          }
+         }
+        }
+       }
+      ]
+     },
+     "Policies": [
+      {
+       "PolicyName": "authenticated-pooled-user-policy",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "dynamodb:UpdateItem",
+           "dynamodb:GetItem",
+           "dynamodb:PutItem",
+           "dynamodb:DeleteItem",
+           "dynamodb:Query"
+          ],
+          "Resource": [
+           "arn:aws:dynamodb:us-east-1:123456789012:table/Product-pooled"
+          ],
+          "Condition": {
+           "ForAllValues:StringLike": {
+            "dynamodb:LeadingKeys": [
+             "${aws:PrincipalTag/tenantId}-*"
+            ]
+           }
+          }
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "dynamodb:UpdateItem",
+           "dynamodb:GetItem",
+           "dynamodb:PutItem",
+           "dynamodb:DeleteItem",
+           "dynamodb:Query"
+          ],
+          "Resource": [
+           "arn:aws:dynamodb:us-east-1:123456789012:table/Order-pooled"
+          ],
+          "Condition": {
+           "ForAllValues:StringLike": {
+            "dynamodb:LeadingKeys": [
+             "${aws:PrincipalTag/tenantId}-*"
+            ]
+           }
+          }
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "dynamodb:UpdateItem",
+           "dynamodb:GetItem",
+           "dynamodb:PutItem",
+           "dynamodb:Query"
+          ],
+          "Resource": [
+           "arn:aws:dynamodb:us-east-1:123456789012:table/SaaSOperations-TenantUserMapping",
+           "arn:aws:dynamodb:us-east-1:123456789012:table/SaaSOperations-TenantDetails"
+          ],
+          "Condition": {
+           "ForAllValues:StringLike": {
+            "dynamodb:LeadingKeys": [
+             "${aws:PrincipalTag/tenantId}"
+            ]
+           },
+           "StringEquals": {
+            "TenantAdmin": "${aws:PrincipalTag/userRole}"
+           }
+          }
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "dynamodb:UpdateItem",
+           "dynamodb:GetItem",
+           "dynamodb:PutItem",
+           "dynamodb:Query",
+           "dynamodb:DeleteItem"
+          ],
+          "Resource": [
+           "arn:aws:dynamodb:us-east-1:123456789012:table/SaaSOperations-TenantStackMapping",
+           "arn:aws:dynamodb:us-east-1:123456789012:table/SaaSOperations-Settings"
+          ],
+          "Condition": {
+           "StringEquals": {
+            "TenantAdmin": "${aws:PrincipalTag/userRole}"
+           }
+          }
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "dynamodb:UpdateItem",
+           "dynamodb:GetItem",
+           "dynamodb:PutItem",
+           "dynamodb:Query",
+           "dynamodb:DeleteItem",
+           "dynamodb:Scan"
+          ],
+          "Resource": [
+           "arn:aws:dynamodb:us-east-1:123456789012:table/*",
+           "arn:aws:dynamodb:us-east-1:123456789012:table/*/index/*"
+          ],
+          "Condition": {
+           "StringEquals": {
+            "SystemAdmin": "${aws:PrincipalTag/userRole}"
+           }
+          }
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.AuthenticatedSiloedUserRole",
+   "cfg": "AuthenticatedSiloedUserRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "AuthenticatedSiloedUserRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "authenticated-siloed-user-role",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Federated": [
+          "cognito-identity.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRoleWithWebIdentity"
+        ],
+        "Condition": {
+         "ForAnyValue:StringLike": {
+          "cognito-identity.amazonaws.com:amr": "authenticated"
+         },
+         "StringEquals": {
+          "cognito-identity.amazonaws.com:aud": []
+         }
+        }
+       },
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Federated": [
+          "cognito-identity.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:TagSession"
+        ],
+        "Condition": {
+         "ForAnyValue:StringLike": {
+          "cognito-identity.amazonaws.com:amr": "authenticated"
+         },
+         "StringEquals": {
+          "cognito-identity.amazonaws.com:aud": []
+         }
+        }
+       }
+      ]
+     },
+     "Policies": [
+      {
+       "PolicyName": "authenticated-siloed-user-policy",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "dynamodb:UpdateItem",
+           "dynamodb:GetItem",
+           "dynamodb:PutItem",
+           "dynamodb:DeleteItem",
+           "dynamodb:Query"
+          ],
+          "Resource": [
+           "arn:aws:dynamodb:us-east-1:123456789012:table/Product-${aws:PrincipalTag/tenantId}"
+          ],
+          "Condition": {
+           "ForAllValues:StringLike": {
+            "dynamodb:LeadingKeys": [
+             "${aws:PrincipalTag/tenantId}-*"
+            ]
+           }
+          }
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "dynamodb:UpdateItem",
+           "dynamodb:GetItem",
+           "dynamodb:PutItem",
+           "dynamodb:DeleteItem",
+           "dynamodb:Query"
+          ],
+          "Resource": [
+           "arn:aws:dynamodb:us-east-1:123456789012:table/Order-${aws:PrincipalTag/tenantId}"
+          ],
+          "Condition": {
+           "ForAllValues:StringLike": {
+            "dynamodb:LeadingKeys": [
+             "${aws:PrincipalTag/tenantId}-*"
+            ]
+           }
+          }
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "dynamodb:UpdateItem",
+           "dynamodb:GetItem",
+           "dynamodb:PutItem",
+           "dynamodb:Query"
+          ],
+          "Resource": [
+           "arn:aws:dynamodb:us-east-1:123456789012:table/SaaSOperations-TenantUserMapping",
+           "arn:aws:dynamodb:us-east-1:123456789012:table/SaaSOperations-TenantDetails"
+          ],
+          "Condition": {
+           "ForAllValues:StringLike": {
+            "dynamodb:LeadingKeys": [
+             "${aws:PrincipalTag/tenantId}"
+            ]
+           },
+           "StringEquals": {
+            "TenantAdmin": "${aws:PrincipalTag/userRole}"
+           }
+          }
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "dynamodb:UpdateItem",
+           "dynamodb:GetItem",
+           "dynamodb:PutItem",
+           "dynamodb:Query",
+           "dynamodb:DeleteItem"
+          ],
+          "Resource": [
+           "arn:aws:dynamodb:us-east-1:123456789012:table/SaaSOperations-TenantStackMapping",
+           "arn:aws:dynamodb:us-east-1:123456789012:table/SaaSOperations-Settings"
+          ],
+          "Condition": {
+           "StringEquals": {
+            "TenantAdmin": "${aws:PrincipalTag/userRole}"
+           }
+          }
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "dynamodb:UpdateItem",
+           "dynamodb:GetItem",
+           "dynamodb:PutItem",
+           "dynamodb:Query",
+           "dynamodb:DeleteItem",
+           "dynamodb:Scan"
+          ],
+          "Resource": [
+           "arn:aws:dynamodb:us-east-1:123456789012:table/*",
+           "arn:aws:dynamodb:us-east-1:123456789012:table/*/index/*"
+          ],
+          "Condition": {
+           "StringEquals": {
+            "SystemAdmin": "${aws:PrincipalTag/userRole}"
+           }
+          }
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::IdentityPoolRoleAttachment.CognitoIdentityPoolRoleAttachement",
+   "cfg": "CognitoIdentityPoolRoleAttachement",
+   "type": "__declared__",
+   "refs": [
+    "AuthenticatedPooledUserRole",
+    "CognitoIdentityPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::IdentityPoolRoleAttachment",
+    "name": "CognitoIdentityPoolRoleAttachement",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "IdentityPoolId": {
+      "ref": "CognitoIdentityPool"
+     },
+     "Roles": {
+      "authenticated": {
+       "ref": "AuthenticatedPooledUserRole",
+       "attr": "Arn"
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolIdentityProvider.CognitoUserPoolIdentityProvider",
+   "cfg": "CognitoUserPoolIdentityProvider",
+   "type": "__declared__",
+   "refs": [
+    "CognitoUserPool",
+    "CognitoUserPoolClient"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolIdentityProvider",
+    "name": "CognitoUserPoolIdentityProvider",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ProviderName": "Cognito",
+     "ProviderType": "OIDC",
+     "UserPoolId": {
+      "ref": "CognitoUserPool"
+     },
+     "ProviderDetails": {
+      "client_id": {
+       "ref": "CognitoUserPoolClient"
+      },
+      "authorize_scopes": "email openid profile",
+      "attributes_request_method": "GET",
+      "oidc_issuer": {
+       "ref": "CognitoUserPool",
+       "attr": "ProviderURL"
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::IdentityPoolPrincipalTag.PooledUserPrincipalTagMapping",
+   "cfg": "PooledUserPrincipalTagMapping",
+   "type": "__declared__",
+   "refs": [
+    "CognitoIdentityPool",
+    "CognitoUserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::IdentityPoolPrincipalTag",
+    "name": "PooledUserPrincipalTagMapping",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "IdentityPoolId": {
+      "ref": "CognitoIdentityPool"
+     },
+     "IdentityProviderName": {
+      "Fn::Join": [
+       "",
+       [
+        "cognito-idp.",
+        "us-east-1",
+        ".amazonaws.com/",
+        {
+         "ref": "CognitoUserPool"
+        }
+       ]
+      ]
+     },
+     "UseDefaults": false,
+     "PrincipalTags": {
+      "tenantId": "custom:tenantId",
+      "userRole": "custom:userRole"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPool.CognitoOperationUsersUserPool",
+   "cfg": "CognitoOperationUsersUserPool",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Cognito::UserPool",
+    "name": "CognitoOperationUsersUserPool",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "UserPoolName": "OperationUsers-SaaSOperationsUserPool",
+     "AutoVerifiedAttributes": [
+      "email"
+     ],
+     "AccountRecoverySetting": {
+      "RecoveryMechanisms": [
+       {
+        "Name": "verified_email",
+        "Priority": 1
+       }
+      ]
+     },
+     "AdminCreateUserConfig": {
+      "InviteMessageTemplate": {
+       "EmailMessage": "Login into admin UI application at https://<param:AdminUserPoolCallbackURLParameter>/ with username {username} and temporary password {####}",
+       "EmailSubject": "Your temporary password for admin UI application"
+      }
+     },
+     "Schema": [
+      {
+       "AttributeDataType": "String",
+       "Name": "email",
+       "Required": true,
+       "Mutable": true
+      },
+      {
+       "AttributeDataType": "String",
+       "Name": "tenantId"
+      },
+      {
+       "AttributeDataType": "String",
+       "Name": "userRole",
+       "Required": false,
+       "Mutable": true
+      },
+      {
+       "AttributeDataType": "String",
+       "Name": "apiKey",
+       "Required": false,
+       "Mutable": true
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolClient.CognitoOperationUsersUserPoolClient",
+   "cfg": "CognitoOperationUsersUserPoolClient",
+   "type": "__declared__",
+   "refs": [
+    "CognitoOperationUsersUserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolClient",
+    "name": "CognitoOperationUsersUserPoolClient",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ClientName": "SaaSOperationsOperationUsersPoolClient",
+     "GenerateSecret": false,
+     "UserPoolId": {
+      "ref": "CognitoOperationUsersUserPool"
+     },
+     "AllowedOAuthFlowsUserPoolClient": true,
+     "AllowedOAuthFlows": [
+      "code",
+      "implicit"
+     ],
+     "SupportedIdentityProviders": [
+      "COGNITO"
+     ],
+     "CallbackURLs": [
+      "https://<param:AdminUserPoolCallbackURLParameter>/"
+     ],
+     "LogoutURLs": [
+      "https://<param:AdminUserPoolCallbackURLParameter>/"
+     ],
+     "AllowedOAuthScopes": [
+      "email",
+      "openid",
+      "profile"
+     ],
+     "WriteAttributes": [
+      "email",
+      "custom:tenantId",
+      "custom:userRole",
+      "custom:apiKey"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolDomain.CognitoOperationUsersUserPoolDomain",
+   "cfg": "CognitoOperationUsersUserPoolDomain",
+   "type": "__declared__",
+   "refs": [
+    "CognitoOperationUsersUserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolDomain",
+    "name": "CognitoOperationUsersUserPoolDomain",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Domain": "operationsusers-saasoperations-123456789012",
+     "UserPoolId": {
+      "ref": "CognitoOperationUsersUserPool"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolGroup.CognitoAdminUserGroup",
+   "cfg": "CognitoAdminUserGroup",
+   "type": "__declared__",
+   "refs": [
+    "CognitoOperationUsersUserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolGroup",
+    "name": "CognitoAdminUserGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "GroupName": "SystemAdmins",
+     "Description": "Admin user group",
+     "Precedence": 0,
+     "UserPoolId": {
+      "ref": "CognitoOperationUsersUserPool"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::IdentityPool.CognitoOperationUsersIdentityPool",
+   "cfg": "CognitoOperationUsersIdentityPool",
+   "type": "__declared__",
+   "refs": [
+    "CognitoOperationUsersUserPool",
+    "CognitoOperationUsersUserPoolClient"
+   ],
+   "values": {
+    "type": "AWS::Cognito::IdentityPool",
+    "name": "CognitoOperationUsersIdentityPool",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "IdentityPoolName": "OperationsUser-SaaSOperationsIdentityPool",
+     "AllowUnauthenticatedIdentities": false,
+     "CognitoIdentityProviders": [
+      {
+       "ClientId": {
+        "ref": "CognitoOperationUsersUserPoolClient"
+       },
+       "ProviderName": {
+        "ref": "CognitoOperationUsersUserPool",
+        "attr": "ProviderName"
+       },
+       "ServerSideTokenCheck": true
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::IdentityPoolRoleAttachment.CognitoOperationUsersIdentityPoolRoleAttachement",
+   "cfg": "CognitoOperationUsersIdentityPoolRoleAttachement",
+   "type": "__declared__",
+   "refs": [
+    "AuthenticatedPooledUserRole",
+    "CognitoOperationUsersIdentityPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::IdentityPoolRoleAttachment",
+    "name": "CognitoOperationUsersIdentityPoolRoleAttachement",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "IdentityPoolId": {
+      "ref": "CognitoOperationUsersIdentityPool"
+     },
+     "Roles": {
+      "authenticated": {
+       "ref": "AuthenticatedPooledUserRole",
+       "attr": "Arn"
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolIdentityProvider.CognitoOperationsUsersUserPoolIdentityProvider",
+   "cfg": "CognitoOperationsUsersUserPoolIdentityProvider",
+   "type": "__declared__",
+   "refs": [
+    "CognitoOperationUsersUserPool",
+    "CognitoOperationUsersUserPoolClient"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolIdentityProvider",
+    "name": "CognitoOperationsUsersUserPoolIdentityProvider",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ProviderName": "Cognito",
+     "ProviderType": "OIDC",
+     "UserPoolId": {
+      "ref": "CognitoOperationUsersUserPool"
+     },
+     "ProviderDetails": {
+      "client_id": {
+       "ref": "CognitoOperationUsersUserPoolClient"
+      },
+      "authorize_scopes": "email openid profile",
+      "attributes_request_method": "GET",
+      "oidc_issuer": {
+       "ref": "CognitoOperationUsersUserPool",
+       "attr": "ProviderURL"
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::IdentityPoolPrincipalTag.OperationsUserPrincipalTagMapping",
+   "cfg": "OperationsUserPrincipalTagMapping",
+   "type": "__declared__",
+   "refs": [
+    "CognitoOperationUsersIdentityPool",
+    "CognitoOperationUsersUserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::IdentityPoolPrincipalTag",
+    "name": "OperationsUserPrincipalTagMapping",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "IdentityPoolId": {
+      "ref": "CognitoOperationUsersIdentityPool"
+     },
+     "IdentityProviderName": {
+      "Fn::Join": [
+       "",
+       [
+        "cognito-idp.",
+        "us-east-1",
+        ".amazonaws.com/",
+        {
+         "ref": "CognitoOperationUsersUserPool"
+        }
+       ]
+      ]
+     },
+     "UseDefaults": false,
+     "PrincipalTags": {
+      "tenantId": "custom:tenantId",
+      "userRole": "custom:userRole"
+     }
+    }
+   }
+  }
+ ]
+}

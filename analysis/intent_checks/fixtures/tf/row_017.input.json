@@ -1,0 +1,263 @@
+{
+ "meta": {
+  "lang": "tf",
+  "mode": "plan",
+  "warnings": [],
+  "gt_hash": "c3f502a10dca4b9f5c57d16383090d456ea9fbe5194b459381ed64326b6f7308",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "aws_kms_key.cloudtrail",
+   "cfg": "aws_kms_key.cloudtrail",
+   "type": "aws_kms_key",
+   "values": {
+    "bypass_policy_lockout_safety_check": false,
+    "custom_key_store_id": null,
+    "customer_master_key_spec": "SYMMETRIC_DEFAULT",
+    "deletion_window_in_days": null,
+    "description": "CMK for the CloudTrail log bucket",
+    "enable_key_rotation": true,
+    "is_enabled": true,
+    "key_usage": "ENCRYPT_DECRYPT",
+    "region": "us-east-1",
+    "tags": null,
+    "timeouts": null,
+    "xks_key_id": null
+   },
+   "refs": []
+  },
+  {
+   "id": "aws_s3_bucket.cloudtrail",
+   "cfg": "aws_s3_bucket.cloudtrail",
+   "type": "aws_s3_bucket",
+   "values": {
+    "bucket": "benchmark-cloudtrail-us-east-1",
+    "force_destroy": true,
+    "policy": "{\"Statement\":[{\"Action\":\"s3:GetBucketAcl\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"cloudtrail.amazonaws.com\"},\"Resource\":\"arn:aws:s3:::benchmark-cloudtrail-us-east-1\",\"Sid\":\"AWSCloudTrailAclCheck\"},{\"Action\":\"s3:PutObject\",\"Condition\":{\"StringEquals\":{\"s3:x-amz-acl\":\"bucket-owner-full-control\"}},\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"cloudtrail.amazonaws.com\"},\"Resource\":\"arn:aws:s3:::benchmark-cloudtrail-us-east-1/*\",\"Sid\":\"AWSCloudTrailWrite\"}],\"Version\":\"2012-10-17\"}",
+    "region": "us-east-1",
+    "tags": null,
+    "timeouts": null
+   },
+   "refs": [
+    "data.aws_iam_policy_document.cloudtrail"
+   ]
+  },
+  {
+   "id": "aws_s3_bucket_public_access_block.cloudtrail",
+   "cfg": "aws_s3_bucket_public_access_block.cloudtrail",
+   "type": "aws_s3_bucket_public_access_block",
+   "values": {
+    "block_public_acls": true,
+    "block_public_policy": true,
+    "ignore_public_acls": true,
+    "region": "us-east-1",
+    "restrict_public_buckets": true,
+    "skip_destroy": null
+   },
+   "refs": [
+    "aws_s3_bucket.cloudtrail"
+   ]
+  },
+  {
+   "id": "aws_s3_bucket_server_side_encryption_configuration.cloudtrail",
+   "cfg": "aws_s3_bucket_server_side_encryption_configuration.cloudtrail",
+   "type": "aws_s3_bucket_server_side_encryption_configuration",
+   "values": {
+    "expected_bucket_owner": null,
+    "region": "us-east-1",
+    "rule": [
+     {
+      "apply_server_side_encryption_by_default": [
+       {
+        "sse_algorithm": "aws:kms"
+       }
+      ]
+     }
+    ]
+   },
+   "refs": [
+    "aws_kms_key.cloudtrail",
+    "aws_s3_bucket.cloudtrail"
+   ]
+  },
+  {
+   "id": "__parameter__.aws_region",
+   "cfg": "__parameter__.aws_region",
+   "type": "__parameter__",
+   "values": {
+    "name": "aws_region",
+    "default": "us-east-1"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.name",
+   "cfg": "__parameter__.name",
+   "type": "__parameter__",
+   "values": {
+    "name": "name",
+    "default": "benchmark"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.cloudtrail_bucket_id",
+   "cfg": "__output__.cloudtrail_bucket_id",
+   "type": "__output__",
+   "values": {
+    "name": "cloudtrail_bucket_id",
+    "value": null,
+    "description": null
+   },
+   "refs": [
+    "aws_s3_bucket.cloudtrail"
+   ]
+  },
+  {
+   "id": "__declared__.aws_s3_bucket.cloudtrail",
+   "cfg": "aws_s3_bucket.cloudtrail",
+   "type": "__declared__",
+   "refs": [
+    "data.aws_iam_policy_document.cloudtrail"
+   ],
+   "values": {
+    "type": "aws_s3_bucket",
+    "name": "cloudtrail",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "bucket": "${var.name}-cloudtrail-${var.aws_region}",
+     "force_destroy": true,
+     "policy": "${data.aws_iam_policy_document.cloudtrail.json}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_s3_bucket_public_access_block.cloudtrail",
+   "cfg": "aws_s3_bucket_public_access_block.cloudtrail",
+   "type": "__declared__",
+   "refs": [
+    "aws_s3_bucket.cloudtrail"
+   ],
+   "values": {
+    "type": "aws_s3_bucket_public_access_block",
+    "name": "cloudtrail",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "bucket": "${aws_s3_bucket.cloudtrail.id}",
+     "block_public_acls": true,
+     "block_public_policy": true,
+     "ignore_public_acls": true,
+     "restrict_public_buckets": true
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_kms_key.cloudtrail",
+   "cfg": "aws_kms_key.cloudtrail",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_kms_key",
+    "name": "cloudtrail",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "description": "CMK for the CloudTrail log bucket",
+     "enable_key_rotation": true
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_s3_bucket_server_side_encryption_configuration.cloudtrail",
+   "cfg": "aws_s3_bucket_server_side_encryption_configuration.cloudtrail",
+   "type": "__declared__",
+   "refs": [
+    "aws_kms_key.cloudtrail",
+    "aws_s3_bucket.cloudtrail"
+   ],
+   "values": {
+    "type": "aws_s3_bucket_server_side_encryption_configuration",
+    "name": "cloudtrail",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "bucket": "${aws_s3_bucket.cloudtrail.id}",
+     "rule": [
+      {
+       "apply_server_side_encryption_by_default": [
+        {
+         "sse_algorithm": "aws:kms",
+         "kms_master_key_id": "${aws_kms_key.cloudtrail.arn}"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.data.aws_iam_policy_document.cloudtrail",
+   "cfg": "data.aws_iam_policy_document.cloudtrail",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "data.aws_iam_policy_document",
+    "name": "cloudtrail",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "statement": [
+      {
+       "sid": "AWSCloudTrailAclCheck",
+       "effect": "Allow",
+       "actions": [
+        "s3:GetBucketAcl"
+       ],
+       "resources": [
+        "arn:aws:s3:::${var.name}-cloudtrail-${var.aws_region}"
+       ],
+       "principals": [
+        {
+         "type": "Service",
+         "identifiers": [
+          "cloudtrail.amazonaws.com"
+         ]
+        }
+       ]
+      },
+      {
+       "sid": "AWSCloudTrailWrite",
+       "effect": "Allow",
+       "actions": [
+        "s3:PutObject"
+       ],
+       "resources": [
+        "arn:aws:s3:::${var.name}-cloudtrail-${var.aws_region}/*"
+       ],
+       "principals": [
+        {
+         "type": "Service",
+         "identifiers": [
+          "cloudtrail.amazonaws.com"
+         ]
+        }
+       ],
+       "condition": [
+        {
+         "test": "StringEquals",
+         "variable": "s3:x-amz-acl",
+         "values": [
+          "bucket-owner-full-control"
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  }
+ ]
+}

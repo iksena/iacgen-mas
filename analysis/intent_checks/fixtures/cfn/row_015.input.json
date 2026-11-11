@@ -1,0 +1,159 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "3b99edcbd86482f4297ed504b69e1df3a050fc3cec1f6f8dc07090b4916ed409",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "TestEventBus",
+   "cfg": "TestEventBus",
+   "type": "AWS::Events::EventBus",
+   "values": {
+    "Name": "test-bus"
+   },
+   "refs": []
+  },
+  {
+   "id": "LogsRule",
+   "cfg": "LogsRule",
+   "type": "AWS::Events::Rule",
+   "values": {
+    "EventBusName": {
+     "ref": "TestEventBus"
+    },
+    "EventPattern": {
+     "source": [
+      "my-application"
+     ],
+     "account": [
+      "123456789012"
+     ]
+    },
+    "Targets": [
+     {
+      "Arn": {
+       "ref": "LogGroupForEvents",
+       "attr": "Arn"
+      },
+      "Id": "LogTarget"
+     }
+    ]
+   },
+   "refs": [
+    "LogGroupForEvents",
+    "TestEventBus"
+   ]
+  },
+  {
+   "id": "LogGroupForEvents",
+   "cfg": "LogGroupForEvents",
+   "type": "AWS::Logs::LogGroup",
+   "values": {
+    "LogGroupName": "/aws/vendedlogs/events/resource-policy-test"
+   },
+   "refs": []
+  },
+  {
+   "id": "LogGroupForEventsPolicy",
+   "cfg": "LogGroupForEventsPolicy",
+   "type": "AWS::Logs::ResourcePolicy",
+   "values": {
+    "PolicyName": "EventBridgeToCWLogsPolicy",
+    "PolicyDocument": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Sid\": \"EventBridgetoCWLogsCreateLogStreamPolicy\",\n      \"Effect\": \"Allow\",\n      \"Principal\": {\n        \"Service\": [\n          \"events.amazonaws.com\"\n        ]\n      },\n      \"Action\": [\n        \"logs:CreateLogStream\"\n      ],\n      \"Resource\": [\n        \"${LogGroupForEvents.Arn}\"\n      ]\n    },\n    {\n      \"Sid\": \"EventBridgetoCWLogsPutLogEventsPolicy\",\n      \"Effect\": \"Allow\",\n      \"Principal\": {\n        \"Service\": [\n          \"events.amazonaws.com\"\n        ]\n      },\n      \"Action\": [\n        \"logs:PutLogEvents\"\n      ],\n      \"Resource\": [\n        \"${LogGroupForEvents.Arn}\"\n      ],\n      \"Condition\": {\n        \"ArnEquals\": {\"AWS:SourceArn\": \"${LogsRule.Arn}\"}\n      }\n    }\n  ]\n}"
+   },
+   "refs": [
+    "LogGroupForEvents",
+    "LogsRule"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::Events::EventBus.TestEventBus",
+   "cfg": "TestEventBus",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Events::EventBus",
+    "name": "TestEventBus",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "test-bus"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Events::Rule.LogsRule",
+   "cfg": "LogsRule",
+   "type": "__declared__",
+   "refs": [
+    "LogGroupForEvents",
+    "TestEventBus"
+   ],
+   "values": {
+    "type": "AWS::Events::Rule",
+    "name": "LogsRule",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "EventBusName": {
+      "ref": "TestEventBus"
+     },
+     "EventPattern": {
+      "source": [
+       "my-application"
+      ],
+      "account": [
+       "123456789012"
+      ]
+     },
+     "Targets": [
+      {
+       "Arn": {
+        "ref": "LogGroupForEvents",
+        "attr": "Arn"
+       },
+       "Id": "LogTarget"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::LogGroup.LogGroupForEvents",
+   "cfg": "LogGroupForEvents",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Logs::LogGroup",
+    "name": "LogGroupForEvents",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "LogGroupName": "/aws/vendedlogs/events/resource-policy-test"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::ResourcePolicy.LogGroupForEventsPolicy",
+   "cfg": "LogGroupForEventsPolicy",
+   "type": "__declared__",
+   "refs": [
+    "LogGroupForEvents",
+    "LogsRule"
+   ],
+   "values": {
+    "type": "AWS::Logs::ResourcePolicy",
+    "name": "LogGroupForEventsPolicy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "PolicyName": "EventBridgeToCWLogsPolicy",
+     "PolicyDocument": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Sid\": \"EventBridgetoCWLogsCreateLogStreamPolicy\",\n      \"Effect\": \"Allow\",\n      \"Principal\": {\n        \"Service\": [\n          \"events.amazonaws.com\"\n        ]\n      },\n      \"Action\": [\n        \"logs:CreateLogStream\"\n      ],\n      \"Resource\": [\n        \"${LogGroupForEvents.Arn}\"\n      ]\n    },\n    {\n      \"Sid\": \"EventBridgetoCWLogsPutLogEventsPolicy\",\n      \"Effect\": \"Allow\",\n      \"Principal\": {\n        \"Service\": [\n          \"events.amazonaws.com\"\n        ]\n      },\n      \"Action\": [\n        \"logs:PutLogEvents\"\n      ],\n      \"Resource\": [\n        \"${LogGroupForEvents.Arn}\"\n      ],\n      \"Condition\": {\n        \"ArnEquals\": {\"AWS:SourceArn\": \"${LogsRule.Arn}\"}\n      }\n    }\n  ]\n}"
+    }
+   }
+  }
+ ]
+}

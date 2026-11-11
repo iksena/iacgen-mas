@@ -1,0 +1,1212 @@
+{
+ "meta": {
+  "lang": "tf",
+  "mode": "plan",
+  "warnings": [],
+  "gt_hash": "08bc61dde437be7ec39d2ea0f01dd8848548ef14c5d18e53967330111e635beb",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "aws_cloudtrail.event_logs",
+   "cfg": "aws_cloudtrail.event_logs",
+   "type": "aws_cloudtrail",
+   "values": {
+    "advanced_event_selector": [],
+    "enable_log_file_validation": true,
+    "enable_logging": true,
+    "event_selector": [
+     {
+      "data_resource": [],
+      "exclude_management_event_sources": [
+       "kms.amazonaws.com",
+       "rdsdata.amazonaws.com"
+      ],
+      "include_management_events": true,
+      "read_write_type": "All"
+     }
+    ],
+    "include_global_service_events": true,
+    "insight_selector": [],
+    "is_multi_region_trail": true,
+    "is_organization_trail": false,
+    "name": "monitor_account_activities",
+    "region": "us-east-1",
+    "s3_key_prefix": "",
+    "sns_topic_name": null,
+    "tags": null
+   },
+   "refs": [
+    "aws_cloudwatch_log_group.cloudtrail_event_logs",
+    "aws_iam_role.cloudtrail_cloudwatch_role",
+    "aws_kms_key.cloudtrail",
+    "aws_s3_bucket.cloudtrail_event_logs",
+    "aws_s3_bucket_policy.cloudtrail_access_s3"
+   ]
+  },
+  {
+   "id": "aws_cloudwatch_log_group.cloudtrail_event_logs",
+   "cfg": "aws_cloudwatch_log_group.cloudtrail_event_logs",
+   "type": "aws_cloudwatch_log_group",
+   "values": {
+    "kms_key_id": null,
+    "name": "cloudtrail_to_cloudwatch_logs",
+    "region": "us-east-1",
+    "retention_in_days": 0,
+    "skip_destroy": false,
+    "tags": null
+   },
+   "refs": []
+  },
+  {
+   "id": "aws_cloudwatch_log_metric_filter.management_activities_filter[\"console_login_failed\"]",
+   "cfg": "aws_cloudwatch_log_metric_filter.management_activities_filter",
+   "type": "aws_cloudwatch_log_metric_filter",
+   "values": {
+    "log_group_name": "cloudtrail_to_cloudwatch_logs",
+    "metric_transformation": [
+     {
+      "default_value": null,
+      "dimensions": null,
+      "name": "ConsoleLoginFailedEvent",
+      "namespace": "management_activities",
+      "unit": "None",
+      "value": "1"
+     }
+    ],
+    "name": "console_login_failed",
+    "pattern": "{($.eventName=ConsoleLogin)&&($.errorMessage=\"Failed authentication\")}",
+    "region": "us-east-1"
+   },
+   "refs": [
+    "aws_cloudwatch_log_group.cloudtrail_event_logs"
+   ]
+  },
+  {
+   "id": "aws_cloudwatch_log_metric_filter.management_activities_filter[\"iam_group_policy_change\"]",
+   "cfg": "aws_cloudwatch_log_metric_filter.management_activities_filter",
+   "type": "aws_cloudwatch_log_metric_filter",
+   "values": {
+    "log_group_name": "cloudtrail_to_cloudwatch_logs",
+    "metric_transformation": [
+     {
+      "default_value": null,
+      "dimensions": null,
+      "name": "IAMGroupPolicyChange",
+      "namespace": "management_activities",
+      "unit": "None",
+      "value": "1"
+     }
+    ],
+    "name": "iam_group_policy_change",
+    "pattern": "{ ($.eventName=DeleteGroupPolicy)||($.eventName=PutGroupPolicy)||($.eventName=AttachGroupPolicy)||($.eventName=DetachGroupPolicy) }",
+    "region": "us-east-1"
+   },
+   "refs": [
+    "aws_cloudwatch_log_group.cloudtrail_event_logs"
+   ]
+  },
+  {
+   "id": "aws_cloudwatch_log_metric_filter.management_activities_filter[\"iam_policy_change\"]",
+   "cfg": "aws_cloudwatch_log_metric_filter.management_activities_filter",
+   "type": "aws_cloudwatch_log_metric_filter",
+   "values": {
+    "log_group_name": "cloudtrail_to_cloudwatch_logs",
+    "metric_transformation": [
+     {
+      "default_value": null,
+      "dimensions": null,
+      "name": "IAMPolicyChange",
+      "namespace": "management_activities",
+      "unit": "None",
+      "value": "1"
+     }
+    ],
+    "name": "iam_policy_change",
+    "pattern": "{($.eventName=CreatePolicy)||($.eventName=DeletePolicy)||($.eventName=CreatePolicyVersion)||($.eventName=DeletePolicyVersion)}",
+    "region": "us-east-1"
+   },
+   "refs": [
+    "aws_cloudwatch_log_group.cloudtrail_event_logs"
+   ]
+  },
+  {
+   "id": "aws_cloudwatch_log_metric_filter.management_activities_filter[\"iam_role_policy_change\"]",
+   "cfg": "aws_cloudwatch_log_metric_filter.management_activities_filter",
+   "type": "aws_cloudwatch_log_metric_filter",
+   "values": {
+    "log_group_name": "cloudtrail_to_cloudwatch_logs",
+    "metric_transformation": [
+     {
+      "default_value": null,
+      "dimensions": null,
+      "name": "IAMRolePolicyChange",
+      "namespace": "management_activities",
+      "unit": "None",
+      "value": "1"
+     }
+    ],
+    "name": "iam_role_policy_change",
+    "pattern": "{($.eventName=DeleteRolePolicy)||($.eventName=PutRolePolicy)||($.eventName=AttachRolePolicy)||($.eventName=DetachRolePolicy)}",
+    "region": "us-east-1"
+   },
+   "refs": [
+    "aws_cloudwatch_log_group.cloudtrail_event_logs"
+   ]
+  },
+  {
+   "id": "aws_cloudwatch_log_metric_filter.management_activities_filter[\"iam_user_added_to_group\"]",
+   "cfg": "aws_cloudwatch_log_metric_filter.management_activities_filter",
+   "type": "aws_cloudwatch_log_metric_filter",
+   "values": {
+    "log_group_name": "cloudtrail_to_cloudwatch_logs",
+    "metric_transformation": [
+     {
+      "default_value": null,
+      "dimensions": null,
+      "name": "IAMUserAddedToGroup",
+      "namespace": "management_activities",
+      "unit": "None",
+      "value": "1"
+     }
+    ],
+    "name": "iam_user_added_to_group",
+    "pattern": "{($.eventName=AddUserToGroup)}",
+    "region": "us-east-1"
+   },
+   "refs": [
+    "aws_cloudwatch_log_group.cloudtrail_event_logs"
+   ]
+  },
+  {
+   "id": "aws_cloudwatch_log_metric_filter.management_activities_filter[\"iam_user_policy_change\"]",
+   "cfg": "aws_cloudwatch_log_metric_filter.management_activities_filter",
+   "type": "aws_cloudwatch_log_metric_filter",
+   "values": {
+    "log_group_name": "cloudtrail_to_cloudwatch_logs",
+    "metric_transformation": [
+     {
+      "default_value": null,
+      "dimensions": null,
+      "name": "IAMUserPolicyChange",
+      "namespace": "management_activities",
+      "unit": "None",
+      "value": "1"
+     }
+    ],
+    "name": "iam_user_policy_change",
+    "pattern": "{($.eventName=DeleteUserPolicy)||($.eventName=PutUserPolicy)||($.eventName=AttachUserPolicy)||($.eventName=DetachUserPolicy)}",
+    "region": "us-east-1"
+   },
+   "refs": [
+    "aws_cloudwatch_log_group.cloudtrail_event_logs"
+   ]
+  },
+  {
+   "id": "aws_cloudwatch_log_metric_filter.management_activities_filter[\"role_creation_or_deletion\"]",
+   "cfg": "aws_cloudwatch_log_metric_filter.management_activities_filter",
+   "type": "aws_cloudwatch_log_metric_filter",
+   "values": {
+    "log_group_name": "cloudtrail_to_cloudwatch_logs",
+    "metric_transformation": [
+     {
+      "default_value": null,
+      "dimensions": null,
+      "name": "IAMRoleCreationOrDeletionEvent",
+      "namespace": "management_activities",
+      "unit": "None",
+      "value": "1"
+     }
+    ],
+    "name": "role_creation_or_deletion",
+    "pattern": "{($.eventName=CreateRole)||($.eventName=DeleteRole)}",
+    "region": "us-east-1"
+   },
+   "refs": [
+    "aws_cloudwatch_log_group.cloudtrail_event_logs"
+   ]
+  },
+  {
+   "id": "aws_cloudwatch_log_metric_filter.management_activities_filter[\"security_group_change\"]",
+   "cfg": "aws_cloudwatch_log_metric_filter.management_activities_filter",
+   "type": "aws_cloudwatch_log_metric_filter",
+   "values": {
+    "log_group_name": "cloudtrail_to_cloudwatch_logs",
+    "metric_transformation": [
+     {
+      "default_value": null,
+      "dimensions": null,
+      "name": "SecurityGroupEventCount",
+      "namespace": "management_activities",
+      "unit": "None",
+      "value": "1"
+     }
+    ],
+    "name": "security_group_change",
+    "pattern": "{($.eventName=AuthorizeSecurityGroupIngress)||($.eventName=AuthorizeSecurityGroupEgress)||($.eventName=RevokeSecurityGroupIngress)||($.eventName=RevokeSecurityGroupEgress)||($.eventName=CreateSecurityGroup)||($.eventName=DeleteSecurityGroup)}",
+    "region": "us-east-1"
+   },
+   "refs": [
+    "aws_cloudwatch_log_group.cloudtrail_event_logs"
+   ]
+  },
+  {
+   "id": "aws_cloudwatch_log_metric_filter.management_activities_filter[\"user_creation_or_deletion\"]",
+   "cfg": "aws_cloudwatch_log_metric_filter.management_activities_filter",
+   "type": "aws_cloudwatch_log_metric_filter",
+   "values": {
+    "log_group_name": "cloudtrail_to_cloudwatch_logs",
+    "metric_transformation": [
+     {
+      "default_value": null,
+      "dimensions": null,
+      "name": "UserCreationOrDeletionEvent",
+      "namespace": "management_activities",
+      "unit": "None",
+      "value": "1"
+     }
+    ],
+    "name": "user_creation_or_deletion",
+    "pattern": "{($.eventName=CreateUser)||($.eventName=DeleteUser)}",
+    "region": "us-east-1"
+   },
+   "refs": [
+    "aws_cloudwatch_log_group.cloudtrail_event_logs"
+   ]
+  },
+  {
+   "id": "aws_cloudwatch_metric_alarm.management_activities_alarm[\"console_login_failed\"]",
+   "cfg": "aws_cloudwatch_metric_alarm.management_activities_alarm",
+   "type": "aws_cloudwatch_metric_alarm",
+   "values": {
+    "actions_enabled": true,
+    "alarm_description": "Console login failed alert",
+    "alarm_name": "console_login_failed_alarm",
+    "comparison_operator": "GreaterThanOrEqualToThreshold",
+    "datapoints_to_alarm": 1,
+    "dimensions": null,
+    "evaluation_criteria": [],
+    "evaluation_interval": null,
+    "evaluation_periods": 1,
+    "evaluation_window": [],
+    "extended_statistic": null,
+    "insufficient_data_actions": null,
+    "metric_name": "ConsoleLoginFailedEvent",
+    "metric_query": [],
+    "namespace": "management_activities",
+    "ok_actions": null,
+    "period": 60,
+    "region": "us-east-1",
+    "statistic": "Average",
+    "tags": null,
+    "threshold": 1,
+    "threshold_metric_id": null,
+    "treat_missing_data": "missing",
+    "unit": null,
+    "warm_up_configuration": []
+   },
+   "refs": [
+    "aws_sns_topic.sg_sns_topic"
+   ]
+  },
+  {
+   "id": "aws_cloudwatch_metric_alarm.management_activities_alarm[\"iam_group_policy_change\"]",
+   "cfg": "aws_cloudwatch_metric_alarm.management_activities_alarm",
+   "type": "aws_cloudwatch_metric_alarm",
+   "values": {
+    "actions_enabled": true,
+    "alarm_description": "IAM Group policy update alert",
+    "alarm_name": "iam_group_policy_change_alarm",
+    "comparison_operator": "GreaterThanOrEqualToThreshold",
+    "datapoints_to_alarm": 1,
+    "dimensions": null,
+    "evaluation_criteria": [],
+    "evaluation_interval": null,
+    "evaluation_periods": 1,
+    "evaluation_window": [],
+    "extended_statistic": null,
+    "insufficient_data_actions": null,
+    "metric_name": "IAMGroupPolicyChange",
+    "metric_query": [],
+    "namespace": "management_activities",
+    "ok_actions": null,
+    "period": 60,
+    "region": "us-east-1",
+    "statistic": "Average",
+    "tags": null,
+    "threshold": 1,
+    "threshold_metric_id": null,
+    "treat_missing_data": "missing",
+    "unit": null,
+    "warm_up_configuration": []
+   },
+   "refs": [
+    "aws_sns_topic.sg_sns_topic"
+   ]
+  },
+  {
+   "id": "aws_cloudwatch_metric_alarm.management_activities_alarm[\"iam_policy_change\"]",
+   "cfg": "aws_cloudwatch_metric_alarm.management_activities_alarm",
+   "type": "aws_cloudwatch_metric_alarm",
+   "values": {
+    "actions_enabled": true,
+    "alarm_description": "IAM policy update alert",
+    "alarm_name": "iam_policy_change_alarm",
+    "comparison_operator": "GreaterThanOrEqualToThreshold",
+    "datapoints_to_alarm": 1,
+    "dimensions": null,
+    "evaluation_criteria": [],
+    "evaluation_interval": null,
+    "evaluation_periods": 1,
+    "evaluation_window": [],
+    "extended_statistic": null,
+    "insufficient_data_actions": null,
+    "metric_name": "IAMPolicyChange",
+    "metric_query": [],
+    "namespace": "management_activities",
+    "ok_actions": null,
+    "period": 60,
+    "region": "us-east-1",
+    "statistic": "Average",
+    "tags": null,
+    "threshold": 1,
+    "threshold_metric_id": null,
+    "treat_missing_data": "missing",
+    "unit": null,
+    "warm_up_configuration": []
+   },
+   "refs": [
+    "aws_sns_topic.sg_sns_topic"
+   ]
+  },
+  {
+   "id": "aws_cloudwatch_metric_alarm.management_activities_alarm[\"iam_role_policy_change\"]",
+   "cfg": "aws_cloudwatch_metric_alarm.management_activities_alarm",
+   "type": "aws_cloudwatch_metric_alarm",
+   "values": {
+    "actions_enabled": true,
+    "alarm_description": "IAM Role policy update alert",
+    "alarm_name": "iam_role_policy_change_alarm",
+    "comparison_operator": "GreaterThanOrEqualToThreshold",
+    "datapoints_to_alarm": 1,
+    "dimensions": null,
+    "evaluation_criteria": [],
+    "evaluation_interval": null,
+    "evaluation_periods": 1,
+    "evaluation_window": [],
+    "extended_statistic": null,
+    "insufficient_data_actions": null,
+    "metric_name": "IAMRolePolicyChange",
+    "metric_query": [],
+    "namespace": "management_activities",
+    "ok_actions": null,
+    "period": 60,
+    "region": "us-east-1",
+    "statistic": "Average",
+    "tags": null,
+    "threshold": 1,
+    "threshold_metric_id": null,
+    "treat_missing_data": "missing",
+    "unit": null,
+    "warm_up_configuration": []
+   },
+   "refs": [
+    "aws_sns_topic.sg_sns_topic"
+   ]
+  },
+  {
+   "id": "aws_cloudwatch_metric_alarm.management_activities_alarm[\"iam_user_added_to_group\"]",
+   "cfg": "aws_cloudwatch_metric_alarm.management_activities_alarm",
+   "type": "aws_cloudwatch_metric_alarm",
+   "values": {
+    "actions_enabled": true,
+    "alarm_description": "IAM user is added to a group alert",
+    "alarm_name": "iam_user_added_to_group_alarm",
+    "comparison_operator": "GreaterThanOrEqualToThreshold",
+    "datapoints_to_alarm": 1,
+    "dimensions": null,
+    "evaluation_criteria": [],
+    "evaluation_interval": null,
+    "evaluation_periods": 1,
+    "evaluation_window": [],
+    "extended_statistic": null,
+    "insufficient_data_actions": null,
+    "metric_name": "IAMUserAddedToGroup",
+    "metric_query": [],
+    "namespace": "management_activities",
+    "ok_actions": null,
+    "period": 60,
+    "region": "us-east-1",
+    "statistic": "Average",
+    "tags": null,
+    "threshold": 1,
+    "threshold_metric_id": null,
+    "treat_missing_data": "missing",
+    "unit": null,
+    "warm_up_configuration": []
+   },
+   "refs": [
+    "aws_sns_topic.sg_sns_topic"
+   ]
+  },
+  {
+   "id": "aws_cloudwatch_metric_alarm.management_activities_alarm[\"iam_user_policy_change\"]",
+   "cfg": "aws_cloudwatch_metric_alarm.management_activities_alarm",
+   "type": "aws_cloudwatch_metric_alarm",
+   "values": {
+    "actions_enabled": true,
+    "alarm_description": "IAM User policy update alert",
+    "alarm_name": "iam_user_policy_change_alarm",
+    "comparison_operator": "GreaterThanOrEqualToThreshold",
+    "datapoints_to_alarm": 1,
+    "dimensions": null,
+    "evaluation_criteria": [],
+    "evaluation_interval": null,
+    "evaluation_periods": 1,
+    "evaluation_window": [],
+    "extended_statistic": null,
+    "insufficient_data_actions": null,
+    "metric_name": "IAMUserPolicyChange",
+    "metric_query": [],
+    "namespace": "management_activities",
+    "ok_actions": null,
+    "period": 60,
+    "region": "us-east-1",
+    "statistic": "Average",
+    "tags": null,
+    "threshold": 1,
+    "threshold_metric_id": null,
+    "treat_missing_data": "missing",
+    "unit": null,
+    "warm_up_configuration": []
+   },
+   "refs": [
+    "aws_sns_topic.sg_sns_topic"
+   ]
+  },
+  {
+   "id": "aws_cloudwatch_metric_alarm.management_activities_alarm[\"role_creation_or_deletion\"]",
+   "cfg": "aws_cloudwatch_metric_alarm.management_activities_alarm",
+   "type": "aws_cloudwatch_metric_alarm",
+   "values": {
+    "actions_enabled": true,
+    "alarm_description": "IAM role creation or deletion alert",
+    "alarm_name": "role_creation_or_deletion_alarm",
+    "comparison_operator": "GreaterThanOrEqualToThreshold",
+    "datapoints_to_alarm": 1,
+    "dimensions": null,
+    "evaluation_criteria": [],
+    "evaluation_interval": null,
+    "evaluation_periods": 1,
+    "evaluation_window": [],
+    "extended_statistic": null,
+    "insufficient_data_actions": null,
+    "metric_name": "IAMRoleCreationOrDeletionEvent",
+    "metric_query": [],
+    "namespace": "management_activities",
+    "ok_actions": null,
+    "period": 60,
+    "region": "us-east-1",
+    "statistic": "Average",
+    "tags": null,
+    "threshold": 1,
+    "threshold_metric_id": null,
+    "treat_missing_data": "missing",
+    "unit": null,
+    "warm_up_configuration": []
+   },
+   "refs": [
+    "aws_sns_topic.sg_sns_topic"
+   ]
+  },
+  {
+   "id": "aws_cloudwatch_metric_alarm.management_activities_alarm[\"security_group_change\"]",
+   "cfg": "aws_cloudwatch_metric_alarm.management_activities_alarm",
+   "type": "aws_cloudwatch_metric_alarm",
+   "values": {
+    "actions_enabled": true,
+    "alarm_description": "Secuity group update alert",
+    "alarm_name": "security_group_change_alarm",
+    "comparison_operator": "GreaterThanOrEqualToThreshold",
+    "datapoints_to_alarm": 1,
+    "dimensions": null,
+    "evaluation_criteria": [],
+    "evaluation_interval": null,
+    "evaluation_periods": 1,
+    "evaluation_window": [],
+    "extended_statistic": null,
+    "insufficient_data_actions": null,
+    "metric_name": "SecurityGroupEventCount",
+    "metric_query": [],
+    "namespace": "management_activities",
+    "ok_actions": null,
+    "period": 60,
+    "region": "us-east-1",
+    "statistic": "Average",
+    "tags": null,
+    "threshold": 1,
+    "threshold_metric_id": null,
+    "treat_missing_data": "missing",
+    "unit": null,
+    "warm_up_configuration": []
+   },
+   "refs": [
+    "aws_sns_topic.sg_sns_topic"
+   ]
+  },
+  {
+   "id": "aws_cloudwatch_metric_alarm.management_activities_alarm[\"user_creation_or_deletion\"]",
+   "cfg": "aws_cloudwatch_metric_alarm.management_activities_alarm",
+   "type": "aws_cloudwatch_metric_alarm",
+   "values": {
+    "actions_enabled": true,
+    "alarm_description": "User creation or deletion alert",
+    "alarm_name": "user_creation_or_deletion_alarm",
+    "comparison_operator": "GreaterThanOrEqualToThreshold",
+    "datapoints_to_alarm": 1,
+    "dimensions": null,
+    "evaluation_criteria": [],
+    "evaluation_interval": null,
+    "evaluation_periods": 1,
+    "evaluation_window": [],
+    "extended_statistic": null,
+    "insufficient_data_actions": null,
+    "metric_name": "UserCreationOrDeletionEvent",
+    "metric_query": [],
+    "namespace": "management_activities",
+    "ok_actions": null,
+    "period": 60,
+    "region": "us-east-1",
+    "statistic": "Average",
+    "tags": null,
+    "threshold": 1,
+    "threshold_metric_id": null,
+    "treat_missing_data": "missing",
+    "unit": null,
+    "warm_up_configuration": []
+   },
+   "refs": [
+    "aws_sns_topic.sg_sns_topic"
+   ]
+  },
+  {
+   "id": "aws_iam_role.cloudtrail_cloudwatch_role",
+   "cfg": "aws_iam_role.cloudtrail_cloudwatch_role",
+   "type": "aws_iam_role",
+   "values": {
+    "assume_role_policy": "{\"Statement\":[{\"Action\":\"sts:AssumeRole\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"cloudtrail.amazonaws.com\"}}],\"Version\":\"2012-10-17\"}",
+    "description": null,
+    "force_detach_policies": false,
+    "max_session_duration": 3600,
+    "name": "cloudtrail_to_cloudwatch",
+    "path": "/",
+    "permissions_boundary": null,
+    "tags": null
+   },
+   "refs": []
+  },
+  {
+   "id": "aws_iam_role_policy.cloudtrail_role_policy",
+   "cfg": "aws_iam_role_policy.cloudtrail_role_policy",
+   "type": "aws_iam_role_policy",
+   "values": {
+    "name": "cloudtrail_to_cloudwatch_policy"
+   },
+   "refs": [
+    "aws_cloudwatch_log_group.cloudtrail_event_logs",
+    "aws_iam_role.cloudtrail_cloudwatch_role"
+   ]
+  },
+  {
+   "id": "aws_kms_key.cloudtrail",
+   "cfg": "aws_kms_key.cloudtrail",
+   "type": "aws_kms_key",
+   "values": {
+    "bypass_policy_lockout_safety_check": false,
+    "custom_key_store_id": null,
+    "customer_master_key_spec": "SYMMETRIC_DEFAULT",
+    "deletion_window_in_days": null,
+    "description": "CMK for monitor_account_activities CloudTrail",
+    "enable_key_rotation": true,
+    "is_enabled": true,
+    "key_usage": "ENCRYPT_DECRYPT",
+    "policy": "{\"Statement\":[{\"Action\":\"kms:*\",\"Effect\":\"Allow\",\"Principal\":{\"AWS\":\"arn:aws:iam::000000000000:root\"},\"Resource\":\"*\",\"Sid\":\"AllowAccountRoot\"},{\"Action\":\"kms:GenerateDataKey*\",\"Condition\":{\"StringLike\":{\"kms:EncryptionContext:aws:cloudtrail:arn\":\"arn:aws:cloudtrail:*:000000000000:trail/*\"}},\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"cloudtrail.amazonaws.com\"},\"Resource\":\"*\",\"Sid\":\"AllowCloudTrailToEncryptLogs\"},{\"Action\":\"kms:DescribeKey\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"cloudtrail.amazonaws.com\"},\"Resource\":\"*\",\"Sid\":\"AllowCloudTrailToDescribeKey\"}],\"Version\":\"2012-10-17\"}",
+    "region": "us-east-1",
+    "tags": null,
+    "timeouts": null,
+    "xks_key_id": null
+   },
+   "refs": [
+    "data.aws_caller_identity.current"
+   ]
+  },
+  {
+   "id": "aws_kms_key.sg_sns_topic",
+   "cfg": "aws_kms_key.sg_sns_topic",
+   "type": "aws_kms_key",
+   "values": {
+    "bypass_policy_lockout_safety_check": false,
+    "custom_key_store_id": null,
+    "customer_master_key_spec": "SYMMETRIC_DEFAULT",
+    "deletion_window_in_days": null,
+    "description": "CMK for management-updates SNS topic",
+    "enable_key_rotation": true,
+    "is_enabled": true,
+    "key_usage": "ENCRYPT_DECRYPT",
+    "policy": "{\"Statement\":[{\"Action\":\"kms:*\",\"Condition\":{\"StringEquals\":{\"kms:CallerAccount\":\"000000000000\"}},\"Effect\":\"Allow\",\"Principal\":{\"AWS\":\"*\"},\"Resource\":\"*\",\"Sid\":\"AllowAccountRoot\"},{\"Action\":[\"kms:Decrypt\",\"kms:GenerateDataKey*\"],\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"cloudwatch.amazonaws.com\"},\"Resource\":\"*\",\"Sid\":\"AllowCloudWatchToPublish\"}],\"Version\":\"2012-10-17\"}",
+    "region": "us-east-1",
+    "tags": null,
+    "timeouts": null,
+    "xks_key_id": null
+   },
+   "refs": [
+    "data.aws_caller_identity.current"
+   ]
+  },
+  {
+   "id": "aws_s3_bucket.cloudtrail_event_logs",
+   "cfg": "aws_s3_bucket.cloudtrail_event_logs",
+   "type": "aws_s3_bucket",
+   "values": {
+    "bucket": "cloudtrail-monitor-management-event-logs-000000000000",
+    "force_destroy": true,
+    "region": "us-east-1",
+    "tags": null,
+    "timeouts": null
+   },
+   "refs": [
+    "data.aws_caller_identity.current"
+   ]
+  },
+  {
+   "id": "aws_s3_bucket_policy.cloudtrail_access_s3",
+   "cfg": "aws_s3_bucket_policy.cloudtrail_access_s3",
+   "type": "aws_s3_bucket_policy",
+   "values": {
+    "region": "us-east-1"
+   },
+   "refs": [
+    "aws_s3_bucket.cloudtrail_event_logs",
+    "data.aws_caller_identity.current"
+   ]
+  },
+  {
+   "id": "aws_s3_bucket_public_access_block.cloudtrail_event_logs",
+   "cfg": "aws_s3_bucket_public_access_block.cloudtrail_event_logs",
+   "type": "aws_s3_bucket_public_access_block",
+   "values": {
+    "block_public_acls": true,
+    "block_public_policy": true,
+    "ignore_public_acls": true,
+    "region": "us-east-1",
+    "restrict_public_buckets": true,
+    "skip_destroy": null
+   },
+   "refs": [
+    "aws_s3_bucket.cloudtrail_event_logs"
+   ]
+  },
+  {
+   "id": "aws_s3_bucket_server_side_encryption_configuration.cloudtrail_event_logs",
+   "cfg": "aws_s3_bucket_server_side_encryption_configuration.cloudtrail_event_logs",
+   "type": "aws_s3_bucket_server_side_encryption_configuration",
+   "values": {
+    "expected_bucket_owner": null,
+    "region": "us-east-1",
+    "rule": [
+     {
+      "apply_server_side_encryption_by_default": [
+       {
+        "sse_algorithm": "aws:kms"
+       }
+      ]
+     }
+    ]
+   },
+   "refs": [
+    "aws_kms_key.cloudtrail",
+    "aws_s3_bucket.cloudtrail_event_logs"
+   ]
+  },
+  {
+   "id": "aws_sns_topic.sg_sns_topic",
+   "cfg": "aws_sns_topic.sg_sns_topic",
+   "type": "aws_sns_topic",
+   "values": {
+    "application_failure_feedback_role_arn": null,
+    "application_success_feedback_role_arn": null,
+    "application_success_feedback_sample_rate": null,
+    "archive_policy": null,
+    "content_based_deduplication": false,
+    "delivery_policy": null,
+    "display_name": null,
+    "fifo_topic": false,
+    "firehose_failure_feedback_role_arn": null,
+    "firehose_success_feedback_role_arn": null,
+    "firehose_success_feedback_sample_rate": null,
+    "http_failure_feedback_role_arn": null,
+    "http_success_feedback_role_arn": null,
+    "http_success_feedback_sample_rate": null,
+    "lambda_failure_feedback_role_arn": null,
+    "lambda_success_feedback_role_arn": null,
+    "lambda_success_feedback_sample_rate": null,
+    "name": "management-updates",
+    "region": "us-east-1",
+    "sqs_failure_feedback_role_arn": null,
+    "sqs_success_feedback_role_arn": null,
+    "sqs_success_feedback_sample_rate": null,
+    "tags": null
+   },
+   "refs": [
+    "aws_kms_key.sg_sns_topic"
+   ]
+  },
+  {
+   "id": "aws_sns_topic_subscription.user_updates_sqs_target[\"test@test.com\"]",
+   "cfg": "aws_sns_topic_subscription.user_updates_sqs_target",
+   "type": "aws_sns_topic_subscription",
+   "values": {
+    "confirmation_timeout_in_minutes": 1,
+    "delivery_policy": null,
+    "endpoint": "test@test.com",
+    "endpoint_auto_confirms": false,
+    "filter_policy": null,
+    "protocol": "email",
+    "raw_message_delivery": false,
+    "redrive_policy": null,
+    "region": "us-east-1",
+    "replay_policy": null,
+    "subscription_role_arn": null
+   },
+   "refs": [
+    "aws_sns_topic.sg_sns_topic"
+   ]
+  },
+  {
+   "id": "__parameter__.awsRegion",
+   "cfg": "__parameter__.awsRegion",
+   "type": "__parameter__",
+   "values": {
+    "name": "awsRegion",
+    "default": "us-east-1"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.cloudtrail_role_name",
+   "cfg": "__parameter__.cloudtrail_role_name",
+   "type": "__parameter__",
+   "values": {
+    "name": "cloudtrail_role_name",
+    "default": "cloudtrail_to_cloudwatch"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.cloudtrail_role_policy_name",
+   "cfg": "__parameter__.cloudtrail_role_policy_name",
+   "type": "__parameter__",
+   "values": {
+    "name": "cloudtrail_role_policy_name",
+    "default": "cloudtrail_to_cloudwatch_policy"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.email_list",
+   "cfg": "__parameter__.email_list",
+   "type": "__parameter__",
+   "values": {
+    "name": "email_list",
+    "default": [
+     "test@test.com"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.log_group_name",
+   "cfg": "__parameter__.log_group_name",
+   "type": "__parameter__",
+   "values": {
+    "name": "log_group_name",
+    "default": "cloudtrail_to_cloudwatch_logs"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.metric_namespace",
+   "cfg": "__parameter__.metric_namespace",
+   "type": "__parameter__",
+   "values": {
+    "name": "metric_namespace",
+    "default": "management_activities"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.sns_topic_name",
+   "cfg": "__parameter__.sns_topic_name",
+   "type": "__parameter__",
+   "values": {
+    "name": "sns_topic_name",
+    "default": "management-updates"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.trail_bucket_name",
+   "cfg": "__parameter__.trail_bucket_name",
+   "type": "__parameter__",
+   "values": {
+    "name": "trail_bucket_name",
+    "default": "cloudtrail-monitor-management-event-logs"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.trail_name",
+   "cfg": "__parameter__.trail_name",
+   "type": "__parameter__",
+   "values": {
+    "name": "trail_name",
+    "default": "monitor_account_activities"
+   },
+   "refs": []
+  },
+  {
+   "id": "__declared__.aws_cloudwatch_log_metric_filter.management_activities_filter",
+   "cfg": "aws_cloudwatch_log_metric_filter.management_activities_filter",
+   "type": "__declared__",
+   "refs": [
+    "aws_cloudwatch_log_group.cloudtrail_event_logs"
+   ],
+   "values": {
+    "type": "aws_cloudwatch_log_metric_filter",
+    "name": "management_activities_filter",
+    "gated": true,
+    "gate": "local.filter_metrics_type",
+    "properties": {
+     "for_each": "${local.filter_metrics_type}",
+     "name": "${each.key}",
+     "pattern": "${each.value.pattern}",
+     "log_group_name": "${aws_cloudwatch_log_group.cloudtrail_event_logs.name}",
+     "metric_transformation": [
+      {
+       "name": "${each.value.metric_transformation_name}",
+       "namespace": "management_activities",
+       "value": "1"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_cloudwatch_metric_alarm.management_activities_alarm",
+   "cfg": "aws_cloudwatch_metric_alarm.management_activities_alarm",
+   "type": "__declared__",
+   "refs": [
+    "aws_sns_topic.sg_sns_topic"
+   ],
+   "values": {
+    "type": "aws_cloudwatch_metric_alarm",
+    "name": "management_activities_alarm",
+    "gated": true,
+    "gate": "local.filter_metrics_type",
+    "properties": {
+     "for_each": "${local.filter_metrics_type}",
+     "depends_on": [
+      "${aws_sns_topic.sg_sns_topic}"
+     ],
+     "alarm_name": "${each.key}_alarm",
+     "metric_name": "${each.value.metric_transformation_name}",
+     "threshold": "1",
+     "statistic": "Average",
+     "comparison_operator": "GreaterThanOrEqualToThreshold",
+     "datapoints_to_alarm": "1",
+     "evaluation_periods": "1",
+     "period": "60",
+     "namespace": "management_activities",
+     "alarm_actions": [
+      "${aws_sns_topic.sg_sns_topic.arn}"
+     ],
+     "alarm_description": "${each.value.metric_description}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role.cloudtrail_cloudwatch_role",
+   "cfg": "aws_iam_role.cloudtrail_cloudwatch_role",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_iam_role",
+    "name": "cloudtrail_cloudwatch_role",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "cloudtrail_to_cloudwatch",
+     "assume_role_policy": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Principal\": {\n        \"Service\": \"cloudtrail.amazonaws.com\"\n      },\n      \"Action\": \"sts:AssumeRole\"\n    }\n  ]\n}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role_policy.cloudtrail_role_policy",
+   "cfg": "aws_iam_role_policy.cloudtrail_role_policy",
+   "type": "__declared__",
+   "refs": [
+    "aws_cloudwatch_log_group.cloudtrail_event_logs",
+    "aws_iam_role.cloudtrail_cloudwatch_role"
+   ],
+   "values": {
+    "type": "aws_iam_role_policy",
+    "name": "cloudtrail_role_policy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "cloudtrail_to_cloudwatch_policy",
+     "role": "${aws_iam_role.cloudtrail_cloudwatch_role.id}",
+     "policy": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Sid\": \"AWSCloudTrailCreateLogStream2014110\",\n      \"Effect\": \"Allow\",\n      \"Action\": [\n        \"logs:CreateLogStream\"\n      ],\n      \"Resource\": [\n        \"${aws_cloudwatch_log_group.cloudtrail_event_logs.arn}:*\"\n      ]\n    },\n    {\n      \"Sid\": \"AWSCloudTrailPutLogEvents20141101\",\n      \"Effect\": \"Allow\",\n      \"Action\": [\n        \"logs:PutLogEvents\"\n      ],\n      \"Resource\": [\n        \"${aws_cloudwatch_log_group.cloudtrail_event_logs.arn}:*\"\n      ]\n    }\n  ]\n}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_cloudwatch_log_group.cloudtrail_event_logs",
+   "cfg": "aws_cloudwatch_log_group.cloudtrail_event_logs",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_cloudwatch_log_group",
+    "name": "cloudtrail_event_logs",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "cloudtrail_to_cloudwatch_logs"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_cloudtrail.event_logs",
+   "cfg": "aws_cloudtrail.event_logs",
+   "type": "__declared__",
+   "refs": [
+    "aws_cloudwatch_log_group.cloudtrail_event_logs",
+    "aws_iam_role.cloudtrail_cloudwatch_role",
+    "aws_kms_key.cloudtrail",
+    "aws_s3_bucket.cloudtrail_event_logs",
+    "aws_s3_bucket_policy.cloudtrail_access_s3"
+   ],
+   "values": {
+    "type": "aws_cloudtrail",
+    "name": "event_logs",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "depends_on": [
+      "${aws_s3_bucket_policy.cloudtrail_access_s3}"
+     ],
+     "name": "monitor_account_activities",
+     "s3_bucket_name": "${aws_s3_bucket.cloudtrail_event_logs.id}",
+     "s3_key_prefix": "",
+     "include_global_service_events": true,
+     "is_multi_region_trail": true,
+     "enable_log_file_validation": true,
+     "kms_key_id": "${aws_kms_key.cloudtrail.arn}",
+     "cloud_watch_logs_group_arn": "${aws_cloudwatch_log_group.cloudtrail_event_logs.arn}:*",
+     "cloud_watch_logs_role_arn": "${aws_iam_role.cloudtrail_cloudwatch_role.arn}",
+     "event_selector": [
+      {
+       "read_write_type": "All",
+       "include_management_events": true,
+       "exclude_management_event_sources": [
+        "kms.amazonaws.com",
+        "rdsdata.amazonaws.com"
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.data.aws_caller_identity.current",
+   "cfg": "data.aws_caller_identity.current",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "data.aws_caller_identity",
+    "name": "current",
+    "gated": false,
+    "gate": null,
+    "properties": {}
+   }
+  },
+  {
+   "id": "__declared__.aws_kms_key.cloudtrail",
+   "cfg": "aws_kms_key.cloudtrail",
+   "type": "__declared__",
+   "refs": [
+    "data.aws_caller_identity.current"
+   ],
+   "values": {
+    "type": "aws_kms_key",
+    "name": "cloudtrail",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "description": "CMK for ${var.trail_name} CloudTrail",
+     "enable_key_rotation": true,
+     "policy": "${jsonencode({'Version': '2012-10-17', 'Statement': [{'Sid': 'AllowAccountRoot', 'Effect': 'Allow', 'Principal': {'AWS': 'arn:aws:iam::${data.aws_caller_identity.current.account_id}:root'}, 'Action': 'kms:*', 'Resource': '*'}, {'Sid': 'AllowCloudTrailToEncryptLogs', 'Effect': 'Allow', 'Principal': {'Service': 'cloudtrail.amazonaws.com'}, 'Action': 'kms:GenerateDataKey*', 'Resource': '*', 'Condition': {'StringLike': {'kms:EncryptionContext:aws:cloudtrail:arn': 'arn:aws:cloudtrail:*:${data.aws_caller_identity.current.account_id}:trail/*'}}}, {'Sid': 'AllowCloudTrailToDescribeKey', 'Effect': 'Allow', 'Principal': {'Service': 'cloudtrail.amazonaws.com'}, 'Action': 'kms:DescribeKey', 'Resource': '*'}]})}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_s3_bucket.cloudtrail_event_logs",
+   "cfg": "aws_s3_bucket.cloudtrail_event_logs",
+   "type": "__declared__",
+   "refs": [
+    "data.aws_caller_identity.current"
+   ],
+   "values": {
+    "type": "aws_s3_bucket",
+    "name": "cloudtrail_event_logs",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "bucket": "${var.trail_bucket_name}-${data.aws_caller_identity.current.account_id}",
+     "force_destroy": true
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_s3_bucket_public_access_block.cloudtrail_event_logs",
+   "cfg": "aws_s3_bucket_public_access_block.cloudtrail_event_logs",
+   "type": "__declared__",
+   "refs": [
+    "aws_s3_bucket.cloudtrail_event_logs"
+   ],
+   "values": {
+    "type": "aws_s3_bucket_public_access_block",
+    "name": "cloudtrail_event_logs",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "bucket": "${aws_s3_bucket.cloudtrail_event_logs.id}",
+     "block_public_acls": true,
+     "block_public_policy": true,
+     "ignore_public_acls": true,
+     "restrict_public_buckets": true
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_s3_bucket_server_side_encryption_configuration.cloudtrail_event_logs",
+   "cfg": "aws_s3_bucket_server_side_encryption_configuration.cloudtrail_event_logs",
+   "type": "__declared__",
+   "refs": [
+    "aws_kms_key.cloudtrail",
+    "aws_s3_bucket.cloudtrail_event_logs"
+   ],
+   "values": {
+    "type": "aws_s3_bucket_server_side_encryption_configuration",
+    "name": "cloudtrail_event_logs",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "bucket": "${aws_s3_bucket.cloudtrail_event_logs.id}",
+     "rule": [
+      {
+       "apply_server_side_encryption_by_default": [
+        {
+         "sse_algorithm": "aws:kms",
+         "kms_master_key_id": "${aws_kms_key.cloudtrail.arn}"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_s3_bucket_policy.cloudtrail_access_s3",
+   "cfg": "aws_s3_bucket_policy.cloudtrail_access_s3",
+   "type": "__declared__",
+   "refs": [
+    "aws_s3_bucket.cloudtrail_event_logs",
+    "data.aws_caller_identity.current"
+   ],
+   "values": {
+    "type": "aws_s3_bucket_policy",
+    "name": "cloudtrail_access_s3",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "bucket": "${aws_s3_bucket.cloudtrail_event_logs.id}",
+     "depends_on": [
+      "${aws_s3_bucket.cloudtrail_event_logs}"
+     ],
+     "policy": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Sid\": \"AWSCloudTrailAclCheck\",\n      \"Effect\": \"Allow\",\n      \"Principal\": { \"Service\": \"cloudtrail.amazonaws.com\" },\n      \"Action\": \"s3:GetBucketAcl\",\n      \"Resource\": \"${aws_s3_bucket.cloudtrail_event_logs.arn}\"\n    },\n    {\n      \"Sid\": \"AWSCloudTrailWrite\",\n      \"Effect\": \"Allow\",\n      \"Principal\": { \"Service\": \"cloudtrail.amazonaws.com\" },\n      \"Action\": \"s3:PutObject\",\n      \"Resource\": \"${aws_s3_bucket.cloudtrail_event_logs.arn}/AWSLogs/${data.aws_caller_identity.current.account_id}/*\",\n      \"Condition\": {\n        \"StringEquals\": {\n          \"s3:x-amz-acl\": \"bucket-owner-full-control\"\n        }\n      }\n    }\n  ]\n}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_kms_key.sg_sns_topic",
+   "cfg": "aws_kms_key.sg_sns_topic",
+   "type": "__declared__",
+   "refs": [
+    "data.aws_caller_identity.current"
+   ],
+   "values": {
+    "type": "aws_kms_key",
+    "name": "sg_sns_topic",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "description": "CMK for ${var.sns_topic_name} SNS topic",
+     "enable_key_rotation": true,
+     "policy": "${jsonencode({'Version': '2012-10-17', 'Statement': [{'Sid': 'AllowAccountRoot', 'Effect': 'Allow', 'Principal': {'AWS': '*'}, 'Action': 'kms:*', 'Resource': '*', 'Condition': {'StringEquals': {'kms:CallerAccount': '${data.aws_caller_identity.current.account_id}'}}}, {'Sid': 'AllowCloudWatchToPublish', 'Effect': 'Allow', 'Principal': {'Service': 'cloudwatch.amazonaws.com'}, 'Action': ['kms:Decrypt', 'kms:GenerateDataKey*'], 'Resource': '*'}]})}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_sns_topic.sg_sns_topic",
+   "cfg": "aws_sns_topic.sg_sns_topic",
+   "type": "__declared__",
+   "refs": [
+    "aws_kms_key.sg_sns_topic"
+   ],
+   "values": {
+    "type": "aws_sns_topic",
+    "name": "sg_sns_topic",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "management-updates",
+     "kms_master_key_id": "${aws_kms_key.sg_sns_topic.key_id}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_sns_topic_subscription.user_updates_sqs_target",
+   "cfg": "aws_sns_topic_subscription.user_updates_sqs_target",
+   "type": "__declared__",
+   "refs": [
+    "aws_sns_topic.sg_sns_topic"
+   ],
+   "values": {
+    "type": "aws_sns_topic_subscription",
+    "name": "user_updates_sqs_target",
+    "gated": true,
+    "gate": "toset(var.email_list)",
+    "properties": {
+     "for_each": "${toset(var.email_list)}",
+     "depends_on": [
+      "${aws_sns_topic.sg_sns_topic}"
+     ],
+     "topic_arn": "${aws_sns_topic.sg_sns_topic.arn}",
+     "protocol": "email",
+     "endpoint": "${each.value}"
+    }
+   }
+  }
+ ]
+}

@@ -1,0 +1,578 @@
+{
+  "lang": "cfn",
+  "row_number": 199,
+  "source_hash": {
+    "gt": "95fc1acf1b088123984169c8467144f03d4139c4f533619388077ca66a462089",
+    "prompt": "e544ec02cc53bba1ceef6cc73a642d9380915fc3bbc47e7083fc49ce44cd54fe"
+  },
+  "selectors": {
+    "vpc": {
+      "types": [
+        "AWS::EC2::VPC"
+      ]
+    },
+    "subnets": {
+      "types": [
+        "AWS::EC2::Subnet"
+      ]
+    },
+    "igw": {
+      "types": [
+        "AWS::EC2::InternetGateway"
+      ]
+    },
+    "nat": {
+      "types": [
+        "AWS::EC2::NatGateway"
+      ]
+    },
+    "dnat": {
+      "types": [
+        "__declared__"
+      ],
+      "where": [
+        {
+          "path": "type",
+          "op": "eq",
+          "value": "AWS::EC2::NatGateway"
+        }
+      ]
+    },
+    "lg": {
+      "types": [
+        "AWS::Logs::LogGroup"
+      ]
+    },
+    "flow": {
+      "types": [
+        "AWS::EC2::FlowLog"
+      ]
+    },
+    "out": {
+      "types": [
+        "__output__"
+      ]
+    },
+    "role": {
+      "types": [
+        "AWS::IAM::Role"
+      ]
+    }
+  },
+  "checks": [
+    {
+      "id": "env_param",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "a configurable environment name (default \"production\")",
+      "select": {
+        "types": [
+          "__parameter__"
+        ],
+        "where": [
+          {
+            "path": "default",
+            "op": "eq",
+            "value": "production"
+          }
+        ]
+      }
+    },
+    {
+      "id": "vpc_cidr",
+      "kind": "attr",
+      "tier": "core",
+      "quote": "a VPC CIDR of 10.0.0.0/16",
+      "select": "vpc",
+      "cond": {
+        "path": "CidrBlock",
+        "op": "eq",
+        "value": "10.0.0.0/16"
+      }
+    },
+    {
+      "id": "private_cidrs",
+      "kind": "all_of",
+      "tier": "core",
+      "quote": "three private subnets (10.0.1.0/24, 10.0.2.0/24, 10.0.3.0/24)",
+      "checks": [
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "AWS::EC2::Subnet"
+            ],
+            "where": [
+              {
+                "path": "CidrBlock",
+                "op": "eq",
+                "value": "10.0.1.0/24"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "AWS::EC2::Subnet"
+            ],
+            "where": [
+              {
+                "path": "CidrBlock",
+                "op": "eq",
+                "value": "10.0.2.0/24"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "AWS::EC2::Subnet"
+            ],
+            "where": [
+              {
+                "path": "CidrBlock",
+                "op": "eq",
+                "value": "10.0.3.0/24"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "public_cidrs",
+      "kind": "all_of",
+      "tier": "core",
+      "quote": "three public subnets (10.0.101.0/24, 10.0.102.0/24, 10.0.103.0/24)",
+      "checks": [
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "AWS::EC2::Subnet"
+            ],
+            "where": [
+              {
+                "path": "CidrBlock",
+                "op": "eq",
+                "value": "10.0.101.0/24"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "AWS::EC2::Subnet"
+            ],
+            "where": [
+              {
+                "path": "CidrBlock",
+                "op": "eq",
+                "value": "10.0.102.0/24"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "AWS::EC2::Subnet"
+            ],
+            "where": [
+              {
+                "path": "CidrBlock",
+                "op": "eq",
+                "value": "10.0.103.0/24"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "six_subnets",
+      "kind": "exists",
+      "tier": "detail",
+      "quote": "three private subnets (10.0.1.0/24, 10.0.2.0/24, 10.0.3.0/24) and three public subnets",
+      "justify": "3+3 subnets",
+      "select": "subnets",
+      "min": 6
+    },
+    {
+      "id": "separate_azs",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "each in separate Availability Zones",
+      "justify": "3 subnets of a kind in separate AZs",
+      "select": "subnets",
+      "distinct_path": "AvailabilityZone",
+      "min": 3
+    },
+    {
+      "id": "igw",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "an Internet Gateway",
+      "select": "igw"
+    },
+    {
+      "id": "igw_attached",
+      "kind": "exists",
+      "tier": "detail",
+      "quote": "an Internet Gateway",
+      "select": {
+        "types": [
+          "AWS::EC2::VPCGatewayAttachment"
+        ]
+      }
+    },
+    {
+      "id": "igw_route",
+      "kind": "ref",
+      "tier": "detail",
+      "quote": "an Internet Gateway",
+      "from": {
+        "types": [
+          "AWS::EC2::Route"
+        ]
+      },
+      "to": "igw"
+    },
+    {
+      "id": "nat_declared",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "an optional NAT Gateway setup",
+      "select": "dnat"
+    },
+    {
+      "id": "nat_ha_declared",
+      "kind": "exists",
+      "tier": "detail",
+      "quote": "one per AZ for high availability",
+      "justify": "one NAT per each of three AZs",
+      "select": "dnat",
+      "min": 3
+    },
+    {
+      "id": "nat_optional",
+      "kind": "exists",
+      "tier": "detail",
+      "quote": "an optional NAT Gateway setup",
+      "select": {
+        "types": [
+          "__declared__"
+        ],
+        "where": [
+          {
+            "path": "type",
+            "op": "eq",
+            "value": "AWS::EC2::NatGateway"
+          },
+          {
+            "path": "gated",
+            "op": "truthy"
+          }
+        ]
+      }
+    },
+    {
+      "id": "nat_default_single",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "with the default being single",
+      "select": "nat",
+      "min": 1,
+      "max": 1,
+      "justify": "single NAT Gateway by default means exactly one"
+    },
+    {
+      "id": "private_route_nat",
+      "kind": "ref",
+      "tier": "detail",
+      "quote": "a single NAT Gateway (cost-effective)",
+      "from": {
+        "types": [
+          "AWS::EC2::Route"
+        ]
+      },
+      "to": "nat"
+    },
+    {
+      "id": "flow_vpc",
+      "kind": "ref",
+      "tier": "core",
+      "quote": "enable VPC Flow Logs",
+      "from": "flow",
+      "to": "vpc"
+    },
+    {
+      "id": "flow_lg",
+      "kind": "any_of",
+      "tier": "core",
+      "quote": "sent to CloudWatch Logs",
+      "checks": [
+        {
+          "kind": "ref",
+          "from": "flow",
+          "to": "lg"
+        },
+        {
+          "kind": "join",
+          "from": "flow",
+          "from_path": "LogGroupName",
+          "to": "lg",
+          "to_path": "LogGroupName"
+        },
+        {
+          "kind": "join",
+          "from": "flow",
+          "from_path": "LogDestination",
+          "to": "lg",
+          "to_path": "LogGroupName"
+        }
+      ]
+    },
+    {
+      "id": "retention",
+      "kind": "attr",
+      "tier": "core",
+      "quote": "a 7-day retention period",
+      "select": "lg",
+      "cond": {
+        "path": "RetentionInDays",
+        "op": "eq",
+        "value": 7
+      }
+    },
+    {
+      "id": "out_vpc",
+      "kind": "ref",
+      "tier": "core",
+      "quote": "export all subnet IDs, VPC ID, and NAT Gateway IDs as stack outputs",
+      "from": "out",
+      "to": "vpc"
+    },
+    {
+      "id": "out_nat",
+      "kind": "ref",
+      "tier": "core",
+      "quote": "and NAT Gateway IDs as stack outputs",
+      "from": "out",
+      "to": "nat"
+    },
+    {
+      "id": "out_subnets",
+      "kind": "all_of",
+      "tier": "core",
+      "quote": "export all subnet IDs",
+      "checks": [
+        {
+          "kind": "ref",
+          "from": "out",
+          "to": {
+            "types": [
+              "AWS::EC2::Subnet"
+            ],
+            "where": [
+              {
+                "path": "CidrBlock",
+                "op": "eq",
+                "value": "10.0.1.0/24"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "ref",
+          "from": "out",
+          "to": {
+            "types": [
+              "AWS::EC2::Subnet"
+            ],
+            "where": [
+              {
+                "path": "CidrBlock",
+                "op": "eq",
+                "value": "10.0.2.0/24"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "ref",
+          "from": "out",
+          "to": {
+            "types": [
+              "AWS::EC2::Subnet"
+            ],
+            "where": [
+              {
+                "path": "CidrBlock",
+                "op": "eq",
+                "value": "10.0.3.0/24"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "ref",
+          "from": "out",
+          "to": {
+            "types": [
+              "AWS::EC2::Subnet"
+            ],
+            "where": [
+              {
+                "path": "CidrBlock",
+                "op": "eq",
+                "value": "10.0.101.0/24"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "ref",
+          "from": "out",
+          "to": {
+            "types": [
+              "AWS::EC2::Subnet"
+            ],
+            "where": [
+              {
+                "path": "CidrBlock",
+                "op": "eq",
+                "value": "10.0.102.0/24"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "ref",
+          "from": "out",
+          "to": {
+            "types": [
+              "AWS::EC2::Subnet"
+            ],
+            "where": [
+              {
+                "path": "CidrBlock",
+                "op": "eq",
+                "value": "10.0.103.0/24"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "exports",
+      "kind": "exists",
+      "tier": "detail",
+      "quote": "export all subnet IDs, VPC ID, and NAT Gateway IDs as stack outputs",
+      "justify": "subnet, VPC and NAT outputs are exported",
+      "select": {
+        "types": [
+          "__output__"
+        ],
+        "where": [
+          {
+            "path": "export",
+            "op": "present"
+          }
+        ]
+      },
+      "min": 3
+    },
+    {
+      "id": "x_dns",
+      "kind": "attr",
+      "tier": "extra",
+      "select": "vpc",
+      "cond": {
+        "path": "EnableDnsHostnames",
+        "op": "truthy"
+      }
+    },
+    {
+      "id": "x_dns_support",
+      "kind": "attr",
+      "tier": "extra",
+      "select": "vpc",
+      "cond": {
+        "path": "EnableDnsSupport",
+        "op": "truthy"
+      }
+    },
+    {
+      "id": "x_traffic",
+      "kind": "attr",
+      "tier": "extra",
+      "select": "flow",
+      "cond": {
+        "path": "TrafficType",
+        "op": "eq",
+        "value": "ALL"
+      }
+    },
+    {
+      "id": "x_flow_role",
+      "kind": "ref",
+      "tier": "extra",
+      "from": "flow",
+      "to": "role"
+    },
+    {
+      "id": "x_role_trust",
+      "kind": "attr",
+      "tier": "extra",
+      "select": "role",
+      "cond": {
+        "path": "AssumeRolePolicyDocument",
+        "op": "contains",
+        "value": "vpc-flow-logs.amazonaws.com"
+      }
+    },
+    {
+      "id": "extra_type_aws_ec2_eip",
+      "kind": "exists",
+      "tier": "extra",
+      "select": {
+        "types": [
+          "AWS::EC2::EIP"
+        ],
+        "where": []
+      }
+    },
+    {
+      "id": "extra_type_aws_ec2_routetable",
+      "kind": "exists",
+      "tier": "extra",
+      "select": {
+        "types": [
+          "AWS::EC2::RouteTable"
+        ],
+        "where": []
+      }
+    },
+    {
+      "id": "extra_type_aws_ec2_subnetroutetableassociation",
+      "kind": "exists",
+      "tier": "extra",
+      "select": {
+        "types": [
+          "AWS::EC2::SubnetRouteTableAssociation"
+        ],
+        "where": []
+      }
+    }
+  ],
+  "notes": "'deployable in both regions' is not checkable beyond avoiding fixed region constructs; the single-vs-per-AZ NAT choice parameter is not pinned by name, only its declared gated NAT resources are checked."
+}

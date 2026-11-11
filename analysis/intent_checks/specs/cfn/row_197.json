@@ -1,0 +1,412 @@
+{
+  "lang": "cfn",
+  "row_number": 197,
+  "source_hash": {
+    "gt": "46a985a124948344bb8a820ca68ba502c94181798688f902d43c75354dd99550",
+    "prompt": "338a25be6052d37ee47dce139240ab9dce8fab7c41372afe3f3d721ea0403eed"
+  },
+  "selectors": {
+    "vpc": {
+      "types": [
+        "AWS::EC2::VPC"
+      ]
+    },
+    "dsub": {
+      "types": [
+        "__declared__"
+      ],
+      "where": [
+        {
+          "path": "type",
+          "op": "eq",
+          "value": "AWS::EC2::Subnet"
+        }
+      ]
+    },
+    "digw": {
+      "types": [
+        "__declared__"
+      ],
+      "where": [
+        {
+          "path": "type",
+          "op": "eq",
+          "value": "AWS::EC2::InternetGateway"
+        }
+      ]
+    },
+    "drt": {
+      "types": [
+        "__declared__"
+      ],
+      "where": [
+        {
+          "path": "type",
+          "op": "eq",
+          "value": "AWS::EC2::RouteTable"
+        }
+      ]
+    },
+    "droute": {
+      "types": [
+        "__declared__"
+      ],
+      "where": [
+        {
+          "path": "type",
+          "op": "eq",
+          "value": "AWS::EC2::Route"
+        },
+        {
+          "path": "properties.DestinationCidrBlock",
+          "op": "eq",
+          "value": "0.0.0.0/0"
+        }
+      ]
+    },
+    "dassoc": {
+      "types": [
+        "__declared__"
+      ],
+      "where": [
+        {
+          "path": "type",
+          "op": "eq",
+          "value": "AWS::EC2::SubnetRouteTableAssociation"
+        }
+      ]
+    },
+    "datt": {
+      "types": [
+        "__declared__"
+      ],
+      "where": [
+        {
+          "path": "type",
+          "op": "eq",
+          "value": "AWS::EC2::VPCGatewayAttachment"
+        }
+      ]
+    },
+    "out": {
+      "types": [
+        "__output__"
+      ]
+    },
+    "dsub_gated": {
+      "types": [
+        "__declared__"
+      ],
+      "where": [
+        {
+          "path": "type",
+          "op": "eq",
+          "value": "AWS::EC2::Subnet"
+        },
+        {
+          "path": "gated",
+          "op": "truthy"
+        }
+      ]
+    },
+    "dsub_always": {
+      "types": [
+        "__declared__"
+      ],
+      "where": [
+        {
+          "path": "type",
+          "op": "eq",
+          "value": "AWS::EC2::Subnet"
+        },
+        {
+          "path": "gated",
+          "op": "falsy"
+        }
+      ]
+    }
+  },
+  "checks": [
+    {
+      "id": "vpc",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "creates a VPC",
+      "select": "vpc"
+    },
+    {
+      "id": "params",
+      "kind": "exists",
+      "tier": "detail",
+      "quote": "with a parameterized identifier and CIDR block",
+      "justify": "identifier, CIDR and the public-subnet choice parameter",
+      "select": {
+        "types": [
+          "__parameter__"
+        ]
+      },
+      "min": 3
+    },
+    {
+      "id": "cidr_param",
+      "kind": "join",
+      "tier": "detail",
+      "quote": "with a parameterized identifier and CIDR block",
+      "from": "vpc",
+      "from_path": "CidrBlock",
+      "to": {
+        "types": [
+          "__parameter__"
+        ]
+      },
+      "to_path": "default"
+    },
+    {
+      "id": "ipv6",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "an Amazon-provided IPv6 range associated with it",
+      "select": {
+        "types": [
+          "AWS::EC2::VPCCidrBlock"
+        ],
+        "where": [
+          {
+            "path": "AmazonProvidedIpv6CidrBlock",
+            "op": "truthy"
+          }
+        ]
+      }
+    },
+    {
+      "id": "choice_param",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "Include a parameter that lets the deployer choose whether to include public subnets at all",
+      "justify": "the choice gates the three public subnets",
+      "select": "dsub_gated",
+      "min": 3
+    },
+    {
+      "id": "six_subnets",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "three public subnets, one per Availability Zone",
+      "justify": "3 public + 3 private subnets",
+      "select": "dsub",
+      "min": 6
+    },
+    {
+      "id": "three_azs",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "spread across three Availability Zones",
+      "justify": "three AZs",
+      "select": "dsub",
+      "distinct_path": "properties.AvailabilityZone",
+      "min": 3
+    },
+    {
+      "id": "private_always",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "Regardless of that choice, the stack should always create three private subnets",
+      "justify": "three private subnets, not gated by the choice",
+      "select": "dsub_always",
+      "min": 3
+    },
+    {
+      "id": "subnets_both_ranges",
+      "kind": "attr",
+      "tier": "core",
+      "quote": "both IPv4 and IPv6 ranges",
+      "select": "dsub",
+      "quantifier": "all",
+      "cond": {
+        "path": "properties.Ipv6CidrBlock",
+        "op": "present"
+      }
+    },
+    {
+      "id": "subnets_v4",
+      "kind": "all_of",
+      "tier": "detail",
+      "quote": "each carved out of the VPC's own IPv4 and IPv6 ranges",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "dsub",
+          "quantifier": "all",
+          "cond": {
+            "path": "properties.CidrBlock",
+            "op": "present"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "dsub",
+          "quantifier": "all",
+          "cond": {
+            "path": "properties.Ipv6CidrBlock",
+            "op": "regex",
+            "value": "(?i)ipv6cidrblock"
+          }
+        }
+      ]
+    },
+    {
+      "id": "igw",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "an Internet Gateway attached to the VPC",
+      "select": "digw"
+    },
+    {
+      "id": "igw_attached",
+      "kind": "all_of",
+      "tier": "core",
+      "quote": "an Internet Gateway attached to the VPC",
+      "checks": [
+        {
+          "kind": "ref",
+          "from": "datt",
+          "to": "digw"
+        },
+        {
+          "kind": "ref",
+          "from": "datt",
+          "to": "vpc"
+        }
+      ]
+    },
+    {
+      "id": "two_route_tables",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "a single public route table",
+      "justify": "a single public and a single private route table",
+      "select": "drt",
+      "min": 2,
+      "max": 2
+    },
+    {
+      "id": "default_route",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "a default route to the internet",
+      "select": "droute",
+      "justify": "default route to the internet implies 0.0.0.0/0"
+    },
+    {
+      "id": "default_route_igw",
+      "kind": "ref",
+      "tier": "detail",
+      "quote": "a default route to the internet",
+      "from": "droute",
+      "to": "digw",
+      "justify": "default route to the internet implies 0.0.0.0/0"
+    },
+    {
+      "id": "assocs",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "associated with all three public subnets",
+      "justify": "3 public + 3 private subnet associations",
+      "select": "dassoc",
+      "min": 6
+    },
+    {
+      "id": "assoc_subnet_ref",
+      "kind": "ref",
+      "tier": "detail",
+      "quote": "associated with all three public subnets",
+      "from": "dassoc",
+      "to": "dsub"
+    },
+    {
+      "id": "out_vpc",
+      "kind": "ref",
+      "tier": "core",
+      "quote": "Expose the VPC ID",
+      "from": "out",
+      "to": "vpc"
+    },
+    {
+      "id": "out_private_subnets",
+      "kind": "ref",
+      "tier": "core",
+      "quote": "the lists of public and private subnet IDs as stack outputs",
+      "from": "out",
+      "to": "dsub_always"
+    },
+    {
+      "id": "out_public_subnets",
+      "kind": "any_of",
+      "tier": "detail",
+      "quote": "the lists of public and private subnet IDs as stack outputs",
+      "justify": "if the choice defaults to off, the public list's output is excluded under defaults and cannot be observed",
+      "checks": [
+        {
+          "kind": "ref",
+          "from": "out",
+          "to": "dsub_gated"
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "__parameter__"
+            ],
+            "where": [
+              {
+                "path": "allowed_values",
+                "op": "len_eq",
+                "value": 2
+              },
+              {
+                "path": "default",
+                "op": "in",
+                "value": [
+                  "false",
+                  "no",
+                  "disabled"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "out_count",
+      "kind": "exists",
+      "tier": "detail",
+      "quote": "Expose the VPC ID and the lists of public and private subnet IDs as stack outputs",
+      "justify": "VPC ID plus the subnet lists; the public list may be conditional on the public-subnet choice",
+      "select": "out",
+      "min": 2
+    },
+    {
+      "id": "x_ipv6_on_create",
+      "kind": "attr",
+      "tier": "extra",
+      "select": "dsub",
+      "quantifier": "all",
+      "cond": {
+        "path": "properties.AssignIpv6AddressOnCreation",
+        "op": "truthy"
+      }
+    },
+    {
+      "id": "x_route_cidr",
+      "kind": "attr",
+      "tier": "extra",
+      "select": "droute",
+      "cond": {
+        "path": "properties.GatewayId",
+        "op": "present"
+      }
+    }
+  ],
+  "notes": "out_public_subnets: a template whose public-subnet choice defaults to off has its public-list output excluded under defaults, so the second branch accepts a two-valued choice parameter defaulting to false/no instead (weaker, rare). The private route table needs no default route, so none is checked. 'carved out of the VPC's own IPv4 range' cannot be checked as containment; CidrBlock presence stands in. Real templates reviewed: OneShot_DSV4F puts AmazonProvidedIpv6CidrBlock on AWS::EC2::VPC (not a VPC property, no IPv6 range is associated) and GLM53F gives subnets no IPv6 range; both correctly fail."
+}

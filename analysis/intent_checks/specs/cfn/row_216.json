@@ -1,0 +1,71 @@
+{
+  "lang": "cfn",
+  "row_number": 216,
+  "source_hash": {
+    "gt": "d2bedbbf10299e4bdf615d4339fab4074b47792584d4b6b7c65d552c28473567",
+    "prompt": "ac37aac091047df4794c8e3ec992d0ae4506399db4fbbec4794b1d90c06bf230"
+  },
+  "selectors": {
+    "ks": {
+      "types": [
+        "AWS::Kinesis::Stream"
+      ],
+      "where": []
+    }
+  },
+  "checks": [
+    {
+      "id": "stream",
+      "kind": "exists",
+      "select": "ks",
+      "tier": "core",
+      "quote": "creates a Kinesis data stream"
+    },
+    {
+      "id": "one_shard",
+      "kind": "attr",
+      "select": "ks",
+      "cond": {
+        "path": "ShardCount",
+        "op": "eq",
+        "value": 1
+      },
+      "tier": "core",
+      "quote": "configured with a single shard",
+      "justify": "a single shard means ShardCount 1"
+    },
+    {
+      "id": "output_stream",
+      "kind": "ref",
+      "from": {
+        "types": [
+          "__output__"
+        ],
+        "where": [
+          {
+            "path": "value.attr",
+            "op": "none_eq",
+            "value": "Arn"
+          }
+        ]
+      },
+      "to": "ks",
+      "tier": "detail",
+      "quote": "includes an output that exports the stream's physical ID or name",
+      "justify": "physical ID or name is what Ref returns; an Arn output is neither"
+    },
+    {
+      "id": "stream_encryption",
+      "kind": "attr",
+      "select": "ks",
+      "cond": {
+        "path": "StreamEncryption.EncryptionType",
+        "op": "eq",
+        "value": "KMS"
+      },
+      "tier": "extra",
+      "quote": ""
+    }
+  ],
+  "notes": "PROMPT_GT_MISMATCH: prompt says the output exports the name; GT output has no Export, so only the output's value is checked."
+}

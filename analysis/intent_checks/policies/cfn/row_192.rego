@@ -1,0 +1,590 @@
+package intent.cfn.row_192
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {},
+ "checks": [
+  {
+   "id": "query_definitions",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "AWS::Logs::QueryDefinition"
+    ],
+    "where": []
+   },
+   "min": 15,
+   "tier": "core",
+   "quote": "a comprehensive set of about 19 saved CloudWatch Logs Insights queries",
+   "justify": "about 19 queries; at least 15 is the lowest count consistent with 'about 19'"
+  },
+  {
+   "id": "all_scoped_to_log_group",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "AWS::Logs::QueryDefinition"
+    ],
+    "where": []
+   },
+   "quantifier": "all",
+   "cond": {
+    "path": [
+     "LogGroupNames",
+     "*"
+    ],
+    "op": "eq",
+    "value": "/aws/claude-code/metrics",
+    "every": true
+   },
+   "tier": "core",
+   "quote": "all queries scoped to the log group /aws/claude-code/metrics"
+  },
+  {
+   "id": "log_group_parameter",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": [
+       "default"
+      ],
+      "op": "eq",
+      "value": "/aws/claude-code/metrics"
+     }
+    ]
+   },
+   "tier": "detail",
+   "quote": "exposed as a parameter defaulting to that value"
+  },
+  {
+   "id": "rt_token_rate_per_user",
+   "tier": "core",
+   "quote": "token and request rate per user",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "AWS::Logs::QueryDefinition"
+    ],
+    "where": [
+     {
+      "path": [],
+      "op": "regex",
+      "value": "(?is)tpm|token.{0,30}rate|rate.{0,30}token|tokens?.{0,3}per.{0,3}min|token.*bin\\(\\s*1\\s*m(in)?\\s*\\)"
+     },
+     {
+      "path": [],
+      "op": "regex",
+      "value": "(?is)per.{0,3}user|\\bby\\b[^|]*user|by.{0,3}user"
+     }
+    ]
+   },
+   "justify": "a rate is per minute (TPM, a rate word or 1-minute bins), grouped per user"
+  },
+  {
+   "id": "rt_request_rate_per_user",
+   "tier": "core",
+   "quote": "token and request rate per user",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "AWS::Logs::QueryDefinition"
+    ],
+    "where": [
+     {
+      "path": [],
+      "op": "regex",
+      "value": "(?is)rpm|request.{0,30}rate|rate.{0,30}request|requests?.{0,3}per.{0,3}min|(request|count\\(\\*?\\)).*bin\\(\\s*1\\s*m(in)?\\s*\\)"
+     },
+     {
+      "path": [],
+      "op": "regex",
+      "value": "(?is)per.{0,3}user|\\bby\\b[^|]*user|by.{0,3}user"
+     }
+    ]
+   },
+   "justify": "a rate is per minute (RPM, a rate word or 1-minute bins), grouped per user"
+  },
+  {
+   "id": "rt_current_tpm_average",
+   "tier": "core",
+   "quote": "current TPM/RPM averages",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "AWS::Logs::QueryDefinition"
+    ],
+    "where": [
+     {
+      "path": [],
+      "op": "regex",
+      "value": "(?i)tpm|tokens?.{0,3}per.{0,3}min"
+     },
+     {
+      "path": [],
+      "op": "regex",
+      "value": "(?i)avg|average|current|mean"
+     }
+    ]
+   }
+  },
+  {
+   "id": "rt_current_rpm_average",
+   "tier": "core",
+   "quote": "current TPM/RPM averages",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "AWS::Logs::QueryDefinition"
+    ],
+    "where": [
+     {
+      "path": [],
+      "op": "regex",
+      "value": "(?i)rpm|requests?.{0,3}per.{0,3}min"
+     },
+     {
+      "path": [],
+      "op": "regex",
+      "value": "(?i)avg|average|current|mean"
+     }
+    ]
+   }
+  },
+  {
+   "id": "rt_rate_limit_risk",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "AWS::Logs::QueryDefinition"
+    ],
+    "where": [
+     {
+      "path": [],
+      "op": "regex",
+      "value": "(?i)rate.?limit"
+     }
+    ]
+   },
+   "tier": "core",
+   "quote": "rate-limit risk"
+  },
+  {
+   "id": "ua_session_usage",
+   "tier": "core",
+   "quote": "session-level usage",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "AWS::Logs::QueryDefinition"
+    ],
+    "where": [
+     {
+      "path": [],
+      "op": "regex",
+      "value": "(?is)session.{0,30}(usage|analy|summar|breakdown)|(usage|analy|summar|breakdown).{0,30}session|sum\\([^)]*tokens?[^)]*\\).*\\bby\\b[^|]*session"
+     }
+    ]
+   }
+  },
+  {
+   "id": "ua_hourly_timeline",
+   "tier": "core",
+   "quote": "hourly activity timelines",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "AWS::Logs::QueryDefinition"
+    ],
+    "where": [
+     {
+      "path": [],
+      "op": "regex",
+      "value": "(?i)bin\\(\\s*(1\\s*h|60\\s*m(in)?)\\s*\\)|hour"
+     }
+    ]
+   },
+   "justify": "hourly means 1-hour bins"
+  },
+  {
+   "id": "ua_errors_throttling",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "AWS::Logs::QueryDefinition"
+    ],
+    "where": [
+     {
+      "path": [],
+      "op": "regex",
+      "value": "(?i)throttl|error"
+     }
+    ]
+   },
+   "tier": "core",
+   "quote": "error/throttling detection"
+  },
+  {
+   "id": "cost_by_user",
+   "tier": "core",
+   "quote": "cost and attribution reporting broken down by user, model, and organization",
+   "kind": "any_of",
+   "justify": "a cost or attribution query grouped by user",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "AWS::Logs::QueryDefinition"
+      ],
+      "where": [
+       {
+        "path": [],
+        "op": "regex",
+        "value": "(?i)cost|attribut|billing|spend|chargeback"
+       },
+       {
+        "path": [
+         "Name"
+        ],
+        "op": "regex",
+        "value": "(?i)by.{0,3}user|per.{0,3}user"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "AWS::Logs::QueryDefinition"
+      ],
+      "where": [
+       {
+        "path": [],
+        "op": "regex",
+        "value": "(?i)cost|attribut|billing|spend|chargeback"
+       },
+       {
+        "path": [
+         "QueryString"
+        ],
+        "op": "regex",
+        "value": "(?is)\\bby\\b[^|]*user"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "cost_by_model",
+   "tier": "core",
+   "quote": "cost and attribution reporting broken down by user, model, and organization",
+   "kind": "any_of",
+   "justify": "a cost or attribution query grouped by model",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "AWS::Logs::QueryDefinition"
+      ],
+      "where": [
+       {
+        "path": [],
+        "op": "regex",
+        "value": "(?i)cost|attribut|billing|spend|chargeback"
+       },
+       {
+        "path": [
+         "Name"
+        ],
+        "op": "regex",
+        "value": "(?i)by.{0,3}model|per.{0,3}model"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "AWS::Logs::QueryDefinition"
+      ],
+      "where": [
+       {
+        "path": [],
+        "op": "regex",
+        "value": "(?i)cost|attribut|billing|spend|chargeback"
+       },
+       {
+        "path": [
+         "QueryString"
+        ],
+        "op": "regex",
+        "value": "(?is)\\bby\\b[^|]*model"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "cost_by_organization",
+   "tier": "core",
+   "quote": "cost and attribution reporting broken down by user, model, and organization",
+   "kind": "any_of",
+   "justify": "a query reporting per organization",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "AWS::Logs::QueryDefinition"
+      ],
+      "where": [
+       {
+        "path": [
+         "Name"
+        ],
+        "op": "regex",
+        "value": "(?i)organi[sz]ation|\\borg\\b|by.{0,3}org"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "AWS::Logs::QueryDefinition"
+      ],
+      "where": [
+       {
+        "path": [
+         "QueryString"
+        ],
+        "op": "regex",
+        "value": "(?is)\\bby\\s+(org|organi[sz]ation)"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "dbg_model_efficiency",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "AWS::Logs::QueryDefinition"
+    ],
+    "where": [
+     {
+      "path": [],
+      "op": "regex",
+      "value": "(?i)efficien"
+     }
+    ]
+   },
+   "tier": "detail",
+   "quote": "model efficiency"
+  },
+  {
+   "id": "dbg_cache_overall",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "AWS::Logs::QueryDefinition"
+    ],
+    "where": [
+     {
+      "path": [],
+      "op": "regex",
+      "value": "(?i)cache"
+     }
+    ]
+   },
+   "min": 3,
+   "tier": "detail",
+   "quote": "cache hit/miss rates (overall, over time, and by session)",
+   "justify": "three cache views: overall, over time, by session"
+  },
+  {
+   "id": "dbg_cache_over_time",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "AWS::Logs::QueryDefinition"
+      ],
+      "where": [
+       {
+        "path": [],
+        "op": "regex",
+        "value": "(?is)cache.*(bin\\(|over.?time)"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "AWS::Logs::QueryDefinition"
+      ],
+      "where": [
+       {
+        "path": [],
+        "op": "regex",
+        "value": "(?is)(bin\\(|over.?time).*cache"
+       }
+      ]
+     }
+    }
+   ],
+   "tier": "detail",
+   "quote": "cache hit/miss rates (overall, over time, and by session)"
+  },
+  {
+   "id": "dbg_cache_by_session",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "AWS::Logs::QueryDefinition"
+    ],
+    "where": [
+     {
+      "path": [],
+      "op": "regex",
+      "value": "(?is)cache.*session|session.*cache"
+     }
+    ]
+   },
+   "tier": "detail",
+   "quote": "cache hit/miss rates (overall, over time, and by session)"
+  },
+  {
+   "id": "dbg_peak_usage",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "AWS::Logs::QueryDefinition"
+    ],
+    "where": [
+     {
+      "path": [],
+      "op": "regex",
+      "value": "(?i)peak"
+     }
+    ]
+   },
+   "tier": "detail",
+   "quote": "peak usage windows"
+  },
+  {
+   "id": "dbg_session_deep_dive",
+   "tier": "detail",
+   "quote": "deep-dive lookups for a specific session",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "AWS::Logs::QueryDefinition"
+    ],
+    "where": [
+     {
+      "path": [],
+      "op": "regex",
+      "value": "(?is)deep.?dive|(specific|single|one).{0,10}session|session.{0,20}(lookup|drill|trace|detail)|filter[^|]*session[^|]*(=|like)"
+     }
+    ]
+   }
+  },
+  {
+   "id": "dbg_field_explorer",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "AWS::Logs::QueryDefinition"
+    ],
+    "where": [
+     {
+      "path": [],
+      "op": "regex",
+      "value": "(?i)explor|discover|available (fields|metrics|attributes)"
+     }
+    ]
+   },
+   "tier": "detail",
+   "quote": "a field explorer for discovering available metric attributes"
+  },
+  {
+   "id": "dbg_daily_summary",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "AWS::Logs::QueryDefinition"
+    ],
+    "where": [
+     {
+      "path": [],
+      "op": "regex",
+      "value": "(?i)daily|bin\\(\\s*1d\\s*\\)"
+     }
+    ]
+   },
+   "tier": "detail",
+   "quote": "a daily usage summary",
+   "justify": "daily means 1-day bins"
+  },
+  {
+   "id": "x_queries_have_query_string",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "AWS::Logs::QueryDefinition"
+    ],
+    "where": []
+   },
+   "quantifier": "all",
+   "cond": {
+    "path": [
+     "QueryString"
+    ],
+    "op": "present"
+   },
+   "tier": "extra"
+  },
+  {
+   "id": "x_queries_have_name",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "AWS::Logs::QueryDefinition"
+    ],
+    "where": []
+   },
+   "quantifier": "all",
+   "cond": {
+    "path": [
+     "Name"
+    ],
+    "op": "present"
+   },
+   "tier": "extra"
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

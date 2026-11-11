@@ -1,0 +1,997 @@
+package intent.tf.row_017
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {
+  "bucket": {
+   "types": [
+    "aws_s3_bucket"
+   ],
+   "where": []
+  },
+  "kms": {
+   "types": [
+    "aws_kms_key"
+   ],
+   "where": []
+  },
+  "sse": {
+   "types": [
+    "aws_s3_bucket_server_side_encryption_configuration"
+   ],
+   "where": []
+  },
+  "pab": {
+   "types": [
+    "aws_s3_bucket_public_access_block"
+   ],
+   "where": []
+  }
+ },
+ "checks": [
+  {
+   "id": "bucket",
+   "kind": "exists",
+   "select": "bucket",
+   "tier": "core",
+   "quote": "creates an Amazon S3 bucket designated for storing CloudTrail logs"
+  },
+  {
+   "id": "bucket_name",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "bucket",
+     "cond": {
+      "path": [
+       "bucket"
+      ],
+      "op": "regex",
+      "value": "^benchmark-cloudtrail-[a-z]{2}(-[a-z]+)+-[0-9]+$"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_s3_bucket"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "bucket"
+      ],
+      "op": "regex",
+      "value": "(?i)^(\\$\\{[^}]+\\}|benchmark)-cloudtrail-\\$\\{[^}]*region[^}]*\\}$"
+     }
+    }
+   ],
+   "tier": "core",
+   "quote": "The bucket name must be dynamically constructed by appending the suffix \"-cloudtrail-\" and the current AWS region to a base name parameter",
+   "justify": "the base name defaults to \"benchmark\" and the region follows \"-cloudtrail-\""
+  },
+  {
+   "id": "base_name_param",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": [
+       "default"
+      ],
+      "op": "eq",
+      "value": "benchmark"
+     }
+    ]
+   },
+   "tier": "detail",
+   "quote": "a base name parameter, which should default to \"benchmark\""
+  },
+  {
+   "id": "force_destroy",
+   "kind": "attr",
+   "select": "bucket",
+   "cond": {
+    "path": [
+     "force_destroy"
+    ],
+    "op": "truthy"
+   },
+   "tier": "core",
+   "quote": "Ensure the bucket allows forced destruction"
+  },
+  {
+   "id": "pab_all",
+   "kind": "all_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "pab",
+     "cond": {
+      "path": [
+       "block_public_acls"
+      ],
+      "op": "truthy"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "pab",
+     "cond": {
+      "path": [
+       "block_public_policy"
+      ],
+      "op": "truthy"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "pab",
+     "cond": {
+      "path": [
+       "ignore_public_acls"
+      ],
+      "op": "truthy"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "pab",
+     "cond": {
+      "path": [
+       "restrict_public_buckets"
+      ],
+      "op": "truthy"
+     }
+    }
+   ],
+   "tier": "core",
+   "quote": "blocks all public access"
+  },
+  {
+   "id": "pab_on_bucket",
+   "kind": "ref",
+   "from": "pab",
+   "to": "bucket",
+   "tier": "detail",
+   "quote": "blocks all public access"
+  },
+  {
+   "id": "sse_kms",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "sse",
+     "cond": {
+      "path": [
+       "rule",
+       "*",
+       "apply_server_side_encryption_by_default",
+       "*",
+       "sse_algorithm"
+      ],
+      "op": "eq",
+      "value": "aws:kms"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "bucket",
+     "cond": {
+      "path": [
+       "server_side_encryption_configuration",
+       "*",
+       "rule",
+       "*",
+       "apply_server_side_encryption_by_default",
+       "*",
+       "sse_algorithm"
+      ],
+      "op": "eq",
+      "value": "aws:kms"
+     }
+    }
+   ],
+   "tier": "core",
+   "quote": "uses default SSE-KMS encryption"
+  },
+  {
+   "id": "kms_key",
+   "kind": "exists",
+   "select": "kms",
+   "tier": "core",
+   "quote": "a customer-managed KMS key"
+  },
+  {
+   "id": "sse_uses_cmk",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "sse",
+     "to": "kms"
+    },
+    {
+     "kind": "ref",
+     "from": "bucket",
+     "to": "kms"
+    }
+   ],
+   "tier": "core",
+   "quote": "with a customer-managed KMS key"
+  },
+  {
+   "id": "policy_principal",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_s3_bucket_policy",
+       "aws_s3_bucket"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "policy"
+      ],
+      "op": "regex",
+      "value": "cloudtrail\\.amazonaws\\.com"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "in",
+        "value": [
+         "aws_s3_bucket_policy",
+         "aws_s3_bucket"
+        ]
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "policy"
+      ],
+      "op": "regex",
+      "value": "cloudtrail\\.amazonaws\\.com"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_s3_bucket_policy",
+       "aws_s3_bucket"
+      ],
+      "where": []
+     },
+     "to": {
+      "types": [
+       "data.aws_iam_policy_document"
+      ],
+      "where": [
+       {
+        "path": [
+         "statement",
+         "*"
+        ],
+        "op": "match",
+        "value": [
+         {
+          "path": [
+           "principals",
+           "*",
+           "identifiers",
+           "*"
+          ],
+          "op": "eq",
+          "value": "cloudtrail.amazonaws.com"
+         }
+        ]
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "in",
+        "value": [
+         "aws_s3_bucket_policy",
+         "aws_s3_bucket"
+        ]
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "data.aws_iam_policy_document"
+       },
+       {
+        "path": [
+         "properties",
+         "statement",
+         "*"
+        ],
+        "op": "match",
+        "value": [
+         {
+          "path": [
+           "principals",
+           "*",
+           "identifiers",
+           "*"
+          ],
+          "op": "eq",
+          "value": "cloudtrail.amazonaws.com"
+         }
+        ]
+       }
+      ]
+     }
+    }
+   ],
+   "tier": "core",
+   "quote": "grants the CloudTrail service principal"
+  },
+  {
+   "id": "policy_getbucketacl",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_s3_bucket_policy",
+       "aws_s3_bucket"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "policy"
+      ],
+      "op": "regex",
+      "value": "(?i)s3:(GetBucketAcl|\\*)([^A-Za-z0-9_]|$)"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "in",
+        "value": [
+         "aws_s3_bucket_policy",
+         "aws_s3_bucket"
+        ]
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "policy"
+      ],
+      "op": "regex",
+      "value": "(?i)s3:(GetBucketAcl|\\*)([^A-Za-z0-9_]|$)"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_s3_bucket_policy",
+       "aws_s3_bucket"
+      ],
+      "where": []
+     },
+     "to": {
+      "types": [
+       "data.aws_iam_policy_document"
+      ],
+      "where": [
+       {
+        "path": [
+         "statement",
+         "*"
+        ],
+        "op": "match",
+        "value": [
+         {
+          "path": [
+           "actions",
+           "*"
+          ],
+          "op": "glob_covers",
+          "value": "s3:GetBucketAcl"
+         },
+         {
+          "path": [
+           "principals",
+           "*",
+           "identifiers",
+           "*"
+          ],
+          "op": "eq",
+          "value": "cloudtrail.amazonaws.com"
+         }
+        ]
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "in",
+        "value": [
+         "aws_s3_bucket_policy",
+         "aws_s3_bucket"
+        ]
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "data.aws_iam_policy_document"
+       },
+       {
+        "path": [
+         "properties",
+         "statement",
+         "*"
+        ],
+        "op": "match",
+        "value": [
+         {
+          "path": [
+           "actions",
+           "*"
+          ],
+          "op": "glob_covers",
+          "value": "s3:GetBucketAcl"
+         },
+         {
+          "path": [
+           "principals",
+           "*",
+           "identifiers",
+           "*"
+          ],
+          "op": "eq",
+          "value": "cloudtrail.amazonaws.com"
+         }
+        ]
+       }
+      ]
+     }
+    }
+   ],
+   "tier": "core",
+   "quote": "permission to check the bucket ACL via the \"s3:GetBucketAcl\" action"
+  },
+  {
+   "id": "policy_putobject",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_s3_bucket_policy",
+       "aws_s3_bucket"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "policy"
+      ],
+      "op": "regex",
+      "value": "(?i)s3:(PutObject|\\*)([^A-Za-z0-9_]|$)"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "in",
+        "value": [
+         "aws_s3_bucket_policy",
+         "aws_s3_bucket"
+        ]
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "policy"
+      ],
+      "op": "regex",
+      "value": "(?i)s3:(PutObject|\\*)([^A-Za-z0-9_]|$)"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_s3_bucket_policy",
+       "aws_s3_bucket"
+      ],
+      "where": []
+     },
+     "to": {
+      "types": [
+       "data.aws_iam_policy_document"
+      ],
+      "where": [
+       {
+        "path": [
+         "statement",
+         "*"
+        ],
+        "op": "match",
+        "value": [
+         {
+          "path": [
+           "actions",
+           "*"
+          ],
+          "op": "glob_covers",
+          "value": "s3:PutObject"
+         },
+         {
+          "path": [
+           "principals",
+           "*",
+           "identifiers",
+           "*"
+          ],
+          "op": "eq",
+          "value": "cloudtrail.amazonaws.com"
+         }
+        ]
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "in",
+        "value": [
+         "aws_s3_bucket_policy",
+         "aws_s3_bucket"
+        ]
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "data.aws_iam_policy_document"
+       },
+       {
+        "path": [
+         "properties",
+         "statement",
+         "*"
+        ],
+        "op": "match",
+        "value": [
+         {
+          "path": [
+           "actions",
+           "*"
+          ],
+          "op": "glob_covers",
+          "value": "s3:PutObject"
+         },
+         {
+          "path": [
+           "principals",
+           "*",
+           "identifiers",
+           "*"
+          ],
+          "op": "eq",
+          "value": "cloudtrail.amazonaws.com"
+         }
+        ]
+       }
+      ]
+     }
+    }
+   ],
+   "tier": "core",
+   "quote": "permission to write logs via the \"s3:PutObject\" action"
+  },
+  {
+   "id": "policy_objects_resource",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_s3_bucket_policy",
+       "aws_s3_bucket"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "policy"
+      ],
+      "op": "regex",
+      "value": "/\\*"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "in",
+        "value": [
+         "aws_s3_bucket_policy",
+         "aws_s3_bucket"
+        ]
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "policy"
+      ],
+      "op": "regex",
+      "value": "/\\*"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "in",
+        "value": [
+         "aws_s3_bucket_policy",
+         "aws_s3_bucket"
+        ]
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "data.aws_iam_policy_document"
+       },
+       {
+        "path": [
+         "properties",
+         "statement",
+         "*"
+        ],
+        "op": "match",
+        "value": [
+         {
+          "path": [
+           "actions",
+           "*"
+          ],
+          "op": "glob_covers",
+          "value": "s3:PutObject"
+         },
+         {
+          "path": [
+           "resources",
+           "*"
+          ],
+          "op": "regex",
+          "value": "/\\*$"
+         }
+        ]
+       }
+      ]
+     }
+    }
+   ],
+   "tier": "detail",
+   "quote": "on all objects within the bucket"
+  },
+  {
+   "id": "policy_acl_condition",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_s3_bucket_policy",
+       "aws_s3_bucket"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "policy"
+      ],
+      "op": "regex",
+      "value": "(?s)s3:x-amz-acl.*bucket-owner-full-control|bucket-owner-full-control.*s3:x-amz-acl"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "in",
+        "value": [
+         "aws_s3_bucket_policy",
+         "aws_s3_bucket"
+        ]
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "policy"
+      ],
+      "op": "regex",
+      "value": "(?s)s3:x-amz-acl.*bucket-owner-full-control|bucket-owner-full-control.*s3:x-amz-acl"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_s3_bucket_policy",
+       "aws_s3_bucket"
+      ],
+      "where": []
+     },
+     "to": {
+      "types": [
+       "data.aws_iam_policy_document"
+      ],
+      "where": [
+       {
+        "path": [
+         "statement",
+         "*"
+        ],
+        "op": "match",
+        "value": [
+         {
+          "path": [
+           "actions",
+           "*"
+          ],
+          "op": "glob_covers",
+          "value": "s3:PutObject"
+         },
+         {
+          "path": [
+           "condition",
+           "*",
+           "variable"
+          ],
+          "op": "eq",
+          "value": "s3:x-amz-acl"
+         },
+         {
+          "path": [
+           "condition",
+           "*",
+           "values",
+           "*"
+          ],
+          "op": "eq",
+          "value": "bucket-owner-full-control"
+         }
+        ]
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "in",
+        "value": [
+         "aws_s3_bucket_policy",
+         "aws_s3_bucket"
+        ]
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "data.aws_iam_policy_document"
+       },
+       {
+        "path": [
+         "properties",
+         "statement",
+         "*"
+        ],
+        "op": "match",
+        "value": [
+         {
+          "path": [
+           "actions",
+           "*"
+          ],
+          "op": "glob_covers",
+          "value": "s3:PutObject"
+         },
+         {
+          "path": [
+           "condition",
+           "*",
+           "variable"
+          ],
+          "op": "eq",
+          "value": "s3:x-amz-acl"
+         },
+         {
+          "path": [
+           "condition",
+           "*",
+           "values",
+           "*"
+          ],
+          "op": "eq",
+          "value": "bucket-owner-full-control"
+         }
+        ]
+       }
+      ]
+     }
+    }
+   ],
+   "tier": "core",
+   "quote": "provided the \"s3:x-amz-acl\" condition evaluates to \"bucket-owner-full-control\""
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

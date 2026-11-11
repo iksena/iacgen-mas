@@ -1,0 +1,213 @@
+{
+ "meta": {
+  "lang": "tf",
+  "mode": "plan",
+  "warnings": [],
+  "gt_hash": "9025b97e8717d9517e3fcc07f1973052652fa224270c3edca417e204b9939348",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "aws_cloudwatch_log_group.logs",
+   "cfg": "aws_cloudwatch_log_group.logs",
+   "type": "aws_cloudwatch_log_group",
+   "values": {
+    "kms_key_id": null,
+    "region": "us-east-1",
+    "retention_in_days": 7,
+    "skip_destroy": false
+   },
+   "refs": []
+  },
+  {
+   "id": "aws_iam_policy.write",
+   "cfg": "aws_iam_policy.write",
+   "type": "aws_iam_policy",
+   "values": {
+    "delay_after_policy_creation_in_ms": null,
+    "description": "Allow to push and write logs to the cloudwatch logs",
+    "path": "/",
+    "tags": null
+   },
+   "refs": [
+    "aws_cloudwatch_log_group.logs"
+   ]
+  },
+  {
+   "id": "module.frigga.random_pet.name",
+   "cfg": "module.frigga.random_pet.name",
+   "type": "random_pet",
+   "values": {
+    "keepers": null,
+    "length": 1,
+    "prefix": null,
+    "separator": "-"
+   },
+   "refs": []
+  },
+  {
+   "id": "module.frigga.random_string.suffix",
+   "cfg": "module.frigga.random_string.suffix",
+   "type": "random_string",
+   "values": {
+    "keepers": null,
+    "length": 5,
+    "lower": true,
+    "min_lower": 0,
+    "min_numeric": 0,
+    "min_special": 0,
+    "min_upper": 0,
+    "number": false,
+    "numeric": false,
+    "override_special": null,
+    "special": false,
+    "upper": false
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.log_group",
+   "cfg": "__parameter__.log_group",
+   "type": "__parameter__",
+   "values": {
+    "name": "log_group",
+    "default": {}
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.log_metric_filters",
+   "cfg": "__parameter__.log_metric_filters",
+   "type": "__parameter__",
+   "values": {
+    "name": "log_metric_filters",
+    "default": []
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.name",
+   "cfg": "__parameter__.name",
+   "type": "__parameter__",
+   "values": {
+    "name": "name",
+    "default": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.tags",
+   "cfg": "__parameter__.tags",
+   "type": "__parameter__",
+   "values": {
+    "name": "tags",
+    "default": {}
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.log_group",
+   "cfg": "__output__.log_group",
+   "type": "__output__",
+   "values": {
+    "name": "log_group",
+    "value": null,
+    "description": "The attributes of generated log group"
+   },
+   "refs": [
+    "aws_cloudwatch_log_group.logs"
+   ]
+  },
+  {
+   "id": "__output__.log_metric_filters",
+   "cfg": "__output__.log_metric_filters",
+   "type": "__output__",
+   "values": {
+    "name": "log_metric_filters",
+    "value": {},
+    "description": "The log metric transform filters"
+   },
+   "refs": [
+    "aws_cloudwatch_log_metric_filter.filters"
+   ]
+  },
+  {
+   "id": "__output__.policy_arns",
+   "cfg": "__output__.policy_arns",
+   "type": "__output__",
+   "values": {
+    "name": "policy_arns",
+    "value": null,
+    "description": "A map of IAM polices to allow access this log group. If you want to make an IAM role or instance-profile has permissions to manage this repository, please attach the `poliy_arn` of this output on your side."
+   },
+   "refs": [
+    "aws_iam_policy.write"
+   ]
+  },
+  {
+   "id": "__declared__.aws_iam_policy.write",
+   "cfg": "aws_iam_policy.write",
+   "type": "__declared__",
+   "refs": [
+    "aws_cloudwatch_log_group.logs"
+   ],
+   "values": {
+    "type": "aws_iam_policy",
+    "name": "write",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "${format(\"%s-logs-write\",local.name)}",
+     "description": "${format(\"Allow to push and write logs to the cloudwatch logs\")}",
+     "path": "/",
+     "policy": "${jsonencode({'Statement': [{'Action': ['logs:CreateLogStream', 'logs:DescribeLogStreams', 'logs:PutLogEvents'], 'Effect': 'Allow', 'Resource': ['${aws_cloudwatch_log_group.logs.arn}']}], 'Version': '2012-10-17'})}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_cloudwatch_log_group.logs",
+   "cfg": "aws_cloudwatch_log_group.logs",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_cloudwatch_log_group",
+    "name": "logs",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "${local.log_group_name}",
+     "tags": "${merge(local.default-tags,var.tags)}",
+     "retention_in_days": "${lookup(local.log_group,\"retension_days\",7)}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_cloudwatch_log_metric_filter.filters",
+   "cfg": "aws_cloudwatch_log_metric_filter.filters",
+   "type": "__declared__",
+   "refs": [
+    "aws_cloudwatch_log_group.logs"
+   ],
+   "values": {
+    "type": "aws_cloudwatch_log_metric_filter",
+    "name": "filters",
+    "gated": true,
+    "gate": "var.log_metric_filters != null ? { for k, v in var.log_metric_filters : k => v } : {}",
+    "properties": {
+     "for_each": "${var.log_metric_filters != None ? {for k , v in var.log_metric_filters : k => v} : {}}",
+     "name": "${lookup(each.value,\"name\",each.key)}",
+     "pattern": "${lookup(each.value,\"pattern\",None)}",
+     "log_group_name": "${aws_cloudwatch_log_group.logs.name}",
+     "metric_transformation": [
+      {
+       "name": "${lookup(each.value,\"name\",None)}",
+       "namespace": "${lookup(each.value,\"namespace\",None)}",
+       "value": "${lookup(each.value,\"value\",1)}",
+       "default_value": "${lookup(each.value,\"default_value\",None)}"
+      }
+     ]
+    }
+   }
+  }
+ ]
+}

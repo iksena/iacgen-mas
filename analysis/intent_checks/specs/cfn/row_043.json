@@ -1,0 +1,323 @@
+{
+  "lang": "cfn",
+  "row_number": 43,
+  "source_hash": {
+    "gt": "e373579ae7997c3d7bc51155da1885f11317ecfbb375af77e94e794177a7f001",
+    "prompt": "517e06ca59507c14a26455bead8e12c80b45f73024cc707a14ad7a4775d72989"
+  },
+  "selectors": {
+    "up": {
+      "types": [
+        "AWS::Cognito::UserPool"
+      ]
+    },
+    "ip": {
+      "types": [
+        "AWS::Cognito::IdentityPool"
+      ]
+    },
+    "att": {
+      "types": [
+        "AWS::Cognito::IdentityPoolRoleAttachment"
+      ]
+    },
+    "role": {
+      "types": [
+        "AWS::IAM::Role"
+      ]
+    },
+    "out_id": {
+      "types": [
+        "__output__"
+      ],
+      "where": [
+        {
+          "path": "export",
+          "op": "present"
+        },
+        {
+          "path": "value.attr",
+          "op": "none_eq",
+          "value": "Arn"
+        },
+        {
+          "path": "value.attr",
+          "op": "none_eq",
+          "value": "Name"
+        },
+        {
+          "path": "value.attr",
+          "op": "none_eq",
+          "value": "ProviderName"
+        },
+        {
+          "path": "value.attr",
+          "op": "none_eq",
+          "value": "ProviderURL"
+        }
+      ]
+    },
+    "out_arn": {
+      "types": [
+        "__output__"
+      ],
+      "where": [
+        {
+          "path": "export",
+          "op": "present"
+        },
+        {
+          "path": "value.attr",
+          "op": "eq",
+          "value": "Arn"
+        }
+      ]
+    },
+    "role_cog": {
+      "types": [
+        "AWS::IAM::Role"
+      ],
+      "where": [
+        {
+          "path": "AssumeRolePolicyDocument",
+          "op": "contains",
+          "value": "cognito-identity.amazonaws.com"
+        }
+      ]
+    },
+    "att_auth": {
+      "types": [
+        "AWS::Cognito::IdentityPoolRoleAttachment"
+      ],
+      "where": [
+        {
+          "path": "Roles.authenticated",
+          "op": "present"
+        }
+      ]
+    },
+    "out_arn_str": {
+      "types": [
+        "__output__"
+      ],
+      "where": [
+        {
+          "path": "export",
+          "op": "present"
+        },
+        {
+          "path": "value",
+          "op": "regex",
+          "value": ":userpool/"
+        }
+      ]
+    }
+  },
+  "checks": [
+    {
+      "id": "up_name",
+      "tier": "core",
+      "quote": "a Cognito User Pool named \"KibanaUsers\"",
+      "kind": "attr",
+      "select": "up",
+      "cond": {
+        "path": "UserPoolName",
+        "op": "eq",
+        "value": "KibanaUsers"
+      }
+    },
+    {
+      "id": "ip_name",
+      "tier": "core",
+      "quote": "an associated Identity Pool named \"KibanaIDPool\"",
+      "kind": "attr",
+      "select": "ip",
+      "cond": {
+        "path": "IdentityPoolName",
+        "op": "eq",
+        "value": "KibanaIDPool"
+      }
+    },
+    {
+      "id": "email_username",
+      "tier": "core",
+      "quote": "use email as the username",
+      "kind": "attr",
+      "select": "up",
+      "cond": {
+        "path": "UsernameAttributes.*",
+        "op": "eq",
+        "value": "email"
+      }
+    },
+    {
+      "id": "email_verify",
+      "tier": "core",
+      "quote": "require email verification",
+      "kind": "attr",
+      "select": "up",
+      "cond": {
+        "path": "AutoVerifiedAttributes.*",
+        "op": "eq",
+        "value": "email"
+      }
+    },
+    {
+      "id": "admin_only",
+      "tier": "core",
+      "quote": "allow only admin-created users",
+      "kind": "attr",
+      "select": "up",
+      "cond": {
+        "path": "AdminCreateUserConfig.AllowAdminCreateUserOnly",
+        "op": "eq",
+        "value": true
+      }
+    },
+    {
+      "id": "min_len",
+      "tier": "core",
+      "quote": "a password policy enforcing a minimum length of 8 characters",
+      "kind": "attr",
+      "select": "up",
+      "cond": {
+        "path": "Policies.PasswordPolicy.MinimumLength",
+        "op": "eq",
+        "value": 8
+      }
+    },
+    {
+      "id": "unauth",
+      "tier": "core",
+      "quote": "allow unauthenticated identities",
+      "kind": "attr",
+      "select": "ip",
+      "cond": {
+        "path": "AllowUnauthenticatedIdentities",
+        "op": "eq",
+        "value": true
+      }
+    },
+    {
+      "id": "att_authenticated",
+      "tier": "core",
+      "quote": "integrated with an IAM role that grants authenticated users",
+      "kind": "ref",
+      "from": "att_auth",
+      "to": "role",
+      "justify": "the role serves authenticated users, so it fills the authenticated slot of the role attachment"
+    },
+    {
+      "id": "att_pool",
+      "tier": "detail",
+      "quote": "integrated with an IAM role that grants authenticated users",
+      "kind": "ref",
+      "from": "att_auth",
+      "to": "ip"
+    },
+    {
+      "id": "es_http",
+      "tier": "core",
+      "quote": "an IAM role that grants authenticated users permission to perform Elasticsearch HTTP actions",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "role_cog",
+          "cond": {
+            "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+            "op": "regex",
+            "value": "(?i)^(es:(eshttp|\\*)|\\*$)"
+          }
+        },
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "AWS::IAM::Policy",
+              "AWS::IAM::ManagedPolicy"
+            ],
+            "where": [
+              {
+                "path": "PolicyDocument.Statement.*.Action.*",
+                "op": "regex",
+                "value": "(?i)^(es:(eshttp|\\*)|\\*$)"
+              }
+            ]
+          },
+          "to": "role_cog",
+          "bidirectional": true
+        },
+        {
+          "kind": "attr",
+          "select": "role_cog",
+          "cond": {
+            "path": "ManagedPolicyArns.*",
+            "op": "regex",
+            "value": ":aws:policy/(AmazonESFullAccess|AmazonOpenSearchServiceFullAccess)$"
+          }
+        }
+      ],
+      "justify": "Elasticsearch HTTP actions are the es:ESHttp* actions; the role meant is the one the identity pool can assume"
+    },
+    {
+      "id": "export_up_id",
+      "tier": "detail",
+      "quote": "export the user pool ID",
+      "kind": "ref",
+      "from": "out_id",
+      "to": "up",
+      "justify": "Arn, Name, ProviderName and ProviderURL attributes are not the ID the prompt asks for"
+    },
+    {
+      "id": "export_up_arn",
+      "tier": "detail",
+      "quote": "user pool ARN",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "ref",
+          "from": "out_arn",
+          "to": "up"
+        },
+        {
+          "kind": "ref",
+          "from": "out_arn_str",
+          "to": "up"
+        }
+      ]
+    },
+    {
+      "id": "export_ip_id",
+      "tier": "detail",
+      "quote": "and identity pool ID for cross-stack referencing",
+      "kind": "ref",
+      "from": "out_id",
+      "to": "ip",
+      "justify": "Arn, Name, ProviderName and ProviderURL attributes are not the ID the prompt asks for"
+    },
+    {
+      "id": "trust_web_identity",
+      "tier": "extra",
+      "kind": "attr",
+      "select": "role",
+      "cond": {
+        "path": "AssumeRolePolicyDocument.Statement.*.Action.*",
+        "op": "eq",
+        "value": "sts:AssumeRoleWithWebIdentity"
+      }
+    },
+    {
+      "id": "trust_federated",
+      "tier": "extra",
+      "kind": "attr",
+      "select": "role",
+      "cond": {
+        "path": "AssumeRolePolicyDocument.Statement.*.Principal.Federated.*",
+        "op": "eq",
+        "value": "cognito-identity.amazonaws.com"
+      }
+    }
+  ],
+  "notes": "PROMPT_GT_MISMATCH: the prompt calls the identity pool \"associated\" with the user pool, but the ground truth identity pool has no CognitoIdentityProviders link to it, so that link is not checked."
+}

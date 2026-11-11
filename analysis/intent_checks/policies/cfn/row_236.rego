@@ -1,0 +1,610 @@
+package intent.cfn.row_236
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {
+  "key": {
+   "types": [
+    "AWS::KMS::Key"
+   ],
+   "where": []
+  },
+  "alias": {
+   "types": [
+    "AWS::KMS::Alias"
+   ],
+   "where": []
+  },
+  "tbl": {
+   "types": [
+    "AWS::DynamoDB::Table"
+   ],
+   "where": []
+  }
+ },
+ "checks": [
+  {
+   "id": "table",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "creates a DynamoDB table",
+   "select": "tbl"
+  },
+  {
+   "id": "kms_key",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "secured with a customer-managed KMS key",
+   "select": "key"
+  },
+  {
+   "id": "key_rotation",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "KMS key with key rotation enabled",
+   "select": "key",
+   "cond": {
+    "path": [
+     "EnableKeyRotation"
+    ],
+    "op": "eq",
+    "value": true
+   }
+  },
+  {
+   "id": "key_root_policy",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "a stack-level root IAM access policy",
+   "justify": "a root IAM access policy allows the account root principal, written as the root ARN or the bare account ID; omitting KeyPolicy gives the KMS default policy, which grants exactly that",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "key",
+     "cond": {
+      "path": [
+       "KeyPolicy",
+       "Statement",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "Effect"
+        ],
+        "op": "eq",
+        "value": "Allow"
+       },
+       {
+        "path": [
+         "Principal",
+         "AWS",
+         "*"
+        ],
+        "op": "regex",
+        "value": ":root$|^[0-9]{12}$"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "key",
+     "cond": {
+      "path": [
+       "KeyPolicy"
+      ],
+      "op": "absent"
+     }
+    }
+   ]
+  },
+  {
+   "id": "key_retained",
+   "kind": "all_of",
+   "tier": "detail",
+   "quote": "both retained upon deletion or update replacement",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "key",
+     "cond": {
+      "path": [
+       "__resource__",
+       "DeletionPolicy"
+      ],
+      "op": "eq",
+      "value": "Retain"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "key",
+     "cond": {
+      "path": [
+       "__resource__",
+       "UpdateReplacePolicy"
+      ],
+      "op": "eq",
+      "value": "Retain"
+     }
+    }
+   ]
+  },
+  {
+   "id": "alias",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "a key alias named \"alias/{StackName}-user-key-mapping\"",
+   "select": "alias"
+  },
+  {
+   "id": "alias_name",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "a key alias named \"alias/{StackName}-user-key-mapping\"",
+   "select": "alias",
+   "cond": {
+    "path": [
+     "AliasName"
+    ],
+    "op": "eq",
+    "value": "alias/stack-user-key-mapping"
+   },
+   "justify": "{StackName} is the stack name, which the adapter renders as 'stack'; a hardcoded or parameterised prefix does not meet the stated name"
+  },
+  {
+   "id": "alias_targets_key",
+   "kind": "ref",
+   "tier": "detail",
+   "quote": "along with a key alias",
+   "from": "alias",
+   "to": "key"
+  },
+  {
+   "id": "tablename_param",
+   "kind": "exists",
+   "tier": "detail",
+   "quote": "accept a TableName parameter defaulting to \"codex-user-keys\"",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": [
+       "name"
+      ],
+      "op": "eq",
+      "value": "TableName"
+     },
+     {
+      "path": [
+       "default"
+      ],
+      "op": "eq",
+      "value": "codex-user-keys"
+     }
+    ]
+   }
+  },
+  {
+   "id": "table_name",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "using the specified table name",
+   "justify": "the specified table name is the TableName parameter default codex-user-keys",
+   "select": "tbl",
+   "cond": {
+    "path": [
+     "TableName"
+    ],
+    "op": "eq",
+    "value": "codex-user-keys"
+   }
+  },
+  {
+   "id": "on_demand",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "an on-demand DynamoDB table",
+   "justify": "on-demand billing is PAY_PER_REQUEST",
+   "select": "tbl",
+   "cond": {
+    "path": [
+     "BillingMode"
+    ],
+    "op": "eq",
+    "value": "PAY_PER_REQUEST"
+   }
+  },
+  {
+   "id": "partition_key",
+   "kind": "all_of",
+   "tier": "core",
+   "quote": "a string partition key \"user_id\"",
+   "justify": "partition key is the HASH key",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "tbl",
+     "cond": {
+      "path": [
+       "KeySchema",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "AttributeName"
+        ],
+        "op": "eq",
+        "value": "user_id"
+       },
+       {
+        "path": [
+         "KeyType"
+        ],
+        "op": "eq",
+        "value": "HASH"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "tbl",
+     "cond": {
+      "path": [
+       "AttributeDefinitions",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "AttributeName"
+        ],
+        "op": "eq",
+        "value": "user_id"
+       },
+       {
+        "path": [
+         "AttributeType"
+        ],
+        "op": "eq",
+        "value": "S"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "ttl",
+   "kind": "all_of",
+   "tier": "detail",
+   "quote": "TTL enabled on the \"ttl\" attribute",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "tbl",
+     "cond": {
+      "path": [
+       "TimeToLiveSpecification",
+       "Enabled"
+      ],
+      "op": "eq",
+      "value": true
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "tbl",
+     "cond": {
+      "path": [
+       "TimeToLiveSpecification",
+       "AttributeName"
+      ],
+      "op": "eq",
+      "value": "ttl"
+     }
+    }
+   ]
+  },
+  {
+   "id": "pitr",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "point-in-time recovery enabled",
+   "select": "tbl",
+   "cond": {
+    "path": [
+     "PointInTimeRecoverySpecification",
+     "PointInTimeRecoveryEnabled"
+    ],
+    "op": "eq",
+    "value": true
+   }
+  },
+  {
+   "id": "sse_kms",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "server-side encryption via the custom KMS key",
+   "select": "tbl",
+   "cond": {
+    "path": [
+     "SSESpecification",
+     "SSEEnabled"
+    ],
+    "op": "eq",
+    "value": true
+   }
+  },
+  {
+   "id": "sse_uses_custom_key",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "server-side encryption via the custom KMS key",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::DynamoDB::Table"
+      ],
+      "where": [
+       {
+        "path": [
+         "SSESpecification",
+         "KMSMasterKeyId"
+        ],
+        "op": "present"
+       }
+      ]
+     },
+     "to": "key"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::DynamoDB::Table"
+      ],
+      "where": [
+       {
+        "path": [
+         "SSESpecification",
+         "KMSMasterKeyId"
+        ],
+        "op": "present"
+       }
+      ]
+     },
+     "to": "alias"
+    },
+    {
+     "kind": "join",
+     "from": "tbl",
+     "from_path": [
+      "SSESpecification",
+      "KMSMasterKeyId"
+     ],
+     "to": "alias",
+     "to_path": [
+      "AliasName"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "table_retained",
+   "kind": "all_of",
+   "tier": "detail",
+   "quote": "deletion and update-replace retention policies",
+   "justify": "retention policies on a table that must be kept means Retain",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "tbl",
+     "cond": {
+      "path": [
+       "__resource__",
+       "DeletionPolicy"
+      ],
+      "op": "eq",
+      "value": "Retain"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "tbl",
+     "cond": {
+      "path": [
+       "__resource__",
+       "UpdateReplacePolicy"
+      ],
+      "op": "eq",
+      "value": "Retain"
+     }
+    }
+   ]
+  },
+  {
+   "id": "table_tags",
+   "kind": "all_of",
+   "tier": "detail",
+   "quote": "tags for project \"codex-bedrock\", component \"jwt-middleware\", and managed-by \"cloudformation\"",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "tbl",
+     "cond": {
+      "path": [
+       "Tags",
+       "*"
+      ],
+      "op": "has_kv",
+      "value": {
+       "key": "project",
+       "value": "codex-bedrock"
+      }
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "tbl",
+     "cond": {
+      "path": [
+       "Tags",
+       "*"
+      ],
+      "op": "has_kv",
+      "value": {
+       "key": "component",
+       "value": "jwt-middleware"
+      }
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "tbl",
+     "cond": {
+      "path": [
+       "Tags",
+       "*"
+      ],
+      "op": "has_kv",
+      "value": {
+       "key": "managed-by",
+       "value": "cloudformation"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "output_table_name",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "exporting the table name and ARN in the stack outputs",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__output__"
+      ],
+      "where": [
+       {
+        "path": [
+         "value",
+         "ref"
+        ],
+        "op": "present"
+       },
+       {
+        "path": [
+         "value",
+         "attr"
+        ],
+        "op": "absent"
+       }
+      ]
+     },
+     "to": "tbl"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__output__"
+      ],
+      "where": [
+       {
+        "path": [
+         "value"
+        ],
+        "op": "regex",
+        "value": "^\\$\\{[A-Za-z0-9]+\\}$"
+       }
+      ]
+     },
+     "to": "tbl"
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__output__"
+      ],
+      "where": [
+       {
+        "path": [
+         "value"
+        ],
+        "op": "eq",
+        "value": "codex-user-keys"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "output_table_arn",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "exporting the table name and ARN in the stack outputs",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__output__"
+      ],
+      "where": [
+       {
+        "path": [
+         "value",
+         "attr"
+        ],
+        "op": "eq",
+        "value": "Arn"
+       }
+      ]
+     },
+     "to": "tbl"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__output__"
+      ],
+      "where": [
+       {
+        "path": [
+         "value"
+        ],
+        "op": "regex",
+        "value": "^\\$\\{[A-Za-z0-9]+\\.Arn\\}$"
+       }
+      ]
+     },
+     "to": "tbl"
+    }
+   ]
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

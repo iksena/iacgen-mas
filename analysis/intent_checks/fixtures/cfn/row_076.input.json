@@ -1,0 +1,389 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "2c9466f246d9c6753ee758a8876144e263c67c49a64f640a42c83cf7fdfd91cd",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "MyFirstStream63B28502",
+   "cfg": "MyFirstStream63B28502",
+   "type": "AWS::Kinesis::Stream",
+   "values": {
+    "ShardCount": 1,
+    "Name": "my-stream-kinesis",
+    "RetentionPeriodHours": 24,
+    "StreamEncryption": {
+     "EncryptionType": "KMS",
+     "KeyId": "alias/aws/kinesis"
+    },
+    "__resource__": {
+     "Metadata": {
+      "aws:cdk:path": "SetupStackCreateTable/MyFirstStream/Resource"
+     }
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "ExampleIdentityPool",
+   "cfg": "ExampleIdentityPool",
+   "type": "AWS::Cognito::IdentityPool",
+   "values": {
+    "AllowUnauthenticatedIdentities": true,
+    "__resource__": {
+     "Metadata": {
+      "aws:cdk:path": "SetupStackCreateTable/ExampleIdentityPool"
+     }
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "CognitoDefaultUnauthenticatedRoleABBF7267",
+   "cfg": "CognitoDefaultUnauthenticatedRoleABBF7267",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRoleWithWebIdentity"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "cognito-identity.amazonaws.com:aud": {
+          "ref": "ExampleIdentityPool"
+         }
+        },
+        "ForAnyValue:StringLike": {
+         "cognito-identity.amazonaws.com:amr": "unauthenticated"
+        }
+       },
+       "Effect": "Allow",
+       "Principal": {
+        "Federated": [
+         "cognito-identity.amazonaws.com"
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "__resource__": {
+     "Metadata": {
+      "aws:cdk:path": "SetupStackCreateTable/CognitoDefaultUnauthenticatedRole/Resource"
+     }
+    }
+   },
+   "refs": [
+    "ExampleIdentityPool"
+   ]
+  },
+  {
+   "id": "CognitoDefaultUnauthenticatedRoleDefaultPolicy2B700C08",
+   "cfg": "CognitoDefaultUnauthenticatedRoleDefaultPolicy2B700C08",
+   "type": "AWS::IAM::Policy",
+   "values": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "mobileanalytics:PutEvents",
+        "cognito-sync:*"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        "*"
+       ]
+      },
+      {
+       "Action": [
+        "kinesis:Put*"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "ref": "MyFirstStream63B28502",
+        "attr": "Arn"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "CognitoDefaultUnauthenticatedRoleDefaultPolicy2B700C08",
+    "Roles": [
+     {
+      "ref": "CognitoDefaultUnauthenticatedRoleABBF7267"
+     }
+    ],
+    "__resource__": {
+     "Metadata": {
+      "aws:cdk:path": "SetupStackCreateTable/CognitoDefaultUnauthenticatedRole/DefaultPolicy/Resource"
+     }
+    }
+   },
+   "refs": [
+    "CognitoDefaultUnauthenticatedRoleABBF7267",
+    "MyFirstStream63B28502"
+   ]
+  },
+  {
+   "id": "DefaultValid",
+   "cfg": "DefaultValid",
+   "type": "AWS::Cognito::IdentityPoolRoleAttachment",
+   "values": {
+    "IdentityPoolId": {
+     "ref": "ExampleIdentityPool"
+    },
+    "Roles": {
+     "unauthenticated": {
+      "ref": "CognitoDefaultUnauthenticatedRoleABBF7267",
+      "attr": "Arn"
+     }
+    },
+    "__resource__": {
+     "Metadata": {
+      "aws:cdk:path": "SetupStackCreateTable/DefaultValid"
+     }
+    }
+   },
+   "refs": [
+    "CognitoDefaultUnauthenticatedRoleABBF7267",
+    "ExampleIdentityPool"
+   ]
+  },
+  {
+   "id": "CDKMetadata",
+   "cfg": "CDKMetadata",
+   "type": "AWS::CDK::Metadata",
+   "values": {
+    "Modules": "aws-cdk=1.84.0,@aws-cdk/assets=1.77.0,@aws-cdk/aws-applicationautoscaling=1.77.0,@aws-cdk/aws-autoscaling-common=1.77.0,@aws-cdk/aws-cloudwatch=1.77.0,@aws-cdk/aws-codeguruprofiler=1.77.0,@aws-cdk/aws-cognito=1.77.0,@aws-cdk/aws-ec2=1.77.0,@aws-cdk/aws-ecr=1.77.0,@aws-cdk/aws-ecr-assets=1.77.0,@aws-cdk/aws-events=1.77.0,@aws-cdk/aws-iam=1.77.0,@aws-cdk/aws-kinesis=1.77.0,@aws-cdk/aws-kms=1.77.0,@aws-cdk/aws-lambda=1.77.0,@aws-cdk/aws-logs=1.77.0,@aws-cdk/aws-s3=1.77.0,@aws-cdk/aws-s3-assets=1.77.0,@aws-cdk/aws-sqs=1.77.0,@aws-cdk/aws-ssm=1.77.0,@aws-cdk/cloud-assembly-schema=1.77.0,@aws-cdk/core=1.77.0,@aws-cdk/custom-resources=1.77.0,@aws-cdk/cx-api=1.77.0,@aws-cdk/region-info=1.77.0,jsii-runtime=node.js/v12.14.1",
+    "__resource__": {
+     "Condition": "CDKMetadataAvailable",
+     "Metadata": {
+      "aws:cdk:path": "SetupStackCreateTable/CDKMetadata/Default"
+     }
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.Identitypoolid",
+   "cfg": "__output__.Identitypoolid",
+   "type": "__output__",
+   "values": {
+    "name": "Identitypoolid",
+    "value": {
+     "ref": "ExampleIdentityPool"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "ExampleIdentityPool"
+   ]
+  },
+  {
+   "id": "__output__.Stackname",
+   "cfg": "__output__.Stackname",
+   "type": "__output__",
+   "values": {
+    "name": "Stackname",
+    "value": {
+     "ref": "MyFirstStream63B28502"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "MyFirstStream63B28502"
+   ]
+  },
+  {
+   "id": "__output__.Stackarn",
+   "cfg": "__output__.Stackarn",
+   "type": "__output__",
+   "values": {
+    "name": "Stackarn",
+    "value": {
+     "ref": "MyFirstStream63B28502",
+     "attr": "Arn"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "MyFirstStream63B28502"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::Kinesis::Stream.MyFirstStream63B28502",
+   "cfg": "MyFirstStream63B28502",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Kinesis::Stream",
+    "name": "MyFirstStream63B28502",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ShardCount": 1,
+     "Name": "my-stream-kinesis",
+     "RetentionPeriodHours": 24,
+     "StreamEncryption": {
+      "EncryptionType": "KMS",
+      "KeyId": "alias/aws/kinesis"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::IdentityPool.ExampleIdentityPool",
+   "cfg": "ExampleIdentityPool",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Cognito::IdentityPool",
+    "name": "ExampleIdentityPool",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AllowUnauthenticatedIdentities": true
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.CognitoDefaultUnauthenticatedRoleABBF7267",
+   "cfg": "CognitoDefaultUnauthenticatedRoleABBF7267",
+   "type": "__declared__",
+   "refs": [
+    "ExampleIdentityPool"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "CognitoDefaultUnauthenticatedRoleABBF7267",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRoleWithWebIdentity"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "cognito-identity.amazonaws.com:aud": {
+           "ref": "ExampleIdentityPool"
+          }
+         },
+         "ForAnyValue:StringLike": {
+          "cognito-identity.amazonaws.com:amr": "unauthenticated"
+         }
+        },
+        "Effect": "Allow",
+        "Principal": {
+         "Federated": [
+          "cognito-identity.amazonaws.com"
+         ]
+        }
+       }
+      ],
+      "Version": "2012-10-17"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Policy.CognitoDefaultUnauthenticatedRoleDefaultPolicy2B700C08",
+   "cfg": "CognitoDefaultUnauthenticatedRoleDefaultPolicy2B700C08",
+   "type": "__declared__",
+   "refs": [
+    "CognitoDefaultUnauthenticatedRoleABBF7267",
+    "MyFirstStream63B28502"
+   ],
+   "values": {
+    "type": "AWS::IAM::Policy",
+    "name": "CognitoDefaultUnauthenticatedRoleDefaultPolicy2B700C08",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "PolicyDocument": {
+      "Statement": [
+       {
+        "Action": [
+         "mobileanalytics:PutEvents",
+         "cognito-sync:*"
+        ],
+        "Effect": "Allow",
+        "Resource": [
+         "*"
+        ]
+       },
+       {
+        "Action": [
+         "kinesis:Put*"
+        ],
+        "Effect": "Allow",
+        "Resource": {
+         "ref": "MyFirstStream63B28502",
+         "attr": "Arn"
+        }
+       }
+      ],
+      "Version": "2012-10-17"
+     },
+     "PolicyName": "CognitoDefaultUnauthenticatedRoleDefaultPolicy2B700C08",
+     "Roles": [
+      {
+       "ref": "CognitoDefaultUnauthenticatedRoleABBF7267"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::IdentityPoolRoleAttachment.DefaultValid",
+   "cfg": "DefaultValid",
+   "type": "__declared__",
+   "refs": [
+    "CognitoDefaultUnauthenticatedRoleABBF7267",
+    "ExampleIdentityPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::IdentityPoolRoleAttachment",
+    "name": "DefaultValid",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "IdentityPoolId": {
+      "ref": "ExampleIdentityPool"
+     },
+     "Roles": {
+      "unauthenticated": {
+       "ref": "CognitoDefaultUnauthenticatedRoleABBF7267",
+       "attr": "Arn"
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::CDK::Metadata.CDKMetadata",
+   "cfg": "CDKMetadata",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::CDK::Metadata",
+    "name": "CDKMetadata",
+    "gated": true,
+    "gate": "CDKMetadataAvailable",
+    "properties": {
+     "Modules": "aws-cdk=1.84.0,@aws-cdk/assets=1.77.0,@aws-cdk/aws-applicationautoscaling=1.77.0,@aws-cdk/aws-autoscaling-common=1.77.0,@aws-cdk/aws-cloudwatch=1.77.0,@aws-cdk/aws-codeguruprofiler=1.77.0,@aws-cdk/aws-cognito=1.77.0,@aws-cdk/aws-ec2=1.77.0,@aws-cdk/aws-ecr=1.77.0,@aws-cdk/aws-ecr-assets=1.77.0,@aws-cdk/aws-events=1.77.0,@aws-cdk/aws-iam=1.77.0,@aws-cdk/aws-kinesis=1.77.0,@aws-cdk/aws-kms=1.77.0,@aws-cdk/aws-lambda=1.77.0,@aws-cdk/aws-logs=1.77.0,@aws-cdk/aws-s3=1.77.0,@aws-cdk/aws-s3-assets=1.77.0,@aws-cdk/aws-sqs=1.77.0,@aws-cdk/aws-ssm=1.77.0,@aws-cdk/cloud-assembly-schema=1.77.0,@aws-cdk/core=1.77.0,@aws-cdk/custom-resources=1.77.0,@aws-cdk/cx-api=1.77.0,@aws-cdk/region-info=1.77.0,jsii-runtime=node.js/v12.14.1"
+    }
+   }
+  }
+ ]
+}

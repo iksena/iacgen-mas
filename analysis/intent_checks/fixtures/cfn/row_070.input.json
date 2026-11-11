@@ -1,0 +1,629 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "6936fef32d9bee0ea1d1632a3cfa2d76c9f902febc4a185ba468f30fb085ac83",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "ExampleIdentityPool",
+   "cfg": "ExampleIdentityPool",
+   "type": "AWS::Cognito::IdentityPool",
+   "values": {
+    "AllowUnauthenticatedIdentities": true,
+    "__resource__": {
+     "Metadata": {
+      "aws:cdk:path": "stepfunctions/ExampleIdentityPool"
+     }
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "LambdaRole3A44B857",
+   "cfg": "LambdaRole3A44B857",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRoleWithWebIdentity"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "cognito-identity.amazonaws.com:aud": {
+          "ref": "ExampleIdentityPool"
+         }
+        },
+        "ForAnyValue:StringLike": {
+         "cognito-identity.amazonaws.com:amr": "unauthenticated"
+        }
+       },
+       "Effect": "Allow",
+       "Principal": {
+        "Federated": [
+         "cognito-identity.amazonaws.com"
+        ]
+       }
+      },
+      {
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "__resource__": {
+     "Metadata": {
+      "aws:cdk:path": "stepfunctions/LambdaRole/Resource"
+     }
+    }
+   },
+   "refs": [
+    "ExampleIdentityPool"
+   ]
+  },
+  {
+   "id": "LambdaRoleDefaultPolicy75625A82",
+   "cfg": "LambdaRoleDefaultPolicy75625A82",
+   "type": "AWS::IAM::Policy",
+   "values": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "lambda:InvokeFunction",
+        "mobileanalytics:PutEvents",
+        "cognito-sync:*"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        "*"
+       ]
+      },
+      {
+       "Action": [
+        "dynamodb:*"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        "*"
+       ]
+      },
+      {
+       "Action": [
+        "ses:*"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        "*"
+       ]
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "LambdaRoleDefaultPolicy75625A82",
+    "Roles": [
+     {
+      "ref": "LambdaRole3A44B857"
+     }
+    ],
+    "__resource__": {
+     "Metadata": {
+      "aws:cdk:path": "stepfunctions/LambdaRole/DefaultPolicy/Resource"
+     }
+    }
+   },
+   "refs": [
+    "LambdaRole3A44B857"
+   ]
+  },
+  {
+   "id": "DefaultValid",
+   "cfg": "DefaultValid",
+   "type": "AWS::Cognito::IdentityPoolRoleAttachment",
+   "values": {
+    "IdentityPoolId": {
+     "ref": "ExampleIdentityPool"
+    },
+    "Roles": {
+     "unauthenticated": {
+      "ref": "LambdaRole3A44B857",
+      "attr": "Arn"
+     }
+    },
+    "__resource__": {
+     "Metadata": {
+      "aws:cdk:path": "stepfunctions/DefaultValid"
+     }
+    }
+   },
+   "refs": [
+    "ExampleIdentityPool",
+    "LambdaRole3A44B857"
+   ]
+  },
+  {
+   "id": "ExampleIdentityPoolWorkflow",
+   "cfg": "ExampleIdentityPoolWorkflow",
+   "type": "AWS::Cognito::IdentityPool",
+   "values": {
+    "AllowUnauthenticatedIdentities": true,
+    "__resource__": {
+     "Metadata": {
+      "aws:cdk:path": "stepfunctions/ExampleIdentityPoolWorkflow"
+     }
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "WorkflowRole21EC4257",
+   "cfg": "WorkflowRole21EC4257",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRoleWithWebIdentity"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "cognito-identity.amazonaws.com:aud": {
+          "ref": "ExampleIdentityPoolWorkflow"
+         }
+        },
+        "ForAnyValue:StringLike": {
+         "cognito-identity.amazonaws.com:amr": "unauthenticated"
+        }
+       },
+       "Effect": "Allow",
+       "Principal": {
+        "Federated": [
+         "cognito-identity.amazonaws.com"
+        ]
+       }
+      },
+      {
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "states.us-east-1.amazonaws.com"
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "__resource__": {
+     "Metadata": {
+      "aws:cdk:path": "stepfunctions/WorkflowRole/Resource"
+     }
+    }
+   },
+   "refs": [
+    "ExampleIdentityPoolWorkflow"
+   ]
+  },
+  {
+   "id": "WorkflowRoleDefaultPolicyB4C63B85",
+   "cfg": "WorkflowRoleDefaultPolicyB4C63B85",
+   "type": "AWS::IAM::Policy",
+   "values": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "lambda:InvokeFunction",
+        "mobileanalytics:PutEvents",
+        "cognito-sync:*"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        "*"
+       ]
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "WorkflowRoleDefaultPolicyB4C63B85",
+    "Roles": [
+     {
+      "ref": "WorkflowRole21EC4257"
+     }
+    ],
+    "__resource__": {
+     "Metadata": {
+      "aws:cdk:path": "stepfunctions/WorkflowRole/DefaultPolicy/Resource"
+     }
+    }
+   },
+   "refs": [
+    "WorkflowRole21EC4257"
+   ]
+  },
+  {
+   "id": "DefaultValidWorkflow",
+   "cfg": "DefaultValidWorkflow",
+   "type": "AWS::Cognito::IdentityPoolRoleAttachment",
+   "values": {
+    "IdentityPoolId": {
+     "ref": "ExampleIdentityPoolWorkflow"
+    },
+    "Roles": {
+     "unauthenticated": {
+      "ref": "WorkflowRole21EC4257",
+      "attr": "Arn"
+     }
+    },
+    "__resource__": {
+     "Metadata": {
+      "aws:cdk:path": "stepfunctions/DefaultValidWorkflow"
+     }
+    }
+   },
+   "refs": [
+    "ExampleIdentityPoolWorkflow",
+    "WorkflowRole21EC4257"
+   ]
+  },
+  {
+   "id": "CDKMetadata",
+   "cfg": "CDKMetadata",
+   "type": "AWS::CDK::Metadata",
+   "values": {
+    "Modules": "aws-cdk=1.109.0,@aws-cdk/assets=1.84.0,@aws-cdk/aws-applicationautoscaling=1.84.0,@aws-cdk/aws-autoscaling-common=1.84.0,@aws-cdk/aws-cloudwatch=1.84.0,@aws-cdk/aws-codeguruprofiler=1.84.0,@aws-cdk/aws-cognito=1.84.0,@aws-cdk/aws-ec2=1.84.0,@aws-cdk/aws-ecr=1.84.0,@aws-cdk/aws-ecr-assets=1.84.0,@aws-cdk/aws-events=1.84.0,@aws-cdk/aws-iam=1.84.0,@aws-cdk/aws-kms=1.84.0,@aws-cdk/aws-lambda=1.84.0,@aws-cdk/aws-logs=1.84.0,@aws-cdk/aws-s3=1.84.0,@aws-cdk/aws-s3-assets=1.84.0,@aws-cdk/aws-sqs=1.84.0,@aws-cdk/aws-ssm=1.84.0,@aws-cdk/cloud-assembly-schema=1.84.0,@aws-cdk/core=1.84.0,@aws-cdk/custom-resources=1.84.0,@aws-cdk/cx-api=1.84.0,@aws-cdk/region-info=1.84.0,jsii-runtime=node.js/v14.7.0",
+    "__resource__": {
+     "Condition": "CDKMetadataAvailable",
+     "Metadata": {
+      "aws:cdk:path": "stepfunctions/CDKMetadata/Default"
+     }
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.Lambdasupportrole",
+   "cfg": "__output__.Lambdasupportrole",
+   "type": "__output__",
+   "values": {
+    "name": "Lambdasupportrole",
+    "value": {
+     "ref": "LambdaRole3A44B857"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "LambdaRole3A44B857"
+   ]
+  },
+  {
+   "id": "__output__.Workflowsupportrole",
+   "cfg": "__output__.Workflowsupportrole",
+   "type": "__output__",
+   "values": {
+    "name": "Workflowsupportrole",
+    "value": {
+     "ref": "WorkflowRole21EC4257"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "WorkflowRole21EC4257"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::Cognito::IdentityPool.ExampleIdentityPool",
+   "cfg": "ExampleIdentityPool",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Cognito::IdentityPool",
+    "name": "ExampleIdentityPool",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AllowUnauthenticatedIdentities": true
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.LambdaRole3A44B857",
+   "cfg": "LambdaRole3A44B857",
+   "type": "__declared__",
+   "refs": [
+    "ExampleIdentityPool"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "LambdaRole3A44B857",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRoleWithWebIdentity"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "cognito-identity.amazonaws.com:aud": {
+           "ref": "ExampleIdentityPool"
+          }
+         },
+         "ForAnyValue:StringLike": {
+          "cognito-identity.amazonaws.com:amr": "unauthenticated"
+         }
+        },
+        "Effect": "Allow",
+        "Principal": {
+         "Federated": [
+          "cognito-identity.amazonaws.com"
+         ]
+        }
+       },
+       {
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        }
+       }
+      ],
+      "Version": "2012-10-17"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Policy.LambdaRoleDefaultPolicy75625A82",
+   "cfg": "LambdaRoleDefaultPolicy75625A82",
+   "type": "__declared__",
+   "refs": [
+    "LambdaRole3A44B857"
+   ],
+   "values": {
+    "type": "AWS::IAM::Policy",
+    "name": "LambdaRoleDefaultPolicy75625A82",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "PolicyDocument": {
+      "Statement": [
+       {
+        "Action": [
+         "lambda:InvokeFunction",
+         "mobileanalytics:PutEvents",
+         "cognito-sync:*"
+        ],
+        "Effect": "Allow",
+        "Resource": [
+         "*"
+        ]
+       },
+       {
+        "Action": [
+         "dynamodb:*"
+        ],
+        "Effect": "Allow",
+        "Resource": [
+         "*"
+        ]
+       },
+       {
+        "Action": [
+         "ses:*"
+        ],
+        "Effect": "Allow",
+        "Resource": [
+         "*"
+        ]
+       }
+      ],
+      "Version": "2012-10-17"
+     },
+     "PolicyName": "LambdaRoleDefaultPolicy75625A82",
+     "Roles": [
+      {
+       "ref": "LambdaRole3A44B857"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::IdentityPoolRoleAttachment.DefaultValid",
+   "cfg": "DefaultValid",
+   "type": "__declared__",
+   "refs": [
+    "ExampleIdentityPool",
+    "LambdaRole3A44B857"
+   ],
+   "values": {
+    "type": "AWS::Cognito::IdentityPoolRoleAttachment",
+    "name": "DefaultValid",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "IdentityPoolId": {
+      "ref": "ExampleIdentityPool"
+     },
+     "Roles": {
+      "unauthenticated": {
+       "ref": "LambdaRole3A44B857",
+       "attr": "Arn"
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::IdentityPool.ExampleIdentityPoolWorkflow",
+   "cfg": "ExampleIdentityPoolWorkflow",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Cognito::IdentityPool",
+    "name": "ExampleIdentityPoolWorkflow",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AllowUnauthenticatedIdentities": true
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.WorkflowRole21EC4257",
+   "cfg": "WorkflowRole21EC4257",
+   "type": "__declared__",
+   "refs": [
+    "ExampleIdentityPoolWorkflow"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "WorkflowRole21EC4257",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRoleWithWebIdentity"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "cognito-identity.amazonaws.com:aud": {
+           "ref": "ExampleIdentityPoolWorkflow"
+          }
+         },
+         "ForAnyValue:StringLike": {
+          "cognito-identity.amazonaws.com:amr": "unauthenticated"
+         }
+        },
+        "Effect": "Allow",
+        "Principal": {
+         "Federated": [
+          "cognito-identity.amazonaws.com"
+         ]
+        }
+       },
+       {
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "states.us-east-1.amazonaws.com"
+         ]
+        }
+       }
+      ],
+      "Version": "2012-10-17"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Policy.WorkflowRoleDefaultPolicyB4C63B85",
+   "cfg": "WorkflowRoleDefaultPolicyB4C63B85",
+   "type": "__declared__",
+   "refs": [
+    "WorkflowRole21EC4257"
+   ],
+   "values": {
+    "type": "AWS::IAM::Policy",
+    "name": "WorkflowRoleDefaultPolicyB4C63B85",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "PolicyDocument": {
+      "Statement": [
+       {
+        "Action": [
+         "lambda:InvokeFunction",
+         "mobileanalytics:PutEvents",
+         "cognito-sync:*"
+        ],
+        "Effect": "Allow",
+        "Resource": [
+         "*"
+        ]
+       }
+      ],
+      "Version": "2012-10-17"
+     },
+     "PolicyName": "WorkflowRoleDefaultPolicyB4C63B85",
+     "Roles": [
+      {
+       "ref": "WorkflowRole21EC4257"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::IdentityPoolRoleAttachment.DefaultValidWorkflow",
+   "cfg": "DefaultValidWorkflow",
+   "type": "__declared__",
+   "refs": [
+    "ExampleIdentityPoolWorkflow",
+    "WorkflowRole21EC4257"
+   ],
+   "values": {
+    "type": "AWS::Cognito::IdentityPoolRoleAttachment",
+    "name": "DefaultValidWorkflow",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "IdentityPoolId": {
+      "ref": "ExampleIdentityPoolWorkflow"
+     },
+     "Roles": {
+      "unauthenticated": {
+       "ref": "WorkflowRole21EC4257",
+       "attr": "Arn"
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::CDK::Metadata.CDKMetadata",
+   "cfg": "CDKMetadata",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::CDK::Metadata",
+    "name": "CDKMetadata",
+    "gated": true,
+    "gate": "CDKMetadataAvailable",
+    "properties": {
+     "Modules": "aws-cdk=1.109.0,@aws-cdk/assets=1.84.0,@aws-cdk/aws-applicationautoscaling=1.84.0,@aws-cdk/aws-autoscaling-common=1.84.0,@aws-cdk/aws-cloudwatch=1.84.0,@aws-cdk/aws-codeguruprofiler=1.84.0,@aws-cdk/aws-cognito=1.84.0,@aws-cdk/aws-ec2=1.84.0,@aws-cdk/aws-ecr=1.84.0,@aws-cdk/aws-ecr-assets=1.84.0,@aws-cdk/aws-events=1.84.0,@aws-cdk/aws-iam=1.84.0,@aws-cdk/aws-kms=1.84.0,@aws-cdk/aws-lambda=1.84.0,@aws-cdk/aws-logs=1.84.0,@aws-cdk/aws-s3=1.84.0,@aws-cdk/aws-s3-assets=1.84.0,@aws-cdk/aws-sqs=1.84.0,@aws-cdk/aws-ssm=1.84.0,@aws-cdk/cloud-assembly-schema=1.84.0,@aws-cdk/core=1.84.0,@aws-cdk/custom-resources=1.84.0,@aws-cdk/cx-api=1.84.0,@aws-cdk/region-info=1.84.0,jsii-runtime=node.js/v14.7.0"
+    }
+   }
+  }
+ ]
+}

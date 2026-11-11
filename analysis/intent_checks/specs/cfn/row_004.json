@@ -1,0 +1,151 @@
+{
+  "lang": "cfn",
+  "row_number": 4,
+  "source_hash": {
+    "gt": "62f74307ff0c928910d3fcd4a45cf3ae2d3cac2317851169ebfe062539498528",
+    "prompt": "4705c1cecce113df1837a9077f8b05c37ee02fa28075fdeae8185623e8370da8"
+  },
+  "selectors": {
+    "cluster": {
+      "types": [
+        "AWS::Route53RecoveryControl::Cluster"
+      ]
+    },
+    "panels": {
+      "types": [
+        "AWS::Route53RecoveryControl::ControlPanel"
+      ]
+    }
+  },
+  "checks": [
+    {
+      "id": "cluster",
+      "kind": "exists",
+      "select": "cluster",
+      "tier": "core",
+      "quote": "a single cluster",
+      "max": 1,
+      "justify": "'a single' cluster = at most one"
+    },
+    {
+      "id": "panel_external",
+      "kind": "exists",
+      "select": {
+        "types": [
+          "AWS::Route53RecoveryControl::ControlPanel"
+        ],
+        "where": [
+          {
+            "path": "Name",
+            "op": "eq",
+            "value": "ExternalApiControlPanel"
+          }
+        ]
+      },
+      "tier": "core",
+      "quote": "ExternalApiControlPanel"
+    },
+    {
+      "id": "panel_service1",
+      "kind": "exists",
+      "select": {
+        "types": [
+          "AWS::Route53RecoveryControl::ControlPanel"
+        ],
+        "where": [
+          {
+            "path": "Name",
+            "op": "eq",
+            "value": "Service1ControlPanel"
+          }
+        ]
+      },
+      "tier": "core",
+      "quote": "Service1ControlPanel"
+    },
+    {
+      "id": "panel_service2",
+      "kind": "exists",
+      "select": {
+        "types": [
+          "AWS::Route53RecoveryControl::ControlPanel"
+        ],
+        "where": [
+          {
+            "path": "Name",
+            "op": "eq",
+            "value": "Service2ControlPanel"
+          }
+        ]
+      },
+      "tier": "core",
+      "quote": "Service2ControlPanel"
+    },
+    {
+      "id": "three_panels",
+      "kind": "exists",
+      "select": "panels",
+      "tier": "detail",
+      "quote": "three separate control panels",
+      "min": 3,
+      "max": 3
+    },
+    {
+      "id": "panels_in_cluster",
+      "kind": "all_of",
+      "tier": "core",
+      "quote": "all associated with that cluster",
+      "checks": [
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "AWS::Route53RecoveryControl::ControlPanel"
+            ],
+            "where": [
+              {
+                "path": "Name",
+                "op": "eq",
+                "value": "ExternalApiControlPanel"
+              }
+            ]
+          },
+          "to": "cluster"
+        },
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "AWS::Route53RecoveryControl::ControlPanel"
+            ],
+            "where": [
+              {
+                "path": "Name",
+                "op": "eq",
+                "value": "Service1ControlPanel"
+              }
+            ]
+          },
+          "to": "cluster"
+        },
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "AWS::Route53RecoveryControl::ControlPanel"
+            ],
+            "where": [
+              {
+                "path": "Name",
+                "op": "eq",
+                "value": "Service2ControlPanel"
+              }
+            ]
+          },
+          "to": "cluster"
+        }
+      ]
+    }
+  ],
+  "notes": "panels_in_cluster binds each named panel to the cluster by reference, which also accepts Fn::Sub and Fn::GetAtt. three_panels with max 3 closes 'three separate control panels'."
+}

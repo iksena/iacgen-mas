@@ -1,0 +1,2175 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "ceb3f6274cdea7512cbf64c8230a0726d023cc108a416a2d627f72e76e1f0db9",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "AgentCoreBasePolicy",
+   "cfg": "AgentCoreBasePolicy",
+   "type": "AWS::IAM::ManagedPolicy",
+   "values": {
+    "ManagedPolicyName": "student-services-agentcore-base-us-east-1",
+    "Description": "Base permissions for AgentCore Direct Deploy runtimes (logs, X-Ray, CloudWatch, Bedrock)",
+    "PolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Sid": "BedrockModelInvocation",
+       "Effect": "Allow",
+       "Action": [
+        "bedrock:InvokeModel",
+        "bedrock:InvokeModelWithResponseStream"
+       ],
+       "Resource": [
+        "arn:aws:bedrock:*::foundation-model/*",
+        "arn:aws:bedrock:us-east-1:123456789012:*"
+       ]
+      },
+      {
+       "Sid": "CloudWatchLogsCreateGroup",
+       "Effect": "Allow",
+       "Action": [
+        "logs:CreateLogGroup",
+        "logs:DescribeLogStreams"
+       ],
+       "Resource": [
+        "arn:aws:logs:us-east-1:123456789012:log-group:/aws/bedrock-agentcore/runtimes/*"
+       ]
+      },
+      {
+       "Sid": "CloudWatchLogsDescribeGroups",
+       "Effect": "Allow",
+       "Action": [
+        "logs:DescribeLogGroups"
+       ],
+       "Resource": [
+        "arn:aws:logs:us-east-1:123456789012:log-group:*"
+       ]
+      },
+      {
+       "Sid": "CloudWatchLogsPutEvents",
+       "Effect": "Allow",
+       "Action": [
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+       ],
+       "Resource": [
+        "arn:aws:logs:us-east-1:123456789012:log-group:/aws/bedrock-agentcore/runtimes/*:log-stream:*"
+       ]
+      },
+      {
+       "Sid": "CloudWatchMetrics",
+       "Effect": "Allow",
+       "Action": [
+        "cloudwatch:PutMetricData"
+       ],
+       "Resource": [
+        "*"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "cloudwatch:namespace": "bedrock-agentcore"
+        }
+       }
+      },
+      {
+       "Sid": "SSMParameterAccess",
+       "Effect": "Allow",
+       "Action": [
+        "ssm:GetParameter"
+       ],
+       "Resource": [
+        "arn:aws:ssm:us-east-1:123456789012:parameter/student-services/*"
+       ]
+      },
+      {
+       "Sid": "XRayTracing",
+       "Effect": "Allow",
+       "Action": [
+        "xray:GetSamplingRules",
+        "xray:GetSamplingTargets",
+        "xray:PutTelemetryRecords",
+        "xray:PutTraceSegments"
+       ],
+       "Resource": [
+        "*"
+       ]
+      }
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "StudentServicesAgentExecutionRole",
+   "cfg": "StudentServicesAgentExecutionRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "StudentServicesAgent-execution-role",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Sid": "AssumeRolePolicy",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "bedrock-agentcore.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "aws:SourceAccount": "123456789012"
+        },
+        "ArnLike": {
+         "aws:SourceArn": "arn:aws:bedrock-agentcore:us-east-1:123456789012:*"
+        }
+       }
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     {
+      "ref": "AgentCoreBasePolicy"
+     }
+    ]
+   },
+   "refs": [
+    "AgentCoreBasePolicy"
+   ]
+  },
+  {
+   "id": "StudentServicesGatewayUserPool",
+   "cfg": "StudentServicesGatewayUserPool",
+   "type": "AWS::Cognito::UserPool",
+   "values": {
+    "UserPoolName": "student-services-gateway-user-pool",
+    "Policies": {
+     "PasswordPolicy": {
+      "MinimumLength": 8,
+      "RequireUppercase": false,
+      "RequireLowercase": false,
+      "RequireNumbers": false,
+      "RequireSymbols": false
+     }
+    },
+    "AutoVerifiedAttributes": [
+     "email"
+    ],
+    "Schema": [
+     {
+      "Name": "email",
+      "AttributeDataType": "String",
+      "Required": true,
+      "Mutable": true
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "StudentServicesGatewayUserPoolDomain",
+   "cfg": "StudentServicesGatewayUserPoolDomain",
+   "type": "AWS::Cognito::UserPoolDomain",
+   "values": {
+    "Domain": "student-services-gateway-123456789012",
+    "UserPoolId": {
+     "ref": "StudentServicesGatewayUserPool"
+    }
+   },
+   "refs": [
+    "StudentServicesGatewayUserPool"
+   ]
+  },
+  {
+   "id": "StudentServicesGatewayResourceServer",
+   "cfg": "StudentServicesGatewayResourceServer",
+   "type": "AWS::Cognito::UserPoolResourceServer",
+   "values": {
+    "UserPoolId": {
+     "ref": "StudentServicesGatewayUserPool"
+    },
+    "Identifier": "student-services-gateway",
+    "Name": "Student Services Gateway",
+    "Scopes": [
+     {
+      "ScopeName": "access",
+      "ScopeDescription": "Access Student Services Gateway"
+     }
+    ]
+   },
+   "refs": [
+    "StudentServicesGatewayUserPool"
+   ]
+  },
+  {
+   "id": "StudentServicesGatewayAppClient",
+   "cfg": "StudentServicesGatewayAppClient",
+   "type": "AWS::Cognito::UserPoolClient",
+   "values": {
+    "UserPoolId": {
+     "ref": "StudentServicesGatewayUserPool"
+    },
+    "ClientName": "student-services-gateway-client",
+    "GenerateSecret": true,
+    "AllowedOAuthFlows": [
+     "client_credentials"
+    ],
+    "AllowedOAuthScopes": [
+     "student-services-gateway/access"
+    ],
+    "AllowedOAuthFlowsUserPoolClient": true,
+    "__resource__": {
+     "DependsOn": [
+      "StudentServicesGatewayResourceServer"
+     ]
+    }
+   },
+   "refs": [
+    "StudentServicesGatewayUserPool"
+   ]
+  },
+  {
+   "id": "CourseRegistrationExecutionRole",
+   "cfg": "CourseRegistrationExecutionRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "CourseRegistration-execution-role",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Sid": "AssumeRolePolicy",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "bedrock-agentcore.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "aws:SourceAccount": "123456789012"
+        },
+        "ArnLike": {
+         "aws:SourceArn": "arn:aws:bedrock-agentcore:us-east-1:123456789012:*"
+        }
+       }
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     {
+      "ref": "AgentCoreBasePolicy"
+     },
+     "arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess"
+    ]
+   },
+   "refs": [
+    "AgentCoreBasePolicy"
+   ]
+  },
+  {
+   "id": "CourseRegistrationUserPool",
+   "cfg": "CourseRegistrationUserPool",
+   "type": "AWS::Cognito::UserPool",
+   "values": {
+    "UserPoolName": "course-registration-user-pool",
+    "Policies": {
+     "PasswordPolicy": {
+      "MinimumLength": 8,
+      "RequireUppercase": false,
+      "RequireLowercase": false,
+      "RequireNumbers": false,
+      "RequireSymbols": false
+     }
+    },
+    "AutoVerifiedAttributes": [
+     "email"
+    ],
+    "Schema": [
+     {
+      "Name": "email",
+      "AttributeDataType": "String",
+      "Required": true,
+      "Mutable": true
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "CourseRegistrationUserPoolDomain",
+   "cfg": "CourseRegistrationUserPoolDomain",
+   "type": "AWS::Cognito::UserPoolDomain",
+   "values": {
+    "Domain": "course-registration-123456789012",
+    "UserPoolId": {
+     "ref": "CourseRegistrationUserPool"
+    }
+   },
+   "refs": [
+    "CourseRegistrationUserPool"
+   ]
+  },
+  {
+   "id": "CourseRegistrationResourceServer",
+   "cfg": "CourseRegistrationResourceServer",
+   "type": "AWS::Cognito::UserPoolResourceServer",
+   "values": {
+    "UserPoolId": {
+     "ref": "CourseRegistrationUserPool"
+    },
+    "Identifier": "course-registration",
+    "Name": "Course Registration",
+    "Scopes": [
+     {
+      "ScopeName": "access",
+      "ScopeDescription": "Access Course Registration MCP Server"
+     }
+    ]
+   },
+   "refs": [
+    "CourseRegistrationUserPool"
+   ]
+  },
+  {
+   "id": "CourseRegistrationAppClient",
+   "cfg": "CourseRegistrationAppClient",
+   "type": "AWS::Cognito::UserPoolClient",
+   "values": {
+    "UserPoolId": {
+     "ref": "CourseRegistrationUserPool"
+    },
+    "ClientName": "course-registration-client",
+    "GenerateSecret": true,
+    "AllowedOAuthFlows": [
+     "client_credentials"
+    ],
+    "AllowedOAuthScopes": [
+     "course-registration/access"
+    ],
+    "AllowedOAuthFlowsUserPoolClient": true,
+    "__resource__": {
+     "DependsOn": [
+      "CourseRegistrationResourceServer"
+     ]
+    }
+   },
+   "refs": [
+    "CourseRegistrationUserPool"
+   ]
+  },
+  {
+   "id": "CourseCatalogExecutionRole",
+   "cfg": "CourseCatalogExecutionRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "CourseCatalog-execution-role",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Sid": "AssumeRolePolicy",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "bedrock-agentcore.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "aws:SourceAccount": "123456789012"
+        },
+        "ArnLike": {
+         "aws:SourceArn": "arn:aws:bedrock-agentcore:us-east-1:123456789012:*"
+        }
+       }
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     {
+      "ref": "AgentCoreBasePolicy"
+     }
+    ],
+    "Policies": [
+     {
+      "PolicyName": "BedrockKnowledgeBaseAccess",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Sid": "BedrockAgentRuntimeRetrieve",
+         "Effect": "Allow",
+         "Action": [
+          "bedrock:Retrieve"
+         ],
+         "Resource": [
+          "arn:aws:bedrock:us-east-1:123456789012:knowledge-base/*"
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": [
+    "AgentCoreBasePolicy"
+   ]
+  },
+  {
+   "id": "CourseCatalogUserPool",
+   "cfg": "CourseCatalogUserPool",
+   "type": "AWS::Cognito::UserPool",
+   "values": {
+    "UserPoolName": "course-catalog-user-pool",
+    "Policies": {
+     "PasswordPolicy": {
+      "MinimumLength": 8,
+      "RequireUppercase": false,
+      "RequireLowercase": false,
+      "RequireNumbers": false,
+      "RequireSymbols": false
+     }
+    },
+    "AutoVerifiedAttributes": [
+     "email"
+    ],
+    "Schema": [
+     {
+      "Name": "email",
+      "AttributeDataType": "String",
+      "Required": true,
+      "Mutable": true
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "CourseCatalogUserPoolDomain",
+   "cfg": "CourseCatalogUserPoolDomain",
+   "type": "AWS::Cognito::UserPoolDomain",
+   "values": {
+    "Domain": "course-catalog-123456789012",
+    "UserPoolId": {
+     "ref": "CourseCatalogUserPool"
+    }
+   },
+   "refs": [
+    "CourseCatalogUserPool"
+   ]
+  },
+  {
+   "id": "CourseCatalogResourceServer",
+   "cfg": "CourseCatalogResourceServer",
+   "type": "AWS::Cognito::UserPoolResourceServer",
+   "values": {
+    "UserPoolId": {
+     "ref": "CourseCatalogUserPool"
+    },
+    "Identifier": "course-catalog",
+    "Name": "Course Catalog",
+    "Scopes": [
+     {
+      "ScopeName": "access",
+      "ScopeDescription": "Access Course Catalog MCP Server"
+     }
+    ]
+   },
+   "refs": [
+    "CourseCatalogUserPool"
+   ]
+  },
+  {
+   "id": "CourseCatalogAppClient",
+   "cfg": "CourseCatalogAppClient",
+   "type": "AWS::Cognito::UserPoolClient",
+   "values": {
+    "UserPoolId": {
+     "ref": "CourseCatalogUserPool"
+    },
+    "ClientName": "course-catalog-client",
+    "GenerateSecret": true,
+    "AllowedOAuthFlows": [
+     "client_credentials"
+    ],
+    "AllowedOAuthScopes": [
+     "course-catalog/access"
+    ],
+    "AllowedOAuthFlowsUserPoolClient": true,
+    "__resource__": {
+     "DependsOn": [
+      "CourseCatalogResourceServer"
+     ]
+    }
+   },
+   "refs": [
+    "CourseCatalogUserPool"
+   ]
+  },
+  {
+   "id": "CourseReviewExecutionRole",
+   "cfg": "CourseReviewExecutionRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "CourseReview-execution-role",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Sid": "AssumeRolePolicy",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "bedrock-agentcore.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "aws:SourceAccount": "123456789012"
+        },
+        "ArnLike": {
+         "aws:SourceArn": "arn:aws:bedrock-agentcore:us-east-1:123456789012:*"
+        }
+       }
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     {
+      "ref": "AgentCoreBasePolicy"
+     },
+     "arn:aws:iam::aws:policy/AmazonDynamoDBReadOnlyAccess"
+    ]
+   },
+   "refs": [
+    "AgentCoreBasePolicy"
+   ]
+  },
+  {
+   "id": "CourseReviewUserPool",
+   "cfg": "CourseReviewUserPool",
+   "type": "AWS::Cognito::UserPool",
+   "values": {
+    "UserPoolName": "course-review-user-pool",
+    "Policies": {
+     "PasswordPolicy": {
+      "MinimumLength": 8,
+      "RequireUppercase": false,
+      "RequireLowercase": false,
+      "RequireNumbers": false,
+      "RequireSymbols": false
+     }
+    },
+    "AutoVerifiedAttributes": [
+     "email"
+    ],
+    "Schema": [
+     {
+      "Name": "email",
+      "AttributeDataType": "String",
+      "Required": true,
+      "Mutable": true
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "CourseReviewUserPoolDomain",
+   "cfg": "CourseReviewUserPoolDomain",
+   "type": "AWS::Cognito::UserPoolDomain",
+   "values": {
+    "Domain": "course-review-123456789012",
+    "UserPoolId": {
+     "ref": "CourseReviewUserPool"
+    }
+   },
+   "refs": [
+    "CourseReviewUserPool"
+   ]
+  },
+  {
+   "id": "CourseReviewResourceServer",
+   "cfg": "CourseReviewResourceServer",
+   "type": "AWS::Cognito::UserPoolResourceServer",
+   "values": {
+    "UserPoolId": {
+     "ref": "CourseReviewUserPool"
+    },
+    "Identifier": "course-review",
+    "Name": "Course Review",
+    "Scopes": [
+     {
+      "ScopeName": "access",
+      "ScopeDescription": "Access Course Review MCP Server"
+     }
+    ]
+   },
+   "refs": [
+    "CourseReviewUserPool"
+   ]
+  },
+  {
+   "id": "CourseReviewAppClient",
+   "cfg": "CourseReviewAppClient",
+   "type": "AWS::Cognito::UserPoolClient",
+   "values": {
+    "UserPoolId": {
+     "ref": "CourseReviewUserPool"
+    },
+    "ClientName": "course-review-client",
+    "GenerateSecret": true,
+    "AllowedOAuthFlows": [
+     "client_credentials"
+    ],
+    "AllowedOAuthScopes": [
+     "course-review/access"
+    ],
+    "AllowedOAuthFlowsUserPoolClient": true,
+    "__resource__": {
+     "DependsOn": [
+      "CourseReviewResourceServer"
+     ]
+    }
+   },
+   "refs": [
+    "CourseReviewUserPool"
+   ]
+  },
+  {
+   "id": "LoanApplicationExecutionRole",
+   "cfg": "LoanApplicationExecutionRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "LoanApplication-execution-role",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Sid": "AssumeRolePolicy",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "bedrock-agentcore.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "aws:SourceAccount": "123456789012"
+        },
+        "ArnLike": {
+         "aws:SourceArn": "arn:aws:bedrock-agentcore:us-east-1:123456789012:*"
+        }
+       }
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     {
+      "ref": "AgentCoreBasePolicy"
+     }
+    ],
+    "Policies": [
+     {
+      "PolicyName": "SageMakerInvokeEndpoint",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Sid": "SageMakerRuntimeInvoke",
+         "Effect": "Allow",
+         "Action": [
+          "sagemaker:InvokeEndpoint"
+         ],
+         "Resource": [
+          "arn:aws:sagemaker:us-east-1:123456789012:endpoint/*"
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": [
+    "AgentCoreBasePolicy"
+   ]
+  },
+  {
+   "id": "LoanApplicationUserPool",
+   "cfg": "LoanApplicationUserPool",
+   "type": "AWS::Cognito::UserPool",
+   "values": {
+    "UserPoolName": "loan-application-user-pool",
+    "Policies": {
+     "PasswordPolicy": {
+      "MinimumLength": 8,
+      "RequireUppercase": false,
+      "RequireLowercase": false,
+      "RequireNumbers": false,
+      "RequireSymbols": false
+     }
+    },
+    "AutoVerifiedAttributes": [
+     "email"
+    ],
+    "Schema": [
+     {
+      "Name": "email",
+      "AttributeDataType": "String",
+      "Required": true,
+      "Mutable": true
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "LoanApplicationUserPoolDomain",
+   "cfg": "LoanApplicationUserPoolDomain",
+   "type": "AWS::Cognito::UserPoolDomain",
+   "values": {
+    "Domain": "loan-application-123456789012",
+    "UserPoolId": {
+     "ref": "LoanApplicationUserPool"
+    }
+   },
+   "refs": [
+    "LoanApplicationUserPool"
+   ]
+  },
+  {
+   "id": "LoanApplicationResourceServer",
+   "cfg": "LoanApplicationResourceServer",
+   "type": "AWS::Cognito::UserPoolResourceServer",
+   "values": {
+    "UserPoolId": {
+     "ref": "LoanApplicationUserPool"
+    },
+    "Identifier": "loan-application",
+    "Name": "Loan Application",
+    "Scopes": [
+     {
+      "ScopeName": "access",
+      "ScopeDescription": "Access Loan Application MCP Server"
+     }
+    ]
+   },
+   "refs": [
+    "LoanApplicationUserPool"
+   ]
+  },
+  {
+   "id": "LoanApplicationAppClient",
+   "cfg": "LoanApplicationAppClient",
+   "type": "AWS::Cognito::UserPoolClient",
+   "values": {
+    "UserPoolId": {
+     "ref": "LoanApplicationUserPool"
+    },
+    "ClientName": "loan-application-client",
+    "GenerateSecret": true,
+    "AllowedOAuthFlows": [
+     "client_credentials"
+    ],
+    "AllowedOAuthScopes": [
+     "loan-application/access"
+    ],
+    "AllowedOAuthFlowsUserPoolClient": true,
+    "__resource__": {
+     "DependsOn": [
+      "LoanApplicationResourceServer"
+     ]
+    }
+   },
+   "refs": [
+    "LoanApplicationUserPool"
+   ]
+  },
+  {
+   "id": "__output__.StudentServicesAgentExecutionRoleArn",
+   "cfg": "__output__.StudentServicesAgentExecutionRoleArn",
+   "type": "__output__",
+   "values": {
+    "name": "StudentServicesAgentExecutionRoleArn",
+    "value": {
+     "ref": "StudentServicesAgentExecutionRole",
+     "attr": "Arn"
+    },
+    "description": "Execution role ARN for StudentServicesAgent runtime",
+    "export": "stack-StudentServicesAgentExecutionRoleArn"
+   },
+   "refs": [
+    "StudentServicesAgentExecutionRole"
+   ]
+  },
+  {
+   "id": "__output__.StudentServicesGatewayUserPoolId",
+   "cfg": "__output__.StudentServicesGatewayUserPoolId",
+   "type": "__output__",
+   "values": {
+    "name": "StudentServicesGatewayUserPoolId",
+    "value": {
+     "ref": "StudentServicesGatewayUserPool"
+    },
+    "description": "Cognito User Pool ID for Student Services Gateway",
+    "export": "stack-StudentServicesGatewayUserPoolId"
+   },
+   "refs": [
+    "StudentServicesGatewayUserPool"
+   ]
+  },
+  {
+   "id": "__output__.StudentServicesGatewayDiscoveryUrl",
+   "cfg": "__output__.StudentServicesGatewayDiscoveryUrl",
+   "type": "__output__",
+   "values": {
+    "name": "StudentServicesGatewayDiscoveryUrl",
+    "value": "https://cognito-idp.us-east-1.amazonaws.com/${StudentServicesGatewayUserPool}/.well-known/openid-configuration",
+    "description": "OIDC Discovery URL for Student Services Gateway",
+    "export": "stack-StudentServicesGatewayDiscoveryUrl"
+   },
+   "refs": [
+    "StudentServicesGatewayUserPool"
+   ]
+  },
+  {
+   "id": "__output__.StudentServicesGatewayClientId",
+   "cfg": "__output__.StudentServicesGatewayClientId",
+   "type": "__output__",
+   "values": {
+    "name": "StudentServicesGatewayClientId",
+    "value": {
+     "ref": "StudentServicesGatewayAppClient"
+    },
+    "description": "App Client ID for Student Services Gateway",
+    "export": "stack-StudentServicesGatewayClientId"
+   },
+   "refs": [
+    "StudentServicesGatewayAppClient"
+   ]
+  },
+  {
+   "id": "__output__.StudentServicesGatewayTokenEndpoint",
+   "cfg": "__output__.StudentServicesGatewayTokenEndpoint",
+   "type": "__output__",
+   "values": {
+    "name": "StudentServicesGatewayTokenEndpoint",
+    "value": "https://student-services-gateway-123456789012.auth.us-east-1.amazoncognito.com/oauth2/token",
+    "description": "Token endpoint for Student Services Gateway",
+    "export": "stack-StudentServicesGatewayTokenEndpoint"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.StudentServicesGatewayScope",
+   "cfg": "__output__.StudentServicesGatewayScope",
+   "type": "__output__",
+   "values": {
+    "name": "StudentServicesGatewayScope",
+    "value": "student-services-gateway/access",
+    "description": "OAuth scope for Student Services Gateway",
+    "export": "stack-StudentServicesGatewayScope"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.CourseRegistrationExecutionRoleArn",
+   "cfg": "__output__.CourseRegistrationExecutionRoleArn",
+   "type": "__output__",
+   "values": {
+    "name": "CourseRegistrationExecutionRoleArn",
+    "value": {
+     "ref": "CourseRegistrationExecutionRole",
+     "attr": "Arn"
+    },
+    "description": "Execution role ARN for CourseRegistration runtime",
+    "export": "stack-CourseRegistrationExecutionRoleArn"
+   },
+   "refs": [
+    "CourseRegistrationExecutionRole"
+   ]
+  },
+  {
+   "id": "__output__.CourseRegistrationUserPoolId",
+   "cfg": "__output__.CourseRegistrationUserPoolId",
+   "type": "__output__",
+   "values": {
+    "name": "CourseRegistrationUserPoolId",
+    "value": {
+     "ref": "CourseRegistrationUserPool"
+    },
+    "description": "Cognito User Pool ID for Course Registration",
+    "export": "stack-CourseRegistrationUserPoolId"
+   },
+   "refs": [
+    "CourseRegistrationUserPool"
+   ]
+  },
+  {
+   "id": "__output__.CourseRegistrationDiscoveryUrl",
+   "cfg": "__output__.CourseRegistrationDiscoveryUrl",
+   "type": "__output__",
+   "values": {
+    "name": "CourseRegistrationDiscoveryUrl",
+    "value": "https://cognito-idp.us-east-1.amazonaws.com/${CourseRegistrationUserPool}/.well-known/openid-configuration",
+    "description": "OIDC Discovery URL for Course Registration",
+    "export": "stack-CourseRegistrationDiscoveryUrl"
+   },
+   "refs": [
+    "CourseRegistrationUserPool"
+   ]
+  },
+  {
+   "id": "__output__.CourseRegistrationClientId",
+   "cfg": "__output__.CourseRegistrationClientId",
+   "type": "__output__",
+   "values": {
+    "name": "CourseRegistrationClientId",
+    "value": {
+     "ref": "CourseRegistrationAppClient"
+    },
+    "description": "App Client ID for Course Registration",
+    "export": "stack-CourseRegistrationClientId"
+   },
+   "refs": [
+    "CourseRegistrationAppClient"
+   ]
+  },
+  {
+   "id": "__output__.CourseRegistrationTokenEndpoint",
+   "cfg": "__output__.CourseRegistrationTokenEndpoint",
+   "type": "__output__",
+   "values": {
+    "name": "CourseRegistrationTokenEndpoint",
+    "value": "https://course-registration-123456789012.auth.us-east-1.amazoncognito.com/oauth2/token",
+    "description": "Token endpoint for Course Registration",
+    "export": "stack-CourseRegistrationTokenEndpoint"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.CourseRegistrationScope",
+   "cfg": "__output__.CourseRegistrationScope",
+   "type": "__output__",
+   "values": {
+    "name": "CourseRegistrationScope",
+    "value": "course-registration/access",
+    "description": "OAuth scope for Course Registration",
+    "export": "stack-CourseRegistrationScope"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.CourseCatalogExecutionRoleArn",
+   "cfg": "__output__.CourseCatalogExecutionRoleArn",
+   "type": "__output__",
+   "values": {
+    "name": "CourseCatalogExecutionRoleArn",
+    "value": {
+     "ref": "CourseCatalogExecutionRole",
+     "attr": "Arn"
+    },
+    "description": "Execution role ARN for CourseCatalog runtime",
+    "export": "stack-CourseCatalogExecutionRoleArn"
+   },
+   "refs": [
+    "CourseCatalogExecutionRole"
+   ]
+  },
+  {
+   "id": "__output__.CourseCatalogUserPoolId",
+   "cfg": "__output__.CourseCatalogUserPoolId",
+   "type": "__output__",
+   "values": {
+    "name": "CourseCatalogUserPoolId",
+    "value": {
+     "ref": "CourseCatalogUserPool"
+    },
+    "description": "Cognito User Pool ID for Course Catalog",
+    "export": "stack-CourseCatalogUserPoolId"
+   },
+   "refs": [
+    "CourseCatalogUserPool"
+   ]
+  },
+  {
+   "id": "__output__.CourseCatalogDiscoveryUrl",
+   "cfg": "__output__.CourseCatalogDiscoveryUrl",
+   "type": "__output__",
+   "values": {
+    "name": "CourseCatalogDiscoveryUrl",
+    "value": "https://cognito-idp.us-east-1.amazonaws.com/${CourseCatalogUserPool}/.well-known/openid-configuration",
+    "description": "OIDC Discovery URL for Course Catalog",
+    "export": "stack-CourseCatalogDiscoveryUrl"
+   },
+   "refs": [
+    "CourseCatalogUserPool"
+   ]
+  },
+  {
+   "id": "__output__.CourseCatalogClientId",
+   "cfg": "__output__.CourseCatalogClientId",
+   "type": "__output__",
+   "values": {
+    "name": "CourseCatalogClientId",
+    "value": {
+     "ref": "CourseCatalogAppClient"
+    },
+    "description": "App Client ID for Course Catalog",
+    "export": "stack-CourseCatalogClientId"
+   },
+   "refs": [
+    "CourseCatalogAppClient"
+   ]
+  },
+  {
+   "id": "__output__.CourseCatalogTokenEndpoint",
+   "cfg": "__output__.CourseCatalogTokenEndpoint",
+   "type": "__output__",
+   "values": {
+    "name": "CourseCatalogTokenEndpoint",
+    "value": "https://course-catalog-123456789012.auth.us-east-1.amazoncognito.com/oauth2/token",
+    "description": "Token endpoint for Course Catalog",
+    "export": "stack-CourseCatalogTokenEndpoint"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.CourseCatalogScope",
+   "cfg": "__output__.CourseCatalogScope",
+   "type": "__output__",
+   "values": {
+    "name": "CourseCatalogScope",
+    "value": "course-catalog/access",
+    "description": "OAuth scope for Course Catalog",
+    "export": "stack-CourseCatalogScope"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.CourseReviewExecutionRoleArn",
+   "cfg": "__output__.CourseReviewExecutionRoleArn",
+   "type": "__output__",
+   "values": {
+    "name": "CourseReviewExecutionRoleArn",
+    "value": {
+     "ref": "CourseReviewExecutionRole",
+     "attr": "Arn"
+    },
+    "description": "Execution role ARN for CourseReview runtime",
+    "export": "stack-CourseReviewExecutionRoleArn"
+   },
+   "refs": [
+    "CourseReviewExecutionRole"
+   ]
+  },
+  {
+   "id": "__output__.CourseReviewUserPoolId",
+   "cfg": "__output__.CourseReviewUserPoolId",
+   "type": "__output__",
+   "values": {
+    "name": "CourseReviewUserPoolId",
+    "value": {
+     "ref": "CourseReviewUserPool"
+    },
+    "description": "Cognito User Pool ID for Course Review",
+    "export": "stack-CourseReviewUserPoolId"
+   },
+   "refs": [
+    "CourseReviewUserPool"
+   ]
+  },
+  {
+   "id": "__output__.CourseReviewDiscoveryUrl",
+   "cfg": "__output__.CourseReviewDiscoveryUrl",
+   "type": "__output__",
+   "values": {
+    "name": "CourseReviewDiscoveryUrl",
+    "value": "https://cognito-idp.us-east-1.amazonaws.com/${CourseReviewUserPool}/.well-known/openid-configuration",
+    "description": "OIDC Discovery URL for Course Review",
+    "export": "stack-CourseReviewDiscoveryUrl"
+   },
+   "refs": [
+    "CourseReviewUserPool"
+   ]
+  },
+  {
+   "id": "__output__.CourseReviewClientId",
+   "cfg": "__output__.CourseReviewClientId",
+   "type": "__output__",
+   "values": {
+    "name": "CourseReviewClientId",
+    "value": {
+     "ref": "CourseReviewAppClient"
+    },
+    "description": "App Client ID for Course Review",
+    "export": "stack-CourseReviewClientId"
+   },
+   "refs": [
+    "CourseReviewAppClient"
+   ]
+  },
+  {
+   "id": "__output__.CourseReviewTokenEndpoint",
+   "cfg": "__output__.CourseReviewTokenEndpoint",
+   "type": "__output__",
+   "values": {
+    "name": "CourseReviewTokenEndpoint",
+    "value": "https://course-review-123456789012.auth.us-east-1.amazoncognito.com/oauth2/token",
+    "description": "Token endpoint for Course Review",
+    "export": "stack-CourseReviewTokenEndpoint"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.CourseReviewScope",
+   "cfg": "__output__.CourseReviewScope",
+   "type": "__output__",
+   "values": {
+    "name": "CourseReviewScope",
+    "value": "course-review/access",
+    "description": "OAuth scope for Course Review",
+    "export": "stack-CourseReviewScope"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.LoanApplicationExecutionRoleArn",
+   "cfg": "__output__.LoanApplicationExecutionRoleArn",
+   "type": "__output__",
+   "values": {
+    "name": "LoanApplicationExecutionRoleArn",
+    "value": {
+     "ref": "LoanApplicationExecutionRole",
+     "attr": "Arn"
+    },
+    "description": "Execution role ARN for LoanApplication runtime",
+    "export": "stack-LoanApplicationExecutionRoleArn"
+   },
+   "refs": [
+    "LoanApplicationExecutionRole"
+   ]
+  },
+  {
+   "id": "__output__.LoanApplicationUserPoolId",
+   "cfg": "__output__.LoanApplicationUserPoolId",
+   "type": "__output__",
+   "values": {
+    "name": "LoanApplicationUserPoolId",
+    "value": {
+     "ref": "LoanApplicationUserPool"
+    },
+    "description": "Cognito User Pool ID for Loan Application",
+    "export": "stack-LoanApplicationUserPoolId"
+   },
+   "refs": [
+    "LoanApplicationUserPool"
+   ]
+  },
+  {
+   "id": "__output__.LoanApplicationDiscoveryUrl",
+   "cfg": "__output__.LoanApplicationDiscoveryUrl",
+   "type": "__output__",
+   "values": {
+    "name": "LoanApplicationDiscoveryUrl",
+    "value": "https://cognito-idp.us-east-1.amazonaws.com/${LoanApplicationUserPool}/.well-known/openid-configuration",
+    "description": "OIDC Discovery URL for Loan Application",
+    "export": "stack-LoanApplicationDiscoveryUrl"
+   },
+   "refs": [
+    "LoanApplicationUserPool"
+   ]
+  },
+  {
+   "id": "__output__.LoanApplicationClientId",
+   "cfg": "__output__.LoanApplicationClientId",
+   "type": "__output__",
+   "values": {
+    "name": "LoanApplicationClientId",
+    "value": {
+     "ref": "LoanApplicationAppClient"
+    },
+    "description": "App Client ID for Loan Application",
+    "export": "stack-LoanApplicationClientId"
+   },
+   "refs": [
+    "LoanApplicationAppClient"
+   ]
+  },
+  {
+   "id": "__output__.LoanApplicationTokenEndpoint",
+   "cfg": "__output__.LoanApplicationTokenEndpoint",
+   "type": "__output__",
+   "values": {
+    "name": "LoanApplicationTokenEndpoint",
+    "value": "https://loan-application-123456789012.auth.us-east-1.amazoncognito.com/oauth2/token",
+    "description": "Token endpoint for Loan Application",
+    "export": "stack-LoanApplicationTokenEndpoint"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.LoanApplicationScope",
+   "cfg": "__output__.LoanApplicationScope",
+   "type": "__output__",
+   "values": {
+    "name": "LoanApplicationScope",
+    "value": "loan-application/access",
+    "description": "OAuth scope for Loan Application",
+    "export": "stack-LoanApplicationScope"
+   },
+   "refs": []
+  },
+  {
+   "id": "__declared__.AWS::IAM::ManagedPolicy.AgentCoreBasePolicy",
+   "cfg": "AgentCoreBasePolicy",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::ManagedPolicy",
+    "name": "AgentCoreBasePolicy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ManagedPolicyName": "student-services-agentcore-base-us-east-1",
+     "Description": "Base permissions for AgentCore Direct Deploy runtimes (logs, X-Ray, CloudWatch, Bedrock)",
+     "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Sid": "BedrockModelInvocation",
+        "Effect": "Allow",
+        "Action": [
+         "bedrock:InvokeModel",
+         "bedrock:InvokeModelWithResponseStream"
+        ],
+        "Resource": [
+         "arn:aws:bedrock:*::foundation-model/*",
+         "arn:aws:bedrock:us-east-1:123456789012:*"
+        ]
+       },
+       {
+        "Sid": "CloudWatchLogsCreateGroup",
+        "Effect": "Allow",
+        "Action": [
+         "logs:CreateLogGroup",
+         "logs:DescribeLogStreams"
+        ],
+        "Resource": [
+         "arn:aws:logs:us-east-1:123456789012:log-group:/aws/bedrock-agentcore/runtimes/*"
+        ]
+       },
+       {
+        "Sid": "CloudWatchLogsDescribeGroups",
+        "Effect": "Allow",
+        "Action": [
+         "logs:DescribeLogGroups"
+        ],
+        "Resource": [
+         "arn:aws:logs:us-east-1:123456789012:log-group:*"
+        ]
+       },
+       {
+        "Sid": "CloudWatchLogsPutEvents",
+        "Effect": "Allow",
+        "Action": [
+         "logs:CreateLogStream",
+         "logs:PutLogEvents"
+        ],
+        "Resource": [
+         "arn:aws:logs:us-east-1:123456789012:log-group:/aws/bedrock-agentcore/runtimes/*:log-stream:*"
+        ]
+       },
+       {
+        "Sid": "CloudWatchMetrics",
+        "Effect": "Allow",
+        "Action": [
+         "cloudwatch:PutMetricData"
+        ],
+        "Resource": [
+         "*"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "cloudwatch:namespace": "bedrock-agentcore"
+         }
+        }
+       },
+       {
+        "Sid": "SSMParameterAccess",
+        "Effect": "Allow",
+        "Action": [
+         "ssm:GetParameter"
+        ],
+        "Resource": [
+         "arn:aws:ssm:us-east-1:123456789012:parameter/student-services/*"
+        ]
+       },
+       {
+        "Sid": "XRayTracing",
+        "Effect": "Allow",
+        "Action": [
+         "xray:GetSamplingRules",
+         "xray:GetSamplingTargets",
+         "xray:PutTelemetryRecords",
+         "xray:PutTraceSegments"
+        ],
+        "Resource": [
+         "*"
+        ]
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.StudentServicesAgentExecutionRole",
+   "cfg": "StudentServicesAgentExecutionRole",
+   "type": "__declared__",
+   "refs": [
+    "AgentCoreBasePolicy"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "StudentServicesAgentExecutionRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "StudentServicesAgent-execution-role",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Sid": "AssumeRolePolicy",
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "bedrock-agentcore.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "aws:SourceAccount": "123456789012"
+         },
+         "ArnLike": {
+          "aws:SourceArn": "arn:aws:bedrock-agentcore:us-east-1:123456789012:*"
+         }
+        }
+       }
+      ]
+     },
+     "ManagedPolicyArns": [
+      {
+       "ref": "AgentCoreBasePolicy"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPool.StudentServicesGatewayUserPool",
+   "cfg": "StudentServicesGatewayUserPool",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Cognito::UserPool",
+    "name": "StudentServicesGatewayUserPool",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "UserPoolName": "student-services-gateway-user-pool",
+     "Policies": {
+      "PasswordPolicy": {
+       "MinimumLength": 8,
+       "RequireUppercase": false,
+       "RequireLowercase": false,
+       "RequireNumbers": false,
+       "RequireSymbols": false
+      }
+     },
+     "AutoVerifiedAttributes": [
+      "email"
+     ],
+     "Schema": [
+      {
+       "Name": "email",
+       "AttributeDataType": "String",
+       "Required": true,
+       "Mutable": true
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolDomain.StudentServicesGatewayUserPoolDomain",
+   "cfg": "StudentServicesGatewayUserPoolDomain",
+   "type": "__declared__",
+   "refs": [
+    "StudentServicesGatewayUserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolDomain",
+    "name": "StudentServicesGatewayUserPoolDomain",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Domain": "student-services-gateway-123456789012",
+     "UserPoolId": {
+      "ref": "StudentServicesGatewayUserPool"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolResourceServer.StudentServicesGatewayResourceServer",
+   "cfg": "StudentServicesGatewayResourceServer",
+   "type": "__declared__",
+   "refs": [
+    "StudentServicesGatewayUserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolResourceServer",
+    "name": "StudentServicesGatewayResourceServer",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "UserPoolId": {
+      "ref": "StudentServicesGatewayUserPool"
+     },
+     "Identifier": "student-services-gateway",
+     "Name": "Student Services Gateway",
+     "Scopes": [
+      {
+       "ScopeName": "access",
+       "ScopeDescription": "Access Student Services Gateway"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolClient.StudentServicesGatewayAppClient",
+   "cfg": "StudentServicesGatewayAppClient",
+   "type": "__declared__",
+   "refs": [
+    "StudentServicesGatewayUserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolClient",
+    "name": "StudentServicesGatewayAppClient",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "UserPoolId": {
+      "ref": "StudentServicesGatewayUserPool"
+     },
+     "ClientName": "student-services-gateway-client",
+     "GenerateSecret": true,
+     "AllowedOAuthFlows": [
+      "client_credentials"
+     ],
+     "AllowedOAuthScopes": [
+      "student-services-gateway/access"
+     ],
+     "AllowedOAuthFlowsUserPoolClient": true
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.CourseRegistrationExecutionRole",
+   "cfg": "CourseRegistrationExecutionRole",
+   "type": "__declared__",
+   "refs": [
+    "AgentCoreBasePolicy"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "CourseRegistrationExecutionRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "CourseRegistration-execution-role",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Sid": "AssumeRolePolicy",
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "bedrock-agentcore.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "aws:SourceAccount": "123456789012"
+         },
+         "ArnLike": {
+          "aws:SourceArn": "arn:aws:bedrock-agentcore:us-east-1:123456789012:*"
+         }
+        }
+       }
+      ]
+     },
+     "ManagedPolicyArns": [
+      {
+       "ref": "AgentCoreBasePolicy"
+      },
+      "arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPool.CourseRegistrationUserPool",
+   "cfg": "CourseRegistrationUserPool",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Cognito::UserPool",
+    "name": "CourseRegistrationUserPool",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "UserPoolName": "course-registration-user-pool",
+     "Policies": {
+      "PasswordPolicy": {
+       "MinimumLength": 8,
+       "RequireUppercase": false,
+       "RequireLowercase": false,
+       "RequireNumbers": false,
+       "RequireSymbols": false
+      }
+     },
+     "AutoVerifiedAttributes": [
+      "email"
+     ],
+     "Schema": [
+      {
+       "Name": "email",
+       "AttributeDataType": "String",
+       "Required": true,
+       "Mutable": true
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolDomain.CourseRegistrationUserPoolDomain",
+   "cfg": "CourseRegistrationUserPoolDomain",
+   "type": "__declared__",
+   "refs": [
+    "CourseRegistrationUserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolDomain",
+    "name": "CourseRegistrationUserPoolDomain",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Domain": "course-registration-123456789012",
+     "UserPoolId": {
+      "ref": "CourseRegistrationUserPool"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolResourceServer.CourseRegistrationResourceServer",
+   "cfg": "CourseRegistrationResourceServer",
+   "type": "__declared__",
+   "refs": [
+    "CourseRegistrationUserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolResourceServer",
+    "name": "CourseRegistrationResourceServer",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "UserPoolId": {
+      "ref": "CourseRegistrationUserPool"
+     },
+     "Identifier": "course-registration",
+     "Name": "Course Registration",
+     "Scopes": [
+      {
+       "ScopeName": "access",
+       "ScopeDescription": "Access Course Registration MCP Server"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolClient.CourseRegistrationAppClient",
+   "cfg": "CourseRegistrationAppClient",
+   "type": "__declared__",
+   "refs": [
+    "CourseRegistrationUserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolClient",
+    "name": "CourseRegistrationAppClient",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "UserPoolId": {
+      "ref": "CourseRegistrationUserPool"
+     },
+     "ClientName": "course-registration-client",
+     "GenerateSecret": true,
+     "AllowedOAuthFlows": [
+      "client_credentials"
+     ],
+     "AllowedOAuthScopes": [
+      "course-registration/access"
+     ],
+     "AllowedOAuthFlowsUserPoolClient": true
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.CourseCatalogExecutionRole",
+   "cfg": "CourseCatalogExecutionRole",
+   "type": "__declared__",
+   "refs": [
+    "AgentCoreBasePolicy"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "CourseCatalogExecutionRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "CourseCatalog-execution-role",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Sid": "AssumeRolePolicy",
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "bedrock-agentcore.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "aws:SourceAccount": "123456789012"
+         },
+         "ArnLike": {
+          "aws:SourceArn": "arn:aws:bedrock-agentcore:us-east-1:123456789012:*"
+         }
+        }
+       }
+      ]
+     },
+     "ManagedPolicyArns": [
+      {
+       "ref": "AgentCoreBasePolicy"
+      }
+     ],
+     "Policies": [
+      {
+       "PolicyName": "BedrockKnowledgeBaseAccess",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Sid": "BedrockAgentRuntimeRetrieve",
+          "Effect": "Allow",
+          "Action": [
+           "bedrock:Retrieve"
+          ],
+          "Resource": [
+           "arn:aws:bedrock:us-east-1:123456789012:knowledge-base/*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPool.CourseCatalogUserPool",
+   "cfg": "CourseCatalogUserPool",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Cognito::UserPool",
+    "name": "CourseCatalogUserPool",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "UserPoolName": "course-catalog-user-pool",
+     "Policies": {
+      "PasswordPolicy": {
+       "MinimumLength": 8,
+       "RequireUppercase": false,
+       "RequireLowercase": false,
+       "RequireNumbers": false,
+       "RequireSymbols": false
+      }
+     },
+     "AutoVerifiedAttributes": [
+      "email"
+     ],
+     "Schema": [
+      {
+       "Name": "email",
+       "AttributeDataType": "String",
+       "Required": true,
+       "Mutable": true
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolDomain.CourseCatalogUserPoolDomain",
+   "cfg": "CourseCatalogUserPoolDomain",
+   "type": "__declared__",
+   "refs": [
+    "CourseCatalogUserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolDomain",
+    "name": "CourseCatalogUserPoolDomain",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Domain": "course-catalog-123456789012",
+     "UserPoolId": {
+      "ref": "CourseCatalogUserPool"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolResourceServer.CourseCatalogResourceServer",
+   "cfg": "CourseCatalogResourceServer",
+   "type": "__declared__",
+   "refs": [
+    "CourseCatalogUserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolResourceServer",
+    "name": "CourseCatalogResourceServer",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "UserPoolId": {
+      "ref": "CourseCatalogUserPool"
+     },
+     "Identifier": "course-catalog",
+     "Name": "Course Catalog",
+     "Scopes": [
+      {
+       "ScopeName": "access",
+       "ScopeDescription": "Access Course Catalog MCP Server"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolClient.CourseCatalogAppClient",
+   "cfg": "CourseCatalogAppClient",
+   "type": "__declared__",
+   "refs": [
+    "CourseCatalogUserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolClient",
+    "name": "CourseCatalogAppClient",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "UserPoolId": {
+      "ref": "CourseCatalogUserPool"
+     },
+     "ClientName": "course-catalog-client",
+     "GenerateSecret": true,
+     "AllowedOAuthFlows": [
+      "client_credentials"
+     ],
+     "AllowedOAuthScopes": [
+      "course-catalog/access"
+     ],
+     "AllowedOAuthFlowsUserPoolClient": true
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.CourseReviewExecutionRole",
+   "cfg": "CourseReviewExecutionRole",
+   "type": "__declared__",
+   "refs": [
+    "AgentCoreBasePolicy"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "CourseReviewExecutionRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "CourseReview-execution-role",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Sid": "AssumeRolePolicy",
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "bedrock-agentcore.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "aws:SourceAccount": "123456789012"
+         },
+         "ArnLike": {
+          "aws:SourceArn": "arn:aws:bedrock-agentcore:us-east-1:123456789012:*"
+         }
+        }
+       }
+      ]
+     },
+     "ManagedPolicyArns": [
+      {
+       "ref": "AgentCoreBasePolicy"
+      },
+      "arn:aws:iam::aws:policy/AmazonDynamoDBReadOnlyAccess"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPool.CourseReviewUserPool",
+   "cfg": "CourseReviewUserPool",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Cognito::UserPool",
+    "name": "CourseReviewUserPool",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "UserPoolName": "course-review-user-pool",
+     "Policies": {
+      "PasswordPolicy": {
+       "MinimumLength": 8,
+       "RequireUppercase": false,
+       "RequireLowercase": false,
+       "RequireNumbers": false,
+       "RequireSymbols": false
+      }
+     },
+     "AutoVerifiedAttributes": [
+      "email"
+     ],
+     "Schema": [
+      {
+       "Name": "email",
+       "AttributeDataType": "String",
+       "Required": true,
+       "Mutable": true
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolDomain.CourseReviewUserPoolDomain",
+   "cfg": "CourseReviewUserPoolDomain",
+   "type": "__declared__",
+   "refs": [
+    "CourseReviewUserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolDomain",
+    "name": "CourseReviewUserPoolDomain",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Domain": "course-review-123456789012",
+     "UserPoolId": {
+      "ref": "CourseReviewUserPool"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolResourceServer.CourseReviewResourceServer",
+   "cfg": "CourseReviewResourceServer",
+   "type": "__declared__",
+   "refs": [
+    "CourseReviewUserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolResourceServer",
+    "name": "CourseReviewResourceServer",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "UserPoolId": {
+      "ref": "CourseReviewUserPool"
+     },
+     "Identifier": "course-review",
+     "Name": "Course Review",
+     "Scopes": [
+      {
+       "ScopeName": "access",
+       "ScopeDescription": "Access Course Review MCP Server"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolClient.CourseReviewAppClient",
+   "cfg": "CourseReviewAppClient",
+   "type": "__declared__",
+   "refs": [
+    "CourseReviewUserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolClient",
+    "name": "CourseReviewAppClient",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "UserPoolId": {
+      "ref": "CourseReviewUserPool"
+     },
+     "ClientName": "course-review-client",
+     "GenerateSecret": true,
+     "AllowedOAuthFlows": [
+      "client_credentials"
+     ],
+     "AllowedOAuthScopes": [
+      "course-review/access"
+     ],
+     "AllowedOAuthFlowsUserPoolClient": true
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.LoanApplicationExecutionRole",
+   "cfg": "LoanApplicationExecutionRole",
+   "type": "__declared__",
+   "refs": [
+    "AgentCoreBasePolicy"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "LoanApplicationExecutionRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "LoanApplication-execution-role",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Sid": "AssumeRolePolicy",
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "bedrock-agentcore.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "aws:SourceAccount": "123456789012"
+         },
+         "ArnLike": {
+          "aws:SourceArn": "arn:aws:bedrock-agentcore:us-east-1:123456789012:*"
+         }
+        }
+       }
+      ]
+     },
+     "ManagedPolicyArns": [
+      {
+       "ref": "AgentCoreBasePolicy"
+      }
+     ],
+     "Policies": [
+      {
+       "PolicyName": "SageMakerInvokeEndpoint",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Sid": "SageMakerRuntimeInvoke",
+          "Effect": "Allow",
+          "Action": [
+           "sagemaker:InvokeEndpoint"
+          ],
+          "Resource": [
+           "arn:aws:sagemaker:us-east-1:123456789012:endpoint/*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPool.LoanApplicationUserPool",
+   "cfg": "LoanApplicationUserPool",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Cognito::UserPool",
+    "name": "LoanApplicationUserPool",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "UserPoolName": "loan-application-user-pool",
+     "Policies": {
+      "PasswordPolicy": {
+       "MinimumLength": 8,
+       "RequireUppercase": false,
+       "RequireLowercase": false,
+       "RequireNumbers": false,
+       "RequireSymbols": false
+      }
+     },
+     "AutoVerifiedAttributes": [
+      "email"
+     ],
+     "Schema": [
+      {
+       "Name": "email",
+       "AttributeDataType": "String",
+       "Required": true,
+       "Mutable": true
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolDomain.LoanApplicationUserPoolDomain",
+   "cfg": "LoanApplicationUserPoolDomain",
+   "type": "__declared__",
+   "refs": [
+    "LoanApplicationUserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolDomain",
+    "name": "LoanApplicationUserPoolDomain",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Domain": "loan-application-123456789012",
+     "UserPoolId": {
+      "ref": "LoanApplicationUserPool"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolResourceServer.LoanApplicationResourceServer",
+   "cfg": "LoanApplicationResourceServer",
+   "type": "__declared__",
+   "refs": [
+    "LoanApplicationUserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolResourceServer",
+    "name": "LoanApplicationResourceServer",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "UserPoolId": {
+      "ref": "LoanApplicationUserPool"
+     },
+     "Identifier": "loan-application",
+     "Name": "Loan Application",
+     "Scopes": [
+      {
+       "ScopeName": "access",
+       "ScopeDescription": "Access Loan Application MCP Server"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolClient.LoanApplicationAppClient",
+   "cfg": "LoanApplicationAppClient",
+   "type": "__declared__",
+   "refs": [
+    "LoanApplicationUserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolClient",
+    "name": "LoanApplicationAppClient",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "UserPoolId": {
+      "ref": "LoanApplicationUserPool"
+     },
+     "ClientName": "loan-application-client",
+     "GenerateSecret": true,
+     "AllowedOAuthFlows": [
+      "client_credentials"
+     ],
+     "AllowedOAuthScopes": [
+      "loan-application/access"
+     ],
+     "AllowedOAuthFlowsUserPoolClient": true
+    }
+   }
+  }
+ ]
+}

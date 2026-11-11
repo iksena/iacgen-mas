@@ -1,0 +1,1738 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "sam_expanded",
+  "warnings": [],
+  "gt_hash": "164e00ff7d414dfae790e39241939be27bcf94adcf9fd7ae3000926e8da8f27d",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "LandingZoneSetupFinishedTrigger",
+   "cfg": "LandingZoneSetupFinishedTrigger",
+   "type": "AWS::Events::Rule",
+   "values": {
+    "EventPattern": {
+     "source": [
+      "superwerker"
+     ],
+     "detail": {
+      "eventName": [
+       "LandingZoneSetupOrUpdateFinished"
+      ]
+     }
+    },
+    "State": "ENABLED",
+    "Targets": [
+     {
+      "Arn": "arn:aws:ssm:us-east-1:123456789012:automation-definition/${CreateLandingZoneEnableSecurityHub}",
+      "Id": "EnableSecurityHubOrganizations",
+      "RoleArn": {
+       "ref": "SSMAutomationExecutionRoleforCWEvents",
+       "attr": "Arn"
+      }
+     }
+    ]
+   },
+   "refs": [
+    "CreateLandingZoneEnableSecurityHub",
+    "SSMAutomationExecutionRoleforCWEvents"
+   ]
+  },
+  {
+   "id": "CreateManagedAccountTrigger",
+   "cfg": "CreateManagedAccountTrigger",
+   "type": "AWS::Events::Rule",
+   "values": {
+    "EventPattern": {
+     "detail-type": [
+      "AWS Service Event via CloudTrail"
+     ],
+     "source": [
+      "aws.controltower"
+     ],
+     "detail": {
+      "serviceEventDetails": {
+       "createManagedAccountStatus": {
+        "state": [
+         "SUCCEEDED"
+        ]
+       }
+      },
+      "eventName": [
+       "CreateManagedAccount"
+      ]
+     }
+    },
+    "State": "ENABLED",
+    "Targets": [
+     {
+      "Arn": "arn:aws:ssm:us-east-1:123456789012:automation-definition/${EnableSecurityHubInOrgAccountAndAddAsMember}",
+      "Id": "CreateManagedAccountTrigger",
+      "RoleArn": {
+       "ref": "SSMAutomationExecutionRoleforCWEvents",
+       "attr": "Arn"
+      },
+      "InputTransformer": {
+       "InputPathsMap": {
+        "AwsAccountId": "$.detail.serviceEventDetails.createManagedAccountStatus.account.accountId"
+       },
+       "InputTemplate": "{\n  \"MemberAWSAccountId\": [<AwsAccountId>]\n}\n"
+      }
+     }
+    ]
+   },
+   "refs": [
+    "EnableSecurityHubInOrgAccountAndAddAsMember",
+    "SSMAutomationExecutionRoleforCWEvents"
+   ]
+  },
+  {
+   "id": "SSMAutomationExecutionRoleforCWEvents",
+   "cfg": "SSMAutomationExecutionRoleforCWEvents",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "events.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Policies": [
+     {
+      "PolicyName": "AllowStartAutomationExecution",
+      "PolicyDocument": {
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "ssm:StartAutomationExecution"
+         ],
+         "Resource": [
+          "arn:aws:ssm:us-east-1:123456789012:automation-definition/${CreateLandingZoneEnableSecurityHub}:*",
+          "arn:aws:ssm:us-east-1:123456789012:automation-definition/${EnableSecurityHubInOrgAccountAndAddAsMember}:*"
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": [
+    "CreateLandingZoneEnableSecurityHub",
+    "EnableSecurityHubInOrgAccountAndAddAsMember"
+   ]
+  },
+  {
+   "id": "CreateLandingZoneEnableSecurityHub",
+   "cfg": "CreateLandingZoneEnableSecurityHub",
+   "type": "AWS::SSM::Document",
+   "values": {
+    "DocumentType": "Automation",
+    "Content": {
+     "schemaVersion": "0.3",
+     "assumeRole": {
+      "ref": "CreateLandingZoneEnableSecurityHubRole",
+      "attr": "Arn"
+     },
+     "parameters": {
+      "AuditAccountId": {
+       "type": "String",
+       "default": "{{ssm:/superwerker/account_id_audit}}"
+      },
+      "LogArchiveAccountId": {
+       "type": "String",
+       "default": "{{ssm:/superwerker/account_id_logarchive}}"
+      }
+     },
+     "mainSteps": [
+      {
+       "name": "EnableSecurityHubInAuditAccount",
+       "action": "aws:executeAutomation",
+       "inputs": {
+        "DocumentName": {
+         "ref": "EnableSecurityHubInOrgAccount"
+        },
+        "RuntimeParameters": {
+         "AWSAccountId": [
+          "{{ AuditAccountId }}"
+         ]
+        }
+       }
+      },
+      {
+       "name": "EnableSecurityHubMemberInOrgLogArchiveAccount",
+       "action": "aws:executeAutomation",
+       "inputs": {
+        "DocumentName": {
+         "ref": "EnableSecurityHubInOrgAccountAndAddAsMember"
+        },
+        "RuntimeParameters": {
+         "MemberAWSAccountId": [
+          "{{ LogArchiveAccountId }}"
+         ]
+        }
+       }
+      }
+     ]
+    }
+   },
+   "refs": [
+    "CreateLandingZoneEnableSecurityHubRole",
+    "EnableSecurityHubInOrgAccount",
+    "EnableSecurityHubInOrgAccountAndAddAsMember"
+   ]
+  },
+  {
+   "id": "CreateLandingZoneEnableSecurityHubRole",
+   "cfg": "CreateLandingZoneEnableSecurityHubRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "ssm.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Policies": [
+     {
+      "PolicyName": "AllowStartAutomationExecutionEnableSecurityHub",
+      "PolicyDocument": {
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "ssm:StartAutomationExecution"
+         ],
+         "Resource": [
+          "arn:aws:ssm:us-east-1:123456789012:automation-definition/${EnableSecurityHubInOrgAccount}:*",
+          "arn:aws:ssm:us-east-1:123456789012:automation-definition/${EnableSecurityHubInOrgAccountAndAddAsMember}:*"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "ssm:GetAutomationExecution"
+         ],
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "PolicyName": "SSMParameters",
+      "PolicyDocument": {
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "ssm:GetParameters"
+         ],
+         "Resource": [
+          "arn:aws:ssm:us-east-1:123456789012:parameter/superwerker/*"
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": [
+    "EnableSecurityHubInOrgAccount",
+    "EnableSecurityHubInOrgAccountAndAddAsMember"
+   ]
+  },
+  {
+   "id": "EnableSecurityHubInOrgAccountAndAddAsMember",
+   "cfg": "EnableSecurityHubInOrgAccountAndAddAsMember",
+   "type": "AWS::SSM::Document",
+   "values": {
+    "DocumentType": "Automation",
+    "Content": {
+     "schemaVersion": "0.3",
+     "assumeRole": {
+      "ref": "EnableSecurityHubInOrgAccountAndAddAsMemberRole",
+      "attr": "Arn"
+     },
+     "parameters": {
+      "MemberAWSAccountId": {
+       "type": "String"
+      },
+      "AuditAccountId": {
+       "type": "String",
+       "default": "{{ssm:/superwerker/account_id_audit}}"
+      }
+     },
+     "mainSteps": [
+      {
+       "name": "EnableSecurityHubInOrgAccount",
+       "action": "aws:executeAutomation",
+       "inputs": {
+        "DocumentName": {
+         "ref": "EnableSecurityHubInOrgAccount"
+        },
+        "RuntimeParameters": {
+         "AWSAccountId": [
+          "{{ MemberAWSAccountId }}"
+         ]
+        }
+       }
+      },
+      {
+       "name": "MemberAccount",
+       "action": "aws:executeAwsApi",
+       "inputs": {
+        "Service": "organizations",
+        "Api": "DescribeAccount",
+        "AccountId": "{{ MemberAWSAccountId }}"
+       },
+       "outputs": [
+        {
+         "Name": "EmailAddress",
+         "Selector": "$.Account.Email"
+        }
+       ]
+      },
+      {
+       "name": "InviteSecurityHubMember",
+       "action": "aws:executeAwsApi",
+       "inputs": {
+        "Service": "ssm",
+        "Api": "StartAutomationExecution",
+        "DocumentName": {
+         "ref": "InviteSecurityHubMember"
+        },
+        "Parameters": {
+         "MemberAWSAccountId": [
+          "{{ MemberAWSAccountId }}"
+         ],
+         "MemberAWSAccountEmail": [
+          "{{ MemberAccount.EmailAddress }}"
+         ]
+        },
+        "TargetLocations": [
+         {
+          "ExecutionRoleName": "AWSControlTowerExecution",
+          "Accounts": [
+           "{{ AuditAccountId }}"
+          ],
+          "Regions": [
+           "us-east-1"
+          ]
+         }
+        ]
+       },
+       "outputs": [
+        {
+         "Name": "AutomationExecutionId",
+         "Selector": "$.AutomationExecutionId"
+        }
+       ],
+       "nextStep": "WaitForInviteSecurityHubMember"
+      },
+      {
+       "name": "WaitForInviteSecurityHubMember",
+       "timeoutSeconds": 60,
+       "action": "aws:waitForAwsResourceProperty",
+       "inputs": {
+        "Service": "ssm",
+        "Api": "DescribeAutomationExecutions",
+        "Filters": [
+         {
+          "Key": "ExecutionId",
+          "Values": [
+           "{{ InviteSecurityHubMember.AutomationExecutionId }}"
+          ]
+         }
+        ],
+        "PropertySelector": "$.AutomationExecutionMetadataList[0].AutomationExecutionStatus",
+        "DesiredValues": [
+         "Success"
+        ]
+       }
+      },
+      {
+       "name": "AcceptInvitation",
+       "action": "aws:executeAwsApi",
+       "inputs": {
+        "Service": "ssm",
+        "Api": "StartAutomationExecution",
+        "DocumentName": {
+         "ref": "AcceptSecurityHubInvitation"
+        },
+        "TargetLocations": [
+         {
+          "ExecutionRoleName": "AWSControlTowerExecution",
+          "Accounts": [
+           "{{ MemberAWSAccountId }}"
+          ],
+          "Regions": [
+           "us-east-1"
+          ]
+         }
+        ]
+       },
+       "outputs": [
+        {
+         "Name": "AutomationExecutionId",
+         "Selector": "$.AutomationExecutionId"
+        }
+       ],
+       "nextStep": "WaitForAcceptSecurityHubMember"
+      },
+      {
+       "name": "WaitForAcceptSecurityHubMember",
+       "timeoutSeconds": 60,
+       "action": "aws:waitForAwsResourceProperty",
+       "inputs": {
+        "Service": "ssm",
+        "Api": "DescribeAutomationExecutions",
+        "Filters": [
+         {
+          "Key": "ExecutionId",
+          "Values": [
+           "{{ AcceptInvitation.AutomationExecutionId }}"
+          ]
+         }
+        ],
+        "PropertySelector": "$.AutomationExecutionMetadataList[0].AutomationExecutionStatus",
+        "DesiredValues": [
+         "Success"
+        ]
+       }
+      }
+     ]
+    }
+   },
+   "refs": [
+    "AcceptSecurityHubInvitation",
+    "EnableSecurityHubInOrgAccount",
+    "EnableSecurityHubInOrgAccountAndAddAsMemberRole",
+    "InviteSecurityHubMember"
+   ]
+  },
+  {
+   "id": "EnableSecurityHubInOrgAccountAndAddAsMemberRole",
+   "cfg": "EnableSecurityHubInOrgAccountAndAddAsMemberRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "ssm.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Policies": [
+     {
+      "PolicyName": "AllowStartAutomationExecutionEnableSecurityHub",
+      "PolicyDocument": {
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "ssm:StartAutomationExecution"
+         ],
+         "Resource": [
+          "arn:aws:ssm:us-east-1:123456789012:automation-definition/${EnableSecurityHubInOrgAccount}:*",
+          "arn:aws:ssm:us-east-1:123456789012:automation-definition/${InviteSecurityHubMember}:*",
+          "arn:aws:ssm:us-east-1:123456789012:automation-definition/${AcceptSecurityHubInvitation}:*"
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "PolicyName": "AllowDescribeSsmAutomationExecutionStatus",
+      "PolicyDocument": {
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "ssm:DescribeAutomationExecutions",
+          "ssm:GetAutomationExecution"
+         ],
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "PolicyName": "AllowCallCrossAccountAutomation",
+      "PolicyDocument": {
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "sts:AssumeRole"
+         ],
+         "Resource": [
+          "arn:aws:iam::*:role/AWSControlTowerExecution"
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "PolicyName": "Organizations",
+      "PolicyDocument": {
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "organizations:DescribeAccount"
+         ],
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "PolicyName": "SSMParameters",
+      "PolicyDocument": {
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "ssm:GetParameters"
+         ],
+         "Resource": [
+          "arn:aws:ssm:us-east-1:123456789012:parameter/superwerker/*"
+         ]
+        }
+       ]
+      }
+     }
+    ],
+    "__resource__": {
+     "Metadata": {
+      "cfn-lint": {
+       "config": {
+        "ignore_checks": [
+         "EIAMPolicyWildcardResource"
+        ]
+       }
+      }
+     }
+    }
+   },
+   "refs": [
+    "AcceptSecurityHubInvitation",
+    "EnableSecurityHubInOrgAccount",
+    "InviteSecurityHubMember"
+   ]
+  },
+  {
+   "id": "InviteSecurityHubMember",
+   "cfg": "InviteSecurityHubMember",
+   "type": "AWS::SSM::Document",
+   "values": {
+    "DocumentType": "Automation",
+    "Content": {
+     "schemaVersion": "0.3",
+     "parameters": {
+      "MemberAWSAccountId": {
+       "type": "String"
+      },
+      "MemberAWSAccountEmail": {
+       "type": "String"
+      }
+     },
+     "mainSteps": [
+      {
+       "name": "CreateMembers",
+       "action": "aws:executeAwsApi",
+       "inputs": {
+        "Service": "securityhub",
+        "Api": "CreateMembers",
+        "AccountDetails": [
+         {
+          "AccountId": "{{ MemberAWSAccountId }}",
+          "Email": "{{ MemberAWSAccountEmail }}"
+         }
+        ]
+       }
+      },
+      {
+       "name": "InviteMembers",
+       "action": "aws:executeAwsApi",
+       "inputs": {
+        "Service": "securityhub",
+        "Api": "InviteMembers",
+        "AccountIds": [
+         "{{ MemberAWSAccountId }}"
+        ]
+       }
+      }
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "AcceptSecurityHubInvitation",
+   "cfg": "AcceptSecurityHubInvitation",
+   "type": "AWS::SSM::Document",
+   "values": {
+    "DocumentType": "Automation",
+    "Content": {
+     "schemaVersion": "0.3",
+     "mainSteps": [
+      {
+       "name": "Invitation",
+       "action": "aws:executeAwsApi",
+       "inputs": {
+        "Service": "securityhub",
+        "Api": "ListInvitations"
+       },
+       "outputs": [
+        {
+         "Name": "InvitationId",
+         "Selector": "$.Invitations[0].InvitationId"
+        },
+        {
+         "Name": "AccountId",
+         "Selector": "$.Invitations[0].AccountId"
+        }
+       ]
+      },
+      {
+       "name": "AcceptInvitation",
+       "action": "aws:executeAwsApi",
+       "inputs": {
+        "Service": "securityhub",
+        "Api": "AcceptInvitation",
+        "InvitationId": "{{ Invitation.InvitationId }}",
+        "MasterId": "{{ Invitation.AccountId }}"
+       }
+      }
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "EnableSecurityHubInOrgAccount",
+   "cfg": "EnableSecurityHubInOrgAccount",
+   "type": "AWS::SSM::Document",
+   "values": {
+    "DocumentType": "Automation",
+    "Content": {
+     "schemaVersion": "0.3",
+     "assumeRole": {
+      "ref": "EnableSecurityHubInOrgAccountRole",
+      "attr": "Arn"
+     },
+     "parameters": {
+      "AWSAccountId": {
+       "type": "String"
+      }
+     },
+     "mainSteps": [
+      {
+       "name": "EnableSecurityHubInOrgAccount",
+       "action": "aws:executeAwsApi",
+       "inputs": {
+        "Service": "ssm",
+        "Api": "StartAutomationExecution",
+        "DocumentName": {
+         "ref": "EnableSecurityHub"
+        },
+        "TargetLocations": [
+         {
+          "ExecutionRoleName": "AWSControlTowerExecution",
+          "Accounts": [
+           "{{ AWSAccountId }}"
+          ],
+          "Regions": [
+           "us-east-1"
+          ]
+         }
+        ]
+       },
+       "outputs": [
+        {
+         "Name": "AutomationExecutionId",
+         "Selector": "$.AutomationExecutionId"
+        }
+       ],
+       "nextStep": "WaitForEnableSecurityHubInOrgAccount"
+      },
+      {
+       "name": "WaitForEnableSecurityHubInOrgAccount",
+       "timeoutSeconds": 60,
+       "action": "aws:waitForAwsResourceProperty",
+       "inputs": {
+        "Service": "ssm",
+        "Api": "DescribeAutomationExecutions",
+        "Filters": [
+         {
+          "Key": "ExecutionId",
+          "Values": [
+           "{{ EnableSecurityHubInOrgAccount.AutomationExecutionId }}"
+          ]
+         }
+        ],
+        "PropertySelector": "$.AutomationExecutionMetadataList[0].AutomationExecutionStatus",
+        "DesiredValues": [
+         "Success"
+        ]
+       }
+      }
+     ]
+    }
+   },
+   "refs": [
+    "EnableSecurityHub",
+    "EnableSecurityHubInOrgAccountRole"
+   ]
+  },
+  {
+   "id": "EnableSecurityHubInOrgAccountRole",
+   "cfg": "EnableSecurityHubInOrgAccountRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "ssm.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Policies": [
+     {
+      "PolicyName": "AllowStartAutomationExecutionEnableSecurityHub",
+      "PolicyDocument": {
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "ssm:StartAutomationExecution"
+         ],
+         "Resource": [
+          "arn:aws:ssm:us-east-1:123456789012:automation-definition/${EnableSecurityHub}:*"
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "PolicyName": "AllowDescribeSsmAutomationExecutionStatus",
+      "PolicyDocument": {
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "ssm:DescribeAutomationExecutions"
+         ],
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "PolicyName": "AllowCallCrossAccountAutomation",
+      "PolicyDocument": {
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "sts:AssumeRole"
+         ],
+         "Resource": [
+          "arn:aws:iam::*:role/AWSControlTowerExecution"
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": [
+    "EnableSecurityHub"
+   ]
+  },
+  {
+   "id": "EnableSecurityHub",
+   "cfg": "EnableSecurityHub",
+   "type": "AWS::SSM::Document",
+   "values": {
+    "DocumentType": "Automation",
+    "Content": {
+     "schemaVersion": "0.3",
+     "mainSteps": [
+      {
+       "name": "CheckIfSecurityHubIsEnabled",
+       "action": "aws:executeAwsApi",
+       "inputs": {
+        "Service": "securityhub",
+        "Api": "DescribeHub"
+       },
+       "isCritical": false,
+       "onFailure": "step:EnableSecurityHub",
+       "nextStep": "NoOp"
+      },
+      {
+       "name": "NoOp",
+       "action": "aws:sleep",
+       "inputs": {
+        "Duration": "PT0S"
+       },
+       "isEnd": true
+      },
+      {
+       "name": "EnableSecurityHub",
+       "action": "aws:executeAwsApi",
+       "inputs": {
+        "Service": "securityhub",
+        "Api": "EnableSecurityHub"
+       },
+       "isEnd": true
+      }
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "__declared__.AWS::Events::Rule.LandingZoneSetupFinishedTrigger",
+   "cfg": "LandingZoneSetupFinishedTrigger",
+   "type": "__declared__",
+   "refs": [
+    "CreateLandingZoneEnableSecurityHub",
+    "SSMAutomationExecutionRoleforCWEvents"
+   ],
+   "values": {
+    "type": "AWS::Events::Rule",
+    "name": "LandingZoneSetupFinishedTrigger",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "EventPattern": {
+      "source": [
+       "superwerker"
+      ],
+      "detail": {
+       "eventName": [
+        "LandingZoneSetupOrUpdateFinished"
+       ]
+      }
+     },
+     "State": "ENABLED",
+     "Targets": [
+      {
+       "Arn": "arn:aws:ssm:us-east-1:123456789012:automation-definition/${CreateLandingZoneEnableSecurityHub}",
+       "Id": "EnableSecurityHubOrganizations",
+       "RoleArn": {
+        "ref": "SSMAutomationExecutionRoleforCWEvents",
+        "attr": "Arn"
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Events::Rule.CreateManagedAccountTrigger",
+   "cfg": "CreateManagedAccountTrigger",
+   "type": "__declared__",
+   "refs": [
+    "EnableSecurityHubInOrgAccountAndAddAsMember",
+    "SSMAutomationExecutionRoleforCWEvents"
+   ],
+   "values": {
+    "type": "AWS::Events::Rule",
+    "name": "CreateManagedAccountTrigger",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "EventPattern": {
+      "detail-type": [
+       "AWS Service Event via CloudTrail"
+      ],
+      "source": [
+       "aws.controltower"
+      ],
+      "detail": {
+       "serviceEventDetails": {
+        "createManagedAccountStatus": {
+         "state": [
+          "SUCCEEDED"
+         ]
+        }
+       },
+       "eventName": [
+        "CreateManagedAccount"
+       ]
+      }
+     },
+     "State": "ENABLED",
+     "Targets": [
+      {
+       "Arn": "arn:aws:ssm:us-east-1:123456789012:automation-definition/${EnableSecurityHubInOrgAccountAndAddAsMember}",
+       "Id": "CreateManagedAccountTrigger",
+       "RoleArn": {
+        "ref": "SSMAutomationExecutionRoleforCWEvents",
+        "attr": "Arn"
+       },
+       "InputTransformer": {
+        "InputPathsMap": {
+         "AwsAccountId": "$.detail.serviceEventDetails.createManagedAccountStatus.account.accountId"
+        },
+        "InputTemplate": "{\n  \"MemberAWSAccountId\": [<AwsAccountId>]\n}\n"
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.SSMAutomationExecutionRoleforCWEvents",
+   "cfg": "SSMAutomationExecutionRoleforCWEvents",
+   "type": "__declared__",
+   "refs": [
+    "CreateLandingZoneEnableSecurityHub",
+    "EnableSecurityHubInOrgAccountAndAddAsMember"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "SSMAutomationExecutionRoleforCWEvents",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "events.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Policies": [
+      {
+       "PolicyName": "AllowStartAutomationExecution",
+       "PolicyDocument": {
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "ssm:StartAutomationExecution"
+          ],
+          "Resource": [
+           "arn:aws:ssm:us-east-1:123456789012:automation-definition/${CreateLandingZoneEnableSecurityHub}:*",
+           "arn:aws:ssm:us-east-1:123456789012:automation-definition/${EnableSecurityHubInOrgAccountAndAddAsMember}:*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SSM::Document.CreateLandingZoneEnableSecurityHub",
+   "cfg": "CreateLandingZoneEnableSecurityHub",
+   "type": "__declared__",
+   "refs": [
+    "CreateLandingZoneEnableSecurityHubRole",
+    "EnableSecurityHubInOrgAccount",
+    "EnableSecurityHubInOrgAccountAndAddAsMember"
+   ],
+   "values": {
+    "type": "AWS::SSM::Document",
+    "name": "CreateLandingZoneEnableSecurityHub",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "DocumentType": "Automation",
+     "Content": {
+      "schemaVersion": "0.3",
+      "assumeRole": {
+       "ref": "CreateLandingZoneEnableSecurityHubRole",
+       "attr": "Arn"
+      },
+      "parameters": {
+       "AuditAccountId": {
+        "type": "String",
+        "default": "{{ssm:/superwerker/account_id_audit}}"
+       },
+       "LogArchiveAccountId": {
+        "type": "String",
+        "default": "{{ssm:/superwerker/account_id_logarchive}}"
+       }
+      },
+      "mainSteps": [
+       {
+        "name": "EnableSecurityHubInAuditAccount",
+        "action": "aws:executeAutomation",
+        "inputs": {
+         "DocumentName": {
+          "ref": "EnableSecurityHubInOrgAccount"
+         },
+         "RuntimeParameters": {
+          "AWSAccountId": [
+           "{{ AuditAccountId }}"
+          ]
+         }
+        }
+       },
+       {
+        "name": "EnableSecurityHubMemberInOrgLogArchiveAccount",
+        "action": "aws:executeAutomation",
+        "inputs": {
+         "DocumentName": {
+          "ref": "EnableSecurityHubInOrgAccountAndAddAsMember"
+         },
+         "RuntimeParameters": {
+          "MemberAWSAccountId": [
+           "{{ LogArchiveAccountId }}"
+          ]
+         }
+        }
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.CreateLandingZoneEnableSecurityHubRole",
+   "cfg": "CreateLandingZoneEnableSecurityHubRole",
+   "type": "__declared__",
+   "refs": [
+    "EnableSecurityHubInOrgAccount",
+    "EnableSecurityHubInOrgAccountAndAddAsMember"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "CreateLandingZoneEnableSecurityHubRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "ssm.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Policies": [
+      {
+       "PolicyName": "AllowStartAutomationExecutionEnableSecurityHub",
+       "PolicyDocument": {
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "ssm:StartAutomationExecution"
+          ],
+          "Resource": [
+           "arn:aws:ssm:us-east-1:123456789012:automation-definition/${EnableSecurityHubInOrgAccount}:*",
+           "arn:aws:ssm:us-east-1:123456789012:automation-definition/${EnableSecurityHubInOrgAccountAndAddAsMember}:*"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "ssm:GetAutomationExecution"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      },
+      {
+       "PolicyName": "SSMParameters",
+       "PolicyDocument": {
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "ssm:GetParameters"
+          ],
+          "Resource": [
+           "arn:aws:ssm:us-east-1:123456789012:parameter/superwerker/*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SSM::Document.EnableSecurityHubInOrgAccountAndAddAsMember",
+   "cfg": "EnableSecurityHubInOrgAccountAndAddAsMember",
+   "type": "__declared__",
+   "refs": [
+    "AcceptSecurityHubInvitation",
+    "EnableSecurityHubInOrgAccount",
+    "EnableSecurityHubInOrgAccountAndAddAsMemberRole",
+    "InviteSecurityHubMember"
+   ],
+   "values": {
+    "type": "AWS::SSM::Document",
+    "name": "EnableSecurityHubInOrgAccountAndAddAsMember",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "DocumentType": "Automation",
+     "Content": {
+      "schemaVersion": "0.3",
+      "assumeRole": {
+       "ref": "EnableSecurityHubInOrgAccountAndAddAsMemberRole",
+       "attr": "Arn"
+      },
+      "parameters": {
+       "MemberAWSAccountId": {
+        "type": "String"
+       },
+       "AuditAccountId": {
+        "type": "String",
+        "default": "{{ssm:/superwerker/account_id_audit}}"
+       }
+      },
+      "mainSteps": [
+       {
+        "name": "EnableSecurityHubInOrgAccount",
+        "action": "aws:executeAutomation",
+        "inputs": {
+         "DocumentName": {
+          "ref": "EnableSecurityHubInOrgAccount"
+         },
+         "RuntimeParameters": {
+          "AWSAccountId": [
+           "{{ MemberAWSAccountId }}"
+          ]
+         }
+        }
+       },
+       {
+        "name": "MemberAccount",
+        "action": "aws:executeAwsApi",
+        "inputs": {
+         "Service": "organizations",
+         "Api": "DescribeAccount",
+         "AccountId": "{{ MemberAWSAccountId }}"
+        },
+        "outputs": [
+         {
+          "Name": "EmailAddress",
+          "Selector": "$.Account.Email"
+         }
+        ]
+       },
+       {
+        "name": "InviteSecurityHubMember",
+        "action": "aws:executeAwsApi",
+        "inputs": {
+         "Service": "ssm",
+         "Api": "StartAutomationExecution",
+         "DocumentName": {
+          "ref": "InviteSecurityHubMember"
+         },
+         "Parameters": {
+          "MemberAWSAccountId": [
+           "{{ MemberAWSAccountId }}"
+          ],
+          "MemberAWSAccountEmail": [
+           "{{ MemberAccount.EmailAddress }}"
+          ]
+         },
+         "TargetLocations": [
+          {
+           "ExecutionRoleName": "AWSControlTowerExecution",
+           "Accounts": [
+            "{{ AuditAccountId }}"
+           ],
+           "Regions": [
+            "us-east-1"
+           ]
+          }
+         ]
+        },
+        "outputs": [
+         {
+          "Name": "AutomationExecutionId",
+          "Selector": "$.AutomationExecutionId"
+         }
+        ],
+        "nextStep": "WaitForInviteSecurityHubMember"
+       },
+       {
+        "name": "WaitForInviteSecurityHubMember",
+        "timeoutSeconds": 60,
+        "action": "aws:waitForAwsResourceProperty",
+        "inputs": {
+         "Service": "ssm",
+         "Api": "DescribeAutomationExecutions",
+         "Filters": [
+          {
+           "Key": "ExecutionId",
+           "Values": [
+            "{{ InviteSecurityHubMember.AutomationExecutionId }}"
+           ]
+          }
+         ],
+         "PropertySelector": "$.AutomationExecutionMetadataList[0].AutomationExecutionStatus",
+         "DesiredValues": [
+          "Success"
+         ]
+        }
+       },
+       {
+        "name": "AcceptInvitation",
+        "action": "aws:executeAwsApi",
+        "inputs": {
+         "Service": "ssm",
+         "Api": "StartAutomationExecution",
+         "DocumentName": {
+          "ref": "AcceptSecurityHubInvitation"
+         },
+         "TargetLocations": [
+          {
+           "ExecutionRoleName": "AWSControlTowerExecution",
+           "Accounts": [
+            "{{ MemberAWSAccountId }}"
+           ],
+           "Regions": [
+            "us-east-1"
+           ]
+          }
+         ]
+        },
+        "outputs": [
+         {
+          "Name": "AutomationExecutionId",
+          "Selector": "$.AutomationExecutionId"
+         }
+        ],
+        "nextStep": "WaitForAcceptSecurityHubMember"
+       },
+       {
+        "name": "WaitForAcceptSecurityHubMember",
+        "timeoutSeconds": 60,
+        "action": "aws:waitForAwsResourceProperty",
+        "inputs": {
+         "Service": "ssm",
+         "Api": "DescribeAutomationExecutions",
+         "Filters": [
+          {
+           "Key": "ExecutionId",
+           "Values": [
+            "{{ AcceptInvitation.AutomationExecutionId }}"
+           ]
+          }
+         ],
+         "PropertySelector": "$.AutomationExecutionMetadataList[0].AutomationExecutionStatus",
+         "DesiredValues": [
+          "Success"
+         ]
+        }
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.EnableSecurityHubInOrgAccountAndAddAsMemberRole",
+   "cfg": "EnableSecurityHubInOrgAccountAndAddAsMemberRole",
+   "type": "__declared__",
+   "refs": [
+    "AcceptSecurityHubInvitation",
+    "EnableSecurityHubInOrgAccount",
+    "InviteSecurityHubMember"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "EnableSecurityHubInOrgAccountAndAddAsMemberRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "ssm.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Policies": [
+      {
+       "PolicyName": "AllowStartAutomationExecutionEnableSecurityHub",
+       "PolicyDocument": {
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "ssm:StartAutomationExecution"
+          ],
+          "Resource": [
+           "arn:aws:ssm:us-east-1:123456789012:automation-definition/${EnableSecurityHubInOrgAccount}:*",
+           "arn:aws:ssm:us-east-1:123456789012:automation-definition/${InviteSecurityHubMember}:*",
+           "arn:aws:ssm:us-east-1:123456789012:automation-definition/${AcceptSecurityHubInvitation}:*"
+          ]
+         }
+        ]
+       }
+      },
+      {
+       "PolicyName": "AllowDescribeSsmAutomationExecutionStatus",
+       "PolicyDocument": {
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "ssm:DescribeAutomationExecutions",
+           "ssm:GetAutomationExecution"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      },
+      {
+       "PolicyName": "AllowCallCrossAccountAutomation",
+       "PolicyDocument": {
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "sts:AssumeRole"
+          ],
+          "Resource": [
+           "arn:aws:iam::*:role/AWSControlTowerExecution"
+          ]
+         }
+        ]
+       }
+      },
+      {
+       "PolicyName": "Organizations",
+       "PolicyDocument": {
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "organizations:DescribeAccount"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      },
+      {
+       "PolicyName": "SSMParameters",
+       "PolicyDocument": {
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "ssm:GetParameters"
+          ],
+          "Resource": [
+           "arn:aws:ssm:us-east-1:123456789012:parameter/superwerker/*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SSM::Document.InviteSecurityHubMember",
+   "cfg": "InviteSecurityHubMember",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::SSM::Document",
+    "name": "InviteSecurityHubMember",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "DocumentType": "Automation",
+     "Content": {
+      "schemaVersion": "0.3",
+      "parameters": {
+       "MemberAWSAccountId": {
+        "type": "String"
+       },
+       "MemberAWSAccountEmail": {
+        "type": "String"
+       }
+      },
+      "mainSteps": [
+       {
+        "name": "CreateMembers",
+        "action": "aws:executeAwsApi",
+        "inputs": {
+         "Service": "securityhub",
+         "Api": "CreateMembers",
+         "AccountDetails": [
+          {
+           "AccountId": "{{ MemberAWSAccountId }}",
+           "Email": "{{ MemberAWSAccountEmail }}"
+          }
+         ]
+        }
+       },
+       {
+        "name": "InviteMembers",
+        "action": "aws:executeAwsApi",
+        "inputs": {
+         "Service": "securityhub",
+         "Api": "InviteMembers",
+         "AccountIds": [
+          "{{ MemberAWSAccountId }}"
+         ]
+        }
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SSM::Document.AcceptSecurityHubInvitation",
+   "cfg": "AcceptSecurityHubInvitation",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::SSM::Document",
+    "name": "AcceptSecurityHubInvitation",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "DocumentType": "Automation",
+     "Content": {
+      "schemaVersion": "0.3",
+      "mainSteps": [
+       {
+        "name": "Invitation",
+        "action": "aws:executeAwsApi",
+        "inputs": {
+         "Service": "securityhub",
+         "Api": "ListInvitations"
+        },
+        "outputs": [
+         {
+          "Name": "InvitationId",
+          "Selector": "$.Invitations[0].InvitationId"
+         },
+         {
+          "Name": "AccountId",
+          "Selector": "$.Invitations[0].AccountId"
+         }
+        ]
+       },
+       {
+        "name": "AcceptInvitation",
+        "action": "aws:executeAwsApi",
+        "inputs": {
+         "Service": "securityhub",
+         "Api": "AcceptInvitation",
+         "InvitationId": "{{ Invitation.InvitationId }}",
+         "MasterId": "{{ Invitation.AccountId }}"
+        }
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SSM::Document.EnableSecurityHubInOrgAccount",
+   "cfg": "EnableSecurityHubInOrgAccount",
+   "type": "__declared__",
+   "refs": [
+    "EnableSecurityHub",
+    "EnableSecurityHubInOrgAccountRole"
+   ],
+   "values": {
+    "type": "AWS::SSM::Document",
+    "name": "EnableSecurityHubInOrgAccount",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "DocumentType": "Automation",
+     "Content": {
+      "schemaVersion": "0.3",
+      "assumeRole": {
+       "ref": "EnableSecurityHubInOrgAccountRole",
+       "attr": "Arn"
+      },
+      "parameters": {
+       "AWSAccountId": {
+        "type": "String"
+       }
+      },
+      "mainSteps": [
+       {
+        "name": "EnableSecurityHubInOrgAccount",
+        "action": "aws:executeAwsApi",
+        "inputs": {
+         "Service": "ssm",
+         "Api": "StartAutomationExecution",
+         "DocumentName": {
+          "ref": "EnableSecurityHub"
+         },
+         "TargetLocations": [
+          {
+           "ExecutionRoleName": "AWSControlTowerExecution",
+           "Accounts": [
+            "{{ AWSAccountId }}"
+           ],
+           "Regions": [
+            "us-east-1"
+           ]
+          }
+         ]
+        },
+        "outputs": [
+         {
+          "Name": "AutomationExecutionId",
+          "Selector": "$.AutomationExecutionId"
+         }
+        ],
+        "nextStep": "WaitForEnableSecurityHubInOrgAccount"
+       },
+       {
+        "name": "WaitForEnableSecurityHubInOrgAccount",
+        "timeoutSeconds": 60,
+        "action": "aws:waitForAwsResourceProperty",
+        "inputs": {
+         "Service": "ssm",
+         "Api": "DescribeAutomationExecutions",
+         "Filters": [
+          {
+           "Key": "ExecutionId",
+           "Values": [
+            "{{ EnableSecurityHubInOrgAccount.AutomationExecutionId }}"
+           ]
+          }
+         ],
+         "PropertySelector": "$.AutomationExecutionMetadataList[0].AutomationExecutionStatus",
+         "DesiredValues": [
+          "Success"
+         ]
+        }
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.EnableSecurityHubInOrgAccountRole",
+   "cfg": "EnableSecurityHubInOrgAccountRole",
+   "type": "__declared__",
+   "refs": [
+    "EnableSecurityHub"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "EnableSecurityHubInOrgAccountRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "ssm.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Policies": [
+      {
+       "PolicyName": "AllowStartAutomationExecutionEnableSecurityHub",
+       "PolicyDocument": {
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "ssm:StartAutomationExecution"
+          ],
+          "Resource": [
+           "arn:aws:ssm:us-east-1:123456789012:automation-definition/${EnableSecurityHub}:*"
+          ]
+         }
+        ]
+       }
+      },
+      {
+       "PolicyName": "AllowDescribeSsmAutomationExecutionStatus",
+       "PolicyDocument": {
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "ssm:DescribeAutomationExecutions"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      },
+      {
+       "PolicyName": "AllowCallCrossAccountAutomation",
+       "PolicyDocument": {
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "sts:AssumeRole"
+          ],
+          "Resource": [
+           "arn:aws:iam::*:role/AWSControlTowerExecution"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SSM::Document.EnableSecurityHub",
+   "cfg": "EnableSecurityHub",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::SSM::Document",
+    "name": "EnableSecurityHub",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "DocumentType": "Automation",
+     "Content": {
+      "schemaVersion": "0.3",
+      "mainSteps": [
+       {
+        "name": "CheckIfSecurityHubIsEnabled",
+        "action": "aws:executeAwsApi",
+        "inputs": {
+         "Service": "securityhub",
+         "Api": "DescribeHub"
+        },
+        "isCritical": false,
+        "onFailure": "step:EnableSecurityHub",
+        "nextStep": "NoOp"
+       },
+       {
+        "name": "NoOp",
+        "action": "aws:sleep",
+        "inputs": {
+         "Duration": "PT0S"
+        },
+        "isEnd": true
+       },
+       {
+        "name": "EnableSecurityHub",
+        "action": "aws:executeAwsApi",
+        "inputs": {
+         "Service": "securityhub",
+         "Api": "EnableSecurityHub"
+        },
+        "isEnd": true
+       }
+      ]
+     }
+    }
+   }
+  }
+ ]
+}

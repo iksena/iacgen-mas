@@ -1,0 +1,219 @@
+{
+ "lang": "tf",
+ "row_number": 338,
+ "source_hash": {
+  "gt": "d458f483041d0284723a6e49f459e663fb43150d4ec48852de4d818e7491bc0f",
+  "prompt": "6531f5914bb393f48ae49d5b8ebaa79f9a98aa9dcd03a29e9dd29da4f6196c67"
+ },
+ "selectors": {},
+ "checks": [
+  {
+   "id": "oidc_provider",
+   "tier": "core",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_iam_openid_connect_provider"
+    ]
+   },
+   "quote": "creates an IAM OpenID Connect identity provider for GitHub Actions"
+  },
+  {
+   "id": "oidc_url",
+   "tier": "core",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_iam_openid_connect_provider"
+    ]
+   },
+   "cond": {
+    "path": "url",
+    "op": "regex",
+    "value": "token\\.actions\\.githubusercontent\\.com"
+   },
+   "quote": "using the token.actions.githubusercontent.com issuer"
+  },
+  {
+   "id": "oidc_audience",
+   "tier": "core",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_iam_openid_connect_provider"
+    ]
+   },
+   "cond": {
+    "path": "client_id_list.*",
+    "op": "eq",
+    "value": "sts.amazonaws.com"
+   },
+   "quote": "\"sts.amazonaws.com\" as the audience"
+  },
+  {
+   "id": "tls_fetch",
+   "tier": "core",
+   "kind": "ref",
+   "from": {
+    "types": [
+     "aws_iam_openid_connect_provider"
+    ]
+   },
+   "to": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": "type",
+      "op": "eq",
+      "value": "data.tls_certificate"
+     }
+    ]
+   },
+   "quote": "fetched from the issuer's TLS certificate"
+  },
+  {
+   "id": "thumb_combo",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_openid_connect_provider"
+      ],
+      "where": [
+       {
+        "path": "thumbprint_list",
+        "op": "len_gte",
+        "value": 3
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "data.tls_certificate"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_iam_openid_connect_provider"
+       }
+      ]
+     },
+     "cond": {
+      "path": "properties.thumbprint_list",
+      "op": "regex",
+      "value": "tls_certificate"
+     }
+    }
+   ],
+   "quote": "combines the CA fingerprints fetched from the issuer's TLS certificate with GitHub's two published thumbprints",
+   "justify": "at least one fetched CA fingerprint plus GitHub's two published thumbprints gives three or more"
+  },
+  {
+   "id": "roles_optional",
+   "tier": "core",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": "type",
+      "op": "eq",
+      "value": "aws_iam_role"
+     },
+     {
+      "path": "gated",
+      "op": "truthy"
+     }
+    ]
+   },
+   "quote": "support optionally creating GitHub-federated IAM roles",
+   "justify": "optional capability checked as a declared, count/for_each-gated role"
+  },
+  {
+   "id": "roles_federated",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_iam_role"
+       }
+      ]
+     },
+     "cond": {
+      "path": "properties.assume_role_policy",
+      "op": "regex",
+      "value": "Federated|AssumeRoleWithWebIdentity"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "data.aws_iam_policy_document"
+       }
+      ]
+     },
+     "cond": {
+      "path": "properties.statement",
+      "op": "regex",
+      "value": "Federated|AssumeRoleWithWebIdentity"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_iam_role"
+      ]
+     },
+     "cond": {
+      "path": "assume_role_policy",
+      "op": "contains",
+      "value": "AssumeRoleWithWebIdentity"
+     }
+    }
+   ],
+   "quote": "GitHub-federated IAM roles",
+   "justify": "federated roles assume via web identity"
+  }
+ ],
+ "notes": "\"none are created by default\" is only partly expressible (exists needs min >= 1): roles_optional requires the declared role to be gated by count/for_each, but cannot see whether the default value of the gate creates zero roles. GitHub's published thumbprint values are not pinned (the prompt does not give them); thumb_combo requires the provider to use the fetched TLS certificate and hold at least three thumbprints, or a declared thumbprint list built from the tls_certificate data source."
+}

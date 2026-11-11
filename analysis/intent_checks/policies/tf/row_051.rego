@@ -1,0 +1,308 @@
+package intent.tf.row_051
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {
+  "vpc": {
+   "types": [
+    "aws_vpc"
+   ],
+   "where": [
+    {
+     "path": [
+      "cidr_block"
+     ],
+     "op": "eq",
+     "value": "10.0.0.0/16"
+    }
+   ]
+  },
+  "s1": {
+   "types": [
+    "aws_subnet"
+   ],
+   "where": [
+    {
+     "path": [
+      "cidr_block"
+     ],
+     "op": "eq",
+     "value": "10.0.1.0/24"
+    }
+   ]
+  },
+  "s2": {
+   "types": [
+    "aws_subnet"
+   ],
+   "where": [
+    {
+     "path": [
+      "cidr_block"
+     ],
+     "op": "eq",
+     "value": "10.0.2.0/24"
+    }
+   ]
+  },
+  "two": {
+   "types": [
+    "aws_subnet"
+   ],
+   "where": [
+    {
+     "path": [
+      "cidr_block"
+     ],
+     "op": "in",
+     "value": [
+      "10.0.1.0/24",
+      "10.0.2.0/24"
+     ]
+    }
+   ]
+  },
+  "outs": {
+   "types": [
+    "__output__"
+   ],
+   "where": []
+  }
+ },
+ "checks": [
+  {
+   "id": "vpc_cidr",
+   "tier": "core",
+   "quote": "a new VPC with CIDR block 10.0.0.0/16",
+   "kind": "exists",
+   "select": "vpc"
+  },
+  {
+   "id": "vpc_dns_support",
+   "tier": "core",
+   "quote": "DNS support and DNS hostnames enabled",
+   "kind": "attr",
+   "select": "vpc",
+   "cond": {
+    "path": [
+     "enable_dns_support"
+    ],
+    "op": "eq",
+    "value": true
+   }
+  },
+  {
+   "id": "vpc_dns_hostnames",
+   "tier": "core",
+   "quote": "DNS support and DNS hostnames enabled",
+   "kind": "attr",
+   "select": "vpc",
+   "cond": {
+    "path": [
+     "enable_dns_hostnames"
+    ],
+    "op": "eq",
+    "value": true
+   }
+  },
+  {
+   "id": "subnet1",
+   "tier": "core",
+   "quote": "two private subnets with CIDR blocks 10.0.1.0/24 and 10.0.2.0/24",
+   "kind": "exists",
+   "select": "s1"
+  },
+  {
+   "id": "subnet2",
+   "tier": "core",
+   "quote": "two private subnets with CIDR blocks 10.0.1.0/24 and 10.0.2.0/24",
+   "kind": "exists",
+   "select": "s2"
+  },
+  {
+   "id": "subnets_private",
+   "tier": "core",
+   "quote": "two private subnets",
+   "kind": "attr",
+   "select": "two",
+   "quantifier": "all",
+   "cond": {
+    "path": [
+     "map_public_ip_on_launch"
+    ],
+    "op": "none_eq",
+    "value": true
+   }
+  },
+  {
+   "id": "subnets_in_vpc",
+   "tier": "detail",
+   "quote": "a new VPC with CIDR block 10.0.0.0/16 (DNS support and DNS hostnames enabled) and two private subnets",
+   "kind": "all_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "s1",
+     "to": "vpc"
+    },
+    {
+     "kind": "ref",
+     "from": "s2",
+     "to": "vpc"
+    }
+   ]
+  },
+  {
+   "id": "subnets_in_two_azs",
+   "tier": "detail",
+   "quote": "placed in the first two available availability zones in the region",
+   "kind": "exists",
+   "justify": "two different availability zones",
+   "select": "two",
+   "min": 2,
+   "distinct_path": [
+    "availability_zone"
+   ]
+  },
+  {
+   "id": "out_vpc_id",
+   "tier": "detail",
+   "quote": "outputs for the VPC ID",
+   "kind": "ref",
+   "from": {
+    "types": [
+     "__output__"
+    ],
+    "where": [
+     {
+      "path": [
+       "value"
+      ],
+      "op": "absent"
+     }
+    ]
+   },
+   "to": "vpc"
+  },
+  {
+   "id": "out_subnet_ids",
+   "tier": "detail",
+   "quote": "individual subnet IDs and CIDR blocks",
+   "kind": "all_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__output__"
+      ],
+      "where": [
+       {
+        "path": [
+         "value"
+        ],
+        "op": "absent"
+       }
+      ]
+     },
+     "to": "s1"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__output__"
+      ],
+      "where": [
+       {
+        "path": [
+         "value"
+        ],
+        "op": "absent"
+       }
+      ]
+     },
+     "to": "s2"
+    }
+   ]
+  },
+  {
+   "id": "out_subnet_cidrs",
+   "tier": "detail",
+   "quote": "individual subnet IDs and CIDR blocks",
+   "kind": "all_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__output__"
+      ],
+      "where": [
+       {
+        "path": [
+         "value"
+        ],
+        "op": "eq",
+        "value": "10.0.1.0/24"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__output__"
+      ],
+      "where": [
+       {
+        "path": [
+         "value"
+        ],
+        "op": "eq",
+        "value": "10.0.2.0/24"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "out_aggregated_cidr_lists",
+   "tier": "detail",
+   "quote": "aggregated lists representing both private and public subnet IDs and CIDRs, where the public outputs simply mirror these same two subnets",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__output__"
+    ],
+    "where": [
+     {
+      "path": [
+       "value"
+      ],
+      "op": "regex",
+      "value": "10\\.0\\.1\\.0/24"
+     },
+     {
+      "path": [
+       "value"
+      ],
+      "op": "regex",
+      "value": "10\\.0\\.2\\.0/24"
+     }
+    ]
+   },
+   "min": 2,
+   "justify": "a private and a public aggregated CIDR list"
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

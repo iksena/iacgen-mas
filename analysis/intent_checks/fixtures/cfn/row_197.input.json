@@ -1,0 +1,1471 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "46a985a124948344bb8a820ca68ba502c94181798688f902d43c75354dd99550",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "VPC",
+   "cfg": "VPC",
+   "type": "AWS::EC2::VPC",
+   "values": {
+    "CidrBlock": "10.42.0.0/16",
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "Fog-VPC"
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "IPv6CidrBlock",
+   "cfg": "IPv6CidrBlock",
+   "type": "AWS::EC2::VPCCidrBlock",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "AmazonProvidedIpv6CidrBlock": true
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "InternetGateway",
+   "cfg": "InternetGateway",
+   "type": "AWS::EC2::InternetGateway",
+   "values": {
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "Fog-IGW"
+     }
+    ],
+    "__resource__": {
+     "Condition": "HasPublicSubnets"
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "VPCGatewayAttachment",
+   "cfg": "VPCGatewayAttachment",
+   "type": "AWS::EC2::VPCGatewayAttachment",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "InternetGatewayId": {
+     "ref": "InternetGateway"
+    },
+    "__resource__": {
+     "Condition": "HasPublicSubnets"
+    }
+   },
+   "refs": [
+    "InternetGateway",
+    "VPC"
+   ]
+  },
+  {
+   "id": "RouteTablePublic",
+   "cfg": "RouteTablePublic",
+   "type": "AWS::EC2::RouteTable",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "Tags": [
+     {
+      "Key": "AccessControl",
+      "Value": "PUBLIC"
+     },
+     {
+      "Key": "Name",
+      "Value": "Fog-RT-PUBLIC"
+     }
+    ],
+    "__resource__": {
+     "Condition": "HasPublicSubnets"
+    }
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "InternetRoutePublic",
+   "cfg": "InternetRoutePublic",
+   "type": "AWS::EC2::Route",
+   "values": {
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "GatewayId": {
+     "ref": "InternetGateway"
+    },
+    "RouteTableId": {
+     "ref": "RouteTablePublic"
+    },
+    "__resource__": {
+     "Condition": "HasPublicSubnets",
+     "DependsOn": [
+      "VPCGatewayAttachment"
+     ]
+    }
+   },
+   "refs": [
+    "InternetGateway",
+    "RouteTablePublic"
+   ]
+  },
+  {
+   "id": "SubnetAPub",
+   "cfg": "SubnetAPub",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "AssignIpv6AddressOnCreation": true,
+    "Ipv6CidrBlock": {
+     "Fn::Select": [
+      0,
+      {
+       "Fn::Cidr": [
+        {
+         "Fn::Select": [
+          0,
+          {
+           "ref": "VPC",
+           "attr": "Ipv6CidrBlocks"
+          }
+         ]
+        },
+        9,
+        64
+       ]
+      }
+     ]
+    },
+    "CidrBlock": {
+     "Fn::Select": [
+      0,
+      {
+       "Fn::Cidr": [
+        {
+         "ref": "VPC",
+         "attr": "CidrBlock"
+        },
+        9,
+        8
+       ]
+      }
+     ]
+    },
+    "AvailabilityZone": "us-east-1a",
+    "Tags": [
+     {
+      "Key": "AccessControl",
+      "Value": "PUBLIC"
+     },
+     {
+      "Key": "Name",
+      "Value": "Fog-SN-PUBLIC-A"
+     }
+    ],
+    "__resource__": {
+     "Condition": "HasPublicSubnets",
+     "DependsOn": [
+      "IPv6CidrBlock"
+     ]
+    }
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "AssignPublicRouteTableA",
+   "cfg": "AssignPublicRouteTableA",
+   "type": "AWS::EC2::SubnetRouteTableAssociation",
+   "values": {
+    "SubnetId": {
+     "ref": "SubnetAPub"
+    },
+    "RouteTableId": {
+     "ref": "RouteTablePublic"
+    },
+    "__resource__": {
+     "Condition": "HasPublicSubnets"
+    }
+   },
+   "refs": [
+    "RouteTablePublic",
+    "SubnetAPub"
+   ]
+  },
+  {
+   "id": "SubnetBPub",
+   "cfg": "SubnetBPub",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "AssignIpv6AddressOnCreation": true,
+    "Ipv6CidrBlock": {
+     "Fn::Select": [
+      1,
+      {
+       "Fn::Cidr": [
+        {
+         "Fn::Select": [
+          0,
+          {
+           "ref": "VPC",
+           "attr": "Ipv6CidrBlocks"
+          }
+         ]
+        },
+        9,
+        64
+       ]
+      }
+     ]
+    },
+    "CidrBlock": {
+     "Fn::Select": [
+      1,
+      {
+       "Fn::Cidr": [
+        {
+         "ref": "VPC",
+         "attr": "CidrBlock"
+        },
+        9,
+        8
+       ]
+      }
+     ]
+    },
+    "AvailabilityZone": "us-east-1b",
+    "Tags": [
+     {
+      "Key": "AccessControl",
+      "Value": "PUBLIC"
+     },
+     {
+      "Key": "Name",
+      "Value": "Fog-SN-PUBLIC-B"
+     }
+    ],
+    "__resource__": {
+     "Condition": "HasPublicSubnets",
+     "DependsOn": [
+      "IPv6CidrBlock"
+     ]
+    }
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "AssignPublicRouteTableB",
+   "cfg": "AssignPublicRouteTableB",
+   "type": "AWS::EC2::SubnetRouteTableAssociation",
+   "values": {
+    "SubnetId": {
+     "ref": "SubnetBPub"
+    },
+    "RouteTableId": {
+     "ref": "RouteTablePublic"
+    },
+    "__resource__": {
+     "Condition": "HasPublicSubnets"
+    }
+   },
+   "refs": [
+    "RouteTablePublic",
+    "SubnetBPub"
+   ]
+  },
+  {
+   "id": "SubnetCPub",
+   "cfg": "SubnetCPub",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "AssignIpv6AddressOnCreation": true,
+    "Ipv6CidrBlock": {
+     "Fn::Select": [
+      2,
+      {
+       "Fn::Cidr": [
+        {
+         "Fn::Select": [
+          0,
+          {
+           "ref": "VPC",
+           "attr": "Ipv6CidrBlocks"
+          }
+         ]
+        },
+        9,
+        64
+       ]
+      }
+     ]
+    },
+    "CidrBlock": {
+     "Fn::Select": [
+      2,
+      {
+       "Fn::Cidr": [
+        {
+         "ref": "VPC",
+         "attr": "CidrBlock"
+        },
+        9,
+        8
+       ]
+      }
+     ]
+    },
+    "AvailabilityZone": "us-east-1c",
+    "Tags": [
+     {
+      "Key": "AccessControl",
+      "Value": "PUBLIC"
+     },
+     {
+      "Key": "Name",
+      "Value": "Fog-SN-PUBLIC-C"
+     }
+    ],
+    "__resource__": {
+     "Condition": "HasPublicSubnets",
+     "DependsOn": [
+      "IPv6CidrBlock"
+     ]
+    }
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "AssignPublicRouteTableC",
+   "cfg": "AssignPublicRouteTableC",
+   "type": "AWS::EC2::SubnetRouteTableAssociation",
+   "values": {
+    "SubnetId": {
+     "ref": "SubnetCPub"
+    },
+    "RouteTableId": {
+     "ref": "RouteTablePublic"
+    },
+    "__resource__": {
+     "Condition": "HasPublicSubnets"
+    }
+   },
+   "refs": [
+    "RouteTablePublic",
+    "SubnetCPub"
+   ]
+  },
+  {
+   "id": "RouteTablePrivate",
+   "cfg": "RouteTablePrivate",
+   "type": "AWS::EC2::RouteTable",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "Tags": [
+     {
+      "Key": "AccessControl",
+      "Value": "PRIVATE"
+     },
+     {
+      "Key": "Name",
+      "Value": "Fog-RT-PRIVATE"
+     }
+    ]
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "SubnetAPriv",
+   "cfg": "SubnetAPriv",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "AssignIpv6AddressOnCreation": true,
+    "Ipv6CidrBlock": {
+     "Fn::Select": [
+      3,
+      {
+       "Fn::Cidr": [
+        {
+         "Fn::Select": [
+          0,
+          {
+           "ref": "VPC",
+           "attr": "Ipv6CidrBlocks"
+          }
+         ]
+        },
+        9,
+        64
+       ]
+      }
+     ]
+    },
+    "CidrBlock": {
+     "Fn::Select": [
+      3,
+      {
+       "Fn::Cidr": [
+        {
+         "ref": "VPC",
+         "attr": "CidrBlock"
+        },
+        9,
+        8
+       ]
+      }
+     ]
+    },
+    "AvailabilityZone": "us-east-1a",
+    "Tags": [
+     {
+      "Key": "AccessControl",
+      "Value": "PRIVATE"
+     },
+     {
+      "Key": "Name",
+      "Value": "Fog-SN-PRIVATE-A"
+     }
+    ],
+    "__resource__": {
+     "DependsOn": [
+      "IPv6CidrBlock"
+     ]
+    }
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "AssignPrivateRouteTableA",
+   "cfg": "AssignPrivateRouteTableA",
+   "type": "AWS::EC2::SubnetRouteTableAssociation",
+   "values": {
+    "SubnetId": {
+     "ref": "SubnetAPriv"
+    },
+    "RouteTableId": {
+     "ref": "RouteTablePrivate"
+    }
+   },
+   "refs": [
+    "RouteTablePrivate",
+    "SubnetAPriv"
+   ]
+  },
+  {
+   "id": "SubnetBPriv",
+   "cfg": "SubnetBPriv",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "AssignIpv6AddressOnCreation": true,
+    "Ipv6CidrBlock": {
+     "Fn::Select": [
+      4,
+      {
+       "Fn::Cidr": [
+        {
+         "Fn::Select": [
+          0,
+          {
+           "ref": "VPC",
+           "attr": "Ipv6CidrBlocks"
+          }
+         ]
+        },
+        9,
+        64
+       ]
+      }
+     ]
+    },
+    "CidrBlock": {
+     "Fn::Select": [
+      4,
+      {
+       "Fn::Cidr": [
+        {
+         "ref": "VPC",
+         "attr": "CidrBlock"
+        },
+        9,
+        8
+       ]
+      }
+     ]
+    },
+    "AvailabilityZone": "us-east-1b",
+    "Tags": [
+     {
+      "Key": "AccessControl",
+      "Value": "PRIVATE"
+     },
+     {
+      "Key": "Name",
+      "Value": "Fog-SN-PRIVATE-B"
+     }
+    ],
+    "__resource__": {
+     "DependsOn": [
+      "IPv6CidrBlock"
+     ]
+    }
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "AssignPrivateRouteTableB",
+   "cfg": "AssignPrivateRouteTableB",
+   "type": "AWS::EC2::SubnetRouteTableAssociation",
+   "values": {
+    "SubnetId": {
+     "ref": "SubnetBPriv"
+    },
+    "RouteTableId": {
+     "ref": "RouteTablePrivate"
+    }
+   },
+   "refs": [
+    "RouteTablePrivate",
+    "SubnetBPriv"
+   ]
+  },
+  {
+   "id": "SubnetCPriv",
+   "cfg": "SubnetCPriv",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "AssignIpv6AddressOnCreation": true,
+    "Ipv6CidrBlock": {
+     "Fn::Select": [
+      5,
+      {
+       "Fn::Cidr": [
+        {
+         "Fn::Select": [
+          0,
+          {
+           "ref": "VPC",
+           "attr": "Ipv6CidrBlocks"
+          }
+         ]
+        },
+        9,
+        64
+       ]
+      }
+     ]
+    },
+    "CidrBlock": {
+     "Fn::Select": [
+      5,
+      {
+       "Fn::Cidr": [
+        {
+         "ref": "VPC",
+         "attr": "CidrBlock"
+        },
+        9,
+        8
+       ]
+      }
+     ]
+    },
+    "AvailabilityZone": "us-east-1c",
+    "Tags": [
+     {
+      "Key": "AccessControl",
+      "Value": "PRIVATE"
+     },
+     {
+      "Key": "Name",
+      "Value": "Fog-SN-PRIVATE-C"
+     }
+    ],
+    "__resource__": {
+     "DependsOn": [
+      "IPv6CidrBlock"
+     ]
+    }
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "AssignPrivateRouteTableC",
+   "cfg": "AssignPrivateRouteTableC",
+   "type": "AWS::EC2::SubnetRouteTableAssociation",
+   "values": {
+    "SubnetId": {
+     "ref": "SubnetCPriv"
+    },
+    "RouteTableId": {
+     "ref": "RouteTablePrivate"
+    }
+   },
+   "refs": [
+    "RouteTablePrivate",
+    "SubnetCPriv"
+   ]
+  },
+  {
+   "id": "__parameter__.Identifier",
+   "cfg": "__parameter__.Identifier",
+   "type": "__parameter__",
+   "values": {
+    "name": "Identifier",
+    "type": "String",
+    "default": "Fog",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.CidrBlock",
+   "cfg": "__parameter__.CidrBlock",
+   "type": "__parameter__",
+   "values": {
+    "name": "CidrBlock",
+    "type": "String",
+    "default": "10.42.0.0/16",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.IncludePublicSubnets",
+   "cfg": "__parameter__.IncludePublicSubnets",
+   "type": "__parameter__",
+   "values": {
+    "name": "IncludePublicSubnets",
+    "type": "String",
+    "default": "yes",
+    "allowed_values": [
+     "yes",
+     "no"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.VPCID",
+   "cfg": "__output__.VPCID",
+   "type": "__output__",
+   "values": {
+    "name": "VPCID",
+    "value": {
+     "ref": "VPC"
+    },
+    "description": "The ID of the VPC",
+    "export": "stack-VPCID"
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "__output__.PublicSubnetIDs",
+   "cfg": "__output__.PublicSubnetIDs",
+   "type": "__output__",
+   "values": {
+    "name": "PublicSubnetIDs",
+    "value": {
+     "Fn::Join": [
+      ",",
+      [
+       {
+        "ref": "SubnetAPub"
+       },
+       {
+        "ref": "SubnetBPub"
+       },
+       {
+        "ref": "SubnetCPub"
+       }
+      ]
+     ]
+    },
+    "description": "IDs of the Public Subnets in the VPC",
+    "export": "stack-PUBLIC-SUBNET-IDS"
+   },
+   "refs": [
+    "SubnetAPub",
+    "SubnetBPub",
+    "SubnetCPub"
+   ]
+  },
+  {
+   "id": "__output__.PrivateSubnetIDs",
+   "cfg": "__output__.PrivateSubnetIDs",
+   "type": "__output__",
+   "values": {
+    "name": "PrivateSubnetIDs",
+    "value": {
+     "Fn::Join": [
+      ",",
+      [
+       {
+        "ref": "SubnetAPriv"
+       },
+       {
+        "ref": "SubnetBPriv"
+       },
+       {
+        "ref": "SubnetCPriv"
+       }
+      ]
+     ]
+    },
+    "description": "IDs of the Private Subnets in the VPC",
+    "export": "stack-PRIVATE-SUBNET-IDS"
+   },
+   "refs": [
+    "SubnetAPriv",
+    "SubnetBPriv",
+    "SubnetCPriv"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPC.VPC",
+   "cfg": "VPC",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::VPC",
+    "name": "VPC",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "CidrBlock": "10.42.0.0/16",
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "Fog-VPC"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCCidrBlock.IPv6CidrBlock",
+   "cfg": "IPv6CidrBlock",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::VPCCidrBlock",
+    "name": "IPv6CidrBlock",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "AmazonProvidedIpv6CidrBlock": true
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::InternetGateway.InternetGateway",
+   "cfg": "InternetGateway",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::InternetGateway",
+    "name": "InternetGateway",
+    "gated": true,
+    "gate": "HasPublicSubnets",
+    "properties": {
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "Fog-IGW"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCGatewayAttachment.VPCGatewayAttachment",
+   "cfg": "VPCGatewayAttachment",
+   "type": "__declared__",
+   "refs": [
+    "InternetGateway",
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::VPCGatewayAttachment",
+    "name": "VPCGatewayAttachment",
+    "gated": true,
+    "gate": "HasPublicSubnets",
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "InternetGatewayId": {
+      "ref": "InternetGateway"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::RouteTable.RouteTablePublic",
+   "cfg": "RouteTablePublic",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::RouteTable",
+    "name": "RouteTablePublic",
+    "gated": true,
+    "gate": "HasPublicSubnets",
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "Tags": [
+      {
+       "Key": "AccessControl",
+       "Value": "PUBLIC"
+      },
+      {
+       "Key": "Name",
+       "Value": "Fog-RT-PUBLIC"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Route.InternetRoutePublic",
+   "cfg": "InternetRoutePublic",
+   "type": "__declared__",
+   "refs": [
+    "InternetGateway",
+    "RouteTablePublic"
+   ],
+   "values": {
+    "type": "AWS::EC2::Route",
+    "name": "InternetRoutePublic",
+    "gated": true,
+    "gate": "HasPublicSubnets",
+    "properties": {
+     "DestinationCidrBlock": "0.0.0.0/0",
+     "GatewayId": {
+      "ref": "InternetGateway"
+     },
+     "RouteTableId": {
+      "ref": "RouteTablePublic"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.SubnetAPub",
+   "cfg": "SubnetAPub",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "SubnetAPub",
+    "gated": true,
+    "gate": "HasPublicSubnets",
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "AssignIpv6AddressOnCreation": true,
+     "Ipv6CidrBlock": {
+      "Fn::Select": [
+       0,
+       {
+        "Fn::Cidr": [
+         {
+          "Fn::Select": [
+           0,
+           {
+            "ref": "VPC",
+            "attr": "Ipv6CidrBlocks"
+           }
+          ]
+         },
+         9,
+         64
+        ]
+       }
+      ]
+     },
+     "CidrBlock": {
+      "Fn::Select": [
+       0,
+       {
+        "Fn::Cidr": [
+         {
+          "ref": "VPC",
+          "attr": "CidrBlock"
+         },
+         9,
+         8
+        ]
+       }
+      ]
+     },
+     "AvailabilityZone": "us-east-1a",
+     "Tags": [
+      {
+       "Key": "AccessControl",
+       "Value": "PUBLIC"
+      },
+      {
+       "Key": "Name",
+       "Value": "Fog-SN-PUBLIC-A"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetRouteTableAssociation.AssignPublicRouteTableA",
+   "cfg": "AssignPublicRouteTableA",
+   "type": "__declared__",
+   "refs": [
+    "RouteTablePublic",
+    "SubnetAPub"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetRouteTableAssociation",
+    "name": "AssignPublicRouteTableA",
+    "gated": true,
+    "gate": "HasPublicSubnets",
+    "properties": {
+     "SubnetId": {
+      "ref": "SubnetAPub"
+     },
+     "RouteTableId": {
+      "ref": "RouteTablePublic"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.SubnetBPub",
+   "cfg": "SubnetBPub",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "SubnetBPub",
+    "gated": true,
+    "gate": "HasPublicSubnets",
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "AssignIpv6AddressOnCreation": true,
+     "Ipv6CidrBlock": {
+      "Fn::Select": [
+       1,
+       {
+        "Fn::Cidr": [
+         {
+          "Fn::Select": [
+           0,
+           {
+            "ref": "VPC",
+            "attr": "Ipv6CidrBlocks"
+           }
+          ]
+         },
+         9,
+         64
+        ]
+       }
+      ]
+     },
+     "CidrBlock": {
+      "Fn::Select": [
+       1,
+       {
+        "Fn::Cidr": [
+         {
+          "ref": "VPC",
+          "attr": "CidrBlock"
+         },
+         9,
+         8
+        ]
+       }
+      ]
+     },
+     "AvailabilityZone": "us-east-1b",
+     "Tags": [
+      {
+       "Key": "AccessControl",
+       "Value": "PUBLIC"
+      },
+      {
+       "Key": "Name",
+       "Value": "Fog-SN-PUBLIC-B"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetRouteTableAssociation.AssignPublicRouteTableB",
+   "cfg": "AssignPublicRouteTableB",
+   "type": "__declared__",
+   "refs": [
+    "RouteTablePublic",
+    "SubnetBPub"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetRouteTableAssociation",
+    "name": "AssignPublicRouteTableB",
+    "gated": true,
+    "gate": "HasPublicSubnets",
+    "properties": {
+     "SubnetId": {
+      "ref": "SubnetBPub"
+     },
+     "RouteTableId": {
+      "ref": "RouteTablePublic"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.SubnetCPub",
+   "cfg": "SubnetCPub",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "SubnetCPub",
+    "gated": true,
+    "gate": "HasPublicSubnets",
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "AssignIpv6AddressOnCreation": true,
+     "Ipv6CidrBlock": {
+      "Fn::Select": [
+       2,
+       {
+        "Fn::Cidr": [
+         {
+          "Fn::Select": [
+           0,
+           {
+            "ref": "VPC",
+            "attr": "Ipv6CidrBlocks"
+           }
+          ]
+         },
+         9,
+         64
+        ]
+       }
+      ]
+     },
+     "CidrBlock": {
+      "Fn::Select": [
+       2,
+       {
+        "Fn::Cidr": [
+         {
+          "ref": "VPC",
+          "attr": "CidrBlock"
+         },
+         9,
+         8
+        ]
+       }
+      ]
+     },
+     "AvailabilityZone": "us-east-1c",
+     "Tags": [
+      {
+       "Key": "AccessControl",
+       "Value": "PUBLIC"
+      },
+      {
+       "Key": "Name",
+       "Value": "Fog-SN-PUBLIC-C"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetRouteTableAssociation.AssignPublicRouteTableC",
+   "cfg": "AssignPublicRouteTableC",
+   "type": "__declared__",
+   "refs": [
+    "RouteTablePublic",
+    "SubnetCPub"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetRouteTableAssociation",
+    "name": "AssignPublicRouteTableC",
+    "gated": true,
+    "gate": "HasPublicSubnets",
+    "properties": {
+     "SubnetId": {
+      "ref": "SubnetCPub"
+     },
+     "RouteTableId": {
+      "ref": "RouteTablePublic"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::RouteTable.RouteTablePrivate",
+   "cfg": "RouteTablePrivate",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::RouteTable",
+    "name": "RouteTablePrivate",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "Tags": [
+      {
+       "Key": "AccessControl",
+       "Value": "PRIVATE"
+      },
+      {
+       "Key": "Name",
+       "Value": "Fog-RT-PRIVATE"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.SubnetAPriv",
+   "cfg": "SubnetAPriv",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "SubnetAPriv",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "AssignIpv6AddressOnCreation": true,
+     "Ipv6CidrBlock": {
+      "Fn::Select": [
+       3,
+       {
+        "Fn::Cidr": [
+         {
+          "Fn::Select": [
+           0,
+           {
+            "ref": "VPC",
+            "attr": "Ipv6CidrBlocks"
+           }
+          ]
+         },
+         9,
+         64
+        ]
+       }
+      ]
+     },
+     "CidrBlock": {
+      "Fn::Select": [
+       3,
+       {
+        "Fn::Cidr": [
+         {
+          "ref": "VPC",
+          "attr": "CidrBlock"
+         },
+         9,
+         8
+        ]
+       }
+      ]
+     },
+     "AvailabilityZone": "us-east-1a",
+     "Tags": [
+      {
+       "Key": "AccessControl",
+       "Value": "PRIVATE"
+      },
+      {
+       "Key": "Name",
+       "Value": "Fog-SN-PRIVATE-A"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetRouteTableAssociation.AssignPrivateRouteTableA",
+   "cfg": "AssignPrivateRouteTableA",
+   "type": "__declared__",
+   "refs": [
+    "RouteTablePrivate",
+    "SubnetAPriv"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetRouteTableAssociation",
+    "name": "AssignPrivateRouteTableA",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "SubnetId": {
+      "ref": "SubnetAPriv"
+     },
+     "RouteTableId": {
+      "ref": "RouteTablePrivate"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.SubnetBPriv",
+   "cfg": "SubnetBPriv",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "SubnetBPriv",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "AssignIpv6AddressOnCreation": true,
+     "Ipv6CidrBlock": {
+      "Fn::Select": [
+       4,
+       {
+        "Fn::Cidr": [
+         {
+          "Fn::Select": [
+           0,
+           {
+            "ref": "VPC",
+            "attr": "Ipv6CidrBlocks"
+           }
+          ]
+         },
+         9,
+         64
+        ]
+       }
+      ]
+     },
+     "CidrBlock": {
+      "Fn::Select": [
+       4,
+       {
+        "Fn::Cidr": [
+         {
+          "ref": "VPC",
+          "attr": "CidrBlock"
+         },
+         9,
+         8
+        ]
+       }
+      ]
+     },
+     "AvailabilityZone": "us-east-1b",
+     "Tags": [
+      {
+       "Key": "AccessControl",
+       "Value": "PRIVATE"
+      },
+      {
+       "Key": "Name",
+       "Value": "Fog-SN-PRIVATE-B"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetRouteTableAssociation.AssignPrivateRouteTableB",
+   "cfg": "AssignPrivateRouteTableB",
+   "type": "__declared__",
+   "refs": [
+    "RouteTablePrivate",
+    "SubnetBPriv"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetRouteTableAssociation",
+    "name": "AssignPrivateRouteTableB",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "SubnetId": {
+      "ref": "SubnetBPriv"
+     },
+     "RouteTableId": {
+      "ref": "RouteTablePrivate"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.SubnetCPriv",
+   "cfg": "SubnetCPriv",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "SubnetCPriv",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "AssignIpv6AddressOnCreation": true,
+     "Ipv6CidrBlock": {
+      "Fn::Select": [
+       5,
+       {
+        "Fn::Cidr": [
+         {
+          "Fn::Select": [
+           0,
+           {
+            "ref": "VPC",
+            "attr": "Ipv6CidrBlocks"
+           }
+          ]
+         },
+         9,
+         64
+        ]
+       }
+      ]
+     },
+     "CidrBlock": {
+      "Fn::Select": [
+       5,
+       {
+        "Fn::Cidr": [
+         {
+          "ref": "VPC",
+          "attr": "CidrBlock"
+         },
+         9,
+         8
+        ]
+       }
+      ]
+     },
+     "AvailabilityZone": "us-east-1c",
+     "Tags": [
+      {
+       "Key": "AccessControl",
+       "Value": "PRIVATE"
+      },
+      {
+       "Key": "Name",
+       "Value": "Fog-SN-PRIVATE-C"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetRouteTableAssociation.AssignPrivateRouteTableC",
+   "cfg": "AssignPrivateRouteTableC",
+   "type": "__declared__",
+   "refs": [
+    "RouteTablePrivate",
+    "SubnetCPriv"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetRouteTableAssociation",
+    "name": "AssignPrivateRouteTableC",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "SubnetId": {
+      "ref": "SubnetCPriv"
+     },
+     "RouteTableId": {
+      "ref": "RouteTablePrivate"
+     }
+    }
+   }
+  }
+ ]
+}

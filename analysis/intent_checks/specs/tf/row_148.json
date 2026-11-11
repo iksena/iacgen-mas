@@ -1,0 +1,1677 @@
+{
+ "lang": "tf",
+ "row_number": 148,
+ "source_hash": {
+  "gt": "571ba12f726fa06045def62f9564848fb54f4aa6409d98215bb59a90e2bdd4ab",
+  "prompt": "2801ab59457589575c47bb6328a61cd6c2f5646e80de4ca2ce2ae74a23c66c6d"
+ },
+ "selectors": {
+  "table": {
+   "types": [
+    "aws_dynamodb_table"
+   ],
+   "where": [
+    {
+     "path": "name",
+     "op": "eq",
+     "value": "Pets"
+    }
+   ]
+  },
+  "api": {
+   "types": [
+    "aws_api_gateway_rest_api"
+   ],
+   "where": [
+    {
+     "path": "name",
+     "op": "eq",
+     "value": "APIGW DynamoDB Serverless Pattern Demo"
+    }
+   ]
+  },
+  "stage": {
+   "types": [
+    "aws_api_gateway_stage"
+   ],
+   "where": [
+    {
+     "path": "stage_name",
+     "op": "eq",
+     "value": "v1"
+    }
+   ]
+  },
+  "plan": {
+   "types": [
+    "aws_api_gateway_usage_plan"
+   ],
+   "where": [
+    {
+     "path": "name",
+     "op": "eq",
+     "value": "apigw-dynamodb-terraform-usage-plan"
+    }
+   ]
+  },
+  "key": {
+   "types": [
+    "aws_api_gateway_api_key"
+   ],
+   "where": [
+    {
+     "path": "name",
+     "op": "eq",
+     "value": "apigw-dynamodb-terraform-api-key"
+    }
+   ]
+  },
+  "lg": {
+   "types": [
+    "aws_cloudwatch_log_group"
+   ]
+  },
+  "acct": {
+   "types": [
+    "aws_api_gateway_account"
+   ]
+  },
+  "apigw_role": {
+   "types": [
+    "aws_iam_role"
+   ],
+   "where": [
+    {
+     "path": "assume_role_policy",
+     "op": "contains",
+     "value": "apigateway.amazonaws.com"
+    }
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "table",
+   "kind": "exists",
+   "tier": "core",
+   "select": "table",
+   "quote": "a provisioned DynamoDB table named \"Pets\""
+  },
+  {
+   "id": "table_provisioned_5_5",
+   "kind": "exists",
+   "tier": "core",
+   "select": {
+    "types": [
+     "aws_dynamodb_table"
+    ],
+    "where": [
+     {
+      "path": "name",
+      "op": "eq",
+      "value": "Pets"
+     },
+     {
+      "path": "billing_mode",
+      "op": "eq",
+      "value": "PROVISIONED"
+     },
+     {
+      "path": "read_capacity",
+      "op": "eq",
+      "value": 5
+     },
+     {
+      "path": "write_capacity",
+      "op": "eq",
+      "value": 5
+     }
+    ]
+   },
+   "quote": "set to 5 read and 5 write capacity units"
+  },
+  {
+   "id": "table_hash_key",
+   "kind": "attr",
+   "tier": "core",
+   "select": "table",
+   "cond": {
+    "path": "hash_key",
+    "op": "eq",
+    "value": "id"
+   },
+   "quote": "a primary hash key \"id\" (string)"
+  },
+  {
+   "id": "table_hash_key_string",
+   "kind": "attr",
+   "tier": "core",
+   "select": "table",
+   "cond": {
+    "path": "attribute.*",
+    "op": "match",
+    "value": [
+     {
+      "path": "name",
+      "op": "eq",
+      "value": "id"
+     },
+     {
+      "path": "type",
+      "op": "eq",
+      "value": "S"
+     }
+    ]
+   },
+   "quote": "a primary hash key \"id\" (string)"
+  },
+  {
+   "id": "gsi_name_key",
+   "kind": "attr",
+   "tier": "core",
+   "select": "table",
+   "cond": {
+    "path": "global_secondary_index.*",
+    "op": "match",
+    "value": [
+     {
+      "path": "name",
+      "op": "eq",
+      "value": "PetType-index"
+     },
+     {
+      "path": "hash_key",
+      "op": "eq",
+      "value": "PetType"
+     }
+    ]
+   },
+   "quote": "a global secondary index named \"PetType-index\" on hash key \"PetType\" (string)"
+  },
+  {
+   "id": "gsi_pettype_string",
+   "kind": "attr",
+   "tier": "detail",
+   "select": "table",
+   "cond": {
+    "path": "attribute.*",
+    "op": "match",
+    "value": [
+     {
+      "path": "name",
+      "op": "eq",
+      "value": "PetType"
+     },
+     {
+      "path": "type",
+      "op": "eq",
+      "value": "S"
+     }
+    ]
+   },
+   "quote": "hash key \"PetType\" (string)"
+  },
+  {
+   "id": "gsi_projection",
+   "kind": "attr",
+   "tier": "core",
+   "select": "table",
+   "cond": {
+    "path": "global_secondary_index.*",
+    "op": "match",
+    "value": [
+     {
+      "path": "name",
+      "op": "eq",
+      "value": "PetType-index"
+     },
+     {
+      "path": "projection_type",
+      "op": "eq",
+      "value": "INCLUDE"
+     },
+     {
+      "path": "non_key_attributes.*",
+      "op": "eq",
+      "value": "PetName"
+     },
+     {
+      "path": "non_key_attributes.*",
+      "op": "eq",
+      "value": "PetPrice"
+     }
+    ]
+   },
+   "quote": "projecting non-key attributes \"PetName\" and \"PetPrice\"",
+   "justify": "projecting named non-key attributes means INCLUDE projection"
+  },
+  {
+   "id": "gsi_capacity",
+   "kind": "attr",
+   "tier": "detail",
+   "select": "table",
+   "cond": {
+    "path": "global_secondary_index.*",
+    "op": "match",
+    "value": [
+     {
+      "path": "name",
+      "op": "eq",
+      "value": "PetType-index"
+     },
+     {
+      "path": "read_capacity",
+      "op": "eq",
+      "value": 5
+     },
+     {
+      "path": "write_capacity",
+      "op": "eq",
+      "value": 5
+     }
+    ]
+   },
+   "quote": "with 5 read and 5 write capacity units"
+  },
+  {
+   "id": "role_apigateway",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": "apigw_role"
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_iam_role"
+       },
+       {
+        "path": "properties.assume_role_policy",
+        "op": "contains",
+        "value": "apigateway.amazonaws.com"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_iam_role"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "data.aws_iam_policy_document"
+       },
+       {
+        "path": "properties",
+        "op": "regex",
+        "value": "(?is)apigateway\\.amazonaws\\.com.{0,600}sts:AssumeRole|sts:AssumeRole.{0,600}apigateway\\.amazonaws\\.com"
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "An IAM role assuming the \"apigateway.amazonaws.com\" service principal"
+  },
+  {
+   "id": "iam_putitem",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_role_policy"
+      ],
+      "where": [
+       {
+        "path": "policy",
+        "op": "regex",
+        "value": "(?i)dynamodb:(PutItem|\\*)"
+       }
+      ]
+     },
+     "to": "apigw_role"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_iam_role_policy"
+       },
+       {
+        "path": "properties",
+        "op": "regex",
+        "value": "(?i)dynamodb:(PutItem|\\*)"
+       }
+      ]
+     },
+     "to": "apigw_role"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_role_policy_attachment"
+      ]
+     },
+     "to": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_iam_policy"
+       },
+       {
+        "path": "properties",
+        "op": "regex",
+        "value": "(?i)dynamodb:(PutItem|\\*)"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_iam_role"
+       },
+       {
+        "path": "properties.assume_role_policy",
+        "op": "contains",
+        "value": "apigateway.amazonaws.com"
+       },
+       {
+        "path": "properties.inline_policy",
+        "op": "regex",
+        "value": "(?i)dynamodb:(PutItem|\\*)"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "in",
+        "value": [
+         "aws_iam_role_policy",
+         "aws_iam_policy",
+         "aws_iam_role"
+        ]
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "data.aws_iam_policy_document"
+       },
+       {
+        "path": "properties",
+        "op": "regex",
+        "value": "(?i)dynamodb:(PutItem|\\*)"
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "must grant permissions for \"dynamodb:PutItem\" and \"dynamodb:Query\""
+  },
+  {
+   "id": "iam_query",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_role_policy"
+      ],
+      "where": [
+       {
+        "path": "policy",
+        "op": "regex",
+        "value": "(?i)dynamodb:(Query|\\*)"
+       }
+      ]
+     },
+     "to": "apigw_role"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_iam_role_policy"
+       },
+       {
+        "path": "properties",
+        "op": "regex",
+        "value": "(?i)dynamodb:(Query|\\*)"
+       }
+      ]
+     },
+     "to": "apigw_role"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_role_policy_attachment"
+      ]
+     },
+     "to": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_iam_policy"
+       },
+       {
+        "path": "properties",
+        "op": "regex",
+        "value": "(?i)dynamodb:(Query|\\*)"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_iam_role"
+       },
+       {
+        "path": "properties.assume_role_policy",
+        "op": "contains",
+        "value": "apigateway.amazonaws.com"
+       },
+       {
+        "path": "properties.inline_policy",
+        "op": "regex",
+        "value": "(?i)dynamodb:(Query|\\*)"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "in",
+        "value": [
+         "aws_iam_role_policy",
+         "aws_iam_policy",
+         "aws_iam_role"
+        ]
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "data.aws_iam_policy_document"
+       },
+       {
+        "path": "properties",
+        "op": "regex",
+        "value": "(?i)dynamodb:(Query|\\*)"
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "must grant permissions for \"dynamodb:PutItem\" and \"dynamodb:Query\""
+  },
+  {
+   "id": "iam_table_and_indexes",
+   "kind": "any_of",
+   "tier": "detail",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_role_policy"
+      ],
+      "where": [
+       {
+        "path": "policy",
+        "op": "regex",
+        "value": "(?i)/index/"
+       }
+      ]
+     },
+     "to": "apigw_role"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_iam_role_policy"
+       },
+       {
+        "path": "properties",
+        "op": "regex",
+        "value": "(?i)/index/"
+       }
+      ]
+     },
+     "to": "apigw_role"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_role_policy_attachment"
+      ]
+     },
+     "to": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_iam_policy"
+       },
+       {
+        "path": "properties",
+        "op": "regex",
+        "value": "(?i)/index/"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_iam_role"
+       },
+       {
+        "path": "properties.assume_role_policy",
+        "op": "contains",
+        "value": "apigateway.amazonaws.com"
+       },
+       {
+        "path": "properties.inline_policy",
+        "op": "regex",
+        "value": "(?i)/index/"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "in",
+        "value": [
+         "aws_iam_role_policy",
+         "aws_iam_policy",
+         "aws_iam_role"
+        ]
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "data.aws_iam_policy_document"
+       },
+       {
+        "path": "properties",
+        "op": "regex",
+        "value": "(?i)/index/"
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "targeting the table and its indexes"
+  },
+  {
+   "id": "iam_policy_on_role",
+   "kind": "any_of",
+   "tier": "detail",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_role_policy_attachment"
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_iam_role"
+      ],
+      "where": [
+       {
+        "path": "assume_role_policy",
+        "op": "contains",
+        "value": "apigateway.amazonaws.com"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_role_policy"
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_iam_role"
+      ],
+      "where": [
+       {
+        "path": "assume_role_policy",
+        "op": "contains",
+        "value": "apigateway.amazonaws.com"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_iam_role_policy_attachment"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_iam_role_policy"
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "An IAM role assuming the \"apigateway.amazonaws.com\" service principal must grant permissions for \"dynamodb:PutItem\" and \"dynamodb:Query\" targeting the table and its indexes"
+  },
+  {
+   "id": "rest_api",
+   "kind": "exists",
+   "tier": "core",
+   "select": "api",
+   "quote": "an API Gateway REST API named \"APIGW DynamoDB Serverless Pattern Demo\""
+  },
+  {
+   "id": "api_key_header",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "api",
+     "cond": {
+      "path": "body",
+      "op": "regex",
+      "value": "(?i)x-api-key"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_api_gateway_rest_api"
+       }
+      ]
+     },
+     "cond": {
+      "path": "properties.body",
+      "op": "regex",
+      "value": "(?i)x-api-key"
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_api_gateway_method"
+      ],
+      "where": [
+       {
+        "path": "api_key_required",
+        "op": "eq",
+        "value": true
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "enforcing API key security via an \"x-api-key\" header",
+   "justify": "API Gateway reads API keys from the x-api-key header; a method requiring an API key enforces it"
+  },
+  {
+   "id": "post_pets",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "api",
+     "cond": {
+      "path": "body",
+      "op": "regex",
+      "value": "(?is)/pets['\\\"\\\\]*\\s*:\\s*\\{.{0,900}['\\\"\\\\]post['\\\"\\\\]*\\s*:"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_api_gateway_rest_api"
+       }
+      ]
+     },
+     "cond": {
+      "path": "properties.body",
+      "op": "regex",
+      "value": "(?is)/pets['\\\"\\\\]*\\s*:\\s*\\{.{0,900}['\\\"\\\\]post['\\\"\\\\]*\\s*:"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_api_gateway_method"
+      ],
+      "where": [
+       {
+        "path": "http_method",
+        "op": "eq",
+        "value": "POST"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_api_gateway_resource"
+      ],
+      "where": [
+       {
+        "path": "path_part",
+        "op": "eq",
+        "value": "pets"
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "it must expose a POST endpoint at \"/pets\""
+  },
+  {
+   "id": "get_pets_type",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "api",
+     "cond": {
+      "path": "body",
+      "op": "regex",
+      "value": "(?is)/pets/\\{PetType\\}['\\\"\\\\]*\\s*:\\s*\\{.{0,900}['\\\"\\\\]get['\\\"\\\\]*\\s*:"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_api_gateway_rest_api"
+       }
+      ]
+     },
+     "cond": {
+      "path": "properties.body",
+      "op": "regex",
+      "value": "(?is)/pets/\\{PetType\\}['\\\"\\\\]*\\s*:\\s*\\{.{0,900}['\\\"\\\\]get['\\\"\\\\]*\\s*:"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_api_gateway_method"
+      ],
+      "where": [
+       {
+        "path": "http_method",
+        "op": "eq",
+        "value": "GET"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_api_gateway_resource"
+      ],
+      "where": [
+       {
+        "path": "path_part",
+        "op": "eq",
+        "value": "{PetType}"
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "a GET endpoint at \"/pets/{PetType}\""
+  },
+  {
+   "id": "post_putitem",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "api",
+     "cond": {
+      "path": "body",
+      "op": "regex",
+      "value": "(?i)dynamodb:action/PutItem"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_api_gateway_rest_api"
+       }
+      ]
+     },
+     "cond": {
+      "path": "properties.body",
+      "op": "regex",
+      "value": "(?i)dynamodb:action/PutItem"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_api_gateway_integration"
+      ],
+      "where": [
+       {
+        "path": "uri",
+        "op": "regex",
+        "value": "(?i)dynamodb:action/PutItem"
+       }
+      ]
+     },
+     "cond": {
+      "path": "uri",
+      "op": "regex",
+      "value": "(?i)dynamodb:action/PutItem"
+     }
+    }
+   ],
+   "quote": "integrating directly with DynamoDB PutItem"
+  },
+  {
+   "id": "get_query",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "api",
+     "cond": {
+      "path": "body",
+      "op": "regex",
+      "value": "(?i)dynamodb:action/Query"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_api_gateway_rest_api"
+       }
+      ]
+     },
+     "cond": {
+      "path": "properties.body",
+      "op": "regex",
+      "value": "(?i)dynamodb:action/Query"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_api_gateway_integration"
+      ],
+      "where": [
+       {
+        "path": "uri",
+        "op": "regex",
+        "value": "(?i)dynamodb:action/Query"
+       }
+      ]
+     },
+     "cond": {
+      "path": "uri",
+      "op": "regex",
+      "value": "(?i)dynamodb:action/Query"
+     }
+    }
+   ],
+   "quote": "integrating directly with DynamoDB Query against \"PetType-index\""
+  },
+  {
+   "id": "query_index",
+   "kind": "any_of",
+   "tier": "detail",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "api",
+     "cond": {
+      "path": "body",
+      "op": "regex",
+      "value": "PetType-index"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_api_gateway_rest_api"
+       }
+      ]
+     },
+     "cond": {
+      "path": "properties.body",
+      "op": "regex",
+      "value": "PetType-index"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_api_gateway_integration"
+      ]
+     },
+     "cond": {
+      "path": "request_templates",
+      "op": "contains",
+      "value": "PetType-index"
+     }
+    }
+   ],
+   "quote": "DynamoDB Query against \"PetType-index\""
+  },
+  {
+   "id": "vtl_request_put",
+   "kind": "any_of",
+   "tier": "detail",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "api",
+     "cond": {
+      "path": "body",
+      "op": "regex",
+      "value": "(?s)requestId.{0,400}PetBoolean.{0,60}true|PetBoolean.{0,60}true.{0,400}requestId"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_api_gateway_rest_api"
+       }
+      ]
+     },
+     "cond": {
+      "path": "properties.body",
+      "op": "regex",
+      "value": "(?s)requestId.{0,400}PetBoolean.{0,60}true|PetBoolean.{0,60}true.{0,400}requestId"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_api_gateway_integration"
+      ],
+      "where": [
+       {
+        "path": "request_templates",
+        "op": "contains",
+        "value": "PetBoolean"
+       }
+      ]
+     },
+     "cond": {
+      "path": "request_templates",
+      "op": "regex",
+      "value": "(?s)requestId.{0,400}PetBoolean.{0,60}true|PetBoolean.{0,60}true.{0,400}requestId"
+     }
+    }
+   ],
+   "quote": "VTL request templates mapping request payloads into \"Pets\" items with auto-generated requestId values and PetBoolean set to true"
+  },
+  {
+   "id": "vtl_urldecode",
+   "kind": "any_of",
+   "tier": "detail",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "api",
+     "cond": {
+      "path": "body",
+      "op": "regex",
+      "value": "urlDecode"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_api_gateway_rest_api"
+       }
+      ]
+     },
+     "cond": {
+      "path": "properties.body",
+      "op": "regex",
+      "value": "urlDecode"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_api_gateway_integration"
+      ]
+     },
+     "cond": {
+      "path": "request_templates",
+      "op": "contains",
+      "value": "urlDecode"
+     }
+    }
+   ],
+   "quote": "with URL-decoded parameter substitution"
+  },
+  {
+   "id": "vtl_response",
+   "kind": "any_of",
+   "tier": "detail",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "api",
+     "cond": {
+      "path": "body",
+      "op": "regex",
+      "value": "#foreach|\\$inputRoot|\\$input\\.path"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_api_gateway_rest_api"
+       }
+      ]
+     },
+     "cond": {
+      "path": "properties.body",
+      "op": "regex",
+      "value": "#foreach|\\$inputRoot|\\$input\\.path"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_api_gateway_integration_response"
+      ]
+     },
+     "cond": {
+      "path": "response_templates",
+      "op": "regex",
+      "value": "#foreach|\\$inputRoot|\\$input\\.path"
+     }
+    }
+   ],
+   "quote": "VTL response mapping",
+   "justify": "VTL response templates use #foreach / $input constructs"
+  },
+  {
+   "id": "stage_v1",
+   "kind": "exists",
+   "tier": "core",
+   "select": "stage",
+   "quote": "a stage named \"v1\""
+  },
+  {
+   "id": "deployment",
+   "kind": "exists",
+   "tier": "core",
+   "select": {
+    "types": [
+     "aws_api_gateway_deployment"
+    ]
+   },
+   "quote": "The REST API must be deployed to a stage"
+  },
+  {
+   "id": "method_settings_info",
+   "kind": "attr",
+   "tier": "core",
+   "select": {
+    "types": [
+     "aws_api_gateway_method_settings"
+    ]
+   },
+   "cond": {
+    "path": "settings.*.logging_level",
+    "op": "eq",
+    "value": "INFO"
+   },
+   "quote": "method settings enabling INFO level CloudWatch logging and metrics"
+  },
+  {
+   "id": "method_settings_metrics",
+   "kind": "attr",
+   "tier": "core",
+   "select": {
+    "types": [
+     "aws_api_gateway_method_settings"
+    ]
+   },
+   "cond": {
+    "path": "settings.*.metrics_enabled",
+    "op": "eq",
+    "value": true
+   },
+   "quote": "method settings enabling INFO level CloudWatch logging and metrics"
+  },
+  {
+   "id": "method_settings_stage",
+   "kind": "attr",
+   "tier": "detail",
+   "select": {
+    "types": [
+     "aws_api_gateway_method_settings"
+    ]
+   },
+   "cond": {
+    "path": "stage_name",
+    "op": "eq",
+    "value": "v1"
+   },
+   "quote": "method settings enabling INFO level CloudWatch logging and metrics"
+  },
+  {
+   "id": "account_role",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "acct",
+     "to": {
+      "types": [
+       "aws_iam_role"
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "acct",
+     "cond": {
+      "path": "cloudwatch_role_arn",
+      "op": "present"
+     }
+    }
+   ],
+   "quote": "linked to an API Gateway account CloudWatch role"
+  },
+  {
+   "id": "log_group_prefix",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_cloudwatch_log_group"
+      ],
+      "where": [
+       {
+        "path": "name_prefix",
+        "op": "regex",
+        "value": "^/aws/APIGW/terraform"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_cloudwatch_log_group"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "regex",
+        "value": "^/aws/APIGW/terraform"
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "a CloudWatch log group prefixed with \"/aws/APIGW/terraform\""
+  },
+  {
+   "id": "stage_logs_to_group",
+   "kind": "ref",
+   "tier": "detail",
+   "from": "stage",
+   "to": "lg",
+   "quote": "linked to an API Gateway account CloudWatch role, a CloudWatch log group prefixed with \"/aws/APIGW/terraform\"",
+   "bidirectional": true
+  },
+  {
+   "id": "log_resource_policy",
+   "kind": "exists",
+   "tier": "core",
+   "select": {
+    "types": [
+     "aws_cloudwatch_log_resource_policy"
+    ]
+   },
+   "quote": "a log resource policy permitting log delivery from the REST API source ARN"
+  },
+  {
+   "id": "log_policy_source_arn",
+   "kind": "any_of",
+   "tier": "detail",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_cloudwatch_log_resource_policy"
+      ]
+     },
+     "cond": {
+      "path": "policy_document",
+      "op": "regex",
+      "value": "(?i)SourceArn"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_cloudwatch_log_resource_policy"
+       }
+      ]
+     },
+     "cond": {
+      "path": "properties.policy_document",
+      "op": "regex",
+      "value": "(?i)SourceArn"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "data.aws_iam_policy_document"
+       }
+      ]
+     },
+     "cond": {
+      "path": "properties",
+      "op": "regex",
+      "value": "(?i)SourceArn"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_cloudwatch_log_resource_policy"
+      ]
+     },
+     "to": "api",
+     "bidirectional": true
+    }
+   ],
+   "quote": "permitting log delivery from the REST API source ARN"
+  },
+  {
+   "id": "api_key",
+   "kind": "exists",
+   "tier": "core",
+   "select": "key",
+   "quote": "an API key named \"apigw-dynamodb-terraform-api-key\""
+  },
+  {
+   "id": "usage_plan",
+   "kind": "exists",
+   "tier": "core",
+   "select": "plan",
+   "quote": "a usage plan named \"apigw-dynamodb-terraform-usage-plan\""
+  },
+  {
+   "id": "usage_plan_burst",
+   "kind": "attr",
+   "tier": "core",
+   "select": "plan",
+   "cond": {
+    "path": "throttle_settings.*.burst_limit",
+    "op": "eq",
+    "value": 20
+   },
+   "quote": "a burst limit of 20, rate limit of 100"
+  },
+  {
+   "id": "usage_plan_rate",
+   "kind": "attr",
+   "tier": "core",
+   "select": "plan",
+   "cond": {
+    "path": "throttle_settings.*.rate_limit",
+    "op": "eq",
+    "value": 100
+   },
+   "quote": "rate limit of 100"
+  },
+  {
+   "id": "usage_plan_quota",
+   "kind": "attr",
+   "tier": "core",
+   "select": "plan",
+   "cond": {
+    "path": "quota_settings.*",
+    "op": "match",
+    "value": [
+     {
+      "path": "limit",
+      "op": "eq",
+      "value": 1000
+     },
+     {
+      "path": "period",
+      "op": "eq",
+      "value": "MONTH"
+     }
+    ]
+   },
+   "quote": "a monthly quota limit of 1000 requests",
+   "justify": "monthly means period MONTH"
+  },
+  {
+   "id": "usage_plan_stage_v1",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "plan",
+     "cond": {
+      "path": "api_stages.*.stage",
+      "op": "eq",
+      "value": "v1"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": "plan",
+     "to": "stage"
+    }
+   ],
+   "quote": "associated with stage \"v1\""
+  },
+  {
+   "id": "key_bound_to_plan_key",
+   "kind": "ref",
+   "tier": "core",
+   "from": {
+    "types": [
+     "aws_api_gateway_usage_plan_key"
+    ]
+   },
+   "to": "key",
+   "quote": "an API key named \"apigw-dynamodb-terraform-api-key\" bound to a usage plan"
+  },
+  {
+   "id": "key_bound_to_plan_plan",
+   "kind": "ref",
+   "tier": "core",
+   "from": {
+    "types": [
+     "aws_api_gateway_usage_plan_key"
+    ]
+   },
+   "to": "plan",
+   "quote": "bound to a usage plan named \"apigw-dynamodb-terraform-usage-plan\""
+  },
+  {
+   "kind": "attr",
+   "select": "key",
+   "cond": {
+    "path": "enabled",
+    "op": "eq",
+    "value": true
+   },
+   "id": "api_key_enabled",
+   "tier": "extra"
+  },
+  {
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_api_gateway_usage_plan_key"
+    ]
+   },
+   "cond": {
+    "path": "key_type",
+    "op": "eq",
+    "value": "API_KEY"
+   },
+   "id": "usage_plan_key_type",
+   "tier": "extra"
+  }
+ ],
+ "notes": "'without relying on Lambda functions' is an absence requirement; the schema cannot assert that no resource of a type exists. Region is a provider setting. The DynamoDB grant checks bind the grant to a role: an inline role policy referencing an API Gateway-trusted role, an attachment of a granting managed policy, a role inline_policy, or a role/policy using a granting policy document; iam_table_and_indexes requires an index resource ARN (/index/). The OpenAPI-body route checks require the method as a path-item key (post: / get:), so the DynamoDB integration's httpMethod POST no longer satisfies them."
+}

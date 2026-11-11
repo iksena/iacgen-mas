@@ -1,0 +1,122 @@
+{
+  "lang": "tf",
+  "row_number": 332,
+  "source_hash": {
+    "gt": "6651e6898464bc6ad72622d80489b1fd3ae01e72066d82be15f35fb2fc83506d",
+    "prompt": "6ce7251b0a357a468fd8f0ef14b186f8ca2f916b460958343cb104225f5ba632"
+  },
+  "selectors": {
+    "p": {
+      "types": [
+        "aws_sns_sms_preferences"
+      ],
+      "where": []
+    }
+  },
+  "checks": [
+    {
+      "id": "prefs_exist",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "account-level Amazon SNS SMS messaging preferences",
+      "select": "p"
+    },
+    {
+      "id": "sms_type",
+      "kind": "attr",
+      "tier": "core",
+      "quote": "default SMS type to \"Transactional\"",
+      "select": "p",
+      "cond": {
+        "path": "default_sms_type",
+        "op": "eq",
+        "value": "Transactional"
+      }
+    },
+    {
+      "id": "sampling_zero",
+      "kind": "attr",
+      "tier": "core",
+      "quote": "delivery-status success sampling rate to 0",
+      "select": "p",
+      "cond": {
+        "path": "delivery_status_success_sampling_rate",
+        "op": "eq",
+        "value": 0
+      }
+    },
+    {
+      "id": "unset_by_default",
+      "kind": "all_of",
+      "tier": "detail",
+      "quote": "leaving the sender ID, monthly spend limit, delivery-status IAM role, and usage-report bucket unset by default",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "p",
+          "cond": {
+            "path": "default_sender_id",
+            "op": "absent"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "p",
+          "cond": {
+            "path": "monthly_spend_limit",
+            "op": "absent"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "p",
+          "cond": {
+            "path": "delivery_status_iam_role_arn",
+            "op": "absent"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "p",
+          "cond": {
+            "path": "usage_report_s3_bucket",
+            "op": "absent"
+          }
+        }
+      ]
+    },
+    {
+      "id": "has_output",
+      "kind": "any_of",
+      "tier": "detail",
+      "quote": "outputs the configured preference values",
+      "checks": [
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "__output__"
+            ],
+            "where": []
+          },
+          "to": "p"
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "__output__"
+            ],
+            "where": []
+          },
+          "cond": {
+            "path": "value",
+            "op": "regex",
+            "value": "(?i)transactional"
+          }
+        }
+      ]
+    }
+  ],
+  "notes": "has_output accepts an output that references the SMS preferences resource, or one whose value carries the configured SMS type (the ground truth outputs the input variables, so its output has no resource reference). Known gap in unset_by_default: it reads the planned values, so a setting wired to a resource created in the template (unknown, null at plan) passes as unset; the operators cannot express 'declared text does not reference a resource'."
+}

@@ -1,0 +1,796 @@
+package intent.cfn.row_212
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {
+  "g": {
+   "types": [
+    "AWS::Bedrock::Guardrail"
+   ],
+   "where": []
+  },
+  "ver": {
+   "types": [
+    "AWS::Bedrock::GuardrailVersion"
+   ],
+   "where": []
+  },
+  "ssm": {
+   "types": [
+    "AWS::SSM::Parameter"
+   ],
+   "where": [
+    {
+     "path": [
+      "Name"
+     ],
+     "op": "eq",
+     "value": "/pricing-assistant/prod/guardrail-version"
+    }
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "guardrail",
+   "kind": "exists",
+   "select": "g",
+   "tier": "core",
+   "quote": "creates an Amazon Bedrock Guardrail"
+  },
+  {
+   "id": "p_project",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": [
+       "default"
+      ],
+      "op": "eq",
+      "value": "aws-pricing-assistant"
+     }
+    ]
+   },
+   "tier": "core",
+   "quote": "the project name (defaulting to \"aws-pricing-assistant\")"
+  },
+  {
+   "id": "p_env",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": [
+       "default"
+      ],
+      "op": "eq",
+      "value": "prod"
+     }
+    ]
+   },
+   "tier": "core",
+   "quote": "the environment (defaulting to \"prod\")"
+  },
+  {
+   "id": "name_from_params",
+   "kind": "all_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "g",
+     "cond": {
+      "path": [
+       "Name"
+      ],
+      "op": "contains",
+      "value": "aws-pricing-assistant"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "g",
+     "cond": {
+      "path": [
+       "Name"
+      ],
+      "op": "contains",
+      "value": "prod"
+     }
+    }
+   ],
+   "tier": "detail",
+   "quote": "name the guardrail resource using these values",
+   "justify": "name built from the defaults of project name and environment"
+  },
+  {
+   "id": "blocked_input",
+   "kind": "attr",
+   "select": "g",
+   "cond": {
+    "path": [
+     "BlockedInputMessaging"
+    ],
+    "op": "present"
+   },
+   "tier": "core",
+   "quote": "customized blocking messages for both input and output violations"
+  },
+  {
+   "id": "blocked_output",
+   "kind": "attr",
+   "select": "g",
+   "cond": {
+    "path": [
+     "BlockedOutputsMessaging"
+    ],
+    "op": "present"
+   },
+   "tier": "core",
+   "quote": "customized blocking messages for both input and output violations"
+  },
+  {
+   "id": "topic_deny",
+   "kind": "attr",
+   "select": "g",
+   "cond": {
+    "path": [
+     "TopicPolicyConfig",
+     "TopicsConfig",
+     "*"
+    ],
+    "op": "match",
+    "value": [
+     {
+      "path": [
+       "Type"
+      ],
+      "op": "eq",
+      "value": "DENY"
+     }
+    ]
+   },
+   "tier": "core",
+   "quote": "deny off-topic general conversations"
+  },
+  {
+   "id": "topic_examples",
+   "kind": "attr",
+   "select": "g",
+   "cond": {
+    "path": [
+     "TopicPolicyConfig",
+     "TopicsConfig",
+     "*"
+    ],
+    "op": "match",
+    "value": [
+     {
+      "path": [
+       "Type"
+      ],
+      "op": "eq",
+      "value": "DENY"
+     },
+     {
+      "path": [],
+      "op": "regex",
+      "value": "(?i)weather|cook"
+     }
+    ]
+   },
+   "tier": "detail",
+   "quote": "such as weather or cooking"
+  },
+  {
+   "id": "filters_high",
+   "kind": "all_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "g",
+     "cond": {
+      "path": [
+       "ContentPolicyConfig",
+       "FiltersConfig",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "Type"
+        ],
+        "op": "eq",
+        "value": "SEXUAL"
+       },
+       {
+        "path": [
+         "InputStrength"
+        ],
+        "op": "eq",
+        "value": "HIGH"
+       },
+       {
+        "path": [
+         "OutputStrength"
+        ],
+        "op": "eq",
+        "value": "NONE"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "g",
+     "cond": {
+      "path": [
+       "ContentPolicyConfig",
+       "FiltersConfig",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "Type"
+        ],
+        "op": "eq",
+        "value": "VIOLENCE"
+       },
+       {
+        "path": [
+         "InputStrength"
+        ],
+        "op": "eq",
+        "value": "HIGH"
+       },
+       {
+        "path": [
+         "OutputStrength"
+        ],
+        "op": "eq",
+        "value": "NONE"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "g",
+     "cond": {
+      "path": [
+       "ContentPolicyConfig",
+       "FiltersConfig",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "Type"
+        ],
+        "op": "eq",
+        "value": "HATE"
+       },
+       {
+        "path": [
+         "InputStrength"
+        ],
+        "op": "eq",
+        "value": "HIGH"
+       },
+       {
+        "path": [
+         "OutputStrength"
+        ],
+        "op": "eq",
+        "value": "NONE"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "g",
+     "cond": {
+      "path": [
+       "ContentPolicyConfig",
+       "FiltersConfig",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "Type"
+        ],
+        "op": "eq",
+        "value": "PROMPT_ATTACK"
+       },
+       {
+        "path": [
+         "InputStrength"
+        ],
+        "op": "eq",
+        "value": "HIGH"
+       },
+       {
+        "path": [
+         "OutputStrength"
+        ],
+        "op": "eq",
+        "value": "NONE"
+       }
+      ]
+     }
+    }
+   ],
+   "tier": "core",
+   "quote": "enforce high input filtering strength for sexual, violence, hate, and prompt attack content",
+   "justify": "output strength none for all content filters"
+  },
+  {
+   "id": "filters_medium",
+   "kind": "all_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "g",
+     "cond": {
+      "path": [
+       "ContentPolicyConfig",
+       "FiltersConfig",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "Type"
+        ],
+        "op": "eq",
+        "value": "INSULTS"
+       },
+       {
+        "path": [
+         "InputStrength"
+        ],
+        "op": "eq",
+        "value": "MEDIUM"
+       },
+       {
+        "path": [
+         "OutputStrength"
+        ],
+        "op": "eq",
+        "value": "NONE"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "g",
+     "cond": {
+      "path": [
+       "ContentPolicyConfig",
+       "FiltersConfig",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "Type"
+        ],
+        "op": "eq",
+        "value": "MISCONDUCT"
+       },
+       {
+        "path": [
+         "InputStrength"
+        ],
+        "op": "eq",
+        "value": "MEDIUM"
+       },
+       {
+        "path": [
+         "OutputStrength"
+        ],
+        "op": "eq",
+        "value": "NONE"
+       }
+      ]
+     }
+    }
+   ],
+   "tier": "core",
+   "quote": "medium input strength for insults and misconduct (with output strength set to none for all content filters)",
+   "justify": "output strength none for all content filters"
+  },
+  {
+   "id": "profanity",
+   "kind": "attr",
+   "select": "g",
+   "cond": {
+    "path": [
+     "WordPolicyConfig",
+     "ManagedWordListsConfig",
+     "*",
+     "Type"
+    ],
+    "op": "eq",
+    "value": "PROFANITY"
+   },
+   "tier": "core",
+   "quote": "enable the managed profanity word list"
+  },
+  {
+   "id": "pii_email",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "g",
+     "cond": {
+      "path": [
+       "SensitiveInformationPolicyConfig",
+       "PiiEntitiesConfig",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "Type"
+        ],
+        "op": "eq",
+        "value": "EMAIL"
+       },
+       {
+        "path": [
+         "Action"
+        ],
+        "op": "eq",
+        "value": "BLOCK"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "g",
+     "cond": {
+      "path": [
+       "SensitiveInformationPolicyConfig",
+       "PiiEntitiesConfig",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "Type"
+        ],
+        "op": "eq",
+        "value": "EMAIL"
+       },
+       {
+        "path": [
+         "InputAction"
+        ],
+        "op": "eq",
+        "value": "BLOCK"
+       }
+      ]
+     }
+    }
+   ],
+   "tier": "core",
+   "quote": "block sensitive PII including email addresses, phone numbers, US social security numbers, and credit/debit card numbers",
+   "justify": "block = BLOCK action"
+  },
+  {
+   "id": "pii_phone",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "g",
+     "cond": {
+      "path": [
+       "SensitiveInformationPolicyConfig",
+       "PiiEntitiesConfig",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "Type"
+        ],
+        "op": "eq",
+        "value": "PHONE"
+       },
+       {
+        "path": [
+         "Action"
+        ],
+        "op": "eq",
+        "value": "BLOCK"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "g",
+     "cond": {
+      "path": [
+       "SensitiveInformationPolicyConfig",
+       "PiiEntitiesConfig",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "Type"
+        ],
+        "op": "eq",
+        "value": "PHONE"
+       },
+       {
+        "path": [
+         "InputAction"
+        ],
+        "op": "eq",
+        "value": "BLOCK"
+       }
+      ]
+     }
+    }
+   ],
+   "tier": "core",
+   "quote": "block sensitive PII including email addresses, phone numbers, US social security numbers, and credit/debit card numbers",
+   "justify": "block = BLOCK action"
+  },
+  {
+   "id": "pii_us_social_security_number",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "g",
+     "cond": {
+      "path": [
+       "SensitiveInformationPolicyConfig",
+       "PiiEntitiesConfig",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "Type"
+        ],
+        "op": "eq",
+        "value": "US_SOCIAL_SECURITY_NUMBER"
+       },
+       {
+        "path": [
+         "Action"
+        ],
+        "op": "eq",
+        "value": "BLOCK"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "g",
+     "cond": {
+      "path": [
+       "SensitiveInformationPolicyConfig",
+       "PiiEntitiesConfig",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "Type"
+        ],
+        "op": "eq",
+        "value": "US_SOCIAL_SECURITY_NUMBER"
+       },
+       {
+        "path": [
+         "InputAction"
+        ],
+        "op": "eq",
+        "value": "BLOCK"
+       }
+      ]
+     }
+    }
+   ],
+   "tier": "core",
+   "quote": "block sensitive PII including email addresses, phone numbers, US social security numbers, and credit/debit card numbers",
+   "justify": "block = BLOCK action"
+  },
+  {
+   "id": "pii_credit_debit_card_number",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "g",
+     "cond": {
+      "path": [
+       "SensitiveInformationPolicyConfig",
+       "PiiEntitiesConfig",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "Type"
+        ],
+        "op": "eq",
+        "value": "CREDIT_DEBIT_CARD_NUMBER"
+       },
+       {
+        "path": [
+         "Action"
+        ],
+        "op": "eq",
+        "value": "BLOCK"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "g",
+     "cond": {
+      "path": [
+       "SensitiveInformationPolicyConfig",
+       "PiiEntitiesConfig",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "Type"
+        ],
+        "op": "eq",
+        "value": "CREDIT_DEBIT_CARD_NUMBER"
+       },
+       {
+        "path": [
+         "InputAction"
+        ],
+        "op": "eq",
+        "value": "BLOCK"
+       }
+      ]
+     }
+    }
+   ],
+   "tier": "core",
+   "quote": "block sensitive PII including email addresses, phone numbers, US social security numbers, and credit/debit card numbers",
+   "justify": "block = BLOCK action"
+  },
+  {
+   "id": "guardrail_version",
+   "kind": "exists",
+   "select": "ver",
+   "tier": "core",
+   "quote": "deploy a Bedrock Guardrail Version resource"
+  },
+  {
+   "id": "version_of_guardrail",
+   "kind": "ref",
+   "from": "ver",
+   "to": "g",
+   "tier": "core",
+   "quote": "for the created guardrail"
+  },
+  {
+   "id": "ssm_path",
+   "kind": "exists",
+   "select": "ssm",
+   "tier": "core",
+   "quote": "at the path \"/pricing-assistant/{Environment}/guardrail-version\"",
+   "justify": "Environment defaults to prod"
+  },
+  {
+   "id": "ssm_value",
+   "kind": "attr",
+   "select": "ssm",
+   "cond": {
+    "path": [
+     "Value"
+    ],
+    "op": "eq",
+    "value": "2"
+   },
+   "tier": "core",
+   "quote": "record the active guardrail version as string value \"2\""
+  },
+  {
+   "id": "ssm_string",
+   "kind": "attr",
+   "select": "ssm",
+   "cond": {
+    "path": [
+     "Type"
+    ],
+    "op": "eq",
+    "value": "String"
+   },
+   "tier": "detail",
+   "quote": "as string value \"2\""
+  },
+  {
+   "id": "ssm_tags",
+   "kind": "all_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "ssm",
+     "cond": {
+      "path": [
+       "Tags"
+      ],
+      "op": "regex",
+      "value": "(?i)\\bproject\\b"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "ssm",
+     "cond": {
+      "path": [
+       "Tags"
+      ],
+      "op": "regex",
+      "value": "(?i)\\benvironment\\b"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "ssm",
+     "cond": {
+      "path": [
+       "Tags"
+      ],
+      "op": "regex",
+      "value": "(?i)\\bcomponent\\b"
+     }
+    }
+   ],
+   "tier": "detail",
+   "quote": "tagged with appropriate project, environment, and component key-value pairs"
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

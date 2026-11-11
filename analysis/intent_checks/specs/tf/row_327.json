@@ -1,0 +1,1316 @@
+{
+  "lang": "tf",
+  "row_number": 327,
+  "source_hash": {
+    "gt": "492cf4c9ab639b4155bc37f8221287f7aba18c9975e4c60cbad1f6b344a14cec",
+    "prompt": "c697c4e6ade06ab25b90a4e6c634c57c80279b9f8371a2c7e14263758d75306b"
+  },
+  "selectors": {
+    "buckets": {
+      "types": [
+        "aws_s3_bucket"
+      ],
+      "where": []
+    },
+    "key": {
+      "types": [
+        "aws_kms_key"
+      ],
+      "where": []
+    },
+    "sse": {
+      "types": [
+        "aws_s3_bucket_server_side_encryption_configuration"
+      ],
+      "where": []
+    },
+    "pab": {
+      "types": [
+        "aws_s3_bucket_public_access_block"
+      ],
+      "where": []
+    },
+    "cb": {
+      "types": [
+        "aws_codebuild_project"
+      ],
+      "where": []
+    },
+    "cb_d": {
+      "types": [
+        "__declared__"
+      ],
+      "where": [
+        {
+          "path": "type",
+          "op": "eq",
+          "value": "aws_codebuild_project"
+        }
+      ]
+    },
+    "pl": {
+      "types": [
+        "aws_codepipeline"
+      ],
+      "where": []
+    },
+    "pl_d": {
+      "types": [
+        "__declared__"
+      ],
+      "where": [
+        {
+          "path": "type",
+          "op": "eq",
+          "value": "aws_codepipeline"
+        }
+      ]
+    },
+    "hook": {
+      "types": [
+        "aws_codepipeline_webhook"
+      ],
+      "where": []
+    },
+    "ssm": {
+      "types": [
+        "aws_ssm_parameter"
+      ],
+      "where": [
+        {
+          "path": "type",
+          "op": "eq",
+          "value": "SecureString"
+        }
+      ]
+    },
+    "role": {
+      "types": [
+        "aws_iam_role"
+      ],
+      "where": []
+    },
+    "tgt": {
+      "types": [
+        "aws_s3_bucket"
+      ],
+      "where": [
+        {
+          "path": "bucket",
+          "op": "regex",
+          "value": "^benchmark-cicd-target"
+        }
+      ]
+    }
+  },
+  "checks": [
+    {
+      "id": "target_bucket",
+      "tier": "core",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "exists",
+          "select": "tgt"
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "eq",
+                "value": "aws_s3_bucket"
+              },
+              {
+                "path": "properties.bucket",
+                "op": "regex",
+                "value": "benchmark-cicd-target"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "__parameter__"
+            ],
+            "where": []
+          },
+          "cond": {
+            "path": "default",
+            "op": "regex",
+            "value": "^benchmark-cicd-target"
+          }
+        }
+      ],
+      "quote": "the target S3 bucket for the site files (named from a \"benchmark-cicd-target\" prefix plus the account ID)"
+    },
+    {
+      "id": "two_buckets",
+      "tier": "core",
+      "kind": "exists",
+      "select": "buckets",
+      "min": 2,
+      "quote": "a separate pipeline artifact bucket",
+      "justify": "target bucket plus a separate artifact bucket"
+    },
+    {
+      "id": "pab_all",
+      "tier": "core",
+      "kind": "attr",
+      "select": "pab",
+      "cond": {
+        "path": "",
+        "op": "match",
+        "value": [
+          {
+            "path": "block_public_acls",
+            "op": "eq",
+            "value": true
+          },
+          {
+            "path": "block_public_policy",
+            "op": "eq",
+            "value": true
+          },
+          {
+            "path": "ignore_public_acls",
+            "op": "eq",
+            "value": true
+          },
+          {
+            "path": "restrict_public_buckets",
+            "op": "eq",
+            "value": true
+          }
+        ]
+      },
+      "quantifier": "all",
+      "quote": "both with all public access blocked"
+    },
+    {
+      "id": "pab_count",
+      "tier": "core",
+      "kind": "exists",
+      "select": "pab",
+      "min": 2,
+      "quote": "both with all public access blocked",
+      "justify": "two buckets"
+    },
+    {
+      "id": "sse_kms",
+      "tier": "core",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "sse",
+          "cond": {
+            "path": "rule.*.apply_server_side_encryption_by_default.*.sse_algorithm",
+            "op": "eq",
+            "value": "aws:kms"
+          },
+          "quantifier": "all"
+        },
+        {
+          "kind": "attr",
+          "select": "buckets",
+          "cond": {
+            "path": "server_side_encryption_configuration.*.rule.*.apply_server_side_encryption_by_default.*.sse_algorithm",
+            "op": "eq",
+            "value": "aws:kms"
+          },
+          "quantifier": "all"
+        }
+      ],
+      "quote": "default encryption using a customer managed KMS key"
+    },
+    {
+      "id": "sse_count",
+      "tier": "core",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "exists",
+          "select": "sse",
+          "min": 2
+        },
+        {
+          "kind": "attr",
+          "select": "buckets",
+          "cond": {
+            "path": "server_side_encryption_configuration",
+            "op": "present"
+          },
+          "quantifier": "all"
+        }
+      ],
+      "quote": "both with all public access blocked and default encryption",
+      "justify": "two buckets"
+    },
+    {
+      "id": "sse_uses_key",
+      "tier": "detail",
+      "kind": "any_of",
+      "quote": "a customer managed KMS key",
+      "checks": [
+        {
+          "kind": "ref",
+          "from": "sse",
+          "to": "key"
+        },
+        {
+          "kind": "ref",
+          "from": "buckets",
+          "to": "key"
+        }
+      ]
+    },
+    {
+      "id": "kms_key",
+      "tier": "core",
+      "kind": "exists",
+      "select": "key",
+      "quote": "a customer managed KMS key"
+    },
+    {
+      "id": "kms_rotation",
+      "tier": "core",
+      "kind": "attr",
+      "select": "key",
+      "cond": {
+        "path": "enable_key_rotation",
+        "op": "eq",
+        "value": true
+      },
+      "quote": "with rotation enabled"
+    },
+    {
+      "id": "artifact_tls_only",
+      "tier": "core",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "aws_s3_bucket_policy"
+            ],
+            "where": []
+          },
+          "cond": {
+            "path": "policy",
+            "op": "regex",
+            "value": "(?is)(deny.*securetransport|securetransport.*deny)"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "eq",
+                "value": "aws_s3_bucket_policy"
+              }
+            ]
+          },
+          "cond": {
+            "path": "properties.policy",
+            "op": "regex",
+            "value": "(?is)(deny.*securetransport|securetransport.*deny)"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "eq",
+                "value": "data.aws_iam_policy_document"
+              }
+            ]
+          },
+          "cond": {
+            "path": "properties",
+            "op": "regex",
+            "value": "(?is)(deny.*securetransport|securetransport.*deny)"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "aws_s3_bucket"
+            ],
+            "where": []
+          },
+          "cond": {
+            "path": "policy",
+            "op": "regex",
+            "value": "(?is)(deny.*securetransport|securetransport.*deny)"
+          }
+        }
+      ],
+      "quote": "the artifact bucket must also deny any request not made over TLS"
+    },
+    {
+      "id": "tls_policy_on_bucket",
+      "tier": "detail",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "aws_s3_bucket_policy"
+            ],
+            "where": []
+          },
+          "to": "buckets"
+        },
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "eq",
+                "value": "aws_s3_bucket_policy"
+              }
+            ]
+          },
+          "to": "buckets"
+        }
+      ],
+      "quote": "the artifact bucket must also deny any request not made over TLS"
+    },
+    {
+      "id": "codebuild",
+      "tier": "core",
+      "kind": "exists",
+      "select": "cb",
+      "quote": "A CodeBuild project"
+    },
+    {
+      "id": "cb_small",
+      "tier": "core",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "cb",
+          "cond": {
+            "path": "environment.*.compute_type",
+            "op": "eq",
+            "value": "BUILD_GENERAL1_SMALL"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "cb_d",
+          "cond": {
+            "path": "properties.environment",
+            "op": "regex",
+            "value": "BUILD_GENERAL1_SMALL"
+          }
+        }
+      ],
+      "quote": "on a small Linux build container"
+    },
+    {
+      "id": "cb_linux",
+      "tier": "core",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "cb",
+          "cond": {
+            "path": "environment.*.type",
+            "op": "regex",
+            "value": "^LINUX"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "cb_d",
+          "cond": {
+            "path": "properties.environment",
+            "op": "regex",
+            "value": "LINUX_"
+          }
+        }
+      ],
+      "quote": "on a small Linux build container"
+    },
+    {
+      "id": "cb_timeout",
+      "tier": "core",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "cb",
+          "cond": {
+            "path": "build_timeout",
+            "op": "eq",
+            "value": 5
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "cb_d",
+          "cond": {
+            "path": "properties.build_timeout",
+            "op": "eq",
+            "value": 5
+          }
+        }
+      ],
+      "quote": "a 5 minute build timeout"
+    },
+    {
+      "id": "cb_env_target_bucket",
+      "tier": "detail",
+      "kind": "any_of",
+      "quote": "receive the target bucket",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "cb",
+          "cond": {
+            "path": "environment.*.environment_variable",
+            "op": "regex",
+            "value": "(?i)bucket"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "cb_d",
+          "cond": {
+            "path": "properties.environment",
+            "op": "regex",
+            "value": "(?i)bucket"
+          }
+        }
+      ]
+    },
+    {
+      "id": "cb_env_distribution_id",
+      "tier": "detail",
+      "kind": "any_of",
+      "quote": "the CloudFront distribution ID",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "cb",
+          "cond": {
+            "path": "environment.*.environment_variable",
+            "op": "regex",
+            "value": "(?i)(distribution|cloudfront|cf_?dist)"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "cb_d",
+          "cond": {
+            "path": "properties.environment",
+            "op": "regex",
+            "value": "(?i)(distribution|cloudfront|cf_?dist)"
+          }
+        }
+      ]
+    },
+    {
+      "id": "cb_env_invalidation_flag",
+      "tier": "detail",
+      "kind": "any_of",
+      "quote": "an invalidation flag as environment variables",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "cb",
+          "cond": {
+            "path": "environment.*.environment_variable",
+            "op": "regex",
+            "value": "(?i)invalidat"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "cb_d",
+          "cond": {
+            "path": "properties.environment",
+            "op": "regex",
+            "value": "(?i)invalidat"
+          }
+        }
+      ]
+    },
+    {
+      "id": "cb_role_logs",
+      "tier": "detail",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "aws_iam_policy"
+            ],
+            "where": []
+          },
+          "cond": {
+            "path": "policy",
+            "op": "regex",
+            "value": "(?i)logs:"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "aws_iam_role_policy"
+            ],
+            "where": []
+          },
+          "cond": {
+            "path": "policy",
+            "op": "regex",
+            "value": "(?i)logs:"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "aws_iam_role"
+            ],
+            "where": []
+          },
+          "cond": {
+            "path": "inline_policy",
+            "op": "regex",
+            "value": "(?i)logs:"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "in",
+                "value": [
+                  "aws_iam_policy",
+                  "aws_iam_role_policy",
+                  "aws_iam_role",
+                  "data.aws_iam_policy_document"
+                ]
+              }
+            ]
+          },
+          "cond": {
+            "path": "properties",
+            "op": "regex",
+            "value": "(?i)logs:"
+          }
+        }
+      ],
+      "quote": "using a service role scoped to its CodeBuild logs"
+    },
+    {
+      "id": "cb_role_s3",
+      "tier": "detail",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "aws_iam_policy"
+            ],
+            "where": []
+          },
+          "cond": {
+            "path": "policy",
+            "op": "regex",
+            "value": "(?is)(s3:.*cloudfront:|cloudfront:.*s3:)"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "aws_iam_role_policy"
+            ],
+            "where": []
+          },
+          "cond": {
+            "path": "policy",
+            "op": "regex",
+            "value": "(?is)(s3:.*cloudfront:|cloudfront:.*s3:)"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "aws_iam_role"
+            ],
+            "where": []
+          },
+          "cond": {
+            "path": "inline_policy",
+            "op": "regex",
+            "value": "(?is)(s3:.*cloudfront:|cloudfront:.*s3:)"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "in",
+                "value": [
+                  "aws_iam_policy",
+                  "aws_iam_role_policy",
+                  "aws_iam_role",
+                  "data.aws_iam_policy_document"
+                ]
+              }
+            ]
+          },
+          "cond": {
+            "path": "properties",
+            "op": "regex",
+            "value": "(?is)(s3:.*cloudfront:|cloudfront:.*s3:)"
+          }
+        }
+      ],
+      "quote": "the two buckets"
+    },
+    {
+      "id": "cb_role_kms",
+      "tier": "detail",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "aws_iam_policy"
+            ],
+            "where": []
+          },
+          "cond": {
+            "path": "policy",
+            "op": "regex",
+            "value": "(?is)(kms:.*cloudfront:|cloudfront:.*kms:)"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "aws_iam_role_policy"
+            ],
+            "where": []
+          },
+          "cond": {
+            "path": "policy",
+            "op": "regex",
+            "value": "(?is)(kms:.*cloudfront:|cloudfront:.*kms:)"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "aws_iam_role"
+            ],
+            "where": []
+          },
+          "cond": {
+            "path": "inline_policy",
+            "op": "regex",
+            "value": "(?is)(kms:.*cloudfront:|cloudfront:.*kms:)"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "in",
+                "value": [
+                  "aws_iam_policy",
+                  "aws_iam_role_policy",
+                  "aws_iam_role",
+                  "data.aws_iam_policy_document"
+                ]
+              }
+            ]
+          },
+          "cond": {
+            "path": "properties",
+            "op": "regex",
+            "value": "(?is)(kms:.*cloudfront:|cloudfront:.*kms:)"
+          }
+        }
+      ],
+      "quote": "the KMS key"
+    },
+    {
+      "id": "cb_role_cloudfront",
+      "tier": "detail",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "aws_iam_policy"
+            ],
+            "where": []
+          },
+          "cond": {
+            "path": "policy",
+            "op": "regex",
+            "value": "(?i)cloudfront:(\\*|CreateInvalidation)"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "aws_iam_role_policy"
+            ],
+            "where": []
+          },
+          "cond": {
+            "path": "policy",
+            "op": "regex",
+            "value": "(?i)cloudfront:(\\*|CreateInvalidation)"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "aws_iam_role"
+            ],
+            "where": []
+          },
+          "cond": {
+            "path": "inline_policy",
+            "op": "regex",
+            "value": "(?i)cloudfront:(\\*|CreateInvalidation)"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "in",
+                "value": [
+                  "aws_iam_policy",
+                  "aws_iam_role_policy",
+                  "aws_iam_role",
+                  "data.aws_iam_policy_document"
+                ]
+              }
+            ]
+          },
+          "cond": {
+            "path": "properties",
+            "op": "regex",
+            "value": "(?i)cloudfront:(\\*|CreateInvalidation)"
+          }
+        }
+      ],
+      "quote": "CloudFront invalidations"
+    },
+    {
+      "id": "cb_role_ssm",
+      "tier": "detail",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "aws_iam_policy"
+            ],
+            "where": []
+          },
+          "cond": {
+            "path": "policy",
+            "op": "regex",
+            "value": "(?is)(ssm:.*cloudfront:|cloudfront:.*ssm:)"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "aws_iam_role_policy"
+            ],
+            "where": []
+          },
+          "cond": {
+            "path": "policy",
+            "op": "regex",
+            "value": "(?is)(ssm:.*cloudfront:|cloudfront:.*ssm:)"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "aws_iam_role"
+            ],
+            "where": []
+          },
+          "cond": {
+            "path": "inline_policy",
+            "op": "regex",
+            "value": "(?is)(ssm:.*cloudfront:|cloudfront:.*ssm:)"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "in",
+                "value": [
+                  "aws_iam_policy",
+                  "aws_iam_role_policy",
+                  "aws_iam_role",
+                  "data.aws_iam_policy_document"
+                ]
+              }
+            ]
+          },
+          "cond": {
+            "path": "properties",
+            "op": "regex",
+            "value": "(?is)(ssm:.*cloudfront:|cloudfront:.*ssm:)"
+          }
+        }
+      ],
+      "quote": "and SSM parameters"
+    },
+    {
+      "id": "cb_uses_role",
+      "tier": "detail",
+      "kind": "ref",
+      "from": "cb",
+      "to": {
+        "types": [
+          "aws_iam_role"
+        ],
+        "where": []
+      },
+      "quote": "using a service role"
+    },
+    {
+      "id": "codepipeline",
+      "tier": "core",
+      "kind": "exists",
+      "select": "pl",
+      "quote": "A CodePipeline with its own role"
+    },
+    {
+      "id": "pl_uses_role",
+      "tier": "detail",
+      "kind": "ref",
+      "from": "pl",
+      "to": "role",
+      "quote": "A CodePipeline with its own role"
+    },
+    {
+      "id": "pl_github_source",
+      "tier": "core",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "pl",
+          "cond": {
+            "path": "stage.*.action.*.provider",
+            "op": "eq",
+            "value": "GitHub"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "pl_d",
+          "cond": {
+            "path": "properties.stage",
+            "op": "regex",
+            "value": "(?i)github"
+          }
+        }
+      ],
+      "quote": "pull source from a GitHub repository branch"
+    },
+    {
+      "id": "pl_build_stage",
+      "tier": "core",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "pl",
+          "cond": {
+            "path": "stage.*.action.*.category",
+            "op": "eq",
+            "value": "Build"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "pl_d",
+          "cond": {
+            "path": "properties.stage",
+            "op": "regex",
+            "value": "(?i)codebuild"
+          }
+        }
+      ],
+      "quote": "hand it to the build stage"
+    },
+    {
+      "id": "pl_runs_codebuild",
+      "tier": "detail",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "ref",
+          "from": "pl",
+          "to": "cb"
+        },
+        {
+          "kind": "ref",
+          "from": "pl_d",
+          "to": "cb_d"
+        },
+        {
+          "kind": "attr",
+          "select": "pl",
+          "cond": {
+            "path": "stage.*.action.*.provider",
+            "op": "eq",
+            "value": "CodeBuild"
+          }
+        }
+      ],
+      "quote": "hand it to the build stage"
+    },
+    {
+      "id": "pl_artifact_bucket",
+      "tier": "detail",
+      "kind": "ref",
+      "from": "pl",
+      "to": "buckets",
+      "quote": "a separate pipeline artifact bucket"
+    },
+    {
+      "id": "branch_default_master",
+      "tier": "detail",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "__parameter__"
+            ],
+            "where": []
+          },
+          "cond": {
+            "path": "default",
+            "op": "eq",
+            "value": "master"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "pl_d",
+          "cond": {
+            "path": "properties.stage",
+            "op": "contains",
+            "value": "master"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "pl",
+          "cond": {
+            "path": "stage.*.action.*.configuration.Branch",
+            "op": "eq",
+            "value": "master"
+          }
+        }
+      ],
+      "quote": "(defaulting to \"master\")"
+    },
+    {
+      "id": "ssm_secure_strings",
+      "tier": "core",
+      "kind": "exists",
+      "select": "ssm",
+      "min": 2,
+      "quote": "a GitHub OAuth token and a webhook secret stored as SecureString SSM parameters that the template creates with placeholder values",
+      "justify": "token and secret = two parameters"
+    },
+    {
+      "id": "github_webhook",
+      "tier": "core",
+      "kind": "exists",
+      "select": "hook",
+      "quote": "together with a GitHub webhook"
+    },
+    {
+      "id": "webhook_hmac",
+      "tier": "core",
+      "kind": "attr",
+      "select": "hook",
+      "cond": {
+        "path": "authentication",
+        "op": "regex",
+        "value": "(?i)HMAC"
+      },
+      "quote": "that authenticates with HMAC"
+    },
+    {
+      "id": "webhook_push_branch",
+      "tier": "core",
+      "kind": "attr",
+      "select": "hook",
+      "cond": {
+        "path": "filter.*",
+        "op": "match",
+        "value": [
+          {
+            "path": "json_path",
+            "op": "regex",
+            "value": "\\$\\.ref"
+          },
+          {
+            "path": "match_equals",
+            "op": "regex",
+            "value": "refs/heads/"
+          }
+        ]
+      },
+      "quote": "triggers only on pushes to that branch",
+      "justify": "a push to a branch is the refs/heads/<branch> ref"
+    },
+    {
+      "id": "webhook_targets_pipeline",
+      "tier": "detail",
+      "kind": "ref",
+      "from": "hook",
+      "to": "pl",
+      "quote": "a GitHub webhook"
+    },
+    {
+      "id": "codestar_alternative",
+      "tier": "detail",
+      "kind": "attr",
+      "select": {
+        "types": [
+          "__declared__"
+        ],
+        "where": [
+          {
+            "path": "type",
+            "op": "in",
+            "value": [
+              "aws_codepipeline"
+            ]
+          }
+        ]
+      },
+      "cond": {
+        "path": "properties.stage",
+        "op": "regex",
+        "value": "(?i)(codestarsourceconnection|ConnectionArn)"
+      },
+      "quote": "a CodeStar connection can be used instead when its ARN is supplied",
+      "justify": "a CodeStar connection source action is the CodeStarSourceConnection provider"
+    },
+    {
+      "id": "optional_notifications_declared",
+      "tier": "detail",
+      "kind": "exists",
+      "select": {
+        "types": [
+          "__declared__"
+        ],
+        "where": [
+          {
+            "path": "type",
+            "op": "in",
+            "value": [
+              "aws_codestarnotifications_notification_rule",
+              "aws_sns_topic",
+              "aws_cloudwatch_event_rule"
+            ]
+          },
+          {
+            "path": "gated",
+            "op": "truthy"
+          }
+        ]
+      },
+      "quote": "Optional pipeline notifications to an SNS topic"
+    },
+    {
+      "id": "optional_access_logging_declared",
+      "tier": "detail",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "eq",
+                "value": "aws_s3_bucket_logging"
+              },
+              {
+                "path": "gated",
+                "op": "truthy"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "eq",
+                "value": "aws_s3_bucket"
+              }
+            ]
+          },
+          "cond": {
+            "path": "properties.logging",
+            "op": "present"
+          }
+        }
+      ],
+      "quote": "optional access logging for the artifact bucket"
+    },
+    {
+      "id": "x_cb_source",
+      "kind": "attr",
+      "select": "cb",
+      "cond": {
+        "path": "source.*.type",
+        "op": "eq",
+        "value": "CODEPIPELINE"
+      },
+      "tier": "extra"
+    },
+    {
+      "id": "x_cb_not_privileged",
+      "kind": "attr",
+      "select": "cb",
+      "cond": {
+        "path": "environment.*.privileged_mode",
+        "op": "falsy"
+      },
+      "tier": "extra"
+    },
+    {
+      "id": "x_pl_store",
+      "kind": "attr",
+      "select": "pl",
+      "cond": {
+        "path": "artifact_store.*.type",
+        "op": "eq",
+        "value": "S3"
+      },
+      "tier": "extra"
+    },
+    {
+      "id": "extra_type_aws_iam_policy_attachment",
+      "kind": "exists",
+      "tier": "extra",
+      "select": {
+        "types": [
+          "aws_iam_policy_attachment"
+        ],
+        "where": []
+      }
+    },
+    {
+      "id": "extra_type_aws_iam_role_policy_attachment",
+      "kind": "exists",
+      "tier": "extra",
+      "select": {
+        "types": [
+          "__declared__"
+        ],
+        "where": [
+          {
+            "path": "type",
+            "op": "eq",
+            "value": "aws_iam_role_policy_attachment"
+          }
+        ]
+      }
+    }
+  ],
+  "notes": "Account-ID suffix on bucket names is not checked beyond the prefix. 'Defaulting to us-east-1' is not checked: the adapter plans every resource in us-east-1, so the region is not observable as a template choice. Optional notifications/access logging are checked as declared and gated (count/for_each); 'off by default' beyond that cannot be expressed (exists needs min>=1). The CodeBuild role's S3/KMS/SSM grants are bound to the policy document that also allows CloudFront invalidation (the CodePipeline role also grants S3/KMS), so a split of the CodeBuild permissions over several policies fails them; scoping to the two buckets themselves is not checked. The TLS-deny policy and the pipeline role are not bound to the artifact bucket / a distinct role (no chained selectors). Environment-variable names, placeholder values and policy resource scoping are not pinned. Candidate review: DSV4F names the target bucket only through a local, which is not observable, so target_bucket fails it; DSV4F also has no CodeStar connection alternative."
+}

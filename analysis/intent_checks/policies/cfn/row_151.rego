@@ -1,0 +1,743 @@
+package intent.cfn.row_151
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {
+  "vpc": {
+   "types": [
+    "AWS::EC2::VPC"
+   ],
+   "where": []
+  },
+  "subnet": {
+   "types": [
+    "AWS::EC2::Subnet"
+   ],
+   "where": []
+  },
+  "pub": {
+   "types": [
+    "AWS::EC2::Subnet"
+   ],
+   "where": [
+    {
+     "path": [
+      "Tags",
+      "*",
+      "Key"
+     ],
+     "op": "eq",
+     "value": "kubernetes.io/role/elb"
+    }
+   ]
+  },
+  "priv": {
+   "types": [
+    "AWS::EC2::Subnet"
+   ],
+   "where": [
+    {
+     "path": [
+      "Tags",
+      "*",
+      "Key"
+     ],
+     "op": "eq",
+     "value": "kubernetes.io/role/internal-elb"
+    }
+   ]
+  },
+  "igw": {
+   "types": [
+    "AWS::EC2::InternetGateway"
+   ],
+   "where": []
+  },
+  "attach": {
+   "types": [
+    "AWS::EC2::VPCGatewayAttachment"
+   ],
+   "where": []
+  },
+  "nat": {
+   "types": [
+    "AWS::EC2::NatGateway"
+   ],
+   "where": []
+  },
+  "eip": {
+   "types": [
+    "AWS::EC2::EIP"
+   ],
+   "where": []
+  },
+  "nat_route": {
+   "types": [
+    "AWS::EC2::Route"
+   ],
+   "where": [
+    {
+     "path": [
+      "NatGatewayId"
+     ],
+     "op": "present"
+    },
+    {
+     "path": [
+      "DestinationCidrBlock"
+     ],
+     "op": "eq",
+     "value": "0.0.0.0/0"
+    }
+   ]
+  },
+  "rt": {
+   "types": [
+    "AWS::EC2::RouteTable"
+   ],
+   "where": []
+  },
+  "assoc": {
+   "types": [
+    "AWS::EC2::SubnetRouteTableAssociation"
+   ],
+   "where": []
+  },
+  "key": {
+   "types": [
+    "AWS::KMS::Key"
+   ],
+   "where": []
+  },
+  "role": {
+   "types": [
+    "AWS::IAM::Role"
+   ],
+   "where": []
+  },
+  "flow_role": {
+   "types": [
+    "AWS::IAM::Role"
+   ],
+   "where": [
+    {
+     "path": [
+      "AssumeRolePolicyDocument",
+      "Statement",
+      "*",
+      "Principal",
+      "Service",
+      "*"
+     ],
+     "op": "eq",
+     "value": "vpc-flow-logs.amazonaws.com"
+    }
+   ]
+  },
+  "lg": {
+   "types": [
+    "AWS::Logs::LogGroup"
+   ],
+   "where": []
+  },
+  "flow": {
+   "types": [
+    "AWS::EC2::FlowLog"
+   ],
+   "where": []
+  },
+  "cidr_params": {
+   "types": [
+    "__parameter__"
+   ],
+   "where": [
+    {
+     "path": [
+      "default"
+     ],
+     "op": "regex",
+     "value": "/26$"
+    }
+   ]
+  },
+  "igw_route": {
+   "types": [
+    "AWS::EC2::Route"
+   ],
+   "where": [
+    {
+     "path": [
+      "DestinationCidrBlock"
+     ],
+     "op": "eq",
+     "value": "0.0.0.0/0"
+    }
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "vpc",
+   "tier": "core",
+   "kind": "exists",
+   "select": "vpc",
+   "quote": "creates a VPC network foundation"
+  },
+  {
+   "id": "vpc_cidr",
+   "tier": "core",
+   "kind": "attr",
+   "select": "vpc",
+   "cond": {
+    "path": [
+     "CidrBlock"
+    ],
+    "op": "eq",
+    "value": "10.0.1.0/24"
+   },
+   "quote": "The VPC should default to a 10.0.1.0/24 CIDR block"
+  },
+  {
+   "id": "four_subnets",
+   "tier": "core",
+   "kind": "exists",
+   "select": "subnet",
+   "min": 4,
+   "quote": "two public subnets and two private subnets across separate availability zones using distinct, configurable /26 CIDR blocks"
+  },
+  {
+   "id": "public_tagged",
+   "tier": "core",
+   "kind": "exists",
+   "select": "pub",
+   "min": 2,
+   "quote": "the public subnets tagged for use by Kubernetes load balancers",
+   "justify": "the Kubernetes tag kubernetes.io/role/elb marks subnets for external load balancers",
+   "max": 2
+  },
+  {
+   "id": "private_tagged",
+   "tier": "core",
+   "kind": "exists",
+   "select": "priv",
+   "min": 2,
+   "quote": "the private subnets tagged for internal load balancers",
+   "justify": "the Kubernetes tag kubernetes.io/role/internal-elb marks subnets for internal load balancers",
+   "max": 2
+  },
+  {
+   "id": "public_azs",
+   "tier": "core",
+   "kind": "exists",
+   "select": "pub",
+   "distinct_path": [
+    "AvailabilityZone"
+   ],
+   "min": 2,
+   "quote": "two public subnets and two private subnets across separate availability zones using distinct, configurable /26 CIDR blocks"
+  },
+  {
+   "id": "private_azs",
+   "tier": "core",
+   "kind": "exists",
+   "select": "priv",
+   "distinct_path": [
+    "AvailabilityZone"
+   ],
+   "min": 2,
+   "quote": "two public subnets and two private subnets across separate availability zones using distinct, configurable /26 CIDR blocks"
+  },
+  {
+   "id": "cidr_distinct",
+   "tier": "core",
+   "kind": "exists",
+   "select": "subnet",
+   "distinct_path": [
+    "CidrBlock"
+   ],
+   "min": 4,
+   "quote": "two public subnets and two private subnets across separate availability zones using distinct, configurable /26 CIDR blocks"
+  },
+  {
+   "id": "cidr_slash26",
+   "tier": "core",
+   "kind": "attr",
+   "select": "subnet",
+   "cond": {
+    "path": [
+     "CidrBlock"
+    ],
+    "op": "regex",
+    "value": "/26$"
+   },
+   "quantifier": "all",
+   "quote": "two public subnets and two private subnets across separate availability zones using distinct, configurable /26 CIDR blocks",
+   "justify": "/26 CIDR blocks stated in prompt"
+  },
+  {
+   "id": "cidr_configurable",
+   "tier": "detail",
+   "kind": "exists",
+   "select": "cidr_params",
+   "min": 4,
+   "quote": "two public subnets and two private subnets across separate availability zones using distinct, configurable /26 CIDR blocks",
+   "justify": "/26 defaults for four configurable subnet CIDRs"
+  },
+  {
+   "id": "igw",
+   "tier": "core",
+   "kind": "exists",
+   "select": "igw",
+   "quote": "Attach an internet gateway for the public subnets"
+  },
+  {
+   "id": "igw_attached",
+   "tier": "core",
+   "kind": "ref",
+   "from": "attach",
+   "to": "igw",
+   "quote": "Attach an internet gateway for the public subnets"
+  },
+  {
+   "id": "igw_attached_vpc",
+   "tier": "core",
+   "kind": "ref",
+   "from": "attach",
+   "to": "vpc",
+   "quote": "Attach an internet gateway for the public subnets"
+  },
+  {
+   "id": "nat_two",
+   "tier": "core",
+   "kind": "exists",
+   "select": "nat",
+   "min": 2,
+   "distinct_path": [
+    "SubnetId"
+   ],
+   "quote": "Attach an internet gateway for the public subnets and provision one NAT gateway per availability zone, each with its own Elastic IP",
+   "justify": "two availability zones means two NAT gateways"
+  },
+  {
+   "id": "eip_two",
+   "tier": "core",
+   "kind": "exists",
+   "select": "eip",
+   "min": 2,
+   "quote": "Attach an internet gateway for the public subnets and provision one NAT gateway per availability zone, each with its own Elastic IP",
+   "justify": "one Elastic IP per NAT gateway, two NAT gateways"
+  },
+  {
+   "id": "nat_eip",
+   "tier": "core",
+   "kind": "all_of",
+   "quote": "Attach an internet gateway for the public subnets and provision one NAT gateway per availability zone, each with its own Elastic IP",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "nat",
+     "to": "eip"
+    },
+    {
+     "kind": "attr",
+     "select": "nat",
+     "cond": {
+      "path": [
+       "AllocationId"
+      ],
+      "op": "present"
+     },
+     "quantifier": "all"
+    }
+   ]
+  },
+  {
+   "id": "nat_in_public",
+   "tier": "detail",
+   "kind": "ref",
+   "from": "nat",
+   "to": "pub",
+   "quote": "provision one NAT gateway per availability zone"
+  },
+  {
+   "id": "public_default_route",
+   "tier": "core",
+   "kind": "ref",
+   "from": "igw_route",
+   "to": "igw",
+   "quote": "Attach an internet gateway for the public subnets",
+   "justify": "an internet gateway serving public subnets means a default route to it"
+  },
+  {
+   "id": "private_nat_routes",
+   "tier": "core",
+   "kind": "all_of",
+   "quote": "so the private subnets have redundant outbound internet access",
+   "justify": "redundant outbound access per AZ: a default route to a different NAT gateway in each of the two AZs' route tables",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": "nat_route",
+     "min": 2,
+     "distinct_path": [
+      "RouteTableId"
+     ]
+    },
+    {
+     "kind": "exists",
+     "select": "nat_route",
+     "min": 2,
+     "distinct_path": [
+      "NatGatewayId"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "private_route_to_nat",
+   "tier": "core",
+   "kind": "ref",
+   "from": "nat_route",
+   "to": "nat",
+   "quote": "so the private subnets have redundant outbound internet access",
+   "justify": "outbound internet access means a default route"
+  },
+  {
+   "id": "route_tables",
+   "tier": "detail",
+   "kind": "exists",
+   "select": "rt",
+   "min": 2,
+   "quote": "along with the corresponding route tables and subnet associations",
+   "justify": "public route table plus at least one private route table"
+  },
+  {
+   "id": "assocs",
+   "tier": "core",
+   "kind": "exists",
+   "select": "assoc",
+   "min": 4,
+   "quote": "along with the corresponding route tables and subnet associations",
+   "justify": "four subnets each associated with a route table",
+   "distinct_path": [
+    "SubnetId"
+   ]
+  },
+  {
+   "id": "kms_key",
+   "tier": "core",
+   "kind": "exists",
+   "select": "key",
+   "quote": "Create a customer-managed KMS key to encrypt VPC flow logs"
+  },
+  {
+   "id": "flow_role_trust",
+   "tier": "core",
+   "kind": "exists",
+   "select": "flow_role",
+   "quote": "an IAM role allowing the VPC Flow Logs service to write to CloudWatch Logs"
+  },
+  {
+   "id": "flow_role_logs",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "flow_role",
+     "cond": {
+      "path": [
+       "Policies",
+       "*",
+       "PolicyDocument",
+       "Statement",
+       "*",
+       "Action",
+       "*"
+      ],
+      "op": "glob_covers",
+      "value": "logs:PutLogEvents"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::IAM::Policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "PolicyDocument",
+         "Statement",
+         "*",
+         "Action",
+         "*"
+        ],
+        "op": "glob_covers",
+        "value": "logs:PutLogEvents"
+       }
+      ]
+     },
+     "to": "flow_role"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::IAM::ManagedPolicy"
+      ],
+      "where": [
+       {
+        "path": [
+         "PolicyDocument",
+         "Statement",
+         "*",
+         "Action",
+         "*"
+        ],
+        "op": "glob_covers",
+        "value": "logs:PutLogEvents"
+       }
+      ]
+     },
+     "to": "flow_role",
+     "bidirectional": true
+    },
+    {
+     "kind": "attr",
+     "select": "flow_role",
+     "cond": {
+      "path": [
+       "ManagedPolicyArns",
+       "*"
+      ],
+      "op": "regex",
+      "value": "CloudWatchLogsFullAccess"
+     }
+    }
+   ],
+   "quote": "an IAM role allowing the VPC Flow Logs service to write to CloudWatch Logs using that key",
+   "justify": "write to CloudWatch Logs requires logs:PutLogEvents"
+  },
+  {
+   "id": "flow_role_key",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "flow_role",
+     "to": "key"
+    },
+    {
+     "kind": "attr",
+     "select": "flow_role",
+     "cond": {
+      "path": [
+       "Policies",
+       "*",
+       "PolicyDocument",
+       "Statement",
+       "*",
+       "Action",
+       "*"
+      ],
+      "op": "glob_covers",
+      "value": "kms:GenerateDataKey"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::IAM::Policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "PolicyDocument",
+         "Statement",
+         "*",
+         "Action",
+         "*"
+        ],
+        "op": "glob_covers",
+        "value": "kms:GenerateDataKey"
+       }
+      ]
+     },
+     "to": "flow_role"
+    },
+    {
+     "kind": "attr",
+     "select": "key",
+     "cond": {
+      "path": [
+       "KeyPolicy",
+       "Statement",
+       "*",
+       "Principal",
+       "Service",
+       "*"
+      ],
+      "op": "regex",
+      "value": "(?i)(vpc-flow-logs|logs\\.)"
+     }
+    }
+   ],
+   "quote": "an IAM role allowing the VPC Flow Logs service to write to CloudWatch Logs using that key",
+   "justify": "using that key: role permissions or key policy let flow logs / logs service use the key"
+  },
+  {
+   "id": "log_group",
+   "tier": "core",
+   "kind": "exists",
+   "select": "lg",
+   "quote": "a CloudWatch Log Group for the flow log data"
+  },
+  {
+   "id": "retention",
+   "tier": "core",
+   "kind": "attr",
+   "select": "lg",
+   "cond": {
+    "path": [
+     "RetentionInDays"
+    ],
+    "op": "eq",
+    "value": 30
+   },
+   "quote": "with a 30-day retention period"
+  },
+  {
+   "id": "lg_key",
+   "tier": "core",
+   "kind": "ref",
+   "from": "lg",
+   "to": "key",
+   "quote": "Create a customer-managed KMS key to encrypt VPC flow logs"
+  },
+  {
+   "id": "flow",
+   "tier": "core",
+   "kind": "exists",
+   "select": "flow",
+   "quote": "a VPC flow log capturing all traffic for the VPC"
+  },
+  {
+   "id": "flow_all",
+   "tier": "core",
+   "kind": "attr",
+   "select": "flow",
+   "cond": {
+    "path": [
+     "TrafficType"
+    ],
+    "op": "eq",
+    "value": "ALL"
+   },
+   "quote": "a VPC flow log capturing all traffic for the VPC"
+  },
+  {
+   "id": "flow_vpc",
+   "tier": "core",
+   "kind": "ref",
+   "from": "flow",
+   "to": "vpc",
+   "quote": "a VPC flow log capturing all traffic for the VPC"
+  },
+  {
+   "id": "flow_lg",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "flow",
+     "to": "lg"
+    },
+    {
+     "kind": "join",
+     "from": "flow",
+     "from_path": [
+      "LogGroupName"
+     ],
+     "to": "lg",
+     "to_path": [
+      "LogGroupName"
+     ]
+    }
+   ],
+   "quote": "a CloudWatch Log Group for the flow log data"
+  },
+  {
+   "id": "flow_role_ref",
+   "tier": "detail",
+   "kind": "ref",
+   "from": "flow",
+   "to": "flow_role",
+   "quote": "an IAM role allowing the VPC Flow Logs service to write to CloudWatch Logs"
+  },
+  {
+   "id": "x_key_rotation",
+   "tier": "extra",
+   "kind": "attr",
+   "select": "key",
+   "cond": {
+    "path": [
+     "EnableKeyRotation"
+    ],
+    "op": "eq",
+    "value": true
+   }
+  },
+  {
+   "id": "x_dns_hostnames",
+   "tier": "extra",
+   "kind": "attr",
+   "select": "vpc",
+   "cond": {
+    "path": [
+     "EnableDnsHostnames"
+    ],
+    "op": "eq",
+    "value": true
+   }
+  },
+  {
+   "id": "x_dns_support",
+   "tier": "extra",
+   "kind": "attr",
+   "select": "vpc",
+   "cond": {
+    "path": [
+     "EnableDnsSupport"
+    ],
+    "op": "eq",
+    "value": true
+   }
+  },
+  {
+   "id": "x_eip_vpc",
+   "tier": "extra",
+   "kind": "attr",
+   "select": "eip",
+   "cond": {
+    "path": [
+     "Domain"
+    ],
+    "op": "eq",
+    "value": "vpc"
+   },
+   "quantifier": "all"
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

@@ -1,0 +1,789 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "ce76d79ffe498b5f333a938f5e7c57226e34adf8faf3380f72c0cfcca427d533",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "UserPool",
+   "cfg": "UserPool",
+   "type": "AWS::Cognito::UserPool",
+   "values": {
+    "UserPoolName": "stack-pool",
+    "AdminCreateUserConfig": {
+     "AllowAdminCreateUserOnly": false
+    },
+    "UsernameAttributes": [
+     "email"
+    ],
+    "AutoVerifiedAttributes": [
+     "email"
+    ],
+    "AccountRecoverySetting": {
+     "RecoveryMechanisms": [
+      {
+       "Name": "verified_email",
+       "Priority": 1
+      }
+     ]
+    },
+    "Policies": {
+     "PasswordPolicy": {
+      "MinimumLength": 8,
+      "RequireUppercase": true,
+      "RequireLowercase": true,
+      "RequireNumbers": true,
+      "RequireSymbols": false
+     }
+    },
+    "Schema": [
+     {
+      "Name": "email",
+      "AttributeDataType": "String",
+      "Required": true,
+      "Mutable": true
+     }
+    ],
+    "EmailVerificationMessage": "Your verification code is {####}",
+    "EmailVerificationSubject": "Verify your email for elicitation testing",
+    "MfaConfiguration": "OFF",
+    "UserPoolTags": {
+     "Application": "elicitation",
+     "Purpose": "Self-service signup for JWT testing"
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "UserPoolDomain",
+   "cfg": "UserPoolDomain",
+   "type": "AWS::Cognito::UserPoolDomain",
+   "values": {
+    "Domain": "stack-123456789012",
+    "UserPoolId": {
+     "ref": "UserPool"
+    }
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "ResourceServer",
+   "cfg": "ResourceServer",
+   "type": "AWS::Cognito::UserPoolResourceServer",
+   "values": {
+    "UserPoolId": {
+     "ref": "UserPool"
+    },
+    "Identifier": "api",
+    "Name": "api resource server",
+    "Scopes": [
+     {
+      "ScopeName": "mcp",
+      "ScopeDescription": "Invoke the MCP server"
+     },
+     {
+      "ScopeName": "gateway",
+      "ScopeDescription": "Invoke the gateway"
+     }
+    ]
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "WebClient",
+   "cfg": "WebClient",
+   "type": "AWS::Cognito::UserPoolClient",
+   "values": {
+    "ClientName": "stack-web",
+    "UserPoolId": {
+     "ref": "UserPool"
+    },
+    "GenerateSecret": false,
+    "AllowedOAuthFlows": [
+     "code"
+    ],
+    "AllowedOAuthFlowsUserPoolClient": true,
+    "AllowedOAuthScopes": [
+     "openid",
+     "email",
+     "profile"
+    ],
+    "SupportedIdentityProviders": [
+     "COGNITO"
+    ],
+    "CallbackURLs": [
+     "http://localhost:3000/callback",
+     "http://localhost:8501/",
+     "http://localhost:8080/callback"
+    ],
+    "LogoutURLs": [
+     "http://localhost:3000/",
+     "http://localhost:8501/",
+     "http://localhost:8080/"
+    ],
+    "ExplicitAuthFlows": [
+     "ALLOW_USER_PASSWORD_AUTH",
+     "ALLOW_USER_SRP_AUTH",
+     "ALLOW_REFRESH_TOKEN_AUTH"
+    ],
+    "AccessTokenValidity": 60,
+    "IdTokenValidity": 60,
+    "RefreshTokenValidity": 30,
+    "TokenValidityUnits": {
+     "AccessToken": "minutes",
+     "IdToken": "minutes",
+     "RefreshToken": "days"
+    },
+    "EnableTokenRevocation": true,
+    "PreventUserExistenceErrors": "ENABLED"
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "MCPClient",
+   "cfg": "MCPClient",
+   "type": "AWS::Cognito::UserPoolClient",
+   "values": {
+    "ClientName": "stack-mcp",
+    "UserPoolId": {
+     "ref": "UserPool"
+    },
+    "GenerateSecret": true,
+    "AllowedOAuthFlows": [
+     "client_credentials"
+    ],
+    "AllowedOAuthFlowsUserPoolClient": true,
+    "AllowedOAuthScopes": [
+     "api/mcp"
+    ],
+    "SupportedIdentityProviders": [
+     "COGNITO"
+    ],
+    "AccessTokenValidity": 60,
+    "IdTokenValidity": 60,
+    "RefreshTokenValidity": 1,
+    "TokenValidityUnits": {
+     "AccessToken": "minutes",
+     "IdToken": "minutes",
+     "RefreshToken": "days"
+    },
+    "EnableTokenRevocation": true,
+    "PreventUserExistenceErrors": "ENABLED",
+    "__resource__": {
+     "DependsOn": [
+      "ResourceServer"
+     ]
+    }
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "GatewayClient",
+   "cfg": "GatewayClient",
+   "type": "AWS::Cognito::UserPoolClient",
+   "values": {
+    "ClientName": "stack-gateway",
+    "UserPoolId": {
+     "ref": "UserPool"
+    },
+    "GenerateSecret": true,
+    "AllowedOAuthFlows": [
+     "client_credentials"
+    ],
+    "AllowedOAuthFlowsUserPoolClient": true,
+    "AllowedOAuthScopes": [
+     "api/gateway"
+    ],
+    "SupportedIdentityProviders": [
+     "COGNITO"
+    ],
+    "AccessTokenValidity": 60,
+    "IdTokenValidity": 60,
+    "RefreshTokenValidity": 1,
+    "TokenValidityUnits": {
+     "AccessToken": "minutes",
+     "IdToken": "minutes",
+     "RefreshToken": "days"
+    },
+    "EnableTokenRevocation": true,
+    "PreventUserExistenceErrors": "ENABLED",
+    "__resource__": {
+     "DependsOn": [
+      "ResourceServer"
+     ]
+    }
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "__parameter__.CallbackURLs",
+   "cfg": "__parameter__.CallbackURLs",
+   "type": "__parameter__",
+   "values": {
+    "name": "CallbackURLs",
+    "type": "CommaDelimitedList",
+    "default": [
+     "http://localhost:3000/callback",
+     "http://localhost:8501/",
+     "http://localhost:8080/callback"
+    ],
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.LogoutURLs",
+   "cfg": "__parameter__.LogoutURLs",
+   "type": "__parameter__",
+   "values": {
+    "name": "LogoutURLs",
+    "type": "CommaDelimitedList",
+    "default": [
+     "http://localhost:3000/",
+     "http://localhost:8501/",
+     "http://localhost:8080/"
+    ],
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.StackName",
+   "cfg": "__output__.StackName",
+   "type": "__output__",
+   "values": {
+    "name": "StackName",
+    "value": "stack",
+    "description": null,
+    "export": "stack-StackName"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.UserPoolId",
+   "cfg": "__output__.UserPoolId",
+   "type": "__output__",
+   "values": {
+    "name": "UserPoolId",
+    "value": {
+     "ref": "UserPool"
+    },
+    "description": "Cognito User Pool ID",
+    "export": "stack-UserPoolId"
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "__output__.UserPoolArn",
+   "cfg": "__output__.UserPoolArn",
+   "type": "__output__",
+   "values": {
+    "name": "UserPoolArn",
+    "value": {
+     "ref": "UserPool",
+     "attr": "Arn"
+    },
+    "description": "Cognito User Pool ARN",
+    "export": "stack-UserPoolArn"
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "__output__.WebClientId",
+   "cfg": "__output__.WebClientId",
+   "type": "__output__",
+   "values": {
+    "name": "WebClientId",
+    "value": {
+     "ref": "WebClient"
+    },
+    "description": "Public web client ID (use this in your app)",
+    "export": "stack-WebClientId"
+   },
+   "refs": [
+    "WebClient"
+   ]
+  },
+  {
+   "id": "__output__.HostedUIDomain",
+   "cfg": "__output__.HostedUIDomain",
+   "type": "__output__",
+   "values": {
+    "name": "HostedUIDomain",
+    "value": "https://${UserPoolDomain}.auth.us-east-1.amazoncognito.com",
+    "description": "Cognito hosted UI base URL",
+    "export": "stack-HostedUIDomain"
+   },
+   "refs": [
+    "UserPoolDomain"
+   ]
+  },
+  {
+   "id": "__output__.SignupUrl",
+   "cfg": "__output__.SignupUrl",
+   "type": "__output__",
+   "values": {
+    "name": "SignupUrl",
+    "value": "https://${UserPoolDomain}.auth.us-east-1.amazoncognito.com/signup?client_id=${WebClient}&response_type=code&scope=openid+email+profile&redirect_uri=http://localhost:3000/callback",
+    "description": "Open this in a browser to self-signup (uses first callback URL)",
+    "export": null
+   },
+   "refs": [
+    "UserPoolDomain",
+    "WebClient"
+   ]
+  },
+  {
+   "id": "__output__.LoginUrl",
+   "cfg": "__output__.LoginUrl",
+   "type": "__output__",
+   "values": {
+    "name": "LoginUrl",
+    "value": "https://${UserPoolDomain}.auth.us-east-1.amazoncognito.com/login?client_id=${WebClient}&response_type=code&scope=openid+email+profile&redirect_uri=http://localhost:3000/callback",
+    "description": "Hosted UI login page",
+    "export": null
+   },
+   "refs": [
+    "UserPoolDomain",
+    "WebClient"
+   ]
+  },
+  {
+   "id": "__output__.TokenEndpoint",
+   "cfg": "__output__.TokenEndpoint",
+   "type": "__output__",
+   "values": {
+    "name": "TokenEndpoint",
+    "value": "https://${UserPoolDomain}.auth.us-east-1.amazoncognito.com/oauth2/token",
+    "description": "OAuth 2.0 token endpoint",
+    "export": "stack-TokenEndpoint"
+   },
+   "refs": [
+    "UserPoolDomain"
+   ]
+  },
+  {
+   "id": "__output__.Issuer",
+   "cfg": "__output__.Issuer",
+   "type": "__output__",
+   "values": {
+    "name": "Issuer",
+    "value": "https://cognito-idp.us-east-1.amazonaws.com/${UserPool}",
+    "description": "Token issuer (iss claim)",
+    "export": "stack-Issuer"
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "__output__.DiscoveryUrl",
+   "cfg": "__output__.DiscoveryUrl",
+   "type": "__output__",
+   "values": {
+    "name": "DiscoveryUrl",
+    "value": "https://cognito-idp.us-east-1.amazonaws.com/${UserPool}/.well-known/openid-configuration",
+    "description": "OIDC discovery URL \u2014 use this in the Gateway / Runtime CUSTOM_JWT authorizer",
+    "export": "stack-DiscoveryUrl"
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "__output__.PasswordGrantExample",
+   "cfg": "__output__.PasswordGrantExample",
+   "type": "__output__",
+   "values": {
+    "name": "PasswordGrantExample",
+    "value": "curl -s -X POST https://cognito-idp.us-east-1.amazonaws.com/ \\\n  -H \"Content-Type: application/x-amz-json-1.1\" \\\n  -H \"X-Amz-Target: AWSCognitoIdentityProviderService.InitiateAuth\" \\\n  -d '{\n    \"AuthFlow\":\"USER_PASSWORD_AUTH\",\n    \"ClientId\":\"${WebClient}\",\n    \"AuthParameters\":{\"USERNAME\":\"<your-email>\",\"PASSWORD\":\"<your-password>\"}\n  }'\n",
+    "description": "Example: get a JWT via password grant (after self-signup + email verify)",
+    "export": null
+   },
+   "refs": [
+    "WebClient"
+   ]
+  },
+  {
+   "id": "__output__.MCPClientId",
+   "cfg": "__output__.MCPClientId",
+   "type": "__output__",
+   "values": {
+    "name": "MCPClientId",
+    "value": {
+     "ref": "MCPClient"
+    },
+    "description": "M2M client ID \u2014 whitelist this in MCP server CUSTOM_JWT allowedClients",
+    "export": "stack-MCPClientId"
+   },
+   "refs": [
+    "MCPClient"
+   ]
+  },
+  {
+   "id": "__output__.MCPScope",
+   "cfg": "__output__.MCPScope",
+   "type": "__output__",
+   "values": {
+    "name": "MCPScope",
+    "value": "api/mcp",
+    "description": "Scope to request when minting MCP-bound tokens",
+    "export": "stack-MCPScope"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.ResourceServerIdentifier",
+   "cfg": "__output__.ResourceServerIdentifier",
+   "type": "__output__",
+   "values": {
+    "name": "ResourceServerIdentifier",
+    "value": {
+     "ref": "ResourceServer"
+    },
+    "description": "Resource server identifier (scope prefix)",
+    "export": "stack-ResourceServerIdentifier"
+   },
+   "refs": [
+    "ResourceServer"
+   ]
+  },
+  {
+   "id": "__output__.MCPClientSecretCommand",
+   "cfg": "__output__.MCPClientSecretCommand",
+   "type": "__output__",
+   "values": {
+    "name": "MCPClientSecretCommand",
+    "value": "aws cognito-idp describe-user-pool-client \\\n  --user-pool-id ${UserPool} \\\n  --client-id ${MCPClient} \\\n  --region us-east-1 \\\n  --query 'UserPoolClient.ClientSecret' --output text\n",
+    "description": "Run this to fetch the MCP client secret (CFN does not surface it directly)",
+    "export": null
+   },
+   "refs": [
+    "MCPClient",
+    "UserPool"
+   ]
+  },
+  {
+   "id": "__output__.MCPClientCredentialsExample",
+   "cfg": "__output__.MCPClientCredentialsExample",
+   "type": "__output__",
+   "values": {
+    "name": "MCPClientCredentialsExample",
+    "value": "curl -s -X POST https://${UserPoolDomain}.auth.us-east-1.amazoncognito.com/oauth2/token \\\n  -H \"Content-Type: application/x-www-form-urlencoded\" \\\n  -u \"${MCPClient}:<MCP_CLIENT_SECRET>\" \\\n  -d \"grant_type=client_credentials&scope=api/mcp\"\n",
+    "description": "Example: Gateway mints an MCP-bound token via client_credentials",
+    "export": null
+   },
+   "refs": [
+    "MCPClient",
+    "UserPoolDomain"
+   ]
+  },
+  {
+   "id": "__output__.GatewayClientId",
+   "cfg": "__output__.GatewayClientId",
+   "type": "__output__",
+   "values": {
+    "name": "GatewayClientId",
+    "value": {
+     "ref": "GatewayClient"
+    },
+    "description": "M2M client ID for inbound auth to the Gateway \u2014 whitelist in Gateway CUSTOM_JWT allowedClients",
+    "export": "stack-GatewayClientId"
+   },
+   "refs": [
+    "GatewayClient"
+   ]
+  },
+  {
+   "id": "__output__.GatewayScope",
+   "cfg": "__output__.GatewayScope",
+   "type": "__output__",
+   "values": {
+    "name": "GatewayScope",
+    "value": "api/gateway",
+    "description": "Scope to request when minting Gateway-bound tokens",
+    "export": "stack-GatewayScope"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.GatewayClientSecretCommand",
+   "cfg": "__output__.GatewayClientSecretCommand",
+   "type": "__output__",
+   "values": {
+    "name": "GatewayClientSecretCommand",
+    "value": "aws cognito-idp describe-user-pool-client \\\n  --user-pool-id ${UserPool} \\\n  --client-id ${GatewayClient} \\\n  --region us-east-1 \\\n  --query 'UserPoolClient.ClientSecret' --output text",
+    "description": "Run this to fetch the Gateway client secret (CFN does not surface it directly)",
+    "export": null
+   },
+   "refs": [
+    "GatewayClient",
+    "UserPool"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPool.UserPool",
+   "cfg": "UserPool",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Cognito::UserPool",
+    "name": "UserPool",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "UserPoolName": "stack-pool",
+     "AdminCreateUserConfig": {
+      "AllowAdminCreateUserOnly": false
+     },
+     "UsernameAttributes": [
+      "email"
+     ],
+     "AutoVerifiedAttributes": [
+      "email"
+     ],
+     "AccountRecoverySetting": {
+      "RecoveryMechanisms": [
+       {
+        "Name": "verified_email",
+        "Priority": 1
+       }
+      ]
+     },
+     "Policies": {
+      "PasswordPolicy": {
+       "MinimumLength": 8,
+       "RequireUppercase": true,
+       "RequireLowercase": true,
+       "RequireNumbers": true,
+       "RequireSymbols": false
+      }
+     },
+     "Schema": [
+      {
+       "Name": "email",
+       "AttributeDataType": "String",
+       "Required": true,
+       "Mutable": true
+      }
+     ],
+     "EmailVerificationMessage": "Your verification code is {####}",
+     "EmailVerificationSubject": "Verify your email for elicitation testing",
+     "MfaConfiguration": "OFF",
+     "UserPoolTags": {
+      "Application": "elicitation",
+      "Purpose": "Self-service signup for JWT testing"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolDomain.UserPoolDomain",
+   "cfg": "UserPoolDomain",
+   "type": "__declared__",
+   "refs": [
+    "UserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolDomain",
+    "name": "UserPoolDomain",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Domain": "stack-123456789012",
+     "UserPoolId": {
+      "ref": "UserPool"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolResourceServer.ResourceServer",
+   "cfg": "ResourceServer",
+   "type": "__declared__",
+   "refs": [
+    "UserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolResourceServer",
+    "name": "ResourceServer",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "UserPoolId": {
+      "ref": "UserPool"
+     },
+     "Identifier": "api",
+     "Name": "api resource server",
+     "Scopes": [
+      {
+       "ScopeName": "mcp",
+       "ScopeDescription": "Invoke the MCP server"
+      },
+      {
+       "ScopeName": "gateway",
+       "ScopeDescription": "Invoke the gateway"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolClient.WebClient",
+   "cfg": "WebClient",
+   "type": "__declared__",
+   "refs": [
+    "UserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolClient",
+    "name": "WebClient",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ClientName": "stack-web",
+     "UserPoolId": {
+      "ref": "UserPool"
+     },
+     "GenerateSecret": false,
+     "AllowedOAuthFlows": [
+      "code"
+     ],
+     "AllowedOAuthFlowsUserPoolClient": true,
+     "AllowedOAuthScopes": [
+      "openid",
+      "email",
+      "profile"
+     ],
+     "SupportedIdentityProviders": [
+      "COGNITO"
+     ],
+     "CallbackURLs": [
+      "http://localhost:3000/callback",
+      "http://localhost:8501/",
+      "http://localhost:8080/callback"
+     ],
+     "LogoutURLs": [
+      "http://localhost:3000/",
+      "http://localhost:8501/",
+      "http://localhost:8080/"
+     ],
+     "ExplicitAuthFlows": [
+      "ALLOW_USER_PASSWORD_AUTH",
+      "ALLOW_USER_SRP_AUTH",
+      "ALLOW_REFRESH_TOKEN_AUTH"
+     ],
+     "AccessTokenValidity": 60,
+     "IdTokenValidity": 60,
+     "RefreshTokenValidity": 30,
+     "TokenValidityUnits": {
+      "AccessToken": "minutes",
+      "IdToken": "minutes",
+      "RefreshToken": "days"
+     },
+     "EnableTokenRevocation": true,
+     "PreventUserExistenceErrors": "ENABLED"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolClient.MCPClient",
+   "cfg": "MCPClient",
+   "type": "__declared__",
+   "refs": [
+    "UserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolClient",
+    "name": "MCPClient",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ClientName": "stack-mcp",
+     "UserPoolId": {
+      "ref": "UserPool"
+     },
+     "GenerateSecret": true,
+     "AllowedOAuthFlows": [
+      "client_credentials"
+     ],
+     "AllowedOAuthFlowsUserPoolClient": true,
+     "AllowedOAuthScopes": [
+      "api/mcp"
+     ],
+     "SupportedIdentityProviders": [
+      "COGNITO"
+     ],
+     "AccessTokenValidity": 60,
+     "IdTokenValidity": 60,
+     "RefreshTokenValidity": 1,
+     "TokenValidityUnits": {
+      "AccessToken": "minutes",
+      "IdToken": "minutes",
+      "RefreshToken": "days"
+     },
+     "EnableTokenRevocation": true,
+     "PreventUserExistenceErrors": "ENABLED"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolClient.GatewayClient",
+   "cfg": "GatewayClient",
+   "type": "__declared__",
+   "refs": [
+    "UserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolClient",
+    "name": "GatewayClient",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ClientName": "stack-gateway",
+     "UserPoolId": {
+      "ref": "UserPool"
+     },
+     "GenerateSecret": true,
+     "AllowedOAuthFlows": [
+      "client_credentials"
+     ],
+     "AllowedOAuthFlowsUserPoolClient": true,
+     "AllowedOAuthScopes": [
+      "api/gateway"
+     ],
+     "SupportedIdentityProviders": [
+      "COGNITO"
+     ],
+     "AccessTokenValidity": 60,
+     "IdTokenValidity": 60,
+     "RefreshTokenValidity": 1,
+     "TokenValidityUnits": {
+      "AccessToken": "minutes",
+      "IdToken": "minutes",
+      "RefreshToken": "days"
+     },
+     "EnableTokenRevocation": true,
+     "PreventUserExistenceErrors": "ENABLED"
+    }
+   }
+  }
+ ]
+}

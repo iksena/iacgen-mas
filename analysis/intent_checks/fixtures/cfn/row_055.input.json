@@ -1,0 +1,252 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "803afc98c9f5f4390a3c681f7927532f1e67a3556ef198487c584b6aad7f5838",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "CustomDocumentProcesses",
+   "cfg": "CustomDocumentProcesses",
+   "type": "AWS::SSM::Document",
+   "values": {
+    "DocumentType": "Command",
+    "Content": {
+     "schemaVersion": "2.2",
+     "description": "Run a script to find specific processes running in EC2 instances.",
+     "parameters": {
+      "windowsProcessNames": {
+       "type": "String",
+       "description": "Specify the process names (comma-separated) to be searched on the instance."
+      },
+      "linuxProcessNames": {
+       "type": "String",
+       "description": "Specify the process names (comma-separated) to be searched on the instance."
+      }
+     },
+     "mainSteps": [
+      {
+       "action": "aws:runPowerShellScript",
+       "name": "RunPowershellScript",
+       "precondition": {
+        "StringEquals": [
+         "platformType",
+         "Windows"
+        ]
+       },
+       "inputs": {
+        "runCommand": [
+         "$processKeywords = \"{{ windowsProcessNames }}\"\n$instanceId = Invoke-RestMethod -uri http://169.254.169.254/latest/meta-data/instance-id\n$filepath = \"C:\\ProgramData\\Amazon\\SSM\\InstanceData\\\" + $instanceId + \"\\inventory\\custom\\Processes.json\"\nif (-NOT (Test-Path $filepath)) {\n  New-Item $filepath -ItemType file\n}\n\n$names = [System.Collections.ArrayList]@()\nForEach ($processKeyword in $processKeywords.Split(\",\")) {\n  Get-Process \"*$($processKeyword.Trim())*\" -ErrorAction SilentlyContinue | ForEach-Object {\n    if (-NOT ($names.Contains($_.Name))) {\n      $names.Add($_.Name) > $null\n    }\n  }\n}\n$data = ''\nif ($names.Count -gt 0) {\n  $data = '{{\"ProcessName\": \"{0}\"}}' -f ($names -join '\"},{\"ProcessName\": \"')\n}\n\n$content = \"{`\"SchemaVersion`\" : `\"1.0`\", `\"TypeName`\": `\"Custom:Processes`\", `\"Content`\": [$data]}\"\nSet-Content -Path $filepath -Value $content\n# Dump the file for debugging\nGet-Content -Path $filepath\n"
+        ]
+       }
+      },
+      {
+       "action": "aws:runShellScript",
+       "name": "RunShellScript",
+       "precondition": {
+        "StringEquals": [
+         "platformType",
+         "Linux"
+        ]
+       },
+       "inputs": {
+        "runCommand": [
+         "IFS=\",\" read -ra process_keywords <<< \"{{ linuxProcessNames }}\"\n\ninstanceId=`curl http://169.254.169.254/latest/meta-data/instance-id`\nfilepath=\"/var/lib/amazon/ssm/$instanceId/inventory/custom/Processes.json\"\n[[ -f ${filepath} ]] || touch $filepath\n\ndeclare -a results\nfor process_keyword in \"${process_keywords[@]}\"; do\n  echo \"Checking ${process_keyword}\"\n  if [[ $(ps -A -o cmd --no-headers | grep -i \"${process_keyword}\" | grep -v grep -c) -ge 1 ]]; then\n    [[ \"${results[@]}\" =~ \"${process_keyword}\" ]] || results+=(\"$process_keyword\")\n  fi\n\n  # Approach 2: log the entire process string\n  # ret=$(ps -A -o cmd --no-headers | grep ${process_keyword} | grep -v 'grep' | awk -vORS=, '{print $0}')\n  # IFS=\",\"\n  # for p in ${ret}; do\n  #   [[ \"${results[@]}\" =~ ${p} ]] || results+=($p)\n  # done\ndone\n\n# Write to file\ncat > ${filepath} << EOF\n{\n  \"SchemaVersion\": \"1.0\",\n  \"TypeName\": \"Custom:Processes\",\n  \"Content\": [\nEOF\nfor p in \"${results[@]}\"; do\n  cat >> ${filepath} << EOF\n      {\"ProcessName\": \"${p}\"},\nEOF\ndone\n# Replace the last comma (if exists)\nsed -i '$s/,$//' ${filepath}\ncat >> ${filepath} << EOF\n  ]\n}\nEOF\n# Dump the file for debugging\ncat ${filepath}\n"
+        ]
+       }
+      }
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "InventoryProcesses",
+   "cfg": "InventoryProcesses",
+   "type": "AWS::SSM::Association",
+   "values": {
+    "AssociationName": "Custom-Inventory-Processes",
+    "Name": {
+     "ref": "CustomDocumentProcesses"
+    },
+    "Parameters": {
+     "linuxProcessNames": [
+      "CassandraDaemon,dse cassandra,mysql,postgres,redis-server,redis-sentinel,memcached"
+     ],
+     "windowsProcessNames": [
+      "sqlservr,cassandra,mysql,postgres,redis-server,redis-sentinel,memcached"
+     ]
+    },
+    "ScheduleExpression": "rate(30 days)",
+    "Targets": [
+     {
+      "Key": "InstanceIds",
+      "Values": [
+       "*"
+      ]
+     }
+    ],
+    "__resource__": {
+     "DependsOn": [
+      "CustomDocumentProcesses"
+     ]
+    }
+   },
+   "refs": [
+    "CustomDocumentProcesses"
+   ]
+  },
+  {
+   "id": "__parameter__.LinuxProcessKeywords",
+   "cfg": "__parameter__.LinuxProcessKeywords",
+   "type": "__parameter__",
+   "values": {
+    "name": "LinuxProcessKeywords",
+    "type": "String",
+    "default": "CassandraDaemon,dse cassandra,mysql,postgres,redis-server,redis-sentinel,memcached",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.WindowsProcessKeywords",
+   "cfg": "__parameter__.WindowsProcessKeywords",
+   "type": "__parameter__",
+   "values": {
+    "name": "WindowsProcessKeywords",
+    "type": "String",
+    "default": "sqlservr,cassandra,mysql,postgres,redis-server,redis-sentinel,memcached",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.ScheduleExpressionCron",
+   "cfg": "__parameter__.ScheduleExpressionCron",
+   "type": "__parameter__",
+   "values": {
+    "name": "ScheduleExpressionCron",
+    "type": "String",
+    "default": "rate(30 days)",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.SSMCustomDocument",
+   "cfg": "__output__.SSMCustomDocument",
+   "type": "__output__",
+   "values": {
+    "name": "SSMCustomDocument",
+    "value": {
+     "ref": "CustomDocumentProcesses"
+    },
+    "description": null,
+    "export": "stack-document-custom"
+   },
+   "refs": [
+    "CustomDocumentProcesses"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::SSM::Document.CustomDocumentProcesses",
+   "cfg": "CustomDocumentProcesses",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::SSM::Document",
+    "name": "CustomDocumentProcesses",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "DocumentType": "Command",
+     "Content": {
+      "schemaVersion": "2.2",
+      "description": "Run a script to find specific processes running in EC2 instances.",
+      "parameters": {
+       "windowsProcessNames": {
+        "type": "String",
+        "description": "Specify the process names (comma-separated) to be searched on the instance."
+       },
+       "linuxProcessNames": {
+        "type": "String",
+        "description": "Specify the process names (comma-separated) to be searched on the instance."
+       }
+      },
+      "mainSteps": [
+       {
+        "action": "aws:runPowerShellScript",
+        "name": "RunPowershellScript",
+        "precondition": {
+         "StringEquals": [
+          "platformType",
+          "Windows"
+         ]
+        },
+        "inputs": {
+         "runCommand": [
+          "$processKeywords = \"{{ windowsProcessNames }}\"\n$instanceId = Invoke-RestMethod -uri http://169.254.169.254/latest/meta-data/instance-id\n$filepath = \"C:\\ProgramData\\Amazon\\SSM\\InstanceData\\\" + $instanceId + \"\\inventory\\custom\\Processes.json\"\nif (-NOT (Test-Path $filepath)) {\n  New-Item $filepath -ItemType file\n}\n\n$names = [System.Collections.ArrayList]@()\nForEach ($processKeyword in $processKeywords.Split(\",\")) {\n  Get-Process \"*$($processKeyword.Trim())*\" -ErrorAction SilentlyContinue | ForEach-Object {\n    if (-NOT ($names.Contains($_.Name))) {\n      $names.Add($_.Name) > $null\n    }\n  }\n}\n$data = ''\nif ($names.Count -gt 0) {\n  $data = '{{\"ProcessName\": \"{0}\"}}' -f ($names -join '\"},{\"ProcessName\": \"')\n}\n\n$content = \"{`\"SchemaVersion`\" : `\"1.0`\", `\"TypeName`\": `\"Custom:Processes`\", `\"Content`\": [$data]}\"\nSet-Content -Path $filepath -Value $content\n# Dump the file for debugging\nGet-Content -Path $filepath\n"
+         ]
+        }
+       },
+       {
+        "action": "aws:runShellScript",
+        "name": "RunShellScript",
+        "precondition": {
+         "StringEquals": [
+          "platformType",
+          "Linux"
+         ]
+        },
+        "inputs": {
+         "runCommand": [
+          "IFS=\",\" read -ra process_keywords <<< \"{{ linuxProcessNames }}\"\n\ninstanceId=`curl http://169.254.169.254/latest/meta-data/instance-id`\nfilepath=\"/var/lib/amazon/ssm/$instanceId/inventory/custom/Processes.json\"\n[[ -f ${filepath} ]] || touch $filepath\n\ndeclare -a results\nfor process_keyword in \"${process_keywords[@]}\"; do\n  echo \"Checking ${process_keyword}\"\n  if [[ $(ps -A -o cmd --no-headers | grep -i \"${process_keyword}\" | grep -v grep -c) -ge 1 ]]; then\n    [[ \"${results[@]}\" =~ \"${process_keyword}\" ]] || results+=(\"$process_keyword\")\n  fi\n\n  # Approach 2: log the entire process string\n  # ret=$(ps -A -o cmd --no-headers | grep ${process_keyword} | grep -v 'grep' | awk -vORS=, '{print $0}')\n  # IFS=\",\"\n  # for p in ${ret}; do\n  #   [[ \"${results[@]}\" =~ ${p} ]] || results+=($p)\n  # done\ndone\n\n# Write to file\ncat > ${filepath} << EOF\n{\n  \"SchemaVersion\": \"1.0\",\n  \"TypeName\": \"Custom:Processes\",\n  \"Content\": [\nEOF\nfor p in \"${results[@]}\"; do\n  cat >> ${filepath} << EOF\n      {\"ProcessName\": \"${p}\"},\nEOF\ndone\n# Replace the last comma (if exists)\nsed -i '$s/,$//' ${filepath}\ncat >> ${filepath} << EOF\n  ]\n}\nEOF\n# Dump the file for debugging\ncat ${filepath}\n"
+         ]
+        }
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SSM::Association.InventoryProcesses",
+   "cfg": "InventoryProcesses",
+   "type": "__declared__",
+   "refs": [
+    "CustomDocumentProcesses"
+   ],
+   "values": {
+    "type": "AWS::SSM::Association",
+    "name": "InventoryProcesses",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssociationName": "Custom-Inventory-Processes",
+     "Name": {
+      "ref": "CustomDocumentProcesses"
+     },
+     "Parameters": {
+      "linuxProcessNames": [
+       "CassandraDaemon,dse cassandra,mysql,postgres,redis-server,redis-sentinel,memcached"
+      ],
+      "windowsProcessNames": [
+       "sqlservr,cassandra,mysql,postgres,redis-server,redis-sentinel,memcached"
+      ]
+     },
+     "ScheduleExpression": "rate(30 days)",
+     "Targets": [
+      {
+       "Key": "InstanceIds",
+       "Values": [
+        "*"
+       ]
+      }
+     ]
+    }
+   }
+  }
+ ]
+}

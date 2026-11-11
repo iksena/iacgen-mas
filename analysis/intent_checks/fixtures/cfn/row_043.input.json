@@ -1,0 +1,342 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "e373579ae7997c3d7bc51155da1885f11317ecfbb375af77e94e794177a7f001",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "UserPool",
+   "cfg": "UserPool",
+   "type": "AWS::Cognito::UserPool",
+   "values": {
+    "UserPoolName": "KibanaUsers",
+    "AdminCreateUserConfig": {
+     "AllowAdminCreateUserOnly": true
+    },
+    "UsernameAttributes": [
+     "email"
+    ],
+    "AutoVerifiedAttributes": [
+     "email"
+    ],
+    "Policies": {
+     "PasswordPolicy": {
+      "MinimumLength": 8
+     }
+    },
+    "Schema": [
+     {
+      "Name": "email",
+      "AttributeDataType": "String",
+      "DeveloperOnlyAttribute": false,
+      "Mutable": true,
+      "Required": true
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "IdentityPool",
+   "cfg": "IdentityPool",
+   "type": "AWS::Cognito::IdentityPool",
+   "values": {
+    "IdentityPoolName": "KibanaIDPool",
+    "AllowUnauthenticatedIdentities": true
+   },
+   "refs": []
+  },
+  {
+   "id": "AuthenticatedPolicy",
+   "cfg": "AuthenticatedPolicy",
+   "type": "AWS::IAM::ManagedPolicy",
+   "values": {
+    "PolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Action": [
+        "es:ESHttp*"
+       ],
+       "Resource": [
+        "*"
+       ]
+      }
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "AuthenticatedRole",
+   "cfg": "AuthenticatedRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Action": [
+        "sts:AssumeRoleWithWebIdentity"
+       ],
+       "Principal": {
+        "Federated": [
+         "cognito-identity.amazonaws.com"
+        ]
+       },
+       "Condition": {
+        "StringEquals": {
+         "cognito-identity.amazonaws.com:aud": {
+          "ref": "IdentityPool"
+         }
+        },
+        "ForAnyValue:StringLike": {
+         "cognito-identity.amazonaws.com:amr": "authenticated"
+        }
+       }
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     {
+      "ref": "AuthenticatedPolicy"
+     }
+    ]
+   },
+   "refs": [
+    "AuthenticatedPolicy",
+    "IdentityPool"
+   ]
+  },
+  {
+   "id": "RoleAttachment",
+   "cfg": "RoleAttachment",
+   "type": "AWS::Cognito::IdentityPoolRoleAttachment",
+   "values": {
+    "IdentityPoolId": {
+     "ref": "IdentityPool"
+    },
+    "Roles": {
+     "authenticated": {
+      "ref": "AuthenticatedRole",
+      "attr": "Arn"
+     }
+    }
+   },
+   "refs": [
+    "AuthenticatedRole",
+    "IdentityPool"
+   ]
+  },
+  {
+   "id": "__output__.UserPoolId",
+   "cfg": "__output__.UserPoolId",
+   "type": "__output__",
+   "values": {
+    "name": "UserPoolId",
+    "value": {
+     "ref": "UserPool"
+    },
+    "description": null,
+    "export": "stack-UserPool"
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "__output__.UserPoolArn",
+   "cfg": "__output__.UserPoolArn",
+   "type": "__output__",
+   "values": {
+    "name": "UserPoolArn",
+    "value": {
+     "ref": "UserPool",
+     "attr": "Arn"
+    },
+    "description": null,
+    "export": "stack-UserPoolArn"
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "__output__.IdentityPoolId",
+   "cfg": "__output__.IdentityPoolId",
+   "type": "__output__",
+   "values": {
+    "name": "IdentityPoolId",
+    "value": {
+     "ref": "IdentityPool"
+    },
+    "description": null,
+    "export": "stack-IdentityPool"
+   },
+   "refs": [
+    "IdentityPool"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPool.UserPool",
+   "cfg": "UserPool",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Cognito::UserPool",
+    "name": "UserPool",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "UserPoolName": "KibanaUsers",
+     "AdminCreateUserConfig": {
+      "AllowAdminCreateUserOnly": true
+     },
+     "UsernameAttributes": [
+      "email"
+     ],
+     "AutoVerifiedAttributes": [
+      "email"
+     ],
+     "Policies": {
+      "PasswordPolicy": {
+       "MinimumLength": 8
+      }
+     },
+     "Schema": [
+      {
+       "Name": "email",
+       "AttributeDataType": "String",
+       "DeveloperOnlyAttribute": false,
+       "Mutable": true,
+       "Required": true
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::IdentityPool.IdentityPool",
+   "cfg": "IdentityPool",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Cognito::IdentityPool",
+    "name": "IdentityPool",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "IdentityPoolName": "KibanaIDPool",
+     "AllowUnauthenticatedIdentities": true
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::ManagedPolicy.AuthenticatedPolicy",
+   "cfg": "AuthenticatedPolicy",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::ManagedPolicy",
+    "name": "AuthenticatedPolicy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Action": [
+         "es:ESHttp*"
+        ],
+        "Resource": [
+         "*"
+        ]
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.AuthenticatedRole",
+   "cfg": "AuthenticatedRole",
+   "type": "__declared__",
+   "refs": [
+    "AuthenticatedPolicy",
+    "IdentityPool"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "AuthenticatedRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Action": [
+         "sts:AssumeRoleWithWebIdentity"
+        ],
+        "Principal": {
+         "Federated": [
+          "cognito-identity.amazonaws.com"
+         ]
+        },
+        "Condition": {
+         "StringEquals": {
+          "cognito-identity.amazonaws.com:aud": {
+           "ref": "IdentityPool"
+          }
+         },
+         "ForAnyValue:StringLike": {
+          "cognito-identity.amazonaws.com:amr": "authenticated"
+         }
+        }
+       }
+      ]
+     },
+     "ManagedPolicyArns": [
+      {
+       "ref": "AuthenticatedPolicy"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::IdentityPoolRoleAttachment.RoleAttachment",
+   "cfg": "RoleAttachment",
+   "type": "__declared__",
+   "refs": [
+    "AuthenticatedRole",
+    "IdentityPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::IdentityPoolRoleAttachment",
+    "name": "RoleAttachment",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "IdentityPoolId": {
+      "ref": "IdentityPool"
+     },
+     "Roles": {
+      "authenticated": {
+       "ref": "AuthenticatedRole",
+       "attr": "Arn"
+      }
+     }
+    }
+   }
+  }
+ ]
+}

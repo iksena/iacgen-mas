@@ -1,0 +1,2471 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "12f97a8c762d0c03952f14333b6ef600fab298f0fe49fa9dc4456a2c35ebfbff",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "VPC",
+   "cfg": "VPC",
+   "type": "AWS::EC2::VPC",
+   "values": {
+    "CidrBlock": "10.0.0.0/16",
+    "EnableDnsSupport": true,
+    "EnableDnsHostnames": true,
+    "InstanceTenancy": "default",
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "emr-celeborn-demo-vpc"
+     },
+     {
+      "Key": "Project",
+      "Value": "emr-celeborn-demo"
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "InternetGateway",
+   "cfg": "InternetGateway",
+   "type": "AWS::EC2::InternetGateway",
+   "values": {
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "emr-celeborn-demo-igw"
+     },
+     {
+      "Key": "Project",
+      "Value": "emr-celeborn-demo"
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "InternetGatewayAttachment",
+   "cfg": "InternetGatewayAttachment",
+   "type": "AWS::EC2::VPCGatewayAttachment",
+   "values": {
+    "InternetGatewayId": {
+     "ref": "InternetGateway"
+    },
+    "VpcId": {
+     "ref": "VPC"
+    }
+   },
+   "refs": [
+    "InternetGateway",
+    "VPC"
+   ]
+  },
+  {
+   "id": "PublicSubnet1",
+   "cfg": "PublicSubnet1",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "CidrBlock": "10.0.1.0/24",
+    "AvailabilityZone": "us-east-1a",
+    "MapPublicIpOnLaunch": false,
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "emr-celeborn-demo-public-subnet-az1"
+     },
+     {
+      "Key": "Project",
+      "Value": "emr-celeborn-demo"
+     },
+     {
+      "Key": "kubernetes.io/role/elb",
+      "Value": "1"
+     }
+    ]
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "PublicSubnet2",
+   "cfg": "PublicSubnet2",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "CidrBlock": "10.0.2.0/24",
+    "AvailabilityZone": "us-east-1b",
+    "MapPublicIpOnLaunch": false,
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "emr-celeborn-demo-public-subnet-az2"
+     },
+     {
+      "Key": "Project",
+      "Value": "emr-celeborn-demo"
+     },
+     {
+      "Key": "kubernetes.io/role/elb",
+      "Value": "1"
+     }
+    ]
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "PrivateSubnet1",
+   "cfg": "PrivateSubnet1",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "CidrBlock": "10.0.10.0/24",
+    "AvailabilityZone": "us-east-1a",
+    "MapPublicIpOnLaunch": false,
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "emr-celeborn-demo-private-subnet-az1"
+     },
+     {
+      "Key": "Project",
+      "Value": "emr-celeborn-demo"
+     },
+     {
+      "Key": "kubernetes.io/role/internal-elb",
+      "Value": "1"
+     }
+    ]
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "PrivateSubnet2",
+   "cfg": "PrivateSubnet2",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "CidrBlock": "10.0.20.0/24",
+    "AvailabilityZone": "us-east-1b",
+    "MapPublicIpOnLaunch": false,
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "emr-celeborn-demo-private-subnet-az2"
+     },
+     {
+      "Key": "Project",
+      "Value": "emr-celeborn-demo"
+     },
+     {
+      "Key": "kubernetes.io/role/internal-elb",
+      "Value": "1"
+     }
+    ]
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "NatGateway1Eip",
+   "cfg": "NatGateway1Eip",
+   "type": "AWS::EC2::EIP",
+   "values": {
+    "Domain": "vpc",
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "emr-celeborn-demo-nat-gw-1-eip"
+     },
+     {
+      "Key": "Project",
+      "Value": "emr-celeborn-demo"
+     }
+    ],
+    "__resource__": {
+     "DependsOn": [
+      "InternetGatewayAttachment"
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "NatGateway2Eip",
+   "cfg": "NatGateway2Eip",
+   "type": "AWS::EC2::EIP",
+   "values": {
+    "Domain": "vpc",
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "emr-celeborn-demo-nat-gw-2-eip"
+     },
+     {
+      "Key": "Project",
+      "Value": "emr-celeborn-demo"
+     }
+    ],
+    "__resource__": {
+     "DependsOn": [
+      "InternetGatewayAttachment"
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "NatGateway1",
+   "cfg": "NatGateway1",
+   "type": "AWS::EC2::NatGateway",
+   "values": {
+    "AllocationId": {
+     "ref": "NatGateway1Eip",
+     "attr": "AllocationId"
+    },
+    "SubnetId": {
+     "ref": "PublicSubnet1"
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "emr-celeborn-demo-nat-gw-1"
+     },
+     {
+      "Key": "Project",
+      "Value": "emr-celeborn-demo"
+     }
+    ]
+   },
+   "refs": [
+    "NatGateway1Eip",
+    "PublicSubnet1"
+   ]
+  },
+  {
+   "id": "NatGateway2",
+   "cfg": "NatGateway2",
+   "type": "AWS::EC2::NatGateway",
+   "values": {
+    "AllocationId": {
+     "ref": "NatGateway2Eip",
+     "attr": "AllocationId"
+    },
+    "SubnetId": {
+     "ref": "PublicSubnet2"
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "emr-celeborn-demo-nat-gw-2"
+     },
+     {
+      "Key": "Project",
+      "Value": "emr-celeborn-demo"
+     }
+    ]
+   },
+   "refs": [
+    "NatGateway2Eip",
+    "PublicSubnet2"
+   ]
+  },
+  {
+   "id": "PublicRouteTable",
+   "cfg": "PublicRouteTable",
+   "type": "AWS::EC2::RouteTable",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "emr-celeborn-demo-public-rt"
+     },
+     {
+      "Key": "Project",
+      "Value": "emr-celeborn-demo"
+     }
+    ]
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "PublicRoute",
+   "cfg": "PublicRoute",
+   "type": "AWS::EC2::Route",
+   "values": {
+    "RouteTableId": {
+     "ref": "PublicRouteTable"
+    },
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "GatewayId": {
+     "ref": "InternetGateway"
+    },
+    "__resource__": {
+     "DependsOn": [
+      "InternetGatewayAttachment"
+     ]
+    }
+   },
+   "refs": [
+    "InternetGateway",
+    "PublicRouteTable"
+   ]
+  },
+  {
+   "id": "PublicSubnet1RouteTableAssociation",
+   "cfg": "PublicSubnet1RouteTableAssociation",
+   "type": "AWS::EC2::SubnetRouteTableAssociation",
+   "values": {
+    "SubnetId": {
+     "ref": "PublicSubnet1"
+    },
+    "RouteTableId": {
+     "ref": "PublicRouteTable"
+    }
+   },
+   "refs": [
+    "PublicRouteTable",
+    "PublicSubnet1"
+   ]
+  },
+  {
+   "id": "PublicSubnet2RouteTableAssociation",
+   "cfg": "PublicSubnet2RouteTableAssociation",
+   "type": "AWS::EC2::SubnetRouteTableAssociation",
+   "values": {
+    "SubnetId": {
+     "ref": "PublicSubnet2"
+    },
+    "RouteTableId": {
+     "ref": "PublicRouteTable"
+    }
+   },
+   "refs": [
+    "PublicRouteTable",
+    "PublicSubnet2"
+   ]
+  },
+  {
+   "id": "PrivateRouteTable1",
+   "cfg": "PrivateRouteTable1",
+   "type": "AWS::EC2::RouteTable",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "emr-celeborn-demo-private-rt-az1"
+     },
+     {
+      "Key": "Project",
+      "Value": "emr-celeborn-demo"
+     }
+    ]
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "PrivateRoute1",
+   "cfg": "PrivateRoute1",
+   "type": "AWS::EC2::Route",
+   "values": {
+    "RouteTableId": {
+     "ref": "PrivateRouteTable1"
+    },
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "NatGatewayId": {
+     "ref": "NatGateway1"
+    }
+   },
+   "refs": [
+    "NatGateway1",
+    "PrivateRouteTable1"
+   ]
+  },
+  {
+   "id": "PrivateSubnet1RouteTableAssociation",
+   "cfg": "PrivateSubnet1RouteTableAssociation",
+   "type": "AWS::EC2::SubnetRouteTableAssociation",
+   "values": {
+    "SubnetId": {
+     "ref": "PrivateSubnet1"
+    },
+    "RouteTableId": {
+     "ref": "PrivateRouteTable1"
+    }
+   },
+   "refs": [
+    "PrivateRouteTable1",
+    "PrivateSubnet1"
+   ]
+  },
+  {
+   "id": "PrivateRouteTable2",
+   "cfg": "PrivateRouteTable2",
+   "type": "AWS::EC2::RouteTable",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "emr-celeborn-demo-private-rt-az2"
+     },
+     {
+      "Key": "Project",
+      "Value": "emr-celeborn-demo"
+     }
+    ]
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "PrivateRoute2",
+   "cfg": "PrivateRoute2",
+   "type": "AWS::EC2::Route",
+   "values": {
+    "RouteTableId": {
+     "ref": "PrivateRouteTable2"
+    },
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "NatGatewayId": {
+     "ref": "NatGateway2"
+    }
+   },
+   "refs": [
+    "NatGateway2",
+    "PrivateRouteTable2"
+   ]
+  },
+  {
+   "id": "PrivateSubnet2RouteTableAssociation",
+   "cfg": "PrivateSubnet2RouteTableAssociation",
+   "type": "AWS::EC2::SubnetRouteTableAssociation",
+   "values": {
+    "SubnetId": {
+     "ref": "PrivateSubnet2"
+    },
+    "RouteTableId": {
+     "ref": "PrivateRouteTable2"
+    }
+   },
+   "refs": [
+    "PrivateRouteTable2",
+    "PrivateSubnet2"
+   ]
+  },
+  {
+   "id": "S3GatewayEndpoint",
+   "cfg": "S3GatewayEndpoint",
+   "type": "AWS::EC2::VPCEndpoint",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "ServiceName": "com.amazonaws.us-east-1.s3",
+    "VpcEndpointType": "Gateway",
+    "RouteTableIds": [
+     {
+      "ref": "PrivateRouteTable1"
+     },
+     {
+      "ref": "PrivateRouteTable2"
+     },
+     {
+      "ref": "PublicRouteTable"
+     }
+    ]
+   },
+   "refs": [
+    "PrivateRouteTable1",
+    "PrivateRouteTable2",
+    "PublicRouteTable",
+    "VPC"
+   ]
+  },
+  {
+   "id": "VpcEndpointSecurityGroup",
+   "cfg": "VpcEndpointSecurityGroup",
+   "type": "AWS::EC2::SecurityGroup",
+   "values": {
+    "GroupDescription": "Security group for VPC Interface Endpoints - allows HTTPS from VPC CIDR",
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "SecurityGroupIngress": [
+     {
+      "Description": "HTTPS from VPC CIDR for VPC endpoint access",
+      "IpProtocol": "tcp",
+      "FromPort": 443,
+      "ToPort": 443,
+      "CidrIp": "10.0.0.0/16"
+     }
+    ],
+    "SecurityGroupEgress": [
+     {
+      "Description": "HTTPS responses back to VPC CIDR",
+      "IpProtocol": "tcp",
+      "FromPort": 443,
+      "ToPort": 443,
+      "CidrIp": "10.0.0.0/16"
+     }
+    ],
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "emr-celeborn-demo-vpc-endpoint-sg"
+     },
+     {
+      "Key": "Project",
+      "Value": "emr-celeborn-demo"
+     }
+    ]
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "SsmEndpoint",
+   "cfg": "SsmEndpoint",
+   "type": "AWS::EC2::VPCEndpoint",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "ServiceName": "com.amazonaws.us-east-1.ssm",
+    "VpcEndpointType": "Interface",
+    "PrivateDnsEnabled": true,
+    "SubnetIds": [
+     {
+      "ref": "PrivateSubnet1"
+     },
+     {
+      "ref": "PrivateSubnet2"
+     }
+    ],
+    "SecurityGroupIds": [
+     {
+      "ref": "VpcEndpointSecurityGroup"
+     }
+    ]
+   },
+   "refs": [
+    "PrivateSubnet1",
+    "PrivateSubnet2",
+    "VPC",
+    "VpcEndpointSecurityGroup"
+   ]
+  },
+  {
+   "id": "SsmMessagesEndpoint",
+   "cfg": "SsmMessagesEndpoint",
+   "type": "AWS::EC2::VPCEndpoint",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "ServiceName": "com.amazonaws.us-east-1.ssmmessages",
+    "VpcEndpointType": "Interface",
+    "PrivateDnsEnabled": true,
+    "SubnetIds": [
+     {
+      "ref": "PrivateSubnet1"
+     },
+     {
+      "ref": "PrivateSubnet2"
+     }
+    ],
+    "SecurityGroupIds": [
+     {
+      "ref": "VpcEndpointSecurityGroup"
+     }
+    ]
+   },
+   "refs": [
+    "PrivateSubnet1",
+    "PrivateSubnet2",
+    "VPC",
+    "VpcEndpointSecurityGroup"
+   ]
+  },
+  {
+   "id": "Ec2MessagesEndpoint",
+   "cfg": "Ec2MessagesEndpoint",
+   "type": "AWS::EC2::VPCEndpoint",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "ServiceName": "com.amazonaws.us-east-1.ec2messages",
+    "VpcEndpointType": "Interface",
+    "PrivateDnsEnabled": true,
+    "SubnetIds": [
+     {
+      "ref": "PrivateSubnet1"
+     },
+     {
+      "ref": "PrivateSubnet2"
+     }
+    ],
+    "SecurityGroupIds": [
+     {
+      "ref": "VpcEndpointSecurityGroup"
+     }
+    ]
+   },
+   "refs": [
+    "PrivateSubnet1",
+    "PrivateSubnet2",
+    "VPC",
+    "VpcEndpointSecurityGroup"
+   ]
+  },
+  {
+   "id": "Ec2ApiEndpoint",
+   "cfg": "Ec2ApiEndpoint",
+   "type": "AWS::EC2::VPCEndpoint",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "ServiceName": "com.amazonaws.us-east-1.ec2",
+    "VpcEndpointType": "Interface",
+    "PrivateDnsEnabled": true,
+    "SubnetIds": [
+     {
+      "ref": "PrivateSubnet1"
+     },
+     {
+      "ref": "PrivateSubnet2"
+     }
+    ],
+    "SecurityGroupIds": [
+     {
+      "ref": "VpcEndpointSecurityGroup"
+     }
+    ]
+   },
+   "refs": [
+    "PrivateSubnet1",
+    "PrivateSubnet2",
+    "VPC",
+    "VpcEndpointSecurityGroup"
+   ]
+  },
+  {
+   "id": "CloudWatchLogsEndpoint",
+   "cfg": "CloudWatchLogsEndpoint",
+   "type": "AWS::EC2::VPCEndpoint",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "ServiceName": "com.amazonaws.us-east-1.logs",
+    "VpcEndpointType": "Interface",
+    "PrivateDnsEnabled": true,
+    "SubnetIds": [
+     {
+      "ref": "PrivateSubnet1"
+     },
+     {
+      "ref": "PrivateSubnet2"
+     }
+    ],
+    "SecurityGroupIds": [
+     {
+      "ref": "VpcEndpointSecurityGroup"
+     }
+    ]
+   },
+   "refs": [
+    "PrivateSubnet1",
+    "PrivateSubnet2",
+    "VPC",
+    "VpcEndpointSecurityGroup"
+   ]
+  },
+  {
+   "id": "CloudWatchMonitoringEndpoint",
+   "cfg": "CloudWatchMonitoringEndpoint",
+   "type": "AWS::EC2::VPCEndpoint",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "ServiceName": "com.amazonaws.us-east-1.monitoring",
+    "VpcEndpointType": "Interface",
+    "PrivateDnsEnabled": true,
+    "SubnetIds": [
+     {
+      "ref": "PrivateSubnet1"
+     },
+     {
+      "ref": "PrivateSubnet2"
+     }
+    ],
+    "SecurityGroupIds": [
+     {
+      "ref": "VpcEndpointSecurityGroup"
+     }
+    ]
+   },
+   "refs": [
+    "PrivateSubnet1",
+    "PrivateSubnet2",
+    "VPC",
+    "VpcEndpointSecurityGroup"
+   ]
+  },
+  {
+   "id": "StsEndpoint",
+   "cfg": "StsEndpoint",
+   "type": "AWS::EC2::VPCEndpoint",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "ServiceName": "com.amazonaws.us-east-1.sts",
+    "VpcEndpointType": "Interface",
+    "PrivateDnsEnabled": true,
+    "SubnetIds": [
+     {
+      "ref": "PrivateSubnet1"
+     },
+     {
+      "ref": "PrivateSubnet2"
+     }
+    ],
+    "SecurityGroupIds": [
+     {
+      "ref": "VpcEndpointSecurityGroup"
+     }
+    ]
+   },
+   "refs": [
+    "PrivateSubnet1",
+    "PrivateSubnet2",
+    "VPC",
+    "VpcEndpointSecurityGroup"
+   ]
+  },
+  {
+   "id": "EmrEndpoint",
+   "cfg": "EmrEndpoint",
+   "type": "AWS::EC2::VPCEndpoint",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "ServiceName": "com.amazonaws.us-east-1.elasticmapreduce",
+    "VpcEndpointType": "Interface",
+    "PrivateDnsEnabled": true,
+    "SubnetIds": [
+     {
+      "ref": "PrivateSubnet1"
+     },
+     {
+      "ref": "PrivateSubnet2"
+     }
+    ],
+    "SecurityGroupIds": [
+     {
+      "ref": "VpcEndpointSecurityGroup"
+     }
+    ]
+   },
+   "refs": [
+    "PrivateSubnet1",
+    "PrivateSubnet2",
+    "VPC",
+    "VpcEndpointSecurityGroup"
+   ]
+  },
+  {
+   "id": "KmsEndpoint",
+   "cfg": "KmsEndpoint",
+   "type": "AWS::EC2::VPCEndpoint",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "ServiceName": "com.amazonaws.us-east-1.kms",
+    "VpcEndpointType": "Interface",
+    "PrivateDnsEnabled": true,
+    "SubnetIds": [
+     {
+      "ref": "PrivateSubnet1"
+     },
+     {
+      "ref": "PrivateSubnet2"
+     }
+    ],
+    "SecurityGroupIds": [
+     {
+      "ref": "VpcEndpointSecurityGroup"
+     }
+    ]
+   },
+   "refs": [
+    "PrivateSubnet1",
+    "PrivateSubnet2",
+    "VPC",
+    "VpcEndpointSecurityGroup"
+   ]
+  },
+  {
+   "id": "FlowLogKmsKey",
+   "cfg": "FlowLogKmsKey",
+   "type": "AWS::KMS::Key",
+   "values": {
+    "Description": "CMK for emr-celeborn-demo VPC flow log encryption",
+    "KeyPolicy": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Sid": "AllowAccountFullAccess",
+       "Effect": "Allow",
+       "Principal": {
+        "AWS": [
+         "arn:aws:iam::123456789012:root"
+        ]
+       },
+       "Action": [
+        "kms:*"
+       ],
+       "Resource": [
+        "*"
+       ]
+      },
+      {
+       "Sid": "AllowFlowLogsDeliveryToUseKey",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "vpc-flow-logs.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "kms:Encrypt",
+        "kms:Decrypt",
+        "kms:ReEncrypt*",
+        "kms:GenerateDataKey*",
+        "kms:DescribeKey"
+       ],
+       "Resource": [
+        "*"
+       ]
+      },
+      {
+       "Sid": "AllowCloudWatchLogsToUseKey",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "logs.us-east-1.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "kms:Encrypt*",
+        "kms:Decrypt*",
+        "kms:ReEncrypt*",
+        "kms:GenerateDataKey*",
+        "kms:Describe*"
+       ],
+       "Resource": [
+        "*"
+       ],
+       "Condition": {
+        "ArnLike": {
+         "kms:EncryptionContext:aws:logs:arn": "arn:aws:logs:us-east-1:123456789012:*"
+        }
+       }
+      }
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "FlowLogRole",
+   "cfg": "FlowLogRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "vpc-flow-logs.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Policies": [
+     {
+      "PolicyName": "flowlog-policy",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents",
+          "logs:DescribeLogGroups",
+          "logs:DescribeLogStreams",
+          "kms:Encrypt",
+          "kms:Decrypt",
+          "kms:ReEncrypt*",
+          "kms:GenerateDataKey*",
+          "kms:DescribeKey"
+         ],
+         "Resource": [
+          "arn:aws:logs:us-east-1:123456789012:log-group:/aws/vpc/flowlogs/emr-celeborn-demo:*",
+          {
+           "ref": "FlowLogKmsKey",
+           "attr": "Arn"
+          }
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": [
+    "FlowLogKmsKey"
+   ]
+  },
+  {
+   "id": "FlowLogGroup",
+   "cfg": "FlowLogGroup",
+   "type": "AWS::Logs::LogGroup",
+   "values": {
+    "LogGroupName": "/aws/vpc/flowlogs/emr-celeborn-demo",
+    "RetentionInDays": 30,
+    "KmsKeyId": {
+     "ref": "FlowLogKmsKey",
+     "attr": "Arn"
+    },
+    "__resource__": {
+     "DeletionPolicy": "Delete",
+     "UpdateReplacePolicy": "Delete"
+    }
+   },
+   "refs": [
+    "FlowLogKmsKey"
+   ]
+  },
+  {
+   "id": "VPCFlowLog",
+   "cfg": "VPCFlowLog",
+   "type": "AWS::EC2::FlowLog",
+   "values": {
+    "DeliverLogsPermissionArn": {
+     "ref": "FlowLogRole",
+     "attr": "Arn"
+    },
+    "LogGroupName": {
+     "ref": "FlowLogGroup"
+    },
+    "ResourceId": {
+     "ref": "VPC"
+    },
+    "ResourceType": "VPC",
+    "TrafficType": "ALL",
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "emr-celeborn-demo-vpc-flow-log"
+     },
+     {
+      "Key": "Project",
+      "Value": "emr-celeborn-demo"
+     }
+    ]
+   },
+   "refs": [
+    "FlowLogGroup",
+    "FlowLogRole",
+    "VPC"
+   ]
+  },
+  {
+   "id": "__parameter__.VpcCidr",
+   "cfg": "__parameter__.VpcCidr",
+   "type": "__parameter__",
+   "values": {
+    "name": "VpcCidr",
+    "type": "String",
+    "default": "10.0.0.0/16",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.PublicSubnet1Cidr",
+   "cfg": "__parameter__.PublicSubnet1Cidr",
+   "type": "__parameter__",
+   "values": {
+    "name": "PublicSubnet1Cidr",
+    "type": "String",
+    "default": "10.0.1.0/24",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.PublicSubnet2Cidr",
+   "cfg": "__parameter__.PublicSubnet2Cidr",
+   "type": "__parameter__",
+   "values": {
+    "name": "PublicSubnet2Cidr",
+    "type": "String",
+    "default": "10.0.2.0/24",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.PrivateSubnet1Cidr",
+   "cfg": "__parameter__.PrivateSubnet1Cidr",
+   "type": "__parameter__",
+   "values": {
+    "name": "PrivateSubnet1Cidr",
+    "type": "String",
+    "default": "10.0.10.0/24",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.PrivateSubnet2Cidr",
+   "cfg": "__parameter__.PrivateSubnet2Cidr",
+   "type": "__parameter__",
+   "values": {
+    "name": "PrivateSubnet2Cidr",
+    "type": "String",
+    "default": "10.0.20.0/24",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.ProjectName",
+   "cfg": "__parameter__.ProjectName",
+   "type": "__parameter__",
+   "values": {
+    "name": "ProjectName",
+    "type": "String",
+    "default": "emr-celeborn-demo",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.VpcId",
+   "cfg": "__output__.VpcId",
+   "type": "__output__",
+   "values": {
+    "name": "VpcId",
+    "value": {
+     "ref": "VPC"
+    },
+    "description": "ID of the shared VPC",
+    "export": "emr-celeborn-demo-VpcId"
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "__output__.VpcCidr",
+   "cfg": "__output__.VpcCidr",
+   "type": "__output__",
+   "values": {
+    "name": "VpcCidr",
+    "value": {
+     "ref": "VPC",
+     "attr": "CidrBlock"
+    },
+    "description": "CIDR block of the shared VPC",
+    "export": "emr-celeborn-demo-VpcCidr"
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "__output__.PublicSubnet1Id",
+   "cfg": "__output__.PublicSubnet1Id",
+   "type": "__output__",
+   "values": {
+    "name": "PublicSubnet1Id",
+    "value": {
+     "ref": "PublicSubnet1"
+    },
+    "description": "ID of Public Subnet 1 in AZ-1",
+    "export": "emr-celeborn-demo-PublicSubnet1Id"
+   },
+   "refs": [
+    "PublicSubnet1"
+   ]
+  },
+  {
+   "id": "__output__.PublicSubnet2Id",
+   "cfg": "__output__.PublicSubnet2Id",
+   "type": "__output__",
+   "values": {
+    "name": "PublicSubnet2Id",
+    "value": {
+     "ref": "PublicSubnet2"
+    },
+    "description": "ID of Public Subnet 2 in AZ-2",
+    "export": "emr-celeborn-demo-PublicSubnet2Id"
+   },
+   "refs": [
+    "PublicSubnet2"
+   ]
+  },
+  {
+   "id": "__output__.PrivateSubnet1Id",
+   "cfg": "__output__.PrivateSubnet1Id",
+   "type": "__output__",
+   "values": {
+    "name": "PrivateSubnet1Id",
+    "value": {
+     "ref": "PrivateSubnet1"
+    },
+    "description": "ID of Private Subnet 1 in AZ-1",
+    "export": "emr-celeborn-demo-PrivateSubnet1Id"
+   },
+   "refs": [
+    "PrivateSubnet1"
+   ]
+  },
+  {
+   "id": "__output__.PrivateSubnet2Id",
+   "cfg": "__output__.PrivateSubnet2Id",
+   "type": "__output__",
+   "values": {
+    "name": "PrivateSubnet2Id",
+    "value": {
+     "ref": "PrivateSubnet2"
+    },
+    "description": "ID of Private Subnet 2 in AZ-2",
+    "export": "emr-celeborn-demo-PrivateSubnet2Id"
+   },
+   "refs": [
+    "PrivateSubnet2"
+   ]
+  },
+  {
+   "id": "__output__.PrivateSubnetIds",
+   "cfg": "__output__.PrivateSubnetIds",
+   "type": "__output__",
+   "values": {
+    "name": "PrivateSubnetIds",
+    "value": {
+     "Fn::Join": [
+      ",",
+      [
+       {
+        "ref": "PrivateSubnet1"
+       },
+       {
+        "ref": "PrivateSubnet2"
+       }
+      ]
+     ]
+    },
+    "description": "Comma-separated list of private subnet IDs",
+    "export": "emr-celeborn-demo-PrivateSubnetIds"
+   },
+   "refs": [
+    "PrivateSubnet1",
+    "PrivateSubnet2"
+   ]
+  },
+  {
+   "id": "__output__.PublicSubnetIds",
+   "cfg": "__output__.PublicSubnetIds",
+   "type": "__output__",
+   "values": {
+    "name": "PublicSubnetIds",
+    "value": {
+     "Fn::Join": [
+      ",",
+      [
+       {
+        "ref": "PublicSubnet1"
+       },
+       {
+        "ref": "PublicSubnet2"
+       }
+      ]
+     ]
+    },
+    "description": "Comma-separated list of public subnet IDs",
+    "export": "emr-celeborn-demo-PublicSubnetIds"
+   },
+   "refs": [
+    "PublicSubnet1",
+    "PublicSubnet2"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPC.VPC",
+   "cfg": "VPC",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::VPC",
+    "name": "VPC",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "CidrBlock": "10.0.0.0/16",
+     "EnableDnsSupport": true,
+     "EnableDnsHostnames": true,
+     "InstanceTenancy": "default",
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "emr-celeborn-demo-vpc"
+      },
+      {
+       "Key": "Project",
+       "Value": "emr-celeborn-demo"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::InternetGateway.InternetGateway",
+   "cfg": "InternetGateway",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::InternetGateway",
+    "name": "InternetGateway",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "emr-celeborn-demo-igw"
+      },
+      {
+       "Key": "Project",
+       "Value": "emr-celeborn-demo"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCGatewayAttachment.InternetGatewayAttachment",
+   "cfg": "InternetGatewayAttachment",
+   "type": "__declared__",
+   "refs": [
+    "InternetGateway",
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::VPCGatewayAttachment",
+    "name": "InternetGatewayAttachment",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "InternetGatewayId": {
+      "ref": "InternetGateway"
+     },
+     "VpcId": {
+      "ref": "VPC"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.PublicSubnet1",
+   "cfg": "PublicSubnet1",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "PublicSubnet1",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "CidrBlock": "10.0.1.0/24",
+     "AvailabilityZone": "us-east-1a",
+     "MapPublicIpOnLaunch": false,
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "emr-celeborn-demo-public-subnet-az1"
+      },
+      {
+       "Key": "Project",
+       "Value": "emr-celeborn-demo"
+      },
+      {
+       "Key": "kubernetes.io/role/elb",
+       "Value": "1"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.PublicSubnet2",
+   "cfg": "PublicSubnet2",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "PublicSubnet2",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "CidrBlock": "10.0.2.0/24",
+     "AvailabilityZone": "us-east-1b",
+     "MapPublicIpOnLaunch": false,
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "emr-celeborn-demo-public-subnet-az2"
+      },
+      {
+       "Key": "Project",
+       "Value": "emr-celeborn-demo"
+      },
+      {
+       "Key": "kubernetes.io/role/elb",
+       "Value": "1"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.PrivateSubnet1",
+   "cfg": "PrivateSubnet1",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "PrivateSubnet1",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "CidrBlock": "10.0.10.0/24",
+     "AvailabilityZone": "us-east-1a",
+     "MapPublicIpOnLaunch": false,
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "emr-celeborn-demo-private-subnet-az1"
+      },
+      {
+       "Key": "Project",
+       "Value": "emr-celeborn-demo"
+      },
+      {
+       "Key": "kubernetes.io/role/internal-elb",
+       "Value": "1"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.PrivateSubnet2",
+   "cfg": "PrivateSubnet2",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "PrivateSubnet2",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "CidrBlock": "10.0.20.0/24",
+     "AvailabilityZone": "us-east-1b",
+     "MapPublicIpOnLaunch": false,
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "emr-celeborn-demo-private-subnet-az2"
+      },
+      {
+       "Key": "Project",
+       "Value": "emr-celeborn-demo"
+      },
+      {
+       "Key": "kubernetes.io/role/internal-elb",
+       "Value": "1"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::EIP.NatGateway1Eip",
+   "cfg": "NatGateway1Eip",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::EIP",
+    "name": "NatGateway1Eip",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Domain": "vpc",
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "emr-celeborn-demo-nat-gw-1-eip"
+      },
+      {
+       "Key": "Project",
+       "Value": "emr-celeborn-demo"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::EIP.NatGateway2Eip",
+   "cfg": "NatGateway2Eip",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::EIP",
+    "name": "NatGateway2Eip",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Domain": "vpc",
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "emr-celeborn-demo-nat-gw-2-eip"
+      },
+      {
+       "Key": "Project",
+       "Value": "emr-celeborn-demo"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::NatGateway.NatGateway1",
+   "cfg": "NatGateway1",
+   "type": "__declared__",
+   "refs": [
+    "NatGateway1Eip",
+    "PublicSubnet1"
+   ],
+   "values": {
+    "type": "AWS::EC2::NatGateway",
+    "name": "NatGateway1",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AllocationId": {
+      "ref": "NatGateway1Eip",
+      "attr": "AllocationId"
+     },
+     "SubnetId": {
+      "ref": "PublicSubnet1"
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "emr-celeborn-demo-nat-gw-1"
+      },
+      {
+       "Key": "Project",
+       "Value": "emr-celeborn-demo"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::NatGateway.NatGateway2",
+   "cfg": "NatGateway2",
+   "type": "__declared__",
+   "refs": [
+    "NatGateway2Eip",
+    "PublicSubnet2"
+   ],
+   "values": {
+    "type": "AWS::EC2::NatGateway",
+    "name": "NatGateway2",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AllocationId": {
+      "ref": "NatGateway2Eip",
+      "attr": "AllocationId"
+     },
+     "SubnetId": {
+      "ref": "PublicSubnet2"
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "emr-celeborn-demo-nat-gw-2"
+      },
+      {
+       "Key": "Project",
+       "Value": "emr-celeborn-demo"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::RouteTable.PublicRouteTable",
+   "cfg": "PublicRouteTable",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::RouteTable",
+    "name": "PublicRouteTable",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "emr-celeborn-demo-public-rt"
+      },
+      {
+       "Key": "Project",
+       "Value": "emr-celeborn-demo"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Route.PublicRoute",
+   "cfg": "PublicRoute",
+   "type": "__declared__",
+   "refs": [
+    "InternetGateway",
+    "PublicRouteTable"
+   ],
+   "values": {
+    "type": "AWS::EC2::Route",
+    "name": "PublicRoute",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RouteTableId": {
+      "ref": "PublicRouteTable"
+     },
+     "DestinationCidrBlock": "0.0.0.0/0",
+     "GatewayId": {
+      "ref": "InternetGateway"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetRouteTableAssociation.PublicSubnet1RouteTableAssociation",
+   "cfg": "PublicSubnet1RouteTableAssociation",
+   "type": "__declared__",
+   "refs": [
+    "PublicRouteTable",
+    "PublicSubnet1"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetRouteTableAssociation",
+    "name": "PublicSubnet1RouteTableAssociation",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "SubnetId": {
+      "ref": "PublicSubnet1"
+     },
+     "RouteTableId": {
+      "ref": "PublicRouteTable"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetRouteTableAssociation.PublicSubnet2RouteTableAssociation",
+   "cfg": "PublicSubnet2RouteTableAssociation",
+   "type": "__declared__",
+   "refs": [
+    "PublicRouteTable",
+    "PublicSubnet2"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetRouteTableAssociation",
+    "name": "PublicSubnet2RouteTableAssociation",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "SubnetId": {
+      "ref": "PublicSubnet2"
+     },
+     "RouteTableId": {
+      "ref": "PublicRouteTable"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::RouteTable.PrivateRouteTable1",
+   "cfg": "PrivateRouteTable1",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::RouteTable",
+    "name": "PrivateRouteTable1",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "emr-celeborn-demo-private-rt-az1"
+      },
+      {
+       "Key": "Project",
+       "Value": "emr-celeborn-demo"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Route.PrivateRoute1",
+   "cfg": "PrivateRoute1",
+   "type": "__declared__",
+   "refs": [
+    "NatGateway1",
+    "PrivateRouteTable1"
+   ],
+   "values": {
+    "type": "AWS::EC2::Route",
+    "name": "PrivateRoute1",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RouteTableId": {
+      "ref": "PrivateRouteTable1"
+     },
+     "DestinationCidrBlock": "0.0.0.0/0",
+     "NatGatewayId": {
+      "ref": "NatGateway1"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetRouteTableAssociation.PrivateSubnet1RouteTableAssociation",
+   "cfg": "PrivateSubnet1RouteTableAssociation",
+   "type": "__declared__",
+   "refs": [
+    "PrivateRouteTable1",
+    "PrivateSubnet1"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetRouteTableAssociation",
+    "name": "PrivateSubnet1RouteTableAssociation",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "SubnetId": {
+      "ref": "PrivateSubnet1"
+     },
+     "RouteTableId": {
+      "ref": "PrivateRouteTable1"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::RouteTable.PrivateRouteTable2",
+   "cfg": "PrivateRouteTable2",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::RouteTable",
+    "name": "PrivateRouteTable2",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "emr-celeborn-demo-private-rt-az2"
+      },
+      {
+       "Key": "Project",
+       "Value": "emr-celeborn-demo"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Route.PrivateRoute2",
+   "cfg": "PrivateRoute2",
+   "type": "__declared__",
+   "refs": [
+    "NatGateway2",
+    "PrivateRouteTable2"
+   ],
+   "values": {
+    "type": "AWS::EC2::Route",
+    "name": "PrivateRoute2",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RouteTableId": {
+      "ref": "PrivateRouteTable2"
+     },
+     "DestinationCidrBlock": "0.0.0.0/0",
+     "NatGatewayId": {
+      "ref": "NatGateway2"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetRouteTableAssociation.PrivateSubnet2RouteTableAssociation",
+   "cfg": "PrivateSubnet2RouteTableAssociation",
+   "type": "__declared__",
+   "refs": [
+    "PrivateRouteTable2",
+    "PrivateSubnet2"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetRouteTableAssociation",
+    "name": "PrivateSubnet2RouteTableAssociation",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "SubnetId": {
+      "ref": "PrivateSubnet2"
+     },
+     "RouteTableId": {
+      "ref": "PrivateRouteTable2"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCEndpoint.S3GatewayEndpoint",
+   "cfg": "S3GatewayEndpoint",
+   "type": "__declared__",
+   "refs": [
+    "PrivateRouteTable1",
+    "PrivateRouteTable2",
+    "PublicRouteTable",
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::VPCEndpoint",
+    "name": "S3GatewayEndpoint",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "ServiceName": "com.amazonaws.us-east-1.s3",
+     "VpcEndpointType": "Gateway",
+     "RouteTableIds": [
+      {
+       "ref": "PrivateRouteTable1"
+      },
+      {
+       "ref": "PrivateRouteTable2"
+      },
+      {
+       "ref": "PublicRouteTable"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SecurityGroup.VpcEndpointSecurityGroup",
+   "cfg": "VpcEndpointSecurityGroup",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::SecurityGroup",
+    "name": "VpcEndpointSecurityGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "GroupDescription": "Security group for VPC Interface Endpoints - allows HTTPS from VPC CIDR",
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "SecurityGroupIngress": [
+      {
+       "Description": "HTTPS from VPC CIDR for VPC endpoint access",
+       "IpProtocol": "tcp",
+       "FromPort": 443,
+       "ToPort": 443,
+       "CidrIp": "10.0.0.0/16"
+      }
+     ],
+     "SecurityGroupEgress": [
+      {
+       "Description": "HTTPS responses back to VPC CIDR",
+       "IpProtocol": "tcp",
+       "FromPort": 443,
+       "ToPort": 443,
+       "CidrIp": "10.0.0.0/16"
+      }
+     ],
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "emr-celeborn-demo-vpc-endpoint-sg"
+      },
+      {
+       "Key": "Project",
+       "Value": "emr-celeborn-demo"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCEndpoint.SsmEndpoint",
+   "cfg": "SsmEndpoint",
+   "type": "__declared__",
+   "refs": [
+    "PrivateSubnet1",
+    "PrivateSubnet2",
+    "VPC",
+    "VpcEndpointSecurityGroup"
+   ],
+   "values": {
+    "type": "AWS::EC2::VPCEndpoint",
+    "name": "SsmEndpoint",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "ServiceName": "com.amazonaws.us-east-1.ssm",
+     "VpcEndpointType": "Interface",
+     "PrivateDnsEnabled": true,
+     "SubnetIds": [
+      {
+       "ref": "PrivateSubnet1"
+      },
+      {
+       "ref": "PrivateSubnet2"
+      }
+     ],
+     "SecurityGroupIds": [
+      {
+       "ref": "VpcEndpointSecurityGroup"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCEndpoint.SsmMessagesEndpoint",
+   "cfg": "SsmMessagesEndpoint",
+   "type": "__declared__",
+   "refs": [
+    "PrivateSubnet1",
+    "PrivateSubnet2",
+    "VPC",
+    "VpcEndpointSecurityGroup"
+   ],
+   "values": {
+    "type": "AWS::EC2::VPCEndpoint",
+    "name": "SsmMessagesEndpoint",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "ServiceName": "com.amazonaws.us-east-1.ssmmessages",
+     "VpcEndpointType": "Interface",
+     "PrivateDnsEnabled": true,
+     "SubnetIds": [
+      {
+       "ref": "PrivateSubnet1"
+      },
+      {
+       "ref": "PrivateSubnet2"
+      }
+     ],
+     "SecurityGroupIds": [
+      {
+       "ref": "VpcEndpointSecurityGroup"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCEndpoint.Ec2MessagesEndpoint",
+   "cfg": "Ec2MessagesEndpoint",
+   "type": "__declared__",
+   "refs": [
+    "PrivateSubnet1",
+    "PrivateSubnet2",
+    "VPC",
+    "VpcEndpointSecurityGroup"
+   ],
+   "values": {
+    "type": "AWS::EC2::VPCEndpoint",
+    "name": "Ec2MessagesEndpoint",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "ServiceName": "com.amazonaws.us-east-1.ec2messages",
+     "VpcEndpointType": "Interface",
+     "PrivateDnsEnabled": true,
+     "SubnetIds": [
+      {
+       "ref": "PrivateSubnet1"
+      },
+      {
+       "ref": "PrivateSubnet2"
+      }
+     ],
+     "SecurityGroupIds": [
+      {
+       "ref": "VpcEndpointSecurityGroup"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCEndpoint.Ec2ApiEndpoint",
+   "cfg": "Ec2ApiEndpoint",
+   "type": "__declared__",
+   "refs": [
+    "PrivateSubnet1",
+    "PrivateSubnet2",
+    "VPC",
+    "VpcEndpointSecurityGroup"
+   ],
+   "values": {
+    "type": "AWS::EC2::VPCEndpoint",
+    "name": "Ec2ApiEndpoint",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "ServiceName": "com.amazonaws.us-east-1.ec2",
+     "VpcEndpointType": "Interface",
+     "PrivateDnsEnabled": true,
+     "SubnetIds": [
+      {
+       "ref": "PrivateSubnet1"
+      },
+      {
+       "ref": "PrivateSubnet2"
+      }
+     ],
+     "SecurityGroupIds": [
+      {
+       "ref": "VpcEndpointSecurityGroup"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCEndpoint.CloudWatchLogsEndpoint",
+   "cfg": "CloudWatchLogsEndpoint",
+   "type": "__declared__",
+   "refs": [
+    "PrivateSubnet1",
+    "PrivateSubnet2",
+    "VPC",
+    "VpcEndpointSecurityGroup"
+   ],
+   "values": {
+    "type": "AWS::EC2::VPCEndpoint",
+    "name": "CloudWatchLogsEndpoint",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "ServiceName": "com.amazonaws.us-east-1.logs",
+     "VpcEndpointType": "Interface",
+     "PrivateDnsEnabled": true,
+     "SubnetIds": [
+      {
+       "ref": "PrivateSubnet1"
+      },
+      {
+       "ref": "PrivateSubnet2"
+      }
+     ],
+     "SecurityGroupIds": [
+      {
+       "ref": "VpcEndpointSecurityGroup"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCEndpoint.CloudWatchMonitoringEndpoint",
+   "cfg": "CloudWatchMonitoringEndpoint",
+   "type": "__declared__",
+   "refs": [
+    "PrivateSubnet1",
+    "PrivateSubnet2",
+    "VPC",
+    "VpcEndpointSecurityGroup"
+   ],
+   "values": {
+    "type": "AWS::EC2::VPCEndpoint",
+    "name": "CloudWatchMonitoringEndpoint",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "ServiceName": "com.amazonaws.us-east-1.monitoring",
+     "VpcEndpointType": "Interface",
+     "PrivateDnsEnabled": true,
+     "SubnetIds": [
+      {
+       "ref": "PrivateSubnet1"
+      },
+      {
+       "ref": "PrivateSubnet2"
+      }
+     ],
+     "SecurityGroupIds": [
+      {
+       "ref": "VpcEndpointSecurityGroup"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCEndpoint.StsEndpoint",
+   "cfg": "StsEndpoint",
+   "type": "__declared__",
+   "refs": [
+    "PrivateSubnet1",
+    "PrivateSubnet2",
+    "VPC",
+    "VpcEndpointSecurityGroup"
+   ],
+   "values": {
+    "type": "AWS::EC2::VPCEndpoint",
+    "name": "StsEndpoint",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "ServiceName": "com.amazonaws.us-east-1.sts",
+     "VpcEndpointType": "Interface",
+     "PrivateDnsEnabled": true,
+     "SubnetIds": [
+      {
+       "ref": "PrivateSubnet1"
+      },
+      {
+       "ref": "PrivateSubnet2"
+      }
+     ],
+     "SecurityGroupIds": [
+      {
+       "ref": "VpcEndpointSecurityGroup"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCEndpoint.EmrEndpoint",
+   "cfg": "EmrEndpoint",
+   "type": "__declared__",
+   "refs": [
+    "PrivateSubnet1",
+    "PrivateSubnet2",
+    "VPC",
+    "VpcEndpointSecurityGroup"
+   ],
+   "values": {
+    "type": "AWS::EC2::VPCEndpoint",
+    "name": "EmrEndpoint",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "ServiceName": "com.amazonaws.us-east-1.elasticmapreduce",
+     "VpcEndpointType": "Interface",
+     "PrivateDnsEnabled": true,
+     "SubnetIds": [
+      {
+       "ref": "PrivateSubnet1"
+      },
+      {
+       "ref": "PrivateSubnet2"
+      }
+     ],
+     "SecurityGroupIds": [
+      {
+       "ref": "VpcEndpointSecurityGroup"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCEndpoint.KmsEndpoint",
+   "cfg": "KmsEndpoint",
+   "type": "__declared__",
+   "refs": [
+    "PrivateSubnet1",
+    "PrivateSubnet2",
+    "VPC",
+    "VpcEndpointSecurityGroup"
+   ],
+   "values": {
+    "type": "AWS::EC2::VPCEndpoint",
+    "name": "KmsEndpoint",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "ServiceName": "com.amazonaws.us-east-1.kms",
+     "VpcEndpointType": "Interface",
+     "PrivateDnsEnabled": true,
+     "SubnetIds": [
+      {
+       "ref": "PrivateSubnet1"
+      },
+      {
+       "ref": "PrivateSubnet2"
+      }
+     ],
+     "SecurityGroupIds": [
+      {
+       "ref": "VpcEndpointSecurityGroup"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::KMS::Key.FlowLogKmsKey",
+   "cfg": "FlowLogKmsKey",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::KMS::Key",
+    "name": "FlowLogKmsKey",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Description": "CMK for emr-celeborn-demo VPC flow log encryption",
+     "KeyPolicy": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Sid": "AllowAccountFullAccess",
+        "Effect": "Allow",
+        "Principal": {
+         "AWS": [
+          "arn:aws:iam::123456789012:root"
+         ]
+        },
+        "Action": [
+         "kms:*"
+        ],
+        "Resource": [
+         "*"
+        ]
+       },
+       {
+        "Sid": "AllowFlowLogsDeliveryToUseKey",
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "vpc-flow-logs.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "kms:Encrypt",
+         "kms:Decrypt",
+         "kms:ReEncrypt*",
+         "kms:GenerateDataKey*",
+         "kms:DescribeKey"
+        ],
+        "Resource": [
+         "*"
+        ]
+       },
+       {
+        "Sid": "AllowCloudWatchLogsToUseKey",
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "logs.us-east-1.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "kms:Encrypt*",
+         "kms:Decrypt*",
+         "kms:ReEncrypt*",
+         "kms:GenerateDataKey*",
+         "kms:Describe*"
+        ],
+        "Resource": [
+         "*"
+        ],
+        "Condition": {
+         "ArnLike": {
+          "kms:EncryptionContext:aws:logs:arn": "arn:aws:logs:us-east-1:123456789012:*"
+         }
+        }
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.FlowLogRole",
+   "cfg": "FlowLogRole",
+   "type": "__declared__",
+   "refs": [
+    "FlowLogKmsKey"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "FlowLogRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "vpc-flow-logs.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Policies": [
+      {
+       "PolicyName": "flowlog-policy",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "logs:CreateLogGroup",
+           "logs:CreateLogStream",
+           "logs:PutLogEvents",
+           "logs:DescribeLogGroups",
+           "logs:DescribeLogStreams",
+           "kms:Encrypt",
+           "kms:Decrypt",
+           "kms:ReEncrypt*",
+           "kms:GenerateDataKey*",
+           "kms:DescribeKey"
+          ],
+          "Resource": [
+           "arn:aws:logs:us-east-1:123456789012:log-group:/aws/vpc/flowlogs/emr-celeborn-demo:*",
+           {
+            "ref": "FlowLogKmsKey",
+            "attr": "Arn"
+           }
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::LogGroup.FlowLogGroup",
+   "cfg": "FlowLogGroup",
+   "type": "__declared__",
+   "refs": [
+    "FlowLogKmsKey"
+   ],
+   "values": {
+    "type": "AWS::Logs::LogGroup",
+    "name": "FlowLogGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "LogGroupName": "/aws/vpc/flowlogs/emr-celeborn-demo",
+     "RetentionInDays": 30,
+     "KmsKeyId": {
+      "ref": "FlowLogKmsKey",
+      "attr": "Arn"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::FlowLog.VPCFlowLog",
+   "cfg": "VPCFlowLog",
+   "type": "__declared__",
+   "refs": [
+    "FlowLogGroup",
+    "FlowLogRole",
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::FlowLog",
+    "name": "VPCFlowLog",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "DeliverLogsPermissionArn": {
+      "ref": "FlowLogRole",
+      "attr": "Arn"
+     },
+     "LogGroupName": {
+      "ref": "FlowLogGroup"
+     },
+     "ResourceId": {
+      "ref": "VPC"
+     },
+     "ResourceType": "VPC",
+     "TrafficType": "ALL",
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "emr-celeborn-demo-vpc-flow-log"
+      },
+      {
+       "Key": "Project",
+       "Value": "emr-celeborn-demo"
+      }
+     ]
+    }
+   }
+  }
+ ]
+}

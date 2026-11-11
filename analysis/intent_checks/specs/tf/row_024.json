@@ -1,0 +1,379 @@
+{
+ "lang": "tf",
+ "row_number": 24,
+ "source_hash": {
+  "gt": "0bf331bddf90d48dce25900083f6480f5541d39f7dfae93fe03721438374ad94",
+  "prompt": "feb5c1fac18c64523c825452299fefa520717f152f638c945798f13aad95cc7e"
+ },
+ "selectors": {},
+ "checks": [
+  {
+   "id": "repo",
+   "tier": "core",
+   "quote": "creates an Amazon ECR repository",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_ecr_repository"
+    ]
+   }
+  },
+  {
+   "id": "repo_name",
+   "tier": "core",
+   "quote": "The ECR repository name must use a configurable variable defaulting to \"illumidesk\"",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_ecr_repository"
+    ]
+   },
+   "cond": {
+    "path": "name",
+    "op": "eq",
+    "value": "illumidesk"
+   }
+  },
+  {
+   "id": "repo_name_var",
+   "tier": "detail",
+   "quote": "a configurable variable defaulting to \"illumidesk\"",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": "default",
+      "op": "eq",
+      "value": "illumidesk"
+     }
+    ]
+   }
+  },
+  {
+   "id": "immutable",
+   "tier": "core",
+   "quote": "set image tag mutability to IMMUTABLE",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_ecr_repository"
+    ]
+   },
+   "cond": {
+    "path": "image_tag_mutability",
+    "op": "eq",
+    "value": "IMMUTABLE"
+   }
+  },
+  {
+   "id": "scan_on_push",
+   "tier": "core",
+   "quote": "enable image scanning on push",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_ecr_repository"
+    ]
+   },
+   "cond": {
+    "path": "image_scanning_configuration.*.scan_on_push",
+    "op": "truthy"
+   }
+  },
+  {
+   "id": "tag_name",
+   "tier": "detail",
+   "quote": "Name set to \"illumidesk-eks\"",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_ecr_repository"
+      ]
+     },
+     "cond": {
+      "path": "tags.Name",
+      "op": "eq",
+      "value": "illumidesk-eks"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_ecr_repository"
+      ]
+     },
+     "cond": {
+      "path": "tags_all.Name",
+      "op": "eq",
+      "value": "illumidesk-eks"
+     }
+    }
+   ]
+  },
+  {
+   "id": "tag_env",
+   "tier": "detail",
+   "quote": "Environment set to \"dev\"",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_ecr_repository"
+      ]
+     },
+     "cond": {
+      "path": "tags.Environment",
+      "op": "eq",
+      "value": "dev"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_ecr_repository"
+      ]
+     },
+     "cond": {
+      "path": "tags_all.Environment",
+      "op": "eq",
+      "value": "dev"
+     }
+    }
+   ]
+  },
+  {
+   "id": "tags_var",
+   "tier": "detail",
+   "quote": "accept a map of resource tags defaulting to Name set to \"illumidesk-eks\" and Environment set to \"dev\"",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": "default.Name",
+      "op": "eq",
+      "value": "illumidesk-eks"
+     },
+     {
+      "path": "default.Environment",
+      "op": "eq",
+      "value": "dev"
+     }
+    ]
+   }
+  },
+  {
+   "id": "lifecycle_attached",
+   "tier": "core",
+   "quote": "attach an ECR lifecycle policy containing two rules",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_ecr_lifecycle_policy"
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_ecr_repository"
+      ]
+     }
+    },
+    {
+     "kind": "join",
+     "from": {
+      "types": [
+       "aws_ecr_lifecycle_policy"
+      ]
+     },
+     "from_path": "repository",
+     "to": {
+      "types": [
+       "aws_ecr_repository"
+      ]
+     },
+     "to_path": "name"
+    }
+   ]
+  },
+  {
+   "id": "rule1_untagged_14",
+   "tier": "core",
+   "quote": "rule priority 1 must expire untagged images older than 14 days since they were pushed",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_ecr_lifecycle_policy"
+      ]
+     },
+     "cond": {
+      "path": "policy",
+      "op": "regex",
+      "value": "(?is)rulePriority[\"\\']?\\s*[:=]\\s*1\\b(?:[^}]*\\}?[^}]*tagStatus[\"\\']?\\s*[:=]\\s*[\"\\']?untagged[^}]*countNumber[\"\\']?\\s*[:=]\\s*14\\b|[^}]*tagStatus[\"\\']?\\s*[:=]\\s*[\"\\']?untagged[^}]*\\}?[^}]*countNumber[\"\\']?\\s*[:=]\\s*14\\b|[^}]*\\}?[^}]*countNumber[\"\\']?\\s*[:=]\\s*14\\b[^}]*tagStatus[\"\\']?\\s*[:=]\\s*[\"\\']?untagged|[^}]*countNumber[\"\\']?\\s*[:=]\\s*14\\b[^}]*\\}?[^}]*tagStatus[\"\\']?\\s*[:=]\\s*[\"\\']?untagged)"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_ecr_lifecycle_policy"
+       }
+      ]
+     },
+     "cond": {
+      "path": "properties.policy",
+      "op": "regex",
+      "value": "(?is)rulePriority[\"\\']?\\s*[:=]\\s*1\\b(?:[^}]*\\}?[^}]*tagStatus[\"\\']?\\s*[:=]\\s*[\"\\']?untagged[^}]*countNumber[\"\\']?\\s*[:=]\\s*14\\b|[^}]*tagStatus[\"\\']?\\s*[:=]\\s*[\"\\']?untagged[^}]*\\}?[^}]*countNumber[\"\\']?\\s*[:=]\\s*14\\b|[^}]*\\}?[^}]*countNumber[\"\\']?\\s*[:=]\\s*14\\b[^}]*tagStatus[\"\\']?\\s*[:=]\\s*[\"\\']?untagged|[^}]*countNumber[\"\\']?\\s*[:=]\\s*14\\b[^}]*\\}?[^}]*tagStatus[\"\\']?\\s*[:=]\\s*[\"\\']?untagged)"
+     }
+    }
+   ]
+  },
+  {
+   "id": "rule1_since_pushed",
+   "tier": "core",
+   "quote": "rule priority 1 must expire untagged images older than 14 days since they were pushed",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_ecr_lifecycle_policy"
+      ]
+     },
+     "cond": {
+      "path": "policy",
+      "op": "regex",
+      "value": "(?is)rulePriority[\"\\']?\\s*[:=]\\s*1\\b[^}]*\\}?[^}]*countType[\"\\']?\\s*[:=]\\s*[\"\\']?sinceImagePushed"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_ecr_lifecycle_policy"
+       }
+      ]
+     },
+     "cond": {
+      "path": "properties.policy",
+      "op": "regex",
+      "value": "(?is)rulePriority[\"\\']?\\s*[:=]\\s*1\\b[^}]*\\}?[^}]*countType[\"\\']?\\s*[:=]\\s*[\"\\']?sinceImagePushed"
+     }
+    }
+   ]
+  },
+  {
+   "id": "rule2_count_30",
+   "tier": "core",
+   "quote": "rule priority 2 must expire images when the total image count exceeds 30",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_ecr_lifecycle_policy"
+      ]
+     },
+     "cond": {
+      "path": "policy",
+      "op": "regex",
+      "value": "(?is)rulePriority[\"\\']?\\s*[:=]\\s*2\\b(?:[^}]*\\}?[^}]*countType[\"\\']?\\s*[:=]\\s*[\"\\']?imageCountMoreThan[^}]*countNumber[\"\\']?\\s*[:=]\\s*30\\b|[^}]*countType[\"\\']?\\s*[:=]\\s*[\"\\']?imageCountMoreThan[^}]*\\}?[^}]*countNumber[\"\\']?\\s*[:=]\\s*30\\b|[^}]*\\}?[^}]*countNumber[\"\\']?\\s*[:=]\\s*30\\b[^}]*countType[\"\\']?\\s*[:=]\\s*[\"\\']?imageCountMoreThan|[^}]*countNumber[\"\\']?\\s*[:=]\\s*30\\b[^}]*\\}?[^}]*countType[\"\\']?\\s*[:=]\\s*[\"\\']?imageCountMoreThan)"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_ecr_lifecycle_policy"
+       }
+      ]
+     },
+     "cond": {
+      "path": "properties.policy",
+      "op": "regex",
+      "value": "(?is)rulePriority[\"\\']?\\s*[:=]\\s*2\\b(?:[^}]*\\}?[^}]*countType[\"\\']?\\s*[:=]\\s*[\"\\']?imageCountMoreThan[^}]*countNumber[\"\\']?\\s*[:=]\\s*30\\b|[^}]*countType[\"\\']?\\s*[:=]\\s*[\"\\']?imageCountMoreThan[^}]*\\}?[^}]*countNumber[\"\\']?\\s*[:=]\\s*30\\b|[^}]*\\}?[^}]*countNumber[\"\\']?\\s*[:=]\\s*30\\b[^}]*countType[\"\\']?\\s*[:=]\\s*[\"\\']?imageCountMoreThan|[^}]*countNumber[\"\\']?\\s*[:=]\\s*30\\b[^}]*\\}?[^}]*countType[\"\\']?\\s*[:=]\\s*[\"\\']?imageCountMoreThan)"
+     }
+    }
+   ]
+  },
+  {
+   "id": "rule2_any_status",
+   "tier": "detail",
+   "quote": "rule priority 2 must expire images when the total image count exceeds 30 for any tag status",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_ecr_lifecycle_policy"
+      ]
+     },
+     "cond": {
+      "path": "policy",
+      "op": "regex",
+      "value": "(?is)rulePriority[\"\\']?\\s*[:=]\\s*2\\b[^}]*\\}?[^}]*tagStatus[\"\\']?\\s*[:=]\\s*[\"\\']?any\\b"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_ecr_lifecycle_policy"
+       }
+      ]
+     },
+     "cond": {
+      "path": "properties.policy",
+      "op": "regex",
+      "value": "(?is)rulePriority[\"\\']?\\s*[:=]\\s*2\\b[^}]*\\}?[^}]*tagStatus[\"\\']?\\s*[:=]\\s*[\"\\']?any\\b"
+     }
+    }
+   ]
+  }
+ ],
+ "notes": "Each lifecycle-rule check reads one rule: the regex starts at its rulePriority and may cross at most one closing brace, so a value in the other rule or in a description cannot satisfy it. Assumes rulePriority is written before selection inside the rule (always true of the planned, key-sorted JSON). lifecycle_attached accepts a reference or a literal repository name equal to the repository's name."
+}

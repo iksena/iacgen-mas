@@ -1,0 +1,485 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "da5b740ace272f0ca0a97537c811ae338cc96f656df9dddffe3f8ec1c29a8da0",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "datazoneexecutionroleA8D05138",
+   "cfg": "datazoneexecutionroleA8D05138",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRole",
+        "sts:TagSession"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "datazone.amazonaws.com"
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/AmazonDataZoneDomainExecutionRolePolicy",
+     "arn:aws:iam::aws:policy/IAMReadOnlyAccess"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "datazonedomain",
+   "cfg": "datazonedomain",
+   "type": "AWS::DataZone::Domain",
+   "values": {
+    "Description": "Amazon DataZone domain used for a blog sample use-case for Redshift Enancements",
+    "DomainExecutionRole": {
+     "ref": "datazoneexecutionroleA8D05138",
+     "attr": "Arn"
+    },
+    "Name": "cookbookChapter11"
+   },
+   "refs": [
+    "datazoneexecutionroleA8D05138"
+   ]
+  },
+  {
+   "id": "salespublisher",
+   "cfg": "salespublisher",
+   "type": "AWS::DataZone::Project",
+   "values": {
+    "Description": "Producer project managed by the sales publishing team",
+    "DomainIdentifier": {
+     "ref": "datazonedomain"
+    },
+    "Name": "SalesPublisher"
+   },
+   "refs": [
+    "datazonedomain"
+   ]
+  },
+  {
+   "id": "marketingconsumer",
+   "cfg": "marketingconsumer",
+   "type": "AWS::DataZone::Project",
+   "values": {
+    "Description": "Consumer project managed by the marketing team",
+    "DomainIdentifier": {
+     "ref": "datazonedomain"
+    },
+    "Name": "MarketingConsumer"
+   },
+   "refs": [
+    "datazonedomain"
+   ]
+  },
+  {
+   "id": "datazoneaccessroleF4506F82",
+   "cfg": "datazoneaccessroleF4506F82",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "datazone.amazonaws.com"
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/AmazonDataZoneGlueManageAccessRolePolicy",
+     "arn:aws:iam::aws:policy/service-role/AmazonDataZoneRedshiftManageAccessRolePolicy"
+    ],
+    "Policies": [
+     {
+      "PolicyName": "MyCustomDataZoneDataPolicy",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "secretsmanager:GetSecretValue"
+         ],
+         "Resource": [
+          "arn:aws:secretsmanager:us-east-1:123456789012:secret:AmazonDataZone-*"
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "datazoneprovisioningroleE2AAC33A",
+   "cfg": "datazoneprovisioningroleE2AAC33A",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "datazone.amazonaws.com"
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/AmazonDataZoneRedshiftGlueProvisioningPolicy"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "datazoneblueprintconfiguration",
+   "cfg": "datazoneblueprintconfiguration",
+   "type": "AWS::DataZone::EnvironmentBlueprintConfiguration",
+   "values": {
+    "DomainIdentifier": {
+     "ref": "datazonedomain"
+    },
+    "EnabledRegions": [
+     "us-east-1"
+    ],
+    "EnvironmentBlueprintIdentifier": "DefaultDataWarehouse",
+    "ManageAccessRoleArn": {
+     "ref": "datazoneaccessroleF4506F82",
+     "attr": "Arn"
+    },
+    "ProvisioningRoleArn": {
+     "ref": "datazoneprovisioningroleE2AAC33A",
+     "attr": "Arn"
+    }
+   },
+   "refs": [
+    "datazoneaccessroleF4506F82",
+    "datazonedomain",
+    "datazoneprovisioningroleE2AAC33A"
+   ]
+  },
+  {
+   "id": "__parameter__.DataZoneDomainName",
+   "cfg": "__parameter__.DataZoneDomainName",
+   "type": "__parameter__",
+   "values": {
+    "name": "DataZoneDomainName",
+    "type": "String",
+    "default": "cookbookChapter11",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.datazoneportal",
+   "cfg": "__output__.datazoneportal",
+   "type": "__output__",
+   "values": {
+    "name": "datazoneportal",
+    "value": {
+     "ref": "datazonedomain",
+     "attr": "PortalUrl"
+    },
+    "description": "Amazon DataZone portal URL",
+    "export": "datazone-portal-url"
+   },
+   "refs": [
+    "datazonedomain"
+   ]
+  },
+  {
+   "id": "__output__.datazonedomainid",
+   "cfg": "__output__.datazonedomainid",
+   "type": "__output__",
+   "values": {
+    "name": "datazonedomainid",
+    "value": {
+     "ref": "datazonedomain",
+     "attr": "Id"
+    },
+    "description": "Amazon DataZone Domain Id",
+    "export": "datazone-domain-id"
+   },
+   "refs": [
+    "datazonedomain"
+   ]
+  },
+  {
+   "id": "__output__.datazonePublisherProjectId",
+   "cfg": "__output__.datazonePublisherProjectId",
+   "type": "__output__",
+   "values": {
+    "name": "datazonePublisherProjectId",
+    "value": {
+     "ref": "salespublisher",
+     "attr": "Id"
+    },
+    "description": "Amazon DataZone publisher project id",
+    "export": "datazone-publisher-project-id"
+   },
+   "refs": [
+    "salespublisher"
+   ]
+  },
+  {
+   "id": "__output__.datazoneConsumerProjectId",
+   "cfg": "__output__.datazoneConsumerProjectId",
+   "type": "__output__",
+   "values": {
+    "name": "datazoneConsumerProjectId",
+    "value": {
+     "ref": "marketingconsumer",
+     "attr": "Id"
+    },
+    "description": "Amazon DataZone Consumer project id",
+    "export": "datazone-consumer-project-id"
+   },
+   "refs": [
+    "marketingconsumer"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.datazoneexecutionroleA8D05138",
+   "cfg": "datazoneexecutionroleA8D05138",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "datazoneexecutionroleA8D05138",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRole",
+         "sts:TagSession"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "datazone.amazonaws.com"
+         ]
+        }
+       }
+      ],
+      "Version": "2012-10-17"
+     },
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AmazonDataZoneDomainExecutionRolePolicy",
+      "arn:aws:iam::aws:policy/IAMReadOnlyAccess"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::DataZone::Domain.datazonedomain",
+   "cfg": "datazonedomain",
+   "type": "__declared__",
+   "refs": [
+    "datazoneexecutionroleA8D05138"
+   ],
+   "values": {
+    "type": "AWS::DataZone::Domain",
+    "name": "datazonedomain",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Description": "Amazon DataZone domain used for a blog sample use-case for Redshift Enancements",
+     "DomainExecutionRole": {
+      "ref": "datazoneexecutionroleA8D05138",
+      "attr": "Arn"
+     },
+     "Name": "cookbookChapter11"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::DataZone::Project.salespublisher",
+   "cfg": "salespublisher",
+   "type": "__declared__",
+   "refs": [
+    "datazonedomain"
+   ],
+   "values": {
+    "type": "AWS::DataZone::Project",
+    "name": "salespublisher",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Description": "Producer project managed by the sales publishing team",
+     "DomainIdentifier": {
+      "ref": "datazonedomain"
+     },
+     "Name": "SalesPublisher"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::DataZone::Project.marketingconsumer",
+   "cfg": "marketingconsumer",
+   "type": "__declared__",
+   "refs": [
+    "datazonedomain"
+   ],
+   "values": {
+    "type": "AWS::DataZone::Project",
+    "name": "marketingconsumer",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Description": "Consumer project managed by the marketing team",
+     "DomainIdentifier": {
+      "ref": "datazonedomain"
+     },
+     "Name": "MarketingConsumer"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.datazoneaccessroleF4506F82",
+   "cfg": "datazoneaccessroleF4506F82",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "datazoneaccessroleF4506F82",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "datazone.amazonaws.com"
+         ]
+        }
+       }
+      ],
+      "Version": "2012-10-17"
+     },
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AmazonDataZoneGlueManageAccessRolePolicy",
+      "arn:aws:iam::aws:policy/service-role/AmazonDataZoneRedshiftManageAccessRolePolicy"
+     ],
+     "Policies": [
+      {
+       "PolicyName": "MyCustomDataZoneDataPolicy",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "secretsmanager:GetSecretValue"
+          ],
+          "Resource": [
+           "arn:aws:secretsmanager:us-east-1:123456789012:secret:AmazonDataZone-*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.datazoneprovisioningroleE2AAC33A",
+   "cfg": "datazoneprovisioningroleE2AAC33A",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "datazoneprovisioningroleE2AAC33A",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "datazone.amazonaws.com"
+         ]
+        }
+       }
+      ],
+      "Version": "2012-10-17"
+     },
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/AmazonDataZoneRedshiftGlueProvisioningPolicy"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::DataZone::EnvironmentBlueprintConfiguration.datazoneblueprintconfiguration",
+   "cfg": "datazoneblueprintconfiguration",
+   "type": "__declared__",
+   "refs": [
+    "datazoneaccessroleF4506F82",
+    "datazonedomain",
+    "datazoneprovisioningroleE2AAC33A"
+   ],
+   "values": {
+    "type": "AWS::DataZone::EnvironmentBlueprintConfiguration",
+    "name": "datazoneblueprintconfiguration",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "DomainIdentifier": {
+      "ref": "datazonedomain"
+     },
+     "EnabledRegions": [
+      "us-east-1"
+     ],
+     "EnvironmentBlueprintIdentifier": "DefaultDataWarehouse",
+     "ManageAccessRoleArn": {
+      "ref": "datazoneaccessroleF4506F82",
+      "attr": "Arn"
+     },
+     "ProvisioningRoleArn": {
+      "ref": "datazoneprovisioningroleE2AAC33A",
+      "attr": "Arn"
+     }
+    }
+   }
+  }
+ ]
+}

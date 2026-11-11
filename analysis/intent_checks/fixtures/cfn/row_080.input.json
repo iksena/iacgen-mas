@@ -1,0 +1,498 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "9cfee0d6772319e30d9819ca5c31105980f95e81314c715032feb017096f7dfe",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "LambdaLogGroup",
+   "cfg": "LambdaLogGroup",
+   "type": "AWS::Logs::LogGroup",
+   "values": {
+    "LogGroupName": "/aws/lambda/ReusableDelegationSet",
+    "RetentionInDays": 14
+   },
+   "refs": []
+  },
+  {
+   "id": "ReusableDelegationSet",
+   "cfg": "ReusableDelegationSet",
+   "type": "Custom::Route53ReusableDelegationSet",
+   "values": {
+    "ServiceToken": {
+     "ref": "ReusableDelegationSetFunction",
+     "attr": "Arn"
+    },
+    "Region": "us-east-1"
+   },
+   "refs": [
+    "ReusableDelegationSetFunction"
+   ]
+  },
+  {
+   "id": "ReusableDelegationSetExecutionRole",
+   "cfg": "ReusableDelegationSetExecutionRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "ReusableDelegationSetLambdaRole",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Path": "/",
+    "Policies": [
+     {
+      "PolicyName": "LambdaCustomPolicyCheckAccessKeys",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "route53:CreateReusableDelegationSet",
+          "route53:DeleteReusableDelegationSet",
+          "route53:GetReusableDelegationSet",
+          "route53:GetReusableDelegationSetLimit",
+          "route53:ListReusableDelegationSets"
+         ],
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     }
+    ],
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "ReusableDelegationSetFunction",
+   "cfg": "ReusableDelegationSetFunction",
+   "type": "AWS::Lambda::Function",
+   "values": {
+    "FunctionName": "ReusableDelegationSet",
+    "Handler": "index.lambda_handler",
+    "Runtime": "python3.8",
+    "Timeout": "600",
+    "Role": {
+     "ref": "ReusableDelegationSetExecutionRole",
+     "attr": "Arn"
+    },
+    "Code": {
+     "ZipFile": "import boto3\nimport random\nimport string\nimport socket\nimport cfnresponse\nimport logging\nfrom botocore.exceptions import ClientError\n\nroute53client = boto3.client('route53')\nlogger = logging.getLogger()\nlogger.setLevel(logging.INFO)\n\ndef ns_list(ReusableDeligationSetID):\n  response = route53client.get_reusable_delegation_set(Id=ReusableDeligationSetID)\n  DelegationSet = response['DelegationSet']\n  return(DelegationSet['NameServers'])\n\ndef res_host(hostname, ip_version = 4):\n  try:\n    if ip_version == 6:\n      ip = socket.getaddrinfo(hostname, None, socket.AF_INET6)[0][4][0]\n    else:\n      ip = socket.gethostbyname(hostname)\n    return(ip)\n  except:\n    return('Problem resolving ip')\n\ndef lambda_handler(event, context):\n  logger.info('Event: ' + str(event))\n  resData = {}\n  PhysicalResourceId = ''\n  if event['RequestType'] == 'Create' or event['RequestType'] == 'Update':\n    try:\n      if event['RequestType'] == 'Create':\n        letters = string.ascii_lowercase\n        randomstr = ''.join(random.choice(letters) for i in range(8))\n        response = route53client.create_reusable_delegation_set(CallerReference = randomstr)\n        DictDelegationSet = response['DelegationSet']\n        PhysicalResourceId = DictDelegationSet['Id']\n        res = True\n        resData['Reason'] = \"ReusableDelegationSet created\"\n      else:\n        res = True\n        resData['Reason'] = \"ReusableDelegationSet no update needed\"\n        PhysicalResourceId = event['PhysicalResourceId']\n\n      resData['awsdns01']  = ns_list(PhysicalResourceId)[0]\n      resData['awsdns02']  = ns_list(PhysicalResourceId)[1]\n      resData['awsdns03']  = ns_list(PhysicalResourceId)[2]\n      resData['awsdns04']  = ns_list(PhysicalResourceId)[3]\n\n      resData['ipv4awsdns01']  = res_host(resData['awsdns01'] , ip_version = 4)\n      resData['ipv6awsdns01']  = res_host(resData['awsdns01'] , ip_version = 6)\n      resData['ipv4awsdns02']  = res_host(resData['awsdns02'] , ip_version = 4)\n      resData['ipv6awsdns02']  = res_host(resData['awsdns02'] , ip_version = 6)\n      resData['ipv4awsdns03']  = res_host(resData['awsdns03'] , ip_version = 4)\n      resData['ipv6awsdns03']  = res_host(resData['awsdns03'] , ip_version = 6)\n      resData['ipv4awsdns04']  = res_host(resData['awsdns04'] , ip_version = 4)\n      resData['ipv6awsdns04']  = res_host(resData['awsdns04'] , ip_version = 6)\n\n    except Exception as e:\n      PhysicalResourceId = 'Not created'\n      res = False\n      resData['Reason'] = \"Error: \" + str(e)\n\n  elif event['RequestType'] == 'Delete':\n      PhysicalResourceId = event['PhysicalResourceId']\n      limits = route53client.get_reusable_delegation_set_limit(Type='MAX_ZONES_BY_REUSABLE_DELEGATION_SET', DelegationSetId=PhysicalResourceId)\n      if limits['Count'] == 0:\n        try:\n          res = True\n          resData['Reason'] = \"ReusableDelegationSet deleted\"\n        except Exception as e:\n          res = False\n          resData['Reason'] = \"Error: \" + str(e)\n      else:\n        res = False\n        resData['Reason'] = \"Error: DelegationSet is in use\"\n  else:\n    PhysicalResourceId = event['PhysicalResourceId']\n    res = False\n    resData['Reason'] = \"Unknown operation: \" + event['RequestType']\n\n  if res:\n    cfnresponse.send(event, context, cfnresponse.SUCCESS, resData, PhysicalResourceId)\n  else:\n    cfnresponse.send(event, context, cfnresponse.FAILED, resData, PhysicalResourceId)\n"
+    },
+    "__resource__": {
+     "DependsOn": [
+      "LambdaLogGroup"
+     ]
+    }
+   },
+   "refs": [
+    "ReusableDelegationSetExecutionRole"
+   ]
+  },
+  {
+   "id": "__parameter__.FunctionName",
+   "cfg": "__parameter__.FunctionName",
+   "type": "__parameter__",
+   "values": {
+    "name": "FunctionName",
+    "type": "String",
+    "default": "ReusableDelegationSet",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.LogsRetentionInDays",
+   "cfg": "__parameter__.LogsRetentionInDays",
+   "type": "__parameter__",
+   "values": {
+    "name": "LogsRetentionInDays",
+    "type": "Number",
+    "default": 14,
+    "allowed_values": [
+     1,
+     3,
+     5,
+     7,
+     14,
+     30,
+     60,
+     90,
+     120,
+     150,
+     180,
+     365,
+     400,
+     545,
+     731,
+     1827,
+     3653
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.Id",
+   "cfg": "__output__.Id",
+   "type": "__output__",
+   "values": {
+    "name": "Id",
+    "value": {
+     "ref": "ReusableDelegationSet"
+    },
+    "description": "DNS Nameserver Set",
+    "export": "stack-ID"
+   },
+   "refs": [
+    "ReusableDelegationSet"
+   ]
+  },
+  {
+   "id": "__output__.awsdns01",
+   "cfg": "__output__.awsdns01",
+   "type": "__output__",
+   "values": {
+    "name": "awsdns01",
+    "value": {
+     "ref": "ReusableDelegationSet",
+     "attr": "awsdns01"
+    },
+    "description": "DNS Nameserver AWS NS1",
+    "export": "stack-awsdns01"
+   },
+   "refs": [
+    "ReusableDelegationSet"
+   ]
+  },
+  {
+   "id": "__output__.ipv4awsdns01",
+   "cfg": "__output__.ipv4awsdns01",
+   "type": "__output__",
+   "values": {
+    "name": "ipv4awsdns01",
+    "value": {
+     "ref": "ReusableDelegationSet",
+     "attr": "ipv4awsdns01"
+    },
+    "description": "IPv4 Nameserver AWS NS1",
+    "export": "stack-ipv4awsdns01"
+   },
+   "refs": [
+    "ReusableDelegationSet"
+   ]
+  },
+  {
+   "id": "__output__.ipv6awsdns01",
+   "cfg": "__output__.ipv6awsdns01",
+   "type": "__output__",
+   "values": {
+    "name": "ipv6awsdns01",
+    "value": {
+     "ref": "ReusableDelegationSet",
+     "attr": "ipv6awsdns01"
+    },
+    "description": "IPv6 Nameserver AWS NS1",
+    "export": "stack-ipv6awsdns01"
+   },
+   "refs": [
+    "ReusableDelegationSet"
+   ]
+  },
+  {
+   "id": "__output__.awsdns02",
+   "cfg": "__output__.awsdns02",
+   "type": "__output__",
+   "values": {
+    "name": "awsdns02",
+    "value": {
+     "ref": "ReusableDelegationSet",
+     "attr": "awsdns02"
+    },
+    "description": "DNS Nameserver AWS NS2",
+    "export": "stack-awsdns02"
+   },
+   "refs": [
+    "ReusableDelegationSet"
+   ]
+  },
+  {
+   "id": "__output__.ipv4awsdns02",
+   "cfg": "__output__.ipv4awsdns02",
+   "type": "__output__",
+   "values": {
+    "name": "ipv4awsdns02",
+    "value": {
+     "ref": "ReusableDelegationSet",
+     "attr": "ipv4awsdns02"
+    },
+    "description": "IPv4 Nameserver AWS NS2",
+    "export": "stack-ipv4awsdns02"
+   },
+   "refs": [
+    "ReusableDelegationSet"
+   ]
+  },
+  {
+   "id": "__output__.ipv6awsdns02",
+   "cfg": "__output__.ipv6awsdns02",
+   "type": "__output__",
+   "values": {
+    "name": "ipv6awsdns02",
+    "value": {
+     "ref": "ReusableDelegationSet",
+     "attr": "ipv6awsdns02"
+    },
+    "description": "IPv6 Nameserver AWS NS2",
+    "export": "stack-ipv6awsdns02"
+   },
+   "refs": [
+    "ReusableDelegationSet"
+   ]
+  },
+  {
+   "id": "__output__.awsdns03",
+   "cfg": "__output__.awsdns03",
+   "type": "__output__",
+   "values": {
+    "name": "awsdns03",
+    "value": {
+     "ref": "ReusableDelegationSet",
+     "attr": "awsdns03"
+    },
+    "description": "DNS Nameserver AWS NS3",
+    "export": "stack-awsdns03"
+   },
+   "refs": [
+    "ReusableDelegationSet"
+   ]
+  },
+  {
+   "id": "__output__.ipv4awsdns03",
+   "cfg": "__output__.ipv4awsdns03",
+   "type": "__output__",
+   "values": {
+    "name": "ipv4awsdns03",
+    "value": {
+     "ref": "ReusableDelegationSet",
+     "attr": "ipv4awsdns03"
+    },
+    "description": "IPv4 Nameserver AWS NS3",
+    "export": "stack-ipv4awsdns03"
+   },
+   "refs": [
+    "ReusableDelegationSet"
+   ]
+  },
+  {
+   "id": "__output__.ipv6awsdns03",
+   "cfg": "__output__.ipv6awsdns03",
+   "type": "__output__",
+   "values": {
+    "name": "ipv6awsdns03",
+    "value": {
+     "ref": "ReusableDelegationSet",
+     "attr": "ipv6awsdns03"
+    },
+    "description": "IPv6 Nameserver AWS NS3",
+    "export": "stack-ipv6awsdns03"
+   },
+   "refs": [
+    "ReusableDelegationSet"
+   ]
+  },
+  {
+   "id": "__output__.awsdns04",
+   "cfg": "__output__.awsdns04",
+   "type": "__output__",
+   "values": {
+    "name": "awsdns04",
+    "value": {
+     "ref": "ReusableDelegationSet",
+     "attr": "awsdns04"
+    },
+    "description": "DNS Nameserver AWS NS4",
+    "export": "stack-awsdns04"
+   },
+   "refs": [
+    "ReusableDelegationSet"
+   ]
+  },
+  {
+   "id": "__output__.ipv4awsdns04",
+   "cfg": "__output__.ipv4awsdns04",
+   "type": "__output__",
+   "values": {
+    "name": "ipv4awsdns04",
+    "value": {
+     "ref": "ReusableDelegationSet",
+     "attr": "ipv4awsdns04"
+    },
+    "description": "IPv4 Nameserver AWS NS4",
+    "export": "stack-ipv4awsdns04"
+   },
+   "refs": [
+    "ReusableDelegationSet"
+   ]
+  },
+  {
+   "id": "__output__.ipv6awsdns04",
+   "cfg": "__output__.ipv6awsdns04",
+   "type": "__output__",
+   "values": {
+    "name": "ipv6awsdns04",
+    "value": {
+     "ref": "ReusableDelegationSet",
+     "attr": "ipv6awsdns04"
+    },
+    "description": "IPv6 Nameserver AWS NS4",
+    "export": "stack-ipv6awsdns04"
+   },
+   "refs": [
+    "ReusableDelegationSet"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::Logs::LogGroup.LambdaLogGroup",
+   "cfg": "LambdaLogGroup",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Logs::LogGroup",
+    "name": "LambdaLogGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "LogGroupName": "/aws/lambda/ReusableDelegationSet",
+     "RetentionInDays": 14
+    }
+   }
+  },
+  {
+   "id": "__declared__.Custom::Route53ReusableDelegationSet.ReusableDelegationSet",
+   "cfg": "ReusableDelegationSet",
+   "type": "__declared__",
+   "refs": [
+    "ReusableDelegationSetFunction"
+   ],
+   "values": {
+    "type": "Custom::Route53ReusableDelegationSet",
+    "name": "ReusableDelegationSet",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ServiceToken": {
+      "ref": "ReusableDelegationSetFunction",
+      "attr": "Arn"
+     },
+     "Region": "us-east-1"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.ReusableDelegationSetExecutionRole",
+   "cfg": "ReusableDelegationSetExecutionRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "ReusableDelegationSetExecutionRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "ReusableDelegationSetLambdaRole",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Path": "/",
+     "Policies": [
+      {
+       "PolicyName": "LambdaCustomPolicyCheckAccessKeys",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "route53:CreateReusableDelegationSet",
+           "route53:DeleteReusableDelegationSet",
+           "route53:GetReusableDelegationSet",
+           "route53:GetReusableDelegationSetLimit",
+           "route53:ListReusableDelegationSets"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      }
+     ],
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Function.ReusableDelegationSetFunction",
+   "cfg": "ReusableDelegationSetFunction",
+   "type": "__declared__",
+   "refs": [
+    "ReusableDelegationSetExecutionRole"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Function",
+    "name": "ReusableDelegationSetFunction",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "FunctionName": "ReusableDelegationSet",
+     "Handler": "index.lambda_handler",
+     "Runtime": "python3.8",
+     "Timeout": "600",
+     "Role": {
+      "ref": "ReusableDelegationSetExecutionRole",
+      "attr": "Arn"
+     },
+     "Code": {
+      "ZipFile": "import boto3\nimport random\nimport string\nimport socket\nimport cfnresponse\nimport logging\nfrom botocore.exceptions import ClientError\n\nroute53client = boto3.client('route53')\nlogger = logging.getLogger()\nlogger.setLevel(logging.INFO)\n\ndef ns_list(ReusableDeligationSetID):\n  response = route53client.get_reusable_delegation_set(Id=ReusableDeligationSetID)\n  DelegationSet = response['DelegationSet']\n  return(DelegationSet['NameServers'])\n\ndef res_host(hostname, ip_version = 4):\n  try:\n    if ip_version == 6:\n      ip = socket.getaddrinfo(hostname, None, socket.AF_INET6)[0][4][0]\n    else:\n      ip = socket.gethostbyname(hostname)\n    return(ip)\n  except:\n    return('Problem resolving ip')\n\ndef lambda_handler(event, context):\n  logger.info('Event: ' + str(event))\n  resData = {}\n  PhysicalResourceId = ''\n  if event['RequestType'] == 'Create' or event['RequestType'] == 'Update':\n    try:\n      if event['RequestType'] == 'Create':\n        letters = string.ascii_lowercase\n        randomstr = ''.join(random.choice(letters) for i in range(8))\n        response = route53client.create_reusable_delegation_set(CallerReference = randomstr)\n        DictDelegationSet = response['DelegationSet']\n        PhysicalResourceId = DictDelegationSet['Id']\n        res = True\n        resData['Reason'] = \"ReusableDelegationSet created\"\n      else:\n        res = True\n        resData['Reason'] = \"ReusableDelegationSet no update needed\"\n        PhysicalResourceId = event['PhysicalResourceId']\n\n      resData['awsdns01']  = ns_list(PhysicalResourceId)[0]\n      resData['awsdns02']  = ns_list(PhysicalResourceId)[1]\n      resData['awsdns03']  = ns_list(PhysicalResourceId)[2]\n      resData['awsdns04']  = ns_list(PhysicalResourceId)[3]\n\n      resData['ipv4awsdns01']  = res_host(resData['awsdns01'] , ip_version = 4)\n      resData['ipv6awsdns01']  = res_host(resData['awsdns01'] , ip_version = 6)\n      resData['ipv4awsdns02']  = res_host(resData['awsdns02'] , ip_version = 4)\n      resData['ipv6awsdns02']  = res_host(resData['awsdns02'] , ip_version = 6)\n      resData['ipv4awsdns03']  = res_host(resData['awsdns03'] , ip_version = 4)\n      resData['ipv6awsdns03']  = res_host(resData['awsdns03'] , ip_version = 6)\n      resData['ipv4awsdns04']  = res_host(resData['awsdns04'] , ip_version = 4)\n      resData['ipv6awsdns04']  = res_host(resData['awsdns04'] , ip_version = 6)\n\n    except Exception as e:\n      PhysicalResourceId = 'Not created'\n      res = False\n      resData['Reason'] = \"Error: \" + str(e)\n\n  elif event['RequestType'] == 'Delete':\n      PhysicalResourceId = event['PhysicalResourceId']\n      limits = route53client.get_reusable_delegation_set_limit(Type='MAX_ZONES_BY_REUSABLE_DELEGATION_SET', DelegationSetId=PhysicalResourceId)\n      if limits['Count'] == 0:\n        try:\n          res = True\n          resData['Reason'] = \"ReusableDelegationSet deleted\"\n        except Exception as e:\n          res = False\n          resData['Reason'] = \"Error: \" + str(e)\n      else:\n        res = False\n        resData['Reason'] = \"Error: DelegationSet is in use\"\n  else:\n    PhysicalResourceId = event['PhysicalResourceId']\n    res = False\n    resData['Reason'] = \"Unknown operation: \" + event['RequestType']\n\n  if res:\n    cfnresponse.send(event, context, cfnresponse.SUCCESS, resData, PhysicalResourceId)\n  else:\n    cfnresponse.send(event, context, cfnresponse.FAILED, resData, PhysicalResourceId)\n"
+     }
+    }
+   }
+  }
+ ]
+}

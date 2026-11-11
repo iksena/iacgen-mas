@@ -1,0 +1,273 @@
+package intent.tf.row_320
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {
+  "pool": {
+   "types": [
+    "aws_cognito_user_pool"
+   ],
+   "where": []
+  },
+  "client": {
+   "types": [
+    "aws_cognito_user_pool_client"
+   ],
+   "where": []
+  }
+ },
+ "checks": [
+  {
+   "id": "pool_named",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "Amazon Cognito user pool named \"fiap-hackathon-cognito-pool\"",
+   "select": "pool",
+   "cond": {
+    "path": [
+     "name"
+    ],
+    "op": "eq",
+    "value": "fiap-hackathon-cognito-pool"
+   }
+  },
+  {
+   "id": "username_email",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "uses email as the username",
+   "select": "pool",
+   "cond": {
+    "path": [
+     "username_attributes",
+     "*"
+    ],
+    "op": "eq",
+    "value": "email"
+   }
+  },
+  {
+   "id": "auto_verify_email",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "automatic email verification",
+   "select": "pool",
+   "cond": {
+    "path": [
+     "auto_verified_attributes",
+     "*"
+    ],
+    "op": "eq",
+    "value": "email"
+   }
+  },
+  {
+   "id": "mfa_off",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "MFA turned off",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "pool",
+     "cond": {
+      "path": [
+       "mfa_configuration"
+      ],
+      "op": "eq",
+      "value": "OFF"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "pool",
+     "cond": {
+      "path": [
+       "mfa_configuration"
+      ],
+      "op": "absent"
+     }
+    }
+   ]
+  },
+  {
+   "id": "name_required",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "a required name attribute",
+   "select": "pool",
+   "cond": {
+    "path": [
+     "schema",
+     "*"
+    ],
+    "op": "match",
+    "value": [
+     {
+      "path": [
+       "name"
+      ],
+      "op": "eq",
+      "value": "name"
+     },
+     {
+      "path": [
+       "required"
+      ],
+      "op": "truthy"
+     }
+    ]
+   }
+  },
+  {
+   "id": "min_len_8",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "a basic 8-character minimum password policy",
+   "justify": "8-character minimum stated",
+   "select": "pool",
+   "cond": {
+    "path": [
+     "password_policy",
+     "*",
+     "minimum_length"
+    ],
+    "op": "eq",
+    "value": 8
+   }
+  },
+  {
+   "id": "client_named",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "an app client named \"cognito-pool-client\"",
+   "select": "client",
+   "cond": {
+    "path": [
+     "name"
+    ],
+    "op": "eq",
+    "value": "cognito-pool-client"
+   }
+  },
+  {
+   "id": "no_secret",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "without a client secret",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "client",
+     "cond": {
+      "path": [
+       "generate_secret"
+      ],
+      "op": "eq",
+      "value": false
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "client",
+     "cond": {
+      "path": [
+       "generate_secret"
+      ],
+      "op": "absent"
+     }
+    }
+   ]
+  },
+  {
+   "id": "auth_flows",
+   "kind": "all_of",
+   "tier": "core",
+   "quote": "supports user password, admin user password, and refresh token authentication flows",
+   "justify": "legacy ADMIN_NO_SRP_AUTH is the older name of admin user password auth",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "client",
+     "cond": {
+      "path": [
+       "explicit_auth_flows",
+       "*"
+      ],
+      "op": "regex",
+      "value": "(?i)^(ALLOW_)?USER_PASSWORD_AUTH$"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "client",
+     "cond": {
+      "path": [
+       "explicit_auth_flows",
+       "*"
+      ],
+      "op": "regex",
+      "value": "(?i)^(ALLOW_ADMIN_USER_PASSWORD_AUTH|ADMIN_NO_SRP_AUTH)$"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "client",
+     "cond": {
+      "path": [
+       "explicit_auth_flows",
+       "*"
+      ],
+      "op": "regex",
+      "value": "(?i)^(ALLOW_)?REFRESH_TOKEN_AUTH$"
+     }
+    }
+   ]
+  },
+  {
+   "id": "client_of_pool",
+   "kind": "ref",
+   "tier": "detail",
+   "quote": "an app client",
+   "from": "client",
+   "to": "pool"
+  },
+  {
+   "id": "x_admin_create_open",
+   "kind": "attr",
+   "tier": "extra",
+   "select": "pool",
+   "cond": {
+    "path": [
+     "admin_create_user_config",
+     "*",
+     "allow_admin_create_user_only"
+    ],
+    "op": "eq",
+    "value": false
+   }
+  },
+  {
+   "id": "x_username_case_insensitive",
+   "kind": "attr",
+   "tier": "extra",
+   "select": "pool",
+   "cond": {
+    "path": [
+     "username_configuration",
+     "*",
+     "case_sensitive"
+    ],
+    "op": "eq",
+    "value": false
+   }
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

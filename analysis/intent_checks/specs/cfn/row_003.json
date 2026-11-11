@@ -1,0 +1,128 @@
+{
+  "lang": "cfn",
+  "row_number": 3,
+  "source_hash": {
+    "gt": "47ac13a7a7ec85ba378431e5a2d7f42f314ac641291183e0de111f30efeb6a6c",
+    "prompt": "beb5a8efb46e71d2f5761f2d38a2a888a951de1299c8dd954f7400c495c8fbf4"
+  },
+  "selectors": {
+    "inst": {
+      "types": [
+        "AWS::Lightsail::Instance"
+      ]
+    },
+    "disk": {
+      "types": [
+        "AWS::Lightsail::Disk"
+      ]
+    },
+    "both": {
+      "types": [
+        "AWS::Lightsail::Instance",
+        "AWS::Lightsail::Disk"
+      ]
+    }
+  },
+  "checks": [
+    {
+      "id": "instance",
+      "kind": "exists",
+      "select": "inst",
+      "tier": "core",
+      "quote": "creates a Lightsail instance"
+    },
+    {
+      "id": "blueprint",
+      "kind": "attr",
+      "select": "inst",
+      "cond": {
+        "path": "BlueprintId",
+        "op": "regex",
+        "value": "(?i)^amazon_linux_2023"
+      },
+      "tier": "core",
+      "quote": "the latest Amazon Linux 2023 blueprint",
+      "justify": "Amazon Linux 2023 blueprint id is amazon_linux_2023"
+    },
+    {
+      "id": "bundle_nano",
+      "kind": "attr",
+      "select": "inst",
+      "cond": {
+        "path": "BundleId",
+        "op": "regex",
+        "value": "(?i)^nano"
+      },
+      "tier": "core",
+      "quote": "a nano bundle",
+      "justify": "nano bundle ids start with nano_"
+    },
+    {
+      "id": "disk",
+      "kind": "exists",
+      "select": "disk",
+      "tier": "core",
+      "quote": "an attached 8GB disk"
+    },
+    {
+      "id": "disk_size",
+      "kind": "attr",
+      "select": "disk",
+      "cond": {
+        "path": "SizeInGb",
+        "op": "eq",
+        "value": 8
+      },
+      "tier": "core",
+      "quote": "an attached 8GB disk",
+      "justify": "8GB = SizeInGb 8"
+    },
+    {
+      "id": "az_set",
+      "kind": "attr",
+      "select": "both",
+      "cond": {
+        "path": "AvailabilityZone",
+        "op": "regex",
+        "value": "^[a-z0-9-]+a$"
+      },
+      "tier": "detail",
+      "quote": "both deployed in the first available availability zone",
+      "quantifier": "all",
+      "justify": "'first available availability zone' is index 0 of Fn::GetAZs, which resolves to the region's 'a' zone; any region is accepted."
+    },
+    {
+      "id": "instance_tag",
+      "kind": "attr",
+      "select": "inst",
+      "cond": {
+        "path": "Tags.*",
+        "op": "has_kv",
+        "value": {
+          "key": "tutorial",
+          "value": "stack"
+        }
+      },
+      "tier": "detail",
+      "quote": "tagged with a \"tutorial\" key whose value is the stack name",
+      "justify": "stack name resolves to the pseudo-parameter value 'stack'"
+    },
+    {
+      "id": "disk_tag",
+      "kind": "attr",
+      "select": "disk",
+      "cond": {
+        "path": "Tags.*",
+        "op": "has_kv",
+        "value": {
+          "key": "tutorial",
+          "value": "stack"
+        }
+      },
+      "tier": "detail",
+      "quote": "tagged with a \"tutorial\" key whose value is the stack name",
+      "justify": "stack name resolves to the pseudo-parameter value 'stack'"
+    }
+  ],
+  "notes": "PROMPT_GT_MISMATCH: the prompt says 'an attached 8GB disk', but the ground truth creates the disk and the instance with no attachment (no Hardware.Disks and no reference between them), so attachment is not checked; only disk existence and size are. Real templates write Disk.AttachedTo or a separate attachment resource, so a check can be added once the ground truth attaches the disk. Flag for prompt or ground-truth repair. The tag value 'stack' is the adapter's AWS::StackName, which the prompt asks for. 'latest' cannot be told apart from the blueprint family."
+}

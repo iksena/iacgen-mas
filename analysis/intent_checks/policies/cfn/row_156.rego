@@ -1,0 +1,1040 @@
+package intent.cfn.row_156
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {
+  "roles": {
+   "types": [
+    "__declared__"
+   ],
+   "where": [
+    {
+     "path": [
+      "type"
+     ],
+     "op": "eq",
+     "value": "AWS::IAM::Role"
+    }
+   ]
+  },
+  "exec": {
+   "types": [
+    "__declared__"
+   ],
+   "where": [
+    {
+     "path": [
+      "type"
+     ],
+     "op": "eq",
+     "value": "AWS::IAM::Role"
+    },
+    {
+     "path": [
+      "properties",
+      "RoleName"
+     ],
+     "op": "eq",
+     "value": "AmazonSageMakerServiceCatalogProductsExecutionRole"
+    }
+   ]
+  },
+  "launch": {
+   "types": [
+    "__declared__"
+   ],
+   "where": [
+    {
+     "path": [
+      "type"
+     ],
+     "op": "eq",
+     "value": "AWS::IAM::Role"
+    },
+    {
+     "path": [
+      "properties",
+      "RoleName"
+     ],
+     "op": "eq",
+     "value": "AmazonSageMakerServiceCatalogProductsLaunchRole"
+    }
+   ]
+  },
+  "use": {
+   "types": [
+    "__declared__"
+   ],
+   "where": [
+    {
+     "path": [
+      "type"
+     ],
+     "op": "eq",
+     "value": "AWS::IAM::Role"
+    },
+    {
+     "path": [
+      "properties",
+      "RoleName"
+     ],
+     "op": "eq",
+     "value": "AmazonSageMakerServiceCatalogProductsUseRole"
+    }
+   ]
+  },
+  "params_yes": {
+   "types": [
+    "__parameter__"
+   ],
+   "where": [
+    {
+     "path": [
+      "default"
+     ],
+     "op": "in",
+     "value": [
+      "YES",
+      true
+     ]
+    }
+   ]
+  },
+  "params_no": {
+   "types": [
+    "__parameter__"
+   ],
+   "where": [
+    {
+     "path": [
+      "default"
+     ],
+     "op": "in",
+     "value": [
+      "NO",
+      false
+     ]
+    }
+   ]
+  },
+  "outs": {
+   "types": [
+    "__output__"
+   ],
+   "where": [
+    {
+     "path": [
+      "value"
+     ],
+     "op": "regex",
+     "value": "(?i)\"Arn\"|arn:|\\.Arn"
+    }
+   ]
+  },
+  "svc_cfn": {
+   "types": [
+    "__declared__"
+   ],
+   "where": [
+    {
+     "path": [
+      "type"
+     ],
+     "op": "eq",
+     "value": "AWS::IAM::Role"
+    },
+    {
+     "path": [
+      "properties",
+      "AssumeRolePolicyDocument",
+      "Statement",
+      "*",
+      "Principal",
+      "Service",
+      "*"
+     ],
+     "op": "eq",
+     "value": "cloudformation.amazonaws.com"
+    }
+   ]
+  },
+  "svc_codebuild": {
+   "types": [
+    "__declared__"
+   ],
+   "where": [
+    {
+     "path": [
+      "type"
+     ],
+     "op": "eq",
+     "value": "AWS::IAM::Role"
+    },
+    {
+     "path": [
+      "properties",
+      "AssumeRolePolicyDocument",
+      "Statement",
+      "*",
+      "Principal",
+      "Service",
+      "*"
+     ],
+     "op": "eq",
+     "value": "codebuild.amazonaws.com"
+    }
+   ]
+  },
+  "svc_codepipeline": {
+   "types": [
+    "__declared__"
+   ],
+   "where": [
+    {
+     "path": [
+      "type"
+     ],
+     "op": "eq",
+     "value": "AWS::IAM::Role"
+    },
+    {
+     "path": [
+      "properties",
+      "AssumeRolePolicyDocument",
+      "Statement",
+      "*",
+      "Principal",
+      "Service",
+      "*"
+     ],
+     "op": "eq",
+     "value": "codepipeline.amazonaws.com"
+    }
+   ]
+  },
+  "svc_events": {
+   "types": [
+    "__declared__"
+   ],
+   "where": [
+    {
+     "path": [
+      "type"
+     ],
+     "op": "eq",
+     "value": "AWS::IAM::Role"
+    },
+    {
+     "path": [
+      "properties",
+      "AssumeRolePolicyDocument",
+      "Statement",
+      "*",
+      "Principal",
+      "Service",
+      "*"
+     ],
+     "op": "eq",
+     "value": "events.amazonaws.com"
+    }
+   ]
+  },
+  "svc_apigw": {
+   "types": [
+    "__declared__"
+   ],
+   "where": [
+    {
+     "path": [
+      "type"
+     ],
+     "op": "eq",
+     "value": "AWS::IAM::Role"
+    },
+    {
+     "path": [
+      "properties",
+      "AssumeRolePolicyDocument",
+      "Statement",
+      "*",
+      "Principal",
+      "Service",
+      "*"
+     ],
+     "op": "eq",
+     "value": "apigateway.amazonaws.com"
+    }
+   ]
+  },
+  "svc_firehose": {
+   "types": [
+    "__declared__"
+   ],
+   "where": [
+    {
+     "path": [
+      "type"
+     ],
+     "op": "eq",
+     "value": "AWS::IAM::Role"
+    },
+    {
+     "path": [
+      "properties",
+      "AssumeRolePolicyDocument",
+      "Statement",
+      "*",
+      "Principal",
+      "Service",
+      "*"
+     ],
+     "op": "eq",
+     "value": "firehose.amazonaws.com"
+    }
+   ]
+  },
+  "svc_glue": {
+   "types": [
+    "__declared__"
+   ],
+   "where": [
+    {
+     "path": [
+      "type"
+     ],
+     "op": "eq",
+     "value": "AWS::IAM::Role"
+    },
+    {
+     "path": [
+      "properties",
+      "AssumeRolePolicyDocument",
+      "Statement",
+      "*",
+      "Principal",
+      "Service",
+      "*"
+     ],
+     "op": "eq",
+     "value": "glue.amazonaws.com"
+    }
+   ]
+  },
+  "svc_lambda": {
+   "types": [
+    "__declared__"
+   ],
+   "where": [
+    {
+     "path": [
+      "type"
+     ],
+     "op": "eq",
+     "value": "AWS::IAM::Role"
+    },
+    {
+     "path": [
+      "properties",
+      "AssumeRolePolicyDocument",
+      "Statement",
+      "*",
+      "Principal",
+      "Service",
+      "*"
+     ],
+     "op": "eq",
+     "value": "lambda.amazonaws.com"
+    }
+   ]
+  },
+  "real_roles": {
+   "types": [
+    "AWS::IAM::Role"
+   ],
+   "where": []
+  },
+  "use_doc": {
+   "types": [
+    "__declared__"
+   ],
+   "where": [
+    {
+     "path": [
+      "type"
+     ],
+     "op": "in",
+     "value": [
+      "AWS::IAM::Role",
+      "AWS::IAM::Policy",
+      "AWS::IAM::RolePolicy"
+     ]
+    },
+    {
+     "path": [
+      "properties"
+     ],
+     "op": "regex",
+     "value": "(?i)UseRole"
+    }
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "eleven_roles",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "creates the required IAM roles for SageMaker project templates",
+   "justify": "the template outputs all eleven role ARNs, one per role",
+   "select": "roles",
+   "min": 11
+  },
+  {
+   "id": "roles_gated",
+   "kind": "all_of",
+   "tier": "core",
+   "quote": "allowing each role's creation to be controlled independently via a parameter",
+   "justify": "eleven roles each controlled independently need eleven distinct conditions",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "roles",
+     "cond": {
+      "path": [
+       "gated"
+      ],
+      "op": "truthy"
+     },
+     "quantifier": "all"
+    },
+    {
+     "kind": "exists",
+     "select": "roles",
+     "distinct_path": [
+      "gate"
+     ],
+     "min": 11
+    }
+   ]
+  },
+  {
+   "id": "params_default_yes",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "defaults to \"YES\"",
+   "justify": "eleven roles minus the launch and use roles leaves nine that default to YES; an unquoted YAML YES decodes to boolean true",
+   "select": "params_yes",
+   "min": 9
+  },
+  {
+   "id": "params_default_no",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "the launch role and use role which default to \"NO\"",
+   "justify": "the launch role and the use role are two roles defaulting to NO; an unquoted YAML NO decodes to boolean false",
+   "select": "params_no",
+   "min": 2
+  },
+  {
+   "id": "launch_use_off_by_default",
+   "kind": "all_of",
+   "tier": "detail",
+   "quote": "defaults to \"YES\" except for the launch role and use role which default to \"NO\"",
+   "justify": "under defaults the nine YES roles exist and the launch and use roles, named in the prompt, do not",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": "real_roles",
+     "min": 9
+    },
+    {
+     "kind": "attr",
+     "select": "real_roles",
+     "cond": {
+      "path": [
+       "RoleName"
+      ],
+      "op": "none_eq",
+      "value": "AmazonSageMakerServiceCatalogProductsLaunchRole"
+     },
+     "quantifier": "all"
+    },
+    {
+     "kind": "attr",
+     "select": "real_roles",
+     "cond": {
+      "path": [
+       "RoleName"
+      ],
+      "op": "none_eq",
+      "value": "AmazonSageMakerServiceCatalogProductsUseRole"
+     },
+     "quantifier": "all"
+    }
+   ]
+  },
+  {
+   "id": "roles_path",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "each role should be scoped to the /service-role/ path",
+   "select": "roles",
+   "cond": {
+    "path": [
+     "properties",
+     "Path"
+    ],
+    "op": "eq",
+    "value": "/service-role/"
+   },
+   "quantifier": "all"
+  },
+  {
+   "id": "roles_session",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "a maximum session duration of one hour",
+   "justify": "one hour is 3600 seconds, which is also the IAM default when MaxSessionDuration is omitted",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "roles",
+     "cond": {
+      "path": [
+       "properties",
+       "MaxSessionDuration"
+      ],
+      "op": "eq",
+      "value": 3600
+     },
+     "quantifier": "all"
+    },
+    {
+     "kind": "attr",
+     "select": "roles",
+     "cond": {
+      "path": [
+       "properties",
+       "MaxSessionDuration"
+      ],
+      "op": "absent"
+     },
+     "quantifier": "all"
+    }
+   ]
+  },
+  {
+   "id": "outputs_role_arns",
+   "kind": "exists",
+   "tier": "detail",
+   "quote": "the template must output all eleven role ARNs",
+   "justify": "eleven role ARNs; the launch and use role outputs are condition-gated off by default, leaving nine observable outputs",
+   "select": "outs",
+   "min": 9
+  },
+  {
+   "id": "exec_policy",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "the AmazonSageMakerServiceCatalogProductsExecutionRole attached to the AmazonSageMakerFullAccess managed policy",
+   "select": "exec",
+   "cond": {
+    "path": [
+     "properties",
+     "ManagedPolicyArns",
+     "*"
+    ],
+    "op": "regex",
+    "value": "(^|/)AmazonSageMakerFullAccess$"
+   }
+  },
+  {
+   "id": "launch_policy",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "the AmazonSageMakerServiceCatalogProductsLaunchRole attached to the AmazonSageMakerAdmin-ServiceCatalogProductsServiceRolePolicy",
+   "select": "launch",
+   "cond": {
+    "path": [
+     "properties",
+     "ManagedPolicyArns",
+     "*"
+    ],
+    "op": "regex",
+    "value": "(^|/)AmazonSageMakerAdmin-ServiceCatalogProductsServiceRolePolicy$"
+   }
+  },
+  {
+   "id": "use_managed",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "the AmazonSageMakerServiceCatalogProductsUseRole attached to the AmazonEC2ReadOnlyAccess managed policy",
+   "select": "use",
+   "cond": {
+    "path": [
+     "properties",
+     "ManagedPolicyArns",
+     "*"
+    ],
+    "op": "regex",
+    "value": "(^|/)AmazonEC2ReadOnlyAccess$"
+   }
+  },
+  {
+   "id": "use_inline",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "plus an inline policy granting specific permissions",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "use",
+     "cond": {
+      "path": [
+       "properties",
+       "Policies",
+       "*",
+       "PolicyDocument",
+       "Statement",
+       "*",
+       "Action",
+       "*"
+      ],
+      "op": "present"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "in",
+        "value": [
+         "AWS::IAM::Policy",
+         "AWS::IAM::RolePolicy"
+        ]
+       }
+      ]
+     },
+     "to": "use"
+    }
+   ]
+  },
+  {
+   "id": "use_services_a",
+   "kind": "all_of",
+   "tier": "detail",
+   "quote": "specific permissions across SageMaker, CloudFormation, CloudWatch, CodeBuild, CodeCommit, CodePipeline",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "use_doc",
+     "cond": {
+      "path": [
+       "properties"
+      ],
+      "op": "regex",
+      "value": "(?i)\"sagemaker:"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "use_doc",
+     "cond": {
+      "path": [
+       "properties"
+      ],
+      "op": "regex",
+      "value": "(?i)\"cloudformation:"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "use_doc",
+     "cond": {
+      "path": [
+       "properties"
+      ],
+      "op": "regex",
+      "value": "(?i)\"cloudwatch:"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "use_doc",
+     "cond": {
+      "path": [
+       "properties"
+      ],
+      "op": "regex",
+      "value": "(?i)\"codebuild:"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "use_doc",
+     "cond": {
+      "path": [
+       "properties"
+      ],
+      "op": "regex",
+      "value": "(?i)\"codecommit:"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "use_doc",
+     "cond": {
+      "path": [
+       "properties"
+      ],
+      "op": "regex",
+      "value": "(?i)\"codepipeline:"
+     }
+    }
+   ]
+  },
+  {
+   "id": "use_services_b",
+   "kind": "all_of",
+   "tier": "detail",
+   "quote": "EC2 (including network interface management for VPC-connected jobs), ECR, Events, Firehose, Glue, IAM, Lambda",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "use_doc",
+     "cond": {
+      "path": [
+       "properties"
+      ],
+      "op": "regex",
+      "value": "(?i)\"ec2:(\\*|[\\w*]*NetworkInterface)"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "use_doc",
+     "cond": {
+      "path": [
+       "properties"
+      ],
+      "op": "regex",
+      "value": "(?i)\"ecr:"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "use_doc",
+     "cond": {
+      "path": [
+       "properties"
+      ],
+      "op": "regex",
+      "value": "(?i)\"events:"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "use_doc",
+     "cond": {
+      "path": [
+       "properties"
+      ],
+      "op": "regex",
+      "value": "(?i)\"firehose:"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "use_doc",
+     "cond": {
+      "path": [
+       "properties"
+      ],
+      "op": "regex",
+      "value": "(?i)\"glue:"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "use_doc",
+     "cond": {
+      "path": [
+       "properties"
+      ],
+      "op": "regex",
+      "value": "(?i)\"iam:"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "use_doc",
+     "cond": {
+      "path": [
+       "properties"
+      ],
+      "op": "regex",
+      "value": "(?i)\"lambda:"
+     }
+    }
+   ]
+  },
+  {
+   "id": "use_services_c",
+   "kind": "all_of",
+   "tier": "detail",
+   "quote": "Logs, S3, Step Functions, CodeStar Connections, KMS, and SSM",
+   "justify": "Step Functions IAM actions use the states: prefix",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "use_doc",
+     "cond": {
+      "path": [
+       "properties"
+      ],
+      "op": "regex",
+      "value": "(?i)\"logs:"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "use_doc",
+     "cond": {
+      "path": [
+       "properties"
+      ],
+      "op": "regex",
+      "value": "(?i)\"s3:"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "use_doc",
+     "cond": {
+      "path": [
+       "properties"
+      ],
+      "op": "regex",
+      "value": "(?i)\"states:"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "use_doc",
+     "cond": {
+      "path": [
+       "properties"
+      ],
+      "op": "regex",
+      "value": "(?i)\"codestar-connections:"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "use_doc",
+     "cond": {
+      "path": [
+       "properties"
+      ],
+      "op": "regex",
+      "value": "(?i)\"kms:"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "use_doc",
+     "cond": {
+      "path": [
+       "properties"
+      ],
+      "op": "regex",
+      "value": "(?i)\"ssm:"
+     }
+    }
+   ]
+  },
+  {
+   "id": "service_roles_exist",
+   "kind": "all_of",
+   "tier": "core",
+   "quote": "the remaining service roles for CloudFormation, CodeBuild, CodePipeline, Events, API Gateway, Firehose, Glue, and Lambda",
+   "justify": "a service role for X is assumed by X's service principal",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": "svc_cfn"
+    },
+    {
+     "kind": "exists",
+     "select": "svc_codebuild"
+    },
+    {
+     "kind": "exists",
+     "select": "svc_codepipeline"
+    },
+    {
+     "kind": "exists",
+     "select": "svc_events"
+    },
+    {
+     "kind": "exists",
+     "select": "svc_apigw"
+    },
+    {
+     "kind": "exists",
+     "select": "svc_firehose"
+    },
+    {
+     "kind": "exists",
+     "select": "svc_glue"
+    },
+    {
+     "kind": "exists",
+     "select": "svc_lambda"
+    }
+   ]
+  },
+  {
+   "id": "svc_policy_cfn",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "the remaining service roles for CloudFormation, CodeBuild, CodePipeline, Events, API Gateway, Firehose, Glue, and Lambda each having their respective AWS-managed service role policies attached",
+   "select": "svc_cfn",
+   "cond": {
+    "path": [
+     "properties",
+     "ManagedPolicyArns",
+     "*"
+    ],
+    "op": "regex",
+    "value": "(?i)iam::aws:policy/.*cloudformation"
+   }
+  },
+  {
+   "id": "svc_policy_codebuild",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "the remaining service roles for CloudFormation, CodeBuild, CodePipeline, Events, API Gateway, Firehose, Glue, and Lambda each having their respective AWS-managed service role policies attached",
+   "select": "svc_codebuild",
+   "cond": {
+    "path": [
+     "properties",
+     "ManagedPolicyArns",
+     "*"
+    ],
+    "op": "regex",
+    "value": "(?i)iam::aws:policy/.*codebuild"
+   }
+  },
+  {
+   "id": "svc_policy_codepipeline",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "the remaining service roles for CloudFormation, CodeBuild, CodePipeline, Events, API Gateway, Firehose, Glue, and Lambda each having their respective AWS-managed service role policies attached",
+   "select": "svc_codepipeline",
+   "cond": {
+    "path": [
+     "properties",
+     "ManagedPolicyArns",
+     "*"
+    ],
+    "op": "regex",
+    "value": "(?i)iam::aws:policy/.*codepipeline"
+   }
+  },
+  {
+   "id": "svc_policy_events",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "the remaining service roles for CloudFormation, CodeBuild, CodePipeline, Events, API Gateway, Firehose, Glue, and Lambda each having their respective AWS-managed service role policies attached",
+   "select": "svc_events",
+   "cond": {
+    "path": [
+     "properties",
+     "ManagedPolicyArns",
+     "*"
+    ],
+    "op": "regex",
+    "value": "(?i)iam::aws:policy/.*(events|eventbridge)"
+   }
+  },
+  {
+   "id": "svc_policy_apigw",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "the remaining service roles for CloudFormation, CodeBuild, CodePipeline, Events, API Gateway, Firehose, Glue, and Lambda each having their respective AWS-managed service role policies attached",
+   "select": "svc_apigw",
+   "cond": {
+    "path": [
+     "properties",
+     "ManagedPolicyArns",
+     "*"
+    ],
+    "op": "regex",
+    "value": "(?i)iam::aws:policy/.*apigateway"
+   }
+  },
+  {
+   "id": "svc_policy_firehose",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "the remaining service roles for CloudFormation, CodeBuild, CodePipeline, Events, API Gateway, Firehose, Glue, and Lambda each having their respective AWS-managed service role policies attached",
+   "select": "svc_firehose",
+   "cond": {
+    "path": [
+     "properties",
+     "ManagedPolicyArns",
+     "*"
+    ],
+    "op": "regex",
+    "value": "(?i)iam::aws:policy/.*firehose"
+   }
+  },
+  {
+   "id": "svc_policy_glue",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "the remaining service roles for CloudFormation, CodeBuild, CodePipeline, Events, API Gateway, Firehose, Glue, and Lambda each having their respective AWS-managed service role policies attached",
+   "select": "svc_glue",
+   "cond": {
+    "path": [
+     "properties",
+     "ManagedPolicyArns",
+     "*"
+    ],
+    "op": "regex",
+    "value": "(?i)iam::aws:policy/.*glue"
+   }
+  },
+  {
+   "id": "svc_policy_lambda",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "the remaining service roles for CloudFormation, CodeBuild, CodePipeline, Events, API Gateway, Firehose, Glue, and Lambda each having their respective AWS-managed service role policies attached",
+   "select": "svc_lambda",
+   "cond": {
+    "path": [
+     "properties",
+     "ManagedPolicyArns",
+     "*"
+    ],
+    "op": "regex",
+    "value": "(?i)iam::aws:policy/.*lambda"
+   }
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

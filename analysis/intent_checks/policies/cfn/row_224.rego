@@ -1,0 +1,717 @@
+package intent.cfn.row_224
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {
+  "tbl": {
+   "types": [
+    "AWS::DynamoDB::Table"
+   ],
+   "where": []
+  },
+  "role": {
+   "types": [
+    "AWS::IAM::Role"
+   ],
+   "where": []
+  },
+  "query_role": {
+   "types": [
+    "AWS::IAM::Role"
+   ],
+   "where": [
+    {
+     "path": [
+      "AssumeRolePolicyDocument",
+      "Statement",
+      "*"
+     ],
+     "op": "match",
+     "value": [
+      {
+       "path": [
+        "Effect"
+       ],
+       "op": "eq",
+       "value": "Allow"
+      },
+      {
+       "path": [
+        "Principal",
+        "Service",
+        "*"
+       ],
+       "op": "eq",
+       "value": "dynamodb.amazonaws.com"
+      }
+     ]
+    }
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "table_name",
+   "kind": "attr",
+   "select": "tbl",
+   "cond": {
+    "path": [
+     "TableName"
+    ],
+    "op": "eq",
+    "value": "AuthorsTable_prod"
+   },
+   "tier": "core",
+   "quote": "a DynamoDB table named \"AuthorsTable_prod\""
+  },
+  {
+   "id": "partition_key",
+   "kind": "attr",
+   "select": "tbl",
+   "cond": {
+    "path": [
+     "KeySchema",
+     "*"
+    ],
+    "op": "match",
+    "value": [
+     {
+      "path": [
+       "AttributeName"
+      ],
+      "op": "eq",
+      "value": "AuthorName"
+     },
+     {
+      "path": [
+       "KeyType"
+      ],
+      "op": "eq",
+      "value": "HASH"
+     }
+    ]
+   },
+   "tier": "core",
+   "quote": "a string partition key \"AuthorName\"",
+   "justify": "partition key = HASH key type"
+  },
+  {
+   "id": "partition_key_string",
+   "kind": "attr",
+   "select": "tbl",
+   "cond": {
+    "path": [
+     "AttributeDefinitions",
+     "*"
+    ],
+    "op": "match",
+    "value": [
+     {
+      "path": [
+       "AttributeName"
+      ],
+      "op": "eq",
+      "value": "AuthorName"
+     },
+     {
+      "path": [
+       "AttributeType"
+      ],
+      "op": "eq",
+      "value": "S"
+     }
+    ]
+   },
+   "tier": "core",
+   "quote": "a string partition key \"AuthorName\""
+  },
+  {
+   "id": "sort_key",
+   "kind": "attr",
+   "select": "tbl",
+   "cond": {
+    "path": [
+     "KeySchema",
+     "*"
+    ],
+    "op": "match",
+    "value": [
+     {
+      "path": [
+       "AttributeName"
+      ],
+      "op": "eq",
+      "value": "BookTitle"
+     },
+     {
+      "path": [
+       "KeyType"
+      ],
+      "op": "eq",
+      "value": "RANGE"
+     }
+    ]
+   },
+   "tier": "core",
+   "quote": "a string sort key \"BookTitle\"",
+   "justify": "sort key = RANGE key type"
+  },
+  {
+   "id": "sort_key_string",
+   "kind": "attr",
+   "select": "tbl",
+   "cond": {
+    "path": [
+     "AttributeDefinitions",
+     "*"
+    ],
+    "op": "match",
+    "value": [
+     {
+      "path": [
+       "AttributeName"
+      ],
+      "op": "eq",
+      "value": "BookTitle"
+     },
+     {
+      "path": [
+       "AttributeType"
+      ],
+      "op": "eq",
+      "value": "S"
+     }
+    ]
+   },
+   "tier": "core",
+   "quote": "a string sort key \"BookTitle\""
+  },
+  {
+   "id": "sse_disabled",
+   "kind": "attr",
+   "select": "tbl",
+   "cond": {
+    "path": [
+     "SSESpecification",
+     "SSEEnabled"
+    ],
+    "op": "eq",
+    "value": false
+   },
+   "tier": "core",
+   "quote": "SSE explicitly disabled"
+  },
+  {
+   "id": "read_capacity",
+   "kind": "attr",
+   "select": "tbl",
+   "cond": {
+    "path": [
+     "ProvisionedThroughput",
+     "ReadCapacityUnits"
+    ],
+    "op": "eq",
+    "value": 10
+   },
+   "tier": "core",
+   "quote": "10 read capacity units"
+  },
+  {
+   "id": "write_capacity",
+   "kind": "attr",
+   "select": "tbl",
+   "cond": {
+    "path": [
+     "ProvisionedThroughput",
+     "WriteCapacityUnits"
+    ],
+    "op": "eq",
+    "value": 5
+   },
+   "tier": "core",
+   "quote": "5 write capacity units"
+  },
+  {
+   "id": "ttl_attribute",
+   "kind": "attr",
+   "select": "tbl",
+   "cond": {
+    "path": [
+     "TimeToLiveSpecification",
+     "AttributeName"
+    ],
+    "op": "eq",
+    "value": "ExpirationTime"
+   },
+   "tier": "core",
+   "quote": "TTL expiration on the attribute \"ExpirationTime\""
+  },
+  {
+   "id": "ttl_enabled",
+   "kind": "attr",
+   "select": "tbl",
+   "cond": {
+    "path": [
+     "TimeToLiveSpecification",
+     "Enabled"
+    ],
+    "op": "eq",
+    "value": true
+   },
+   "tier": "core",
+   "quote": "enabled with TTL expiration"
+  },
+  {
+   "id": "role",
+   "kind": "exists",
+   "select": "role",
+   "tier": "core",
+   "quote": "an IAM role"
+  },
+  {
+   "id": "role_path",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "query_role",
+     "cond": {
+      "path": [
+       "Path"
+      ],
+      "op": "eq",
+      "value": "/"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "query_role",
+     "cond": {
+      "path": [
+       "Path"
+      ],
+      "op": "absent"
+     }
+    }
+   ],
+   "tier": "detail",
+   "quote": "an IAM role at path \"/\"",
+   "justify": "omitting Path means the default path \"/\""
+  },
+  {
+   "id": "role_trust",
+   "kind": "attr",
+   "select": "role",
+   "cond": {
+    "path": [
+     "AssumeRolePolicyDocument",
+     "Statement",
+     "*"
+    ],
+    "op": "match",
+    "value": [
+     {
+      "path": [
+       "Effect"
+      ],
+      "op": "eq",
+      "value": "Allow"
+     },
+     {
+      "path": [
+       "Principal",
+       "Service",
+       "*"
+      ],
+      "op": "eq",
+      "value": "dynamodb.amazonaws.com"
+     }
+    ]
+   },
+   "tier": "core",
+   "quote": "trusting \"dynamodb.amazonaws.com\""
+  },
+  {
+   "id": "policy_named",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "AWS::IAM::Policy"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "PolicyName"
+      ],
+      "op": "eq",
+      "value": "DynamoDBQueryPolicy"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "AWS::IAM::ManagedPolicy"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "ManagedPolicyName"
+      ],
+      "op": "eq",
+      "value": "DynamoDBQueryPolicy"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "AWS::IAM::Role"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "Policies",
+       "*",
+       "PolicyName"
+      ],
+      "op": "eq",
+      "value": "DynamoDBQueryPolicy"
+     }
+    }
+   ],
+   "tier": "core",
+   "quote": "an IAM policy named \"DynamoDBQueryPolicy\""
+  },
+  {
+   "id": "policy_attached_to_role",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy"
+      ],
+      "where": []
+     },
+     "to": "query_role",
+     "bidirectional": true
+    },
+    {
+     "kind": "join",
+     "from": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy"
+      ],
+      "where": []
+     },
+     "from_path": [
+      "Roles",
+      "*"
+     ],
+     "to": "query_role",
+     "to_path": [
+      "RoleName"
+     ]
+    },
+    {
+     "kind": "attr",
+     "select": "query_role",
+     "cond": {
+      "path": [
+       "Policies",
+       "*",
+       "PolicyDocument"
+      ],
+      "op": "present"
+     }
+    }
+   ],
+   "tier": "core",
+   "quote": "attached to an IAM policy"
+  },
+  {
+   "id": "policy_query",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy"
+      ],
+      "where": [
+       {
+        "path": [
+         "PolicyDocument",
+         "Statement",
+         "*"
+        ],
+        "op": "match",
+        "value": [
+         {
+          "path": [
+           "Effect"
+          ],
+          "op": "eq",
+          "value": "Allow"
+         },
+         {
+          "path": [
+           "Action",
+           "*"
+          ],
+          "op": "glob_covers",
+          "value": "dynamodb:Query"
+         }
+        ]
+       }
+      ]
+     },
+     "to": "query_role",
+     "bidirectional": true
+    },
+    {
+     "kind": "join",
+     "from": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy"
+      ],
+      "where": [
+       {
+        "path": [
+         "PolicyDocument",
+         "Statement",
+         "*"
+        ],
+        "op": "match",
+        "value": [
+         {
+          "path": [
+           "Effect"
+          ],
+          "op": "eq",
+          "value": "Allow"
+         },
+         {
+          "path": [
+           "Action",
+           "*"
+          ],
+          "op": "glob_covers",
+          "value": "dynamodb:Query"
+         }
+        ]
+       }
+      ]
+     },
+     "from_path": [
+      "Roles",
+      "*"
+     ],
+     "to": "query_role",
+     "to_path": [
+      "RoleName"
+     ]
+    },
+    {
+     "kind": "attr",
+     "select": "query_role",
+     "cond": {
+      "path": [
+       "Policies",
+       "*",
+       "PolicyDocument",
+       "Statement",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "Effect"
+        ],
+        "op": "eq",
+        "value": "Allow"
+       },
+       {
+        "path": [
+         "Action",
+         "*"
+        ],
+        "op": "glob_covers",
+        "value": "dynamodb:Query"
+       }
+      ]
+     }
+    }
+   ],
+   "tier": "core",
+   "quote": "allows \"dynamodb:Query\" actions on all resources"
+  },
+  {
+   "id": "policy_all_resources",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy"
+      ],
+      "where": [
+       {
+        "path": [
+         "PolicyDocument",
+         "Statement",
+         "*"
+        ],
+        "op": "match",
+        "value": [
+         {
+          "path": [
+           "Effect"
+          ],
+          "op": "eq",
+          "value": "Allow"
+         },
+         {
+          "path": [
+           "Action",
+           "*"
+          ],
+          "op": "glob_covers",
+          "value": "dynamodb:Query"
+         },
+         {
+          "path": [
+           "Resource",
+           "*"
+          ],
+          "op": "eq",
+          "value": "*"
+         }
+        ]
+       }
+      ]
+     },
+     "to": "query_role",
+     "bidirectional": true
+    },
+    {
+     "kind": "join",
+     "from": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy"
+      ],
+      "where": [
+       {
+        "path": [
+         "PolicyDocument",
+         "Statement",
+         "*"
+        ],
+        "op": "match",
+        "value": [
+         {
+          "path": [
+           "Effect"
+          ],
+          "op": "eq",
+          "value": "Allow"
+         },
+         {
+          "path": [
+           "Action",
+           "*"
+          ],
+          "op": "glob_covers",
+          "value": "dynamodb:Query"
+         },
+         {
+          "path": [
+           "Resource",
+           "*"
+          ],
+          "op": "eq",
+          "value": "*"
+         }
+        ]
+       }
+      ]
+     },
+     "from_path": [
+      "Roles",
+      "*"
+     ],
+     "to": "query_role",
+     "to_path": [
+      "RoleName"
+     ]
+    },
+    {
+     "kind": "attr",
+     "select": "query_role",
+     "cond": {
+      "path": [
+       "Policies",
+       "*",
+       "PolicyDocument",
+       "Statement",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "Effect"
+        ],
+        "op": "eq",
+        "value": "Allow"
+       },
+       {
+        "path": [
+         "Action",
+         "*"
+        ],
+        "op": "glob_covers",
+        "value": "dynamodb:Query"
+       },
+       {
+        "path": [
+         "Resource",
+         "*"
+        ],
+        "op": "eq",
+        "value": "*"
+       }
+      ]
+     }
+    }
+   ],
+   "tier": "core",
+   "quote": "on all resources",
+   "justify": "all resources means Resource '*'"
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

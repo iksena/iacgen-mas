@@ -1,0 +1,310 @@
+{
+ "lang": "tf",
+ "row_number": 22,
+ "source_hash": {
+  "gt": "ed4cdbd6b32bae5d4c907b2043f9fe145dc5f481c239fad86c2fd8d1eca56ae9",
+  "prompt": "6f3deadf6f0c1024283722ad6b6e8a92381476e72fa086e5cf0aed5c2b475dfd"
+ },
+ "selectors": {
+  "vpc": {
+   "types": [
+    "aws_vpc"
+   ],
+   "where": [
+    {
+     "path": "cidr_block",
+     "op": "eq",
+     "value": "10.0.0.0/16"
+    }
+   ]
+  },
+  "sg": {
+   "types": [
+    "aws_security_group"
+   ],
+   "where": [
+    {
+     "path": "name",
+     "op": "eq",
+     "value": "Example security group"
+    }
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "vpc",
+   "kind": "exists",
+   "select": "vpc",
+   "tier": "core",
+   "quote": "a VPC with a CIDR block of 10.0.0.0/16"
+  },
+  {
+   "id": "security_group",
+   "kind": "exists",
+   "select": "sg",
+   "tier": "core",
+   "quote": "a security group named \"Example security group\""
+  },
+  {
+   "id": "sg_in_vpc",
+   "kind": "ref",
+   "from": "sg",
+   "to": "vpc",
+   "tier": "core",
+   "quote": "Within this VPC, provision a security group"
+  },
+  {
+   "id": "ingress_443",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_security_group"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "eq",
+        "value": "Example security group"
+       }
+      ]
+     },
+     "cond": {
+      "path": "ingress.*",
+      "op": "match",
+      "value": [
+       {
+        "path": "from_port",
+        "op": "eq",
+        "value": 443
+       },
+       {
+        "path": "to_port",
+        "op": "eq",
+        "value": 443
+       },
+       {
+        "path": "protocol",
+        "op": "in",
+        "value": [
+         "tcp",
+         "6"
+        ]
+       },
+       {
+        "path": "cidr_blocks.*",
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_security_group_rule"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "ingress"
+       },
+       {
+        "path": "from_port",
+        "op": "eq",
+        "value": 443
+       },
+       {
+        "path": "to_port",
+        "op": "eq",
+        "value": 443
+       },
+       {
+        "path": "protocol",
+        "op": "in",
+        "value": [
+         "tcp",
+         "6"
+        ]
+       },
+       {
+        "path": "cidr_blocks.*",
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     },
+     "to": "sg"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_vpc_security_group_ingress_rule"
+      ],
+      "where": [
+       {
+        "path": "from_port",
+        "op": "eq",
+        "value": 443
+       },
+       {
+        "path": "to_port",
+        "op": "eq",
+        "value": 443
+       },
+       {
+        "path": "ip_protocol",
+        "op": "in",
+        "value": [
+         "tcp",
+         "6"
+        ]
+       },
+       {
+        "path": "cidr_ipv4",
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     },
+     "to": "sg"
+    }
+   ],
+   "tier": "core",
+   "quote": "allowing incoming TCP traffic on port 443",
+   "justify": "any IP address is 0.0.0.0/0, TCP given"
+  },
+  {
+   "id": "ingress_80",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_security_group"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "eq",
+        "value": "Example security group"
+       }
+      ]
+     },
+     "cond": {
+      "path": "ingress.*",
+      "op": "match",
+      "value": [
+       {
+        "path": "from_port",
+        "op": "eq",
+        "value": 80
+       },
+       {
+        "path": "to_port",
+        "op": "eq",
+        "value": 80
+       },
+       {
+        "path": "protocol",
+        "op": "in",
+        "value": [
+         "tcp",
+         "6"
+        ]
+       },
+       {
+        "path": "cidr_blocks.*",
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_security_group_rule"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "ingress"
+       },
+       {
+        "path": "from_port",
+        "op": "eq",
+        "value": 80
+       },
+       {
+        "path": "to_port",
+        "op": "eq",
+        "value": 80
+       },
+       {
+        "path": "protocol",
+        "op": "in",
+        "value": [
+         "tcp",
+         "6"
+        ]
+       },
+       {
+        "path": "cidr_blocks.*",
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     },
+     "to": "sg"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_vpc_security_group_ingress_rule"
+      ],
+      "where": [
+       {
+        "path": "from_port",
+        "op": "eq",
+        "value": 80
+       },
+       {
+        "path": "to_port",
+        "op": "eq",
+        "value": 80
+       },
+       {
+        "path": "ip_protocol",
+        "op": "in",
+        "value": [
+         "tcp",
+         "6"
+        ]
+       },
+       {
+        "path": "cidr_ipv4",
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     },
+     "to": "sg"
+    }
+   ],
+   "tier": "core",
+   "quote": "port 443 and port 80 from any IP address (0.0.0.0/0)"
+  }
+ ],
+ "notes": "Each port rule must be exactly that port (from_port = to_port) over TCP, so one wide-range rule cannot stand in for the two separate rules."
+}

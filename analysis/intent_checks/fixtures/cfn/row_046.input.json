@@ -1,0 +1,337 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "9ac3e3309fa9bd9d505550c75009421b5b001924f61b2c7e9339d488f03e58d8",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "ChaosStateMachine",
+   "cfg": "ChaosStateMachine",
+   "type": "AWS::StepFunctions::StateMachine",
+   "values": {
+    "StateMachineName": "ChaosTest",
+    "RoleArn": {
+     "ref": "StepFunctionRole",
+     "attr": "Arn"
+    },
+    "DefinitionString": "{\n  \"StartAt\": \"TerminateInstance\",\n  \"States\": {\n    \"TerminateInstance\": {\n      \"Type\": \"Task\",\n      \"Resource\": \"${ChaosLambda.Arn}\",\n      \"Next\": \"Wait\",\n      \"Parameters\": {\n        \"InstanceId\": \"i-1234567890abcdef0\"\n      }\n    },\n    \"Wait\": {\n      \"Type\": \"Wait\",\n      \"Seconds\": 300,\n      \"Next\": \"CheckHealth\"\n    },\n    \"CheckHealth\": {\n      \"Type\": \"Task\",\n      \"Resource\": \"${HealthCheckLambda.Arn}\",\n      \"End\": true\n    }\n  }\n}\n"
+   },
+   "refs": [
+    "ChaosLambda",
+    "HealthCheckLambda",
+    "StepFunctionRole"
+   ]
+  },
+  {
+   "id": "ChaosLambda",
+   "cfg": "ChaosLambda",
+   "type": "AWS::Lambda::Function",
+   "values": {
+    "FunctionName": "ChaosLambda",
+    "Handler": "index.handler",
+    "Role": {
+     "ref": "LambdaExecutionRole",
+     "attr": "Arn"
+    },
+    "Code": {
+     "ZipFile": "import json\nimport boto3\n\ndef lambda_handler(event, context):\n    ec2 = boto3.client('ec2')\n    instance_id = event['InstanceId']\n    ec2.terminate_instances(InstanceIds=[instance_id])\n    return {'statusCode': 200, 'body': json.dumps('Instance terminated')}\n"
+    },
+    "Runtime": "python3.9",
+    "Timeout": 30
+   },
+   "refs": [
+    "LambdaExecutionRole"
+   ]
+  },
+  {
+   "id": "HealthCheckLambda",
+   "cfg": "HealthCheckLambda",
+   "type": "AWS::Lambda::Function",
+   "values": {
+    "FunctionName": "HealthCheckLambda",
+    "Handler": "index.handler",
+    "Role": {
+     "ref": "LambdaExecutionRole",
+     "attr": "Arn"
+    },
+    "Code": {
+     "ZipFile": "import json\nimport boto3\n\ndef lambda_handler(event, context):\n    ecs = boto3.client('ecs')\n    response = ecs.describe_services(cluster='my-cluster', services=['my-service'])\n    healthy = response['services'][0]['runningCount'] > 0\n    if not healthy:\n        sns = boto3.client('sns')\n        sns.publish(\n            TopicArn='arn:aws:sns:us-east-1:123456789012:chaos-alerts',\n            Message='Service unhealthy after chaos test'\n        )\n    return {'statusCode': 200, 'body': json.dumps('Health check complete')}\n"
+    },
+    "Runtime": "python3.9",
+    "Timeout": 30
+   },
+   "refs": [
+    "LambdaExecutionRole"
+   ]
+  },
+  {
+   "id": "LambdaExecutionRole",
+   "cfg": "LambdaExecutionRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Policies": [
+     {
+      "PolicyName": "ChaosPolicy",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "ec2:TerminateInstances",
+          "ecs:DescribeServices",
+          "sns:Publish"
+         ],
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "StepFunctionRole",
+   "cfg": "StepFunctionRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "states.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Policies": [
+     {
+      "PolicyName": "StepFunctionPolicy",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "lambda:InvokeFunction"
+         ],
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__declared__.AWS::StepFunctions::StateMachine.ChaosStateMachine",
+   "cfg": "ChaosStateMachine",
+   "type": "__declared__",
+   "refs": [
+    "ChaosLambda",
+    "HealthCheckLambda",
+    "StepFunctionRole"
+   ],
+   "values": {
+    "type": "AWS::StepFunctions::StateMachine",
+    "name": "ChaosStateMachine",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "StateMachineName": "ChaosTest",
+     "RoleArn": {
+      "ref": "StepFunctionRole",
+      "attr": "Arn"
+     },
+     "DefinitionString": "{\n  \"StartAt\": \"TerminateInstance\",\n  \"States\": {\n    \"TerminateInstance\": {\n      \"Type\": \"Task\",\n      \"Resource\": \"${ChaosLambda.Arn}\",\n      \"Next\": \"Wait\",\n      \"Parameters\": {\n        \"InstanceId\": \"i-1234567890abcdef0\"\n      }\n    },\n    \"Wait\": {\n      \"Type\": \"Wait\",\n      \"Seconds\": 300,\n      \"Next\": \"CheckHealth\"\n    },\n    \"CheckHealth\": {\n      \"Type\": \"Task\",\n      \"Resource\": \"${HealthCheckLambda.Arn}\",\n      \"End\": true\n    }\n  }\n}\n"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Function.ChaosLambda",
+   "cfg": "ChaosLambda",
+   "type": "__declared__",
+   "refs": [
+    "LambdaExecutionRole"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Function",
+    "name": "ChaosLambda",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "FunctionName": "ChaosLambda",
+     "Handler": "index.handler",
+     "Role": {
+      "ref": "LambdaExecutionRole",
+      "attr": "Arn"
+     },
+     "Code": {
+      "ZipFile": "import json\nimport boto3\n\ndef lambda_handler(event, context):\n    ec2 = boto3.client('ec2')\n    instance_id = event['InstanceId']\n    ec2.terminate_instances(InstanceIds=[instance_id])\n    return {'statusCode': 200, 'body': json.dumps('Instance terminated')}\n"
+     },
+     "Runtime": "python3.9",
+     "Timeout": 30
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Function.HealthCheckLambda",
+   "cfg": "HealthCheckLambda",
+   "type": "__declared__",
+   "refs": [
+    "LambdaExecutionRole"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Function",
+    "name": "HealthCheckLambda",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "FunctionName": "HealthCheckLambda",
+     "Handler": "index.handler",
+     "Role": {
+      "ref": "LambdaExecutionRole",
+      "attr": "Arn"
+     },
+     "Code": {
+      "ZipFile": "import json\nimport boto3\n\ndef lambda_handler(event, context):\n    ecs = boto3.client('ecs')\n    response = ecs.describe_services(cluster='my-cluster', services=['my-service'])\n    healthy = response['services'][0]['runningCount'] > 0\n    if not healthy:\n        sns = boto3.client('sns')\n        sns.publish(\n            TopicArn='arn:aws:sns:us-east-1:123456789012:chaos-alerts',\n            Message='Service unhealthy after chaos test'\n        )\n    return {'statusCode': 200, 'body': json.dumps('Health check complete')}\n"
+     },
+     "Runtime": "python3.9",
+     "Timeout": 30
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.LambdaExecutionRole",
+   "cfg": "LambdaExecutionRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "LambdaExecutionRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Policies": [
+      {
+       "PolicyName": "ChaosPolicy",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "ec2:TerminateInstances",
+           "ecs:DescribeServices",
+           "sns:Publish"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.StepFunctionRole",
+   "cfg": "StepFunctionRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "StepFunctionRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "states.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Policies": [
+      {
+       "PolicyName": "StepFunctionPolicy",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "lambda:InvokeFunction"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  }
+ ]
+}

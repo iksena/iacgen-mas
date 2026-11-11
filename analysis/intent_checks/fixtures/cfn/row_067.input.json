@@ -1,0 +1,363 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "ce031e22d64a57b052348b18ccd96a5e28e4680c1b0423d49b7292228f0f96fb",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "TaskRole",
+   "cfg": "TaskRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "stack-TaskRole",
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "ecs-tasks.amazonaws.com"
+        ]
+       }
+      }
+     ]
+    },
+    "Policies": [
+     {
+      "PolicyName": "root",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "ssmmessages:CreateControlChannel",
+          "ssmmessages:CreateDataChannel",
+          "ssmmessages:OpenControlChannel",
+          "ssmmessages:OpenDataChannel"
+         ],
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "TaskExecutionRole",
+   "cfg": "TaskExecutionRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "stack-TaskExecutionRole",
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "ecs-tasks.amazonaws.com"
+        ]
+       }
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "TaskDefinition",
+   "cfg": "TaskDefinition",
+   "type": "AWS::ECS::TaskDefinition",
+   "values": {
+    "Family": "book-app",
+    "TaskRoleArn": {
+     "ref": "TaskRole",
+     "attr": "Arn"
+    },
+    "ExecutionRoleArn": {
+     "ref": "TaskExecutionRole",
+     "attr": "Arn"
+    },
+    "NetworkMode": "awsvpc",
+    "RequiresCompatibilities": [
+     "FARGATE"
+    ],
+    "Cpu": 256,
+    "Memory": 512,
+    "ContainerDefinitions": [
+     {
+      "Name": "book-app",
+      "Image": "public.ecr.aws/nginx/nginx",
+      "PortMappings": [
+       {
+        "ContainerPort": 80
+       }
+      ],
+      "Privileged": false,
+      "LogConfiguration": {
+       "LogDriver": "awslogs",
+       "Options": {
+        "awslogs-group": {
+         "ref": "LogGroup"
+        },
+        "awslogs-region": "us-east-1",
+        "awslogs-stream-prefix": "book-app"
+       }
+      }
+     }
+    ]
+   },
+   "refs": [
+    "LogGroup",
+    "TaskExecutionRole",
+    "TaskRole"
+   ]
+  },
+  {
+   "id": "LogGroup",
+   "cfg": "LogGroup",
+   "type": "AWS::Logs::LogGroup",
+   "values": {
+    "LogGroupName": "/ecs/book-app",
+    "RetentionInDays": 7,
+    "__resource__": {
+     "DeletionPolicy": "Delete",
+     "UpdateReplacePolicy": "Delete"
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.EcrRepoName",
+   "cfg": "__parameter__.EcrRepoName",
+   "type": "__parameter__",
+   "values": {
+    "name": "EcrRepoName",
+    "type": "String",
+    "default": "book-app",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.TaskDefinition",
+   "cfg": "__output__.TaskDefinition",
+   "type": "__output__",
+   "values": {
+    "name": "TaskDefinition",
+    "value": {
+     "ref": "TaskDefinition"
+    },
+    "description": "Task Definition",
+    "export": "stack-task-def"
+   },
+   "refs": [
+    "TaskDefinition"
+   ]
+  },
+  {
+   "id": "__output__.TaskRole",
+   "cfg": "__output__.TaskRole",
+   "type": "__output__",
+   "values": {
+    "name": "TaskRole",
+    "value": {
+     "ref": "TaskRole"
+    },
+    "description": "Task Role",
+    "export": "stack-task-role"
+   },
+   "refs": [
+    "TaskRole"
+   ]
+  },
+  {
+   "id": "__output__.TaskExecutionRole",
+   "cfg": "__output__.TaskExecutionRole",
+   "type": "__output__",
+   "values": {
+    "name": "TaskExecutionRole",
+    "value": {
+     "ref": "TaskExecutionRole"
+    },
+    "description": "Task Execution Role",
+    "export": "stack-task-execution-role"
+   },
+   "refs": [
+    "TaskExecutionRole"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.TaskRole",
+   "cfg": "TaskRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "TaskRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "stack-TaskRole",
+     "AssumeRolePolicyDocument": {
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "ecs-tasks.amazonaws.com"
+         ]
+        }
+       }
+      ]
+     },
+     "Policies": [
+      {
+       "PolicyName": "root",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "ssmmessages:CreateControlChannel",
+           "ssmmessages:CreateDataChannel",
+           "ssmmessages:OpenControlChannel",
+           "ssmmessages:OpenDataChannel"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.TaskExecutionRole",
+   "cfg": "TaskExecutionRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "TaskExecutionRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "stack-TaskExecutionRole",
+     "AssumeRolePolicyDocument": {
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "ecs-tasks.amazonaws.com"
+         ]
+        }
+       }
+      ]
+     },
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ECS::TaskDefinition.TaskDefinition",
+   "cfg": "TaskDefinition",
+   "type": "__declared__",
+   "refs": [
+    "LogGroup",
+    "TaskExecutionRole",
+    "TaskRole"
+   ],
+   "values": {
+    "type": "AWS::ECS::TaskDefinition",
+    "name": "TaskDefinition",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Family": "book-app",
+     "TaskRoleArn": {
+      "ref": "TaskRole",
+      "attr": "Arn"
+     },
+     "ExecutionRoleArn": {
+      "ref": "TaskExecutionRole",
+      "attr": "Arn"
+     },
+     "NetworkMode": "awsvpc",
+     "RequiresCompatibilities": [
+      "FARGATE"
+     ],
+     "Cpu": 256,
+     "Memory": 512,
+     "ContainerDefinitions": [
+      {
+       "Name": "book-app",
+       "Image": "public.ecr.aws/nginx/nginx",
+       "PortMappings": [
+        {
+         "ContainerPort": 80
+        }
+       ],
+       "Privileged": false,
+       "LogConfiguration": {
+        "LogDriver": "awslogs",
+        "Options": {
+         "awslogs-group": {
+          "ref": "LogGroup"
+         },
+         "awslogs-region": "us-east-1",
+         "awslogs-stream-prefix": "book-app"
+        }
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::LogGroup.LogGroup",
+   "cfg": "LogGroup",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Logs::LogGroup",
+    "name": "LogGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "LogGroupName": "/ecs/book-app",
+     "RetentionInDays": 7
+    }
+   }
+  }
+ ]
+}

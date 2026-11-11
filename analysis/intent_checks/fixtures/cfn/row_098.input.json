@@ -1,0 +1,387 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "354e9629876fd112642ccd09eef073870813a277106ad184ae0e8edc6ccb45d6",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "MyStateMachine",
+   "cfg": "MyStateMachine",
+   "type": "AWS::StepFunctions::StateMachine",
+   "values": {
+    "StateMachineName": "Calculator-StateMachine",
+    "DefinitionString": "{\n  \"Comment\": \"Simple Calculator Step Functions Example\",\n  \"StartAt\": \"state.start.operatorSelector\",\n  \"States\": {\n    \"state.start.operatorSelector\": {\n      \"Type\": \"Choice\",\n      \"Choices\": [\n        {\n          \"Variable\": \"$.operator\",\n          \"StringEquals\": \"add\",\n          \"Next\": \"state.process.operator.add\"\n        },\n        {\n          \"Variable\": \"$.operator\",\n          \"StringEquals\": \"subtract\",\n          \"Next\": \"state.process.operator.subtract\"\n        },\n        {\n          \"Variable\": \"$.operator\",\n          \"StringEquals\": \"multiply\",\n          \"Next\": \"state.process.operator.multiply\"\n        },\n        {\n          \"Variable\": \"$.operator\",\n          \"StringEquals\": \"divide\",\n          \"Next\": \"state.process.operator.divide\"\n        }\n      ],\n      \"Default\": \"state.process.operator.unknown\"\n    },\n    \"state.process.operator.add\": {\n      \"Type\": \"Task\",\n      \"Comment\": \"Performs an addition on the operands provided\",\n      \"Next\": \"state.process.displayResult\",\n      \"Resource\" : \"${Calculator.Arn}\"\n    },\n    \"state.process.operator.subtract\": {\n      \"Type\": \"Task\",\n      \"Comment\": \"Performs an subtraction on the operands provided\",\n      \"Next\": \"state.process.displayResult\",\n      \"Resource\" : \"${Calculator.Arn}\"\n    },\n    \"state.process.operator.multiply\": {\n      \"Type\": \"Task\",\n      \"Comment\": \"Performs an multiplication on the operands provided\",\n      \"Next\": \"state.process.displayResult\",\n      \"Resource\" : \"${Calculator.Arn}\"\n    },\n    \"state.process.operator.divide\": {\n      \"Type\": \"Task\",\n      \"Comment\": \"Performs an division on the operands provided\",\n      \"Next\": \"state.process.displayResult\",\n      \"Resource\" : \"${Calculator.Arn}\"\n    },\n    \"state.process.operator.unknown\": {\n      \"Type\": \"Fail\",\n      \"Error\": \"UNKNOWN_OPERATOR\",\n      \"Cause\" : \"The operator provided is not supported\"\n    },\n    \"state.process.displayResult\": {\n      \"Type\": \"Pass\",\n      \"Next\": \"state.process.complete\"\n    },\n    \"state.process.complete\": {\n      \"Type\": \"Pass\",\n      \"End\": true\n    }\n  }\n}",
+    "RoleArn": {
+     "ref": "StepFunctionRole",
+     "attr": "Arn"
+    }
+   },
+   "refs": [
+    "Calculator",
+    "StepFunctionRole"
+   ]
+  },
+  {
+   "id": "Calculator",
+   "cfg": "Calculator",
+   "type": "AWS::Lambda::Function",
+   "values": {
+    "FunctionName": "Calculator",
+    "Description": "Part of a StepFunction demo",
+    "MemorySize": 128,
+    "Timeout": 4,
+    "Role": {
+     "ref": "LambdaFunctionRole",
+     "attr": "Arn"
+    },
+    "Runtime": "nodejs20.x",
+    "Handler": "index.handler",
+    "Code": {
+     "ZipFile": "'use strict';\nconsole.log('Loading function');\nexports.handler = (event, context, callback) => {\n    console.log('Received event:', JSON.stringify(event, null, 2));\n    var operator = event.operator;\n    var operand1 = event.operands[0];\n    var operand2 = event.operands[1];\n    var result = 0;\n    if (operator == 'add') {\n      result = operand1 + operand2;\n    }\n    else if (operator == 'subtract') {\n      result = operand1 - operand2;\n    }\n    else if (operator == 'multiply') {\n      result = operand1 * operand2;\n    }\n    else if (operator == 'divide') {\n      result = operand1 / operand2;\n    }\n    console.log('Returning:', result);\n    callback(null, result);\n};\n"
+    }
+   },
+   "refs": [
+    "LambdaFunctionRole"
+   ]
+  },
+  {
+   "id": "LambdaFunctionRole",
+   "cfg": "LambdaFunctionRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "LambdaFunctionPolicy",
+   "cfg": "LambdaFunctionPolicy",
+   "type": "AWS::IAM::Policy",
+   "values": {
+    "PolicyName": "LambdaFunctionPolicy",
+    "PolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Action": [
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+       ],
+       "Resource": [
+        "*"
+       ]
+      }
+     ]
+    },
+    "Roles": [
+     {
+      "ref": "LambdaFunctionRole"
+     }
+    ]
+   },
+   "refs": [
+    "LambdaFunctionRole"
+   ]
+  },
+  {
+   "id": "StepFunctionRole",
+   "cfg": "StepFunctionRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "states.us-east-1.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "StepFunctionPolicy",
+   "cfg": "StepFunctionPolicy",
+   "type": "AWS::IAM::Policy",
+   "values": {
+    "PolicyName": "StepFunctionPolicy",
+    "PolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Action": [
+        "lambda:InvokeFunction"
+       ],
+       "Resource": [
+        "*"
+       ]
+      }
+     ]
+    },
+    "Roles": [
+     {
+      "ref": "StepFunctionRole"
+     }
+    ]
+   },
+   "refs": [
+    "StepFunctionRole"
+   ]
+  },
+  {
+   "id": "CloudwatchLogsGroupForLambda",
+   "cfg": "CloudwatchLogsGroupForLambda",
+   "type": "AWS::Logs::LogGroup",
+   "values": {
+    "LogGroupName": "/aws/lambda/${Calculator}",
+    "RetentionInDays": 3
+   },
+   "refs": [
+    "Calculator"
+   ]
+  },
+  {
+   "id": "__output__.SampleInput",
+   "cfg": "__output__.SampleInput",
+   "type": "__output__",
+   "values": {
+    "name": "SampleInput",
+    "value": "{\"operator\": \"add\", \"operands\": [1,2]}",
+    "description": "Some sample input",
+    "export": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__declared__.AWS::StepFunctions::StateMachine.MyStateMachine",
+   "cfg": "MyStateMachine",
+   "type": "__declared__",
+   "refs": [
+    "Calculator",
+    "StepFunctionRole"
+   ],
+   "values": {
+    "type": "AWS::StepFunctions::StateMachine",
+    "name": "MyStateMachine",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "StateMachineName": "Calculator-StateMachine",
+     "DefinitionString": "{\n  \"Comment\": \"Simple Calculator Step Functions Example\",\n  \"StartAt\": \"state.start.operatorSelector\",\n  \"States\": {\n    \"state.start.operatorSelector\": {\n      \"Type\": \"Choice\",\n      \"Choices\": [\n        {\n          \"Variable\": \"$.operator\",\n          \"StringEquals\": \"add\",\n          \"Next\": \"state.process.operator.add\"\n        },\n        {\n          \"Variable\": \"$.operator\",\n          \"StringEquals\": \"subtract\",\n          \"Next\": \"state.process.operator.subtract\"\n        },\n        {\n          \"Variable\": \"$.operator\",\n          \"StringEquals\": \"multiply\",\n          \"Next\": \"state.process.operator.multiply\"\n        },\n        {\n          \"Variable\": \"$.operator\",\n          \"StringEquals\": \"divide\",\n          \"Next\": \"state.process.operator.divide\"\n        }\n      ],\n      \"Default\": \"state.process.operator.unknown\"\n    },\n    \"state.process.operator.add\": {\n      \"Type\": \"Task\",\n      \"Comment\": \"Performs an addition on the operands provided\",\n      \"Next\": \"state.process.displayResult\",\n      \"Resource\" : \"${Calculator.Arn}\"\n    },\n    \"state.process.operator.subtract\": {\n      \"Type\": \"Task\",\n      \"Comment\": \"Performs an subtraction on the operands provided\",\n      \"Next\": \"state.process.displayResult\",\n      \"Resource\" : \"${Calculator.Arn}\"\n    },\n    \"state.process.operator.multiply\": {\n      \"Type\": \"Task\",\n      \"Comment\": \"Performs an multiplication on the operands provided\",\n      \"Next\": \"state.process.displayResult\",\n      \"Resource\" : \"${Calculator.Arn}\"\n    },\n    \"state.process.operator.divide\": {\n      \"Type\": \"Task\",\n      \"Comment\": \"Performs an division on the operands provided\",\n      \"Next\": \"state.process.displayResult\",\n      \"Resource\" : \"${Calculator.Arn}\"\n    },\n    \"state.process.operator.unknown\": {\n      \"Type\": \"Fail\",\n      \"Error\": \"UNKNOWN_OPERATOR\",\n      \"Cause\" : \"The operator provided is not supported\"\n    },\n    \"state.process.displayResult\": {\n      \"Type\": \"Pass\",\n      \"Next\": \"state.process.complete\"\n    },\n    \"state.process.complete\": {\n      \"Type\": \"Pass\",\n      \"End\": true\n    }\n  }\n}",
+     "RoleArn": {
+      "ref": "StepFunctionRole",
+      "attr": "Arn"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Function.Calculator",
+   "cfg": "Calculator",
+   "type": "__declared__",
+   "refs": [
+    "LambdaFunctionRole"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Function",
+    "name": "Calculator",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "FunctionName": "Calculator",
+     "Description": "Part of a StepFunction demo",
+     "MemorySize": 128,
+     "Timeout": 4,
+     "Role": {
+      "ref": "LambdaFunctionRole",
+      "attr": "Arn"
+     },
+     "Runtime": "nodejs20.x",
+     "Handler": "index.handler",
+     "Code": {
+      "ZipFile": "'use strict';\nconsole.log('Loading function');\nexports.handler = (event, context, callback) => {\n    console.log('Received event:', JSON.stringify(event, null, 2));\n    var operator = event.operator;\n    var operand1 = event.operands[0];\n    var operand2 = event.operands[1];\n    var result = 0;\n    if (operator == 'add') {\n      result = operand1 + operand2;\n    }\n    else if (operator == 'subtract') {\n      result = operand1 - operand2;\n    }\n    else if (operator == 'multiply') {\n      result = operand1 * operand2;\n    }\n    else if (operator == 'divide') {\n      result = operand1 / operand2;\n    }\n    console.log('Returning:', result);\n    callback(null, result);\n};\n"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.LambdaFunctionRole",
+   "cfg": "LambdaFunctionRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "LambdaFunctionRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Policy.LambdaFunctionPolicy",
+   "cfg": "LambdaFunctionPolicy",
+   "type": "__declared__",
+   "refs": [
+    "LambdaFunctionRole"
+   ],
+   "values": {
+    "type": "AWS::IAM::Policy",
+    "name": "LambdaFunctionPolicy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "PolicyName": "LambdaFunctionPolicy",
+     "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Action": [
+         "logs:CreateLogStream",
+         "logs:PutLogEvents"
+        ],
+        "Resource": [
+         "*"
+        ]
+       }
+      ]
+     },
+     "Roles": [
+      {
+       "ref": "LambdaFunctionRole"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.StepFunctionRole",
+   "cfg": "StepFunctionRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "StepFunctionRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "states.us-east-1.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Policy.StepFunctionPolicy",
+   "cfg": "StepFunctionPolicy",
+   "type": "__declared__",
+   "refs": [
+    "StepFunctionRole"
+   ],
+   "values": {
+    "type": "AWS::IAM::Policy",
+    "name": "StepFunctionPolicy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "PolicyName": "StepFunctionPolicy",
+     "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Action": [
+         "lambda:InvokeFunction"
+        ],
+        "Resource": [
+         "*"
+        ]
+       }
+      ]
+     },
+     "Roles": [
+      {
+       "ref": "StepFunctionRole"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::LogGroup.CloudwatchLogsGroupForLambda",
+   "cfg": "CloudwatchLogsGroupForLambda",
+   "type": "__declared__",
+   "refs": [
+    "Calculator"
+   ],
+   "values": {
+    "type": "AWS::Logs::LogGroup",
+    "name": "CloudwatchLogsGroupForLambda",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "LogGroupName": "/aws/lambda/${Calculator}",
+     "RetentionInDays": 3
+    }
+   }
+  }
+ ]
+}

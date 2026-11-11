@@ -1,0 +1,204 @@
+{
+ "meta": {
+  "lang": "tf",
+  "mode": "plan",
+  "warnings": [],
+  "gt_hash": "2d980a125a02da4d372087ac50012629c4f401a948684a1500b9261981f58d3d",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "aws_iam_instance_profile.packer-build",
+   "cfg": "aws_iam_instance_profile.packer-build",
+   "type": "aws_iam_instance_profile",
+   "values": {
+    "name": "packer-builder",
+    "path": "/",
+    "role": "-packer-build",
+    "tags": null
+   },
+   "refs": [
+    "aws_iam_role.packer-build"
+   ]
+  },
+  {
+   "id": "aws_iam_policy.packer-build",
+   "cfg": "aws_iam_policy.packer-build",
+   "type": "aws_iam_policy",
+   "values": {
+    "delay_after_policy_creation_in_ms": null,
+    "description": "Allow assume role in Core account of '' to access software installation files",
+    "name": "-assume-role-packer-files-s3-read",
+    "path": "/",
+    "policy": "{\"Statement\":[{\"Action\":\"sts:AssumeRole\",\"Effect\":\"Allow\",\"Resource\":\"arn:aws:iam:::role/\"}],\"Version\":\"2012-10-17\"}",
+    "tags": null
+   },
+   "refs": []
+  },
+  {
+   "id": "aws_iam_role.packer-build",
+   "cfg": "aws_iam_role.packer-build",
+   "type": "aws_iam_role",
+   "values": {
+    "assume_role_policy": "{\"Statement\":[{\"Action\":\"sts:AssumeRole\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"ec2.amazonaws.com\"},\"Sid\":\"\"}],\"Version\":\"2012-10-17\"}",
+    "description": null,
+    "force_detach_policies": false,
+    "max_session_duration": 3600,
+    "name": "-packer-build",
+    "path": "/",
+    "permissions_boundary": null,
+    "tags": {
+     "Description": "Role for EC2 instance Packer Builder for read-only access to S3 for software install files"
+    },
+    "tags_all": {
+     "Description": "Role for EC2 instance Packer Builder for read-only access to S3 for software install files"
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "aws_iam_role_policy_attachment.packer-build",
+   "cfg": "aws_iam_role_policy_attachment.packer-build",
+   "type": "aws_iam_role_policy_attachment",
+   "values": {
+    "role": "-packer-build"
+   },
+   "refs": [
+    "aws_iam_policy.packer-build",
+    "aws_iam_role.packer-build"
+   ]
+  },
+  {
+   "id": "__parameter__.environment",
+   "cfg": "__parameter__.environment",
+   "type": "__parameter__",
+   "values": {
+    "name": "environment",
+    "default": {
+     "account_id": "",
+     "default_tags": {},
+     "name": "",
+     "resource_deletion_protection": true,
+     "resource_name_prefix": ""
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.global_default_tags",
+   "cfg": "__parameter__.global_default_tags",
+   "type": "__parameter__",
+   "values": {
+    "name": "global_default_tags",
+    "default": {}
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.packer_s3_bucket_account_id",
+   "cfg": "__parameter__.packer_s3_bucket_account_id",
+   "type": "__parameter__",
+   "values": {
+    "name": "packer_s3_bucket_account_id",
+    "default": ""
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.packer_s3_bucket_name",
+   "cfg": "__parameter__.packer_s3_bucket_name",
+   "type": "__parameter__",
+   "values": {
+    "name": "packer_s3_bucket_name",
+    "default": ""
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.packer-builder-profile-name",
+   "cfg": "__output__.packer-builder-profile-name",
+   "type": "__output__",
+   "values": {
+    "name": "packer-builder-profile-name",
+    "value": "packer-builder",
+    "description": null
+   },
+   "refs": [
+    "aws_iam_instance_profile.packer-build"
+   ]
+  },
+  {
+   "id": "__declared__.aws_iam_role.packer-build",
+   "cfg": "aws_iam_role.packer-build",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_iam_role",
+    "name": "packer-build",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "${var.environment.resource_name_prefix}-packer-build",
+     "assume_role_policy": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Action\": \"sts:AssumeRole\",\n      \"Principal\": {\n        \"Service\": \"ec2.amazonaws.com\"\n      },\n      \"Effect\": \"Allow\",\n      \"Sid\": \"\"\n    }\n  ]\n}",
+     "tags": {
+      "Description": "Role for EC2 instance Packer Builder for read-only access to S3 for software install files"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_policy.packer-build",
+   "cfg": "aws_iam_policy.packer-build",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_iam_policy",
+    "name": "packer-build",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "${var.environment.resource_name_prefix}-assume-role-packer-files-s3-read",
+     "description": "Allow assume role in Core account of '${var.packer_s3_bucket_name}' to access software installation files",
+     "policy": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n      {\n          \"Effect\": \"Allow\",\n          \"Action\": \"sts:AssumeRole\",\n          \"Resource\": \"arn:aws:iam::${var.packer_s3_bucket_account_id}:role/${var.packer_s3_bucket_name}\"\n      }\n  ]\n}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role_policy_attachment.packer-build",
+   "cfg": "aws_iam_role_policy_attachment.packer-build",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_policy.packer-build",
+    "aws_iam_role.packer-build"
+   ],
+   "values": {
+    "type": "aws_iam_role_policy_attachment",
+    "name": "packer-build",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "role": "${aws_iam_role.packer-build.name}",
+     "policy_arn": "${aws_iam_policy.packer-build.arn}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_instance_profile.packer-build",
+   "cfg": "aws_iam_instance_profile.packer-build",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_role.packer-build"
+   ],
+   "values": {
+    "type": "aws_iam_instance_profile",
+    "name": "packer-build",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "packer-builder",
+     "role": "${aws_iam_role.packer-build.name}"
+    }
+   }
+  }
+ ]
+}

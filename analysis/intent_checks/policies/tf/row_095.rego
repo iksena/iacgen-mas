@@ -1,0 +1,941 @@
+package intent.tf.row_095
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {},
+ "checks": [
+  {
+   "id": "users_exist",
+   "tier": "core",
+   "quote": "three IAM users named \"DevUser-rwwise.dev\", \"TestUser-rwwise.dev\", and \"ProdUser-rwwise.dev\"",
+   "kind": "all_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_iam_user"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "eq",
+        "value": "DevUser-rwwise.dev"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_iam_user"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "eq",
+        "value": "TestUser-rwwise.dev"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_iam_user"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "eq",
+        "value": "ProdUser-rwwise.dev"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "users_path",
+   "tier": "core",
+   "quote": "each configured under the path \"/system/\"",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_iam_user"
+    ],
+    "where": [
+     {
+      "path": [
+       "name"
+      ],
+      "op": "in",
+      "value": [
+       "DevUser-rwwise.dev",
+       "TestUser-rwwise.dev",
+       "ProdUser-rwwise.dev"
+      ]
+     }
+    ]
+   },
+   "cond": {
+    "path": [
+     "path"
+    ],
+    "op": "eq",
+    "value": "/system/"
+   },
+   "quantifier": "all"
+  },
+  {
+   "id": "users_tag_name",
+   "tier": "detail",
+   "quote": "tagged with a Name of \"rwwise.dev Infrastructure Setup\"",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_iam_user"
+    ],
+    "where": [
+     {
+      "path": [
+       "name"
+      ],
+      "op": "in",
+      "value": [
+       "DevUser-rwwise.dev",
+       "TestUser-rwwise.dev",
+       "ProdUser-rwwise.dev"
+      ]
+     }
+    ]
+   },
+   "cond": {
+    "path": [
+     "tags",
+     "Name"
+    ],
+    "op": "eq",
+    "value": "rwwise.dev Infrastructure Setup"
+   },
+   "quantifier": "all"
+  },
+  {
+   "id": "users_tag_repo",
+   "tier": "detail",
+   "quote": "Repository of \"https://github.com/zangrum/setup.inf.rwwise.dev\"",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_iam_user"
+    ],
+    "where": [
+     {
+      "path": [
+       "name"
+      ],
+      "op": "in",
+      "value": [
+       "DevUser-rwwise.dev",
+       "TestUser-rwwise.dev",
+       "ProdUser-rwwise.dev"
+      ]
+     }
+    ]
+   },
+   "cond": {
+    "path": [
+     "tags",
+     "Repository"
+    ],
+    "op": "eq",
+    "value": "https://github.com/zangrum/setup.inf.rwwise.dev"
+   },
+   "quantifier": "all"
+  },
+  {
+   "id": "users_tag_dynamic_ids",
+   "tier": "detail",
+   "quote": "dynamic account and user IDs fetched from the current AWS caller identity context",
+   "kind": "all_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "data.aws_caller_identity"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_iam_user"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "in",
+        "value": [
+         "DevUser-rwwise.dev",
+         "TestUser-rwwise.dev",
+         "ProdUser-rwwise.dev"
+        ]
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "tags"
+      ],
+      "op": "regex",
+      "value": "[0-9]{12}"
+     },
+     "quantifier": "all"
+    }
+   ],
+   "justify": "caller identity yields a 12-digit account ID tag value"
+  },
+  {
+   "id": "access_keys",
+   "tier": "core",
+   "quote": "Every user must have an active IAM access key generated",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_iam_access_key"
+    ],
+    "where": [
+     {
+      "path": [
+       "user"
+      ],
+      "op": "in",
+      "value": [
+       "DevUser-rwwise.dev",
+       "TestUser-rwwise.dev",
+       "ProdUser-rwwise.dev"
+      ]
+     }
+    ]
+   },
+   "min": 3,
+   "justify": "one key for each of the three named users",
+   "distinct_path": [
+    "user"
+   ]
+  },
+  {
+   "id": "access_keys_active",
+   "tier": "detail",
+   "quote": "an active IAM access key",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_iam_access_key"
+    ],
+    "where": []
+   },
+   "cond": {
+    "path": [
+     "status"
+    ],
+    "op": "eq",
+    "value": "Active"
+   },
+   "quantifier": "all"
+  },
+  {
+   "id": "access_keys_users",
+   "tier": "detail",
+   "quote": "Every user must have an active IAM access key",
+   "kind": "ref",
+   "from": {
+    "types": [
+     "aws_iam_access_key"
+    ],
+    "where": []
+   },
+   "to": {
+    "types": [
+     "aws_iam_user"
+    ],
+    "where": [
+     {
+      "path": [
+       "name"
+      ],
+      "op": "in",
+      "value": [
+       "DevUser-rwwise.dev",
+       "TestUser-rwwise.dev",
+       "ProdUser-rwwise.dev"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "policy_names",
+   "tier": "core",
+   "quote": "a dedicated inline user policy named \"dev_cicd_user_policy\", \"test_cicd_user_policy\", and \"prod_cicd_user_policy\", respectively",
+   "kind": "all_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_iam_user_policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "eq",
+        "value": "dev_cicd_user_policy"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_iam_user_policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "eq",
+        "value": "test_cicd_user_policy"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_iam_user_policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "eq",
+        "value": "prod_cicd_user_policy"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "policies_attached_users",
+   "tier": "detail",
+   "quote": "a dedicated inline user policy named \"dev_cicd_user_policy\", \"test_cicd_user_policy\", and \"prod_cicd_user_policy\", respectively",
+   "kind": "all_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_iam_user_policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "eq",
+        "value": "dev_cicd_user_policy"
+       },
+       {
+        "path": [
+         "user"
+        ],
+        "op": "eq",
+        "value": "DevUser-rwwise.dev"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_iam_user_policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "eq",
+        "value": "test_cicd_user_policy"
+       },
+       {
+        "path": [
+         "user"
+        ],
+        "op": "eq",
+        "value": "TestUser-rwwise.dev"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_iam_user_policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "eq",
+        "value": "prod_cicd_user_policy"
+       },
+       {
+        "path": [
+         "user"
+        ],
+        "op": "eq",
+        "value": "ProdUser-rwwise.dev"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "stmt_read_access",
+   "tier": "core",
+   "quote": "read-only/list access to CodeBuild, CodeCommit, CloudWatch metrics, EventBridge rules/targets, and CloudWatch logs across all resources",
+   "kind": "all_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_iam_user_policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "in",
+        "value": [
+         "dev_cicd_user_policy",
+         "test_cicd_user_policy",
+         "prod_cicd_user_policy"
+        ]
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "policy"
+      ],
+      "op": "regex",
+      "value": "(?i)codebuild:"
+     },
+     "quantifier": "all"
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_iam_user_policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "in",
+        "value": [
+         "dev_cicd_user_policy",
+         "test_cicd_user_policy",
+         "prod_cicd_user_policy"
+        ]
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "policy"
+      ],
+      "op": "regex",
+      "value": "(?i)codecommit:"
+     },
+     "quantifier": "all"
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_iam_user_policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "in",
+        "value": [
+         "dev_cicd_user_policy",
+         "test_cicd_user_policy",
+         "prod_cicd_user_policy"
+        ]
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "policy"
+      ],
+      "op": "regex",
+      "value": "(?i)cloudwatch:"
+     },
+     "quantifier": "all"
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_iam_user_policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "in",
+        "value": [
+         "dev_cicd_user_policy",
+         "test_cicd_user_policy",
+         "prod_cicd_user_policy"
+        ]
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "policy"
+      ],
+      "op": "regex",
+      "value": "(?i)events:"
+     },
+     "quantifier": "all"
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_iam_user_policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "in",
+        "value": [
+         "dev_cicd_user_policy",
+         "test_cicd_user_policy",
+         "prod_cicd_user_policy"
+        ]
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "policy"
+      ],
+      "op": "regex",
+      "value": "(?i)logs:"
+     },
+     "quantifier": "all"
+    }
+   ]
+  },
+  {
+   "id": "stmt_codestar_connections",
+   "tier": "detail",
+   "quote": "CodeStar Connections connection lookup permissions for \"arn:aws:codestar-connections:*:*:connection/*\" under statement ID \"CodeStarConnectionsUserAccess\"",
+   "kind": "all_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_iam_user_policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "in",
+        "value": [
+         "dev_cicd_user_policy",
+         "test_cicd_user_policy",
+         "prod_cicd_user_policy"
+        ]
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "policy"
+      ],
+      "op": "regex",
+      "value": "CodeStarConnectionsUserAccess"
+     },
+     "quantifier": "all"
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_iam_user_policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "in",
+        "value": [
+         "dev_cicd_user_policy",
+         "test_cicd_user_policy",
+         "prod_cicd_user_policy"
+        ]
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "policy"
+      ],
+      "op": "regex",
+      "value": "arn:aws:codestar-connections:\\*:\\*:connection/\\*"
+     },
+     "quantifier": "all"
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_iam_user_policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "in",
+        "value": [
+         "dev_cicd_user_policy",
+         "test_cicd_user_policy",
+         "prod_cicd_user_policy"
+        ]
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "policy"
+      ],
+      "op": "regex",
+      "value": "(?i)codestar-connections:(GetConnection|\\*)"
+     },
+     "quantifier": "all"
+    }
+   ]
+  },
+  {
+   "id": "stmt_codestar_notifications_describe",
+   "tier": "detail",
+   "quote": "CodeStar Notifications rule description for all resources constrained by a StringLike condition on \"codestar-notifications:NotificationsForResource\" matching \"arn:aws:codebuild:*\" under statement ID \"CodeStarNotificationsPowerUserAccess\"",
+   "kind": "all_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_iam_user_policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "in",
+        "value": [
+         "dev_cicd_user_policy",
+         "test_cicd_user_policy",
+         "prod_cicd_user_policy"
+        ]
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "policy"
+      ],
+      "op": "regex",
+      "value": "CodeStarNotificationsPowerUserAccess"
+     },
+     "quantifier": "all"
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_iam_user_policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "in",
+        "value": [
+         "dev_cicd_user_policy",
+         "test_cicd_user_policy",
+         "prod_cicd_user_policy"
+        ]
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "policy"
+      ],
+      "op": "regex",
+      "value": "(?i)codestar-notifications:DescribeNotificationRule"
+     },
+     "quantifier": "all"
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_iam_user_policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "in",
+        "value": [
+         "dev_cicd_user_policy",
+         "test_cicd_user_policy",
+         "prod_cicd_user_policy"
+        ]
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "policy"
+      ],
+      "op": "regex",
+      "value": "codestar-notifications:NotificationsForResource"
+     },
+     "quantifier": "all"
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_iam_user_policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "in",
+        "value": [
+         "dev_cicd_user_policy",
+         "test_cicd_user_policy",
+         "prod_cicd_user_policy"
+        ]
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "policy"
+      ],
+      "op": "regex",
+      "value": "arn:aws:codebuild:\\*"
+     },
+     "quantifier": "all"
+    }
+   ]
+  },
+  {
+   "id": "stmt_codestar_notifications_list",
+   "tier": "detail",
+   "quote": "general listing access for CodeStar Notification rules, event types, and targets under statement ID \"CodeStarNotificationsListAccess\"",
+   "kind": "all_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_iam_user_policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "in",
+        "value": [
+         "dev_cicd_user_policy",
+         "test_cicd_user_policy",
+         "prod_cicd_user_policy"
+        ]
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "policy"
+      ],
+      "op": "regex",
+      "value": "CodeStarNotificationsListAccess"
+     },
+     "quantifier": "all"
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_iam_user_policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "in",
+        "value": [
+         "dev_cicd_user_policy",
+         "test_cicd_user_policy",
+         "prod_cicd_user_policy"
+        ]
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "policy"
+      ],
+      "op": "regex",
+      "value": "(?i)codestar-notifications:ListNotificationRules"
+     },
+     "quantifier": "all"
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_iam_user_policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "in",
+        "value": [
+         "dev_cicd_user_policy",
+         "test_cicd_user_policy",
+         "prod_cicd_user_policy"
+        ]
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "policy"
+      ],
+      "op": "regex",
+      "value": "(?i)codestar-notifications:ListEventTypes"
+     },
+     "quantifier": "all"
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_iam_user_policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "in",
+        "value": [
+         "dev_cicd_user_policy",
+         "test_cicd_user_policy",
+         "prod_cicd_user_policy"
+        ]
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "policy"
+      ],
+      "op": "regex",
+      "value": "(?i)codestar-notifications:ListTargets"
+     },
+     "quantifier": "all"
+    }
+   ]
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

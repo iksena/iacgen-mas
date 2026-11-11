@@ -41,3 +41,10 @@
 | TF_Ablation_NoRemediator                |         50 |      49 |           49 |            0 |         1 |         0 | False       |                    0.98   |
 | TF_Ablation_NoQueryRewrite              |         50 |      49 |           49 |            0 |         1 |         0 | False       |                    0.98   |
 | CFN_Ablation_NoPlanner_LiveAWS_GLM      |         50 |      48 |           45 |            3 |         2 |         0 | False       |                    0.9    |
+| CFN_RealAWS_NoRetrieval_DSV4Flash       |        250 |     244 |          234 |           10 |         6 |         0 | False       |                     0.936 |
+| CFN_RealAWS_NoRetrieval_Opus55          |        250 |     250 |          244 |            6 |         0 |         0 | True        |                    0.976  |
+| CFN_RealAWS_TrivyAll_DSFlash            |        250 |     245 |          236 |            9 |         5 |         0 | False       |                     0.944 |
+| TF_RealAWS_NoRetrieval_DSV4Flash        |        250 |     246 |          241 |            5 |         4 |         0 | False       |                     0.964 |
+| TF_RealAWS_TrivyAll_DSV4Flash           |        250 |     245 |          239 |            6 |         5 |         0 | False       |                     0.956 |
+| CFN_RealAWS_OpencodeAgent_DSV4F         |        250 |     237 |          214 |           23 |        13 |         0 | False       |                     0.856 |
+| TF_RealAWS_OpencodeAgent_DSV4F          |        250 |     249 |          223 |           26 |         1 |         0 | False       |                     0.892 |

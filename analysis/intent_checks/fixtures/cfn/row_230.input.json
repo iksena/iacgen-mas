@@ -1,0 +1,552 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [
+   "PermissionsBoundaryPolicy excluded: condition MonitoringAssistantEnabled false under defaults"
+  ],
+  "gt_hash": "235288d872509781e204f51030110a44041120bd64c39a433fc4bdd10146ad4c",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "ApiConnection",
+   "cfg": "ApiConnection",
+   "type": "AWS::Events::Connection",
+   "values": {
+    "AuthorizationType": "API_KEY",
+    "AuthParameters": {
+     "ApiKeyAuthParameters": {
+      "ApiKeyName": "X-API-Key",
+      "ApiKeyValue": "<param:EndpointId>"
+     }
+    },
+    "Description": "marbot"
+   },
+   "refs": []
+  },
+  {
+   "id": "ApiDestination",
+   "cfg": "ApiDestination",
+   "type": "AWS::Events::ApiDestination",
+   "values": {
+    "ConnectionArn": {
+     "ref": "ApiConnection",
+     "attr": "Arn"
+    },
+    "Description": "Forwards notifiations and alarms to marbot",
+    "HttpMethod": "POST",
+    "InvocationEndpoint": "https://api.marbot.io/v1/endpoint/<param:EndpointId>",
+    "InvocationRateLimitPerSecond": 1
+   },
+   "refs": [
+    "ApiConnection"
+   ]
+  },
+  {
+   "id": "ApiRole",
+   "cfg": "ApiRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "events.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Path": "/service-role/",
+    "Policies": [
+     {
+      "PolicyName": "eventbridge",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "events:InvokeApiDestination"
+         ],
+         "Resource": {
+          "ref": "ApiDestination",
+          "attr": "Arn"
+         }
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": [
+    "ApiDestination"
+   ]
+  },
+  {
+   "id": "MonitoringJumpStartEvent",
+   "cfg": "MonitoringJumpStartEvent",
+   "type": "AWS::Events::Rule",
+   "values": {
+    "Description": "Monitoring Jump Start connection. (created by marbot)",
+    "ScheduleExpression": "rate(30 days)",
+    "State": "ENABLED",
+    "Targets": [
+     {
+      "Arn": {
+       "ref": "ApiDestination",
+       "attr": "Arn"
+      },
+      "Id": "marbot",
+      "RoleArn": {
+       "ref": "ApiRole",
+       "attr": "Arn"
+      },
+      "Input": "{\n  \"Type\": \"monitoring-jump-start-connection\",\n  \"StackTemplate\": \"marbot-aws-account-connection\",\n  \"StackVersion\": \"1.3.1\",\n  \"Partition\": \"aws\",\n  \"AccountId\": \"123456789012\",\n  \"Region\": \"us-east-1\",\n  \"StackId\": \"arn:aws:cloudformation:us-east-1:123456789012:stack/stack/id\",\n  \"StackName\": \"stack\"\n}\n"
+     }
+    ]
+   },
+   "refs": [
+    "ApiDestination",
+    "ApiRole"
+   ]
+  },
+  {
+   "id": "Role",
+   "cfg": "Role",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "AWS": [
+         "853553028582"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "sts:ExternalId": "id"
+        }
+       }
+      }
+     ]
+    },
+    "Policies": []
+   },
+   "refs": []
+  },
+  {
+   "id": "Connection",
+   "cfg": "Connection",
+   "type": "Custom::Connection",
+   "values": {
+    "ServiceToken": "arn:aws:sns:us-east-1:853553028582:marbot-v1-aws-account-connection",
+    "AwsPartition": "aws",
+    "AwsAccountId": "123456789012",
+    "AwsRoleName": {
+     "ref": "Role"
+    },
+    "AwsRoleExternalId": "id",
+    "AwsPermissionsBoundaryPolicyArn": "",
+    "MarbotEndpointId": "<param:EndpointId>",
+    "MarbotFeatureMonitoringAssistant": true,
+    "MarbotFeatureAccountAlias": true,
+    "MarbotFeatureCloudWatchMetricGraph": true,
+    "MarbotFeatureCodePipelineApproval": true,
+    "CloudFormationStackVersion": "1.3.1",
+    "CloudFormationStackRegion": "us-east-1",
+    "CloudFormationStackId": "arn:aws:cloudformation:us-east-1:123456789012:stack/stack/id",
+    "CloudFormationStackName": "stack"
+   },
+   "refs": [
+    "Role"
+   ]
+  },
+  {
+   "id": "__parameter__.EndpointId",
+   "cfg": "__parameter__.EndpointId",
+   "type": "__parameter__",
+   "values": {
+    "name": "EndpointId",
+    "type": "String",
+    "default": null,
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.Stage",
+   "cfg": "__parameter__.Stage",
+   "type": "__parameter__",
+   "values": {
+    "name": "Stage",
+    "type": "String",
+    "default": "v1",
+    "allowed_values": [
+     "v1",
+     "dev"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.MonitoringAssistant",
+   "cfg": "__parameter__.MonitoringAssistant",
+   "type": "__parameter__",
+   "values": {
+    "name": "MonitoringAssistant",
+    "type": "String",
+    "default": true,
+    "allowed_values": [
+     true,
+     false
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.AccountAlias",
+   "cfg": "__parameter__.AccountAlias",
+   "type": "__parameter__",
+   "values": {
+    "name": "AccountAlias",
+    "type": "String",
+    "default": true,
+    "allowed_values": [
+     true,
+     false
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.CloudWatchMetricGraph",
+   "cfg": "__parameter__.CloudWatchMetricGraph",
+   "type": "__parameter__",
+   "values": {
+    "name": "CloudWatchMetricGraph",
+    "type": "String",
+    "default": true,
+    "allowed_values": [
+     true,
+     false
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.CodePipelineApproval",
+   "cfg": "__parameter__.CodePipelineApproval",
+   "type": "__parameter__",
+   "values": {
+    "name": "CodePipelineApproval",
+    "type": "String",
+    "default": true,
+    "allowed_values": [
+     true,
+     false
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.StackName",
+   "cfg": "__output__.StackName",
+   "type": "__output__",
+   "values": {
+    "name": "StackName",
+    "value": "stack",
+    "description": "Stack name.",
+    "export": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.StackTemplate",
+   "cfg": "__output__.StackTemplate",
+   "type": "__output__",
+   "values": {
+    "name": "StackTemplate",
+    "value": "marbot-aws-account-connection",
+    "description": "Stack template.",
+    "export": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.StackVersion",
+   "cfg": "__output__.StackVersion",
+   "type": "__output__",
+   "values": {
+    "name": "StackVersion",
+    "value": "1.3.1",
+    "description": "Stack version.",
+    "export": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__declared__.AWS::Events::Connection.ApiConnection",
+   "cfg": "ApiConnection",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Events::Connection",
+    "name": "ApiConnection",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AuthorizationType": "API_KEY",
+     "AuthParameters": {
+      "ApiKeyAuthParameters": {
+       "ApiKeyName": "X-API-Key",
+       "ApiKeyValue": "<param:EndpointId>"
+      }
+     },
+     "Description": "marbot"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Events::ApiDestination.ApiDestination",
+   "cfg": "ApiDestination",
+   "type": "__declared__",
+   "refs": [
+    "ApiConnection"
+   ],
+   "values": {
+    "type": "AWS::Events::ApiDestination",
+    "name": "ApiDestination",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ConnectionArn": {
+      "ref": "ApiConnection",
+      "attr": "Arn"
+     },
+     "Description": "Forwards notifiations and alarms to marbot",
+     "HttpMethod": "POST",
+     "InvocationEndpoint": "https://api.marbot.io/v1/endpoint/<param:EndpointId>",
+     "InvocationRateLimitPerSecond": 1
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.ApiRole",
+   "cfg": "ApiRole",
+   "type": "__declared__",
+   "refs": [
+    "ApiDestination"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "ApiRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "events.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Path": "/service-role/",
+     "Policies": [
+      {
+       "PolicyName": "eventbridge",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "events:InvokeApiDestination"
+          ],
+          "Resource": {
+           "ref": "ApiDestination",
+           "attr": "Arn"
+          }
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Events::Rule.MonitoringJumpStartEvent",
+   "cfg": "MonitoringJumpStartEvent",
+   "type": "__declared__",
+   "refs": [
+    "ApiDestination",
+    "ApiRole"
+   ],
+   "values": {
+    "type": "AWS::Events::Rule",
+    "name": "MonitoringJumpStartEvent",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Description": "Monitoring Jump Start connection. (created by marbot)",
+     "ScheduleExpression": "rate(30 days)",
+     "State": "ENABLED",
+     "Targets": [
+      {
+       "Arn": {
+        "ref": "ApiDestination",
+        "attr": "Arn"
+       },
+       "Id": "marbot",
+       "RoleArn": {
+        "ref": "ApiRole",
+        "attr": "Arn"
+       },
+       "Input": "{\n  \"Type\": \"monitoring-jump-start-connection\",\n  \"StackTemplate\": \"marbot-aws-account-connection\",\n  \"StackVersion\": \"1.3.1\",\n  \"Partition\": \"aws\",\n  \"AccountId\": \"123456789012\",\n  \"Region\": \"us-east-1\",\n  \"StackId\": \"arn:aws:cloudformation:us-east-1:123456789012:stack/stack/id\",\n  \"StackName\": \"stack\"\n}\n"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::ManagedPolicy.PermissionsBoundaryPolicy",
+   "cfg": "PermissionsBoundaryPolicy",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::ManagedPolicy",
+    "name": "PermissionsBoundaryPolicy",
+    "gated": true,
+    "gate": "MonitoringAssistantEnabled",
+    "properties": {
+     "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Action": [
+         "cloudwatch:describeAlarms",
+         "securityhub:BatchUpdateFindings"
+        ],
+        "Resource": [
+         "*"
+        ]
+       },
+       {
+        "Effect": "Allow",
+        "Action": [
+         "sns:Publish"
+        ],
+        "Resource": [
+         "arn:aws:sns:*:123456789012:marbot*"
+        ]
+       },
+       {
+        "Effect": "Allow",
+        "Action": [
+         "logs:CreateLogStream",
+         "logs:PutLogEvents"
+        ],
+        "Resource": [
+         "arn:aws:logs:*:123456789012:log-group:/aws/lambda/marbot*"
+        ]
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.Role",
+   "cfg": "Role",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "Role",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "AWS": [
+          "853553028582"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "sts:ExternalId": "id"
+         }
+        }
+       }
+      ]
+     },
+     "Policies": []
+    }
+   }
+  },
+  {
+   "id": "__declared__.Custom::Connection.Connection",
+   "cfg": "Connection",
+   "type": "__declared__",
+   "refs": [
+    "Role"
+   ],
+   "values": {
+    "type": "Custom::Connection",
+    "name": "Connection",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ServiceToken": "arn:aws:sns:us-east-1:853553028582:marbot-v1-aws-account-connection",
+     "AwsPartition": "aws",
+     "AwsAccountId": "123456789012",
+     "AwsRoleName": {
+      "ref": "Role"
+     },
+     "AwsRoleExternalId": "id",
+     "AwsPermissionsBoundaryPolicyArn": "",
+     "MarbotEndpointId": "<param:EndpointId>",
+     "MarbotFeatureMonitoringAssistant": true,
+     "MarbotFeatureAccountAlias": true,
+     "MarbotFeatureCloudWatchMetricGraph": true,
+     "MarbotFeatureCodePipelineApproval": true,
+     "CloudFormationStackVersion": "1.3.1",
+     "CloudFormationStackRegion": "us-east-1",
+     "CloudFormationStackId": "arn:aws:cloudformation:us-east-1:123456789012:stack/stack/id",
+     "CloudFormationStackName": "stack"
+    }
+   }
+  }
+ ]
+}

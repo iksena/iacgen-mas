@@ -58,6 +58,23 @@ All commands run from `analysis/`.
    do NOT write a check the GT fails and do NOT weaken the prompt's meaning — omit it and
    record it in `"notes"` as `PROMPT_GT_MISMATCH: …` so a human can fix prompt or GT.
 
+## Tier `extra`: ground-truth details the prompt does not state
+Principle 1 governs `core` and `detail`. A third tier, `extra`, measures whether a system produces
+what the ground truth has without being told. It is scored separately (`extra_score`,
+`failed_extra`), so it never affects `intent_strict`, `core_score` or `intent_score`.
+- **Everything the prompt mentions goes in `core` or `detail`, never `extra`.** That includes every
+  resource and every parameter or setting the prompt states.
+- **Use `extra` for behaviour-bearing settings and relationships only in the ground truth:**
+  encryption, versioning, retention, instance class, runtime family, ports, public access blocks,
+  logging, a non-default relationship.
+- **Don't test arbitrary identifiers, even in `extra`:** resource names, logical IDs, ARNs, account
+  IDs, random or generated strings, tag values, description text. No system could reproduce those,
+  so they measure nothing.
+- **Existence of unmentioned resource types is automatic.** `build.py extras` adds those checks later,
+  so write `extra` checks for settings and relationships only. Aim for 2-8 per scenario, fewer for L1.
+- An `extra` check has `id`, `kind`, `tier` and its leaf fields. It needs no `quote` or `justify`.
+  It must still pass on the ground truth and fail its mutation.
+
 ## Normalised input (what paths point into)
 Each resource: `{"id", "cfg", "type", "values", "refs"}`. Paths are dotted into `values`.
 `*` matches any list index / object key; a digit segment is a list index.
@@ -149,7 +166,7 @@ A selector is inline `{"types": [...], "where": [cond…]}` or the name of an en
 | `any_of` | `checks`: list of leaf checks (no id/tier/quote) | any leaf passes |
 | `all_of` | `checks`: list of leaf checks | every leaf passes (each is mutation-tested separately) |
 
-Every top-level check has `id` (unique, snake_case), `kind`, `tier`, `quote`, and optionally
+Every top-level `core` or `detail` check has `id` (unique, snake_case), `kind`, `tier`, `quote`, and optionally
 `justify` — a one-line reason a value the lint flags is implied by the prompt
 (e.g. `"HTTPS implies port 443"`).
 `any_of`/`all_of` cannot nest.

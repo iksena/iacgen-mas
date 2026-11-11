@@ -1,0 +1,115 @@
+{
+ "lang": "cfn",
+ "row_number": 13,
+ "source_hash": {
+  "gt": "019ab8c19692ac7d078c2d84123a82348e7cff0bf4de4b51382265e4711642ec",
+  "prompt": "1959b400c4ff69738a709447a1d63fe9bb810d1e85a7a8622f3537442eaec108"
+ },
+ "selectors": {
+  "trk": {
+   "types": [
+    "AWS::Location::Tracker"
+   ]
+  },
+  "gc": {
+   "types": [
+    "AWS::Location::GeofenceCollection"
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "tracker",
+   "kind": "exists",
+   "select": "trk",
+   "tier": "core",
+   "quote": "an Amazon Location Service tracker"
+  },
+  {
+   "id": "geofence_collection",
+   "kind": "exists",
+   "select": "gc",
+   "tier": "core",
+   "quote": "geofence collection"
+  },
+  {
+   "id": "tracker_name",
+   "kind": "attr",
+   "select": "trk",
+   "cond": {
+    "path": "TrackerName",
+    "op": "regex",
+    "value": "^MyGeoTracker-123456789012$"
+   },
+   "tier": "core",
+   "quote": "the tracker named MyGeoTracker-[account-id]",
+   "justify": "the prompt asks for [account-id]; the adapter renders AWS::AccountId as 123456789012"
+  },
+  {
+   "id": "collection_name",
+   "kind": "attr",
+   "select": "gc",
+   "cond": {
+    "path": "CollectionName",
+    "op": "regex",
+    "value": "^MyGeofenceCollection-123456789012$"
+   },
+   "tier": "core",
+   "quote": "the geofence collection named MyGeofenceCollection-[account-id]",
+   "justify": "the prompt asks for [account-id]; the adapter renders AWS::AccountId as 123456789012"
+  },
+  {
+   "id": "tracker_pricing",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "both using a request-based usage pricing plan",
+   "justify": "PricingPlan is deprecated and RequestBasedUsage is its only allowed value, so omitting it means the same plan",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "trk",
+     "cond": {
+      "path": "PricingPlan",
+      "op": "eq",
+      "value": "RequestBasedUsage"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "trk",
+     "cond": {
+      "path": "PricingPlan",
+      "op": "absent"
+     }
+    }
+   ]
+  },
+  {
+   "id": "collection_pricing",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "both using a request-based usage pricing plan",
+   "justify": "PricingPlan is deprecated and RequestBasedUsage is its only allowed value, so omitting it means the same plan",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "gc",
+     "cond": {
+      "path": "PricingPlan",
+      "op": "eq",
+      "value": "RequestBasedUsage"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "gc",
+     "cond": {
+      "path": "PricingPlan",
+      "op": "absent"
+     }
+    }
+   ]
+  }
+ ],
+ "notes": "Omitted PricingPlan is accepted: the Location Service API deprecates it and allows only RequestBasedUsage if included. Names must equal the stated name exactly; an added suffix fails (GLM53F appends a random string)."
+}

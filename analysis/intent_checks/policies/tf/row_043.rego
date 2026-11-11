@@ -1,0 +1,338 @@
+package intent.tf.row_043
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {
+  "bucket": {
+   "types": [
+    "aws_s3_bucket"
+   ],
+   "where": []
+  },
+  "key": {
+   "types": [
+    "aws_kms_key"
+   ],
+   "where": []
+  },
+  "sse": {
+   "types": [
+    "aws_s3_bucket_server_side_encryption_configuration"
+   ],
+   "where": []
+  },
+  "pab4": {
+   "types": [
+    "aws_s3_bucket_public_access_block"
+   ],
+   "where": [
+    {
+     "path": [
+      "block_public_acls"
+     ],
+     "op": "eq",
+     "value": true
+    },
+    {
+     "path": [
+      "block_public_policy"
+     ],
+     "op": "eq",
+     "value": true
+    },
+    {
+     "path": [
+      "ignore_public_acls"
+     ],
+     "op": "eq",
+     "value": true
+    },
+    {
+     "path": [
+      "restrict_public_buckets"
+     ],
+     "op": "eq",
+     "value": true
+    }
+   ]
+  },
+  "ddb": {
+   "types": [
+    "aws_dynamodb_table"
+   ],
+   "where": [
+    {
+     "path": [
+      "name"
+     ],
+     "op": "eq",
+     "value": "terraform-lock"
+    }
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "s3_bucket",
+   "tier": "core",
+   "quote": "creates an S3 bucket",
+   "kind": "exists",
+   "select": "bucket"
+  },
+  {
+   "id": "s3_versioning",
+   "tier": "core",
+   "quote": "versioning enabled",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_s3_bucket_versioning"
+      ],
+      "where": [
+       {
+        "path": [
+         "versioning_configuration",
+         "*",
+         "status"
+        ],
+        "op": "eq",
+        "value": "Enabled"
+       }
+      ]
+     },
+     "to": "bucket"
+    },
+    {
+     "kind": "attr",
+     "select": "bucket",
+     "cond": {
+      "path": [
+       "versioning",
+       "*",
+       "enabled"
+      ],
+      "op": "eq",
+      "value": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "sse_kms",
+   "tier": "core",
+   "quote": "default encryption with a dedicated customer-managed KMS key",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_s3_bucket_server_side_encryption_configuration"
+      ],
+      "where": [
+       {
+        "path": [
+         "rule",
+         "*",
+         "apply_server_side_encryption_by_default",
+         "*",
+         "sse_algorithm"
+        ],
+        "op": "in",
+        "value": [
+         "aws:kms",
+         "aws:kms:dsse"
+        ]
+       }
+      ]
+     },
+     "to": "bucket"
+    },
+    {
+     "kind": "attr",
+     "select": "bucket",
+     "cond": {
+      "path": [
+       "server_side_encryption_configuration",
+       "*",
+       "rule",
+       "*",
+       "apply_server_side_encryption_by_default",
+       "*",
+       "sse_algorithm"
+      ],
+      "op": "in",
+      "value": [
+       "aws:kms",
+       "aws:kms:dsse"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "kms_key",
+   "tier": "core",
+   "quote": "dedicated customer-managed KMS key",
+   "kind": "exists",
+   "select": "key"
+  },
+  {
+   "id": "sse_uses_key",
+   "tier": "core",
+   "quote": "default encryption with a dedicated customer-managed KMS key",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "sse",
+     "to": "key"
+    },
+    {
+     "kind": "ref",
+     "from": "bucket",
+     "to": "key"
+    }
+   ]
+  },
+  {
+   "id": "kms_rotation",
+   "tier": "core",
+   "quote": "(with key rotation enabled)",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "sse",
+     "to": {
+      "types": [
+       "aws_kms_key"
+      ],
+      "where": [
+       {
+        "path": [
+         "enable_key_rotation"
+        ],
+        "op": "eq",
+        "value": true
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": "bucket",
+     "to": {
+      "types": [
+       "aws_kms_key"
+      ],
+      "where": [
+       {
+        "path": [
+         "enable_key_rotation"
+        ],
+        "op": "eq",
+        "value": true
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "key",
+     "quantifier": "all",
+     "cond": {
+      "path": [
+       "enable_key_rotation"
+      ],
+      "op": "eq",
+      "value": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "public_access_blocked",
+   "tier": "core",
+   "quote": "all public access blocked",
+   "kind": "ref",
+   "from": "pab4",
+   "to": "bucket"
+  },
+  {
+   "id": "ddb_named",
+   "tier": "core",
+   "quote": "named \"terraform-lock\"",
+   "kind": "exists",
+   "select": "ddb"
+  },
+  {
+   "id": "ddb_pay_per_request",
+   "tier": "core",
+   "quote": "pay-per-request billing",
+   "kind": "attr",
+   "select": "ddb",
+   "cond": {
+    "path": [
+     "billing_mode"
+    ],
+    "op": "eq",
+    "value": "PAY_PER_REQUEST"
+   }
+  },
+  {
+   "id": "ddb_hash_key",
+   "tier": "core",
+   "quote": "a string hash key named \"LockID\"",
+   "kind": "attr",
+   "select": "ddb",
+   "cond": {
+    "path": [
+     "hash_key"
+    ],
+    "op": "eq",
+    "value": "LockID"
+   }
+  },
+  {
+   "id": "ddb_hash_key_string",
+   "tier": "detail",
+   "quote": "string hash key",
+   "kind": "attr",
+   "select": "ddb",
+   "cond": {
+    "path": [
+     "attribute",
+     "*"
+    ],
+    "op": "match",
+    "value": [
+     {
+      "path": [
+       "name"
+      ],
+      "op": "eq",
+      "value": "LockID"
+     },
+     {
+      "path": [
+       "type"
+      ],
+      "op": "eq",
+      "value": "S"
+     }
+    ]
+   }
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

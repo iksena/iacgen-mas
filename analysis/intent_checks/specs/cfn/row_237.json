@@ -1,0 +1,74 @@
+{
+  "lang": "cfn",
+  "row_number": 237,
+  "source_hash": {
+    "gt": "a67dcda0c18497fd480712190ac88e126f9ae60ef5bf4128a48bf7f4b41eea0d",
+    "prompt": "e96d5fadf30a03369e2e26802a65d4fe0c9b6f4d922957caf66bccd0a7e9ae04"
+  },
+  "selectors": {
+    "b": {
+      "types": [
+        "AWS::S3::Bucket"
+      ]
+    }
+  },
+  "checks": [
+    {
+      "id": "bucket",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "a standard private S3 bucket",
+      "select": "b"
+    },
+    {
+      "id": "bucket_private",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "private S3 bucket",
+      "justify": "private means no public ACL and no public access block setting switched off; a bucket that sets neither is private by S3 default",
+      "select": {
+        "types": [
+          "AWS::S3::Bucket"
+        ],
+        "where": [
+          {
+            "path": "AccessControl",
+            "op": "none_eq",
+            "value": "PublicRead"
+          },
+          {
+            "path": "AccessControl",
+            "op": "none_eq",
+            "value": "PublicReadWrite"
+          },
+          {
+            "path": "AccessControl",
+            "op": "none_eq",
+            "value": "AuthenticatedRead"
+          },
+          {
+            "path": "PublicAccessBlockConfiguration.BlockPublicAcls",
+            "op": "none_eq",
+            "value": false
+          },
+          {
+            "path": "PublicAccessBlockConfiguration.BlockPublicPolicy",
+            "op": "none_eq",
+            "value": false
+          },
+          {
+            "path": "PublicAccessBlockConfiguration.IgnorePublicAcls",
+            "op": "none_eq",
+            "value": false
+          },
+          {
+            "path": "PublicAccessBlockConfiguration.RestrictPublicBuckets",
+            "op": "none_eq",
+            "value": false
+          }
+        ]
+      }
+    }
+  ],
+  "notes": "Regional AMI Mappings (HVM64/PV64/HVMG2) live in the Mappings section, which the normalised input does not expose (the adapter only uses it to resolve Fn::FindInMap; fixtures and real templates carry only 'resources' and 'meta'), so that primary requirement cannot be checked without extending the adapter. bucket_private does not test a public bucket policy: a negated Allow-with-public-principal can't be written, because none_eq can't be tied to Effect and real templates have Deny statements with Principal '*'."
+}

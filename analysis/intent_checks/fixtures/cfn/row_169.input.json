@@ -1,0 +1,2400 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [
+   "rELBServiceLinkedRole excluded: condition cEnableELBServiceLinkedRole false under defaults",
+   "rVpcsLogGroupKey excluded: condition cEnableVpcFlowLogs false under defaults",
+   "rRosaVpcFlowLogGroup excluded: condition cEnableVpcFlowLogs false under defaults",
+   "rRosaVpcFlowLogCloudWatchRole excluded: condition cEnableVpcFlowLogs false under defaults",
+   "rRosaVpcFlowLogCloudWatch excluded: condition cEnableVpcFlowLogs false under defaults",
+   "rEgressVpcFlowLogGroup excluded: condition cEnableVpcFlowLogs false under defaults",
+   "rEgressVpcFlowLogCloudWatchRole excluded: condition cEnableVpcFlowLogs false under defaults",
+   "rEgressVpcFlowLogCloudWatch excluded: condition cEnableVpcFlowLogs false under defaults"
+  ],
+  "gt_hash": "1be48b664b74f95055282ed0aff5200cd93923f18ac8cf431c2a29a58423bce7",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "rRosaVpc",
+   "cfg": "rRosaVpc",
+   "type": "AWS::EC2::VPC",
+   "values": {
+    "CidrBlock": "10.1.0.0/16",
+    "EnableDnsSupport": true,
+    "EnableDnsHostnames": true,
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "rosa-vpc"
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "rRosaVpcSubnetA",
+   "cfg": "rRosaVpcSubnetA",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "VpcId": {
+     "ref": "rRosaVpc"
+    },
+    "CidrBlock": "10.1.0.0/18",
+    "AvailabilityZone": "us-east-1a",
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "rosa-subnet-a"
+     }
+    ]
+   },
+   "refs": [
+    "rRosaVpc"
+   ]
+  },
+  {
+   "id": "rRosaVpcSubnetB",
+   "cfg": "rRosaVpcSubnetB",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "VpcId": {
+     "ref": "rRosaVpc"
+    },
+    "CidrBlock": "10.1.64.0/18",
+    "AvailabilityZone": "us-east-1b",
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "rosa-subnet-b"
+     }
+    ],
+    "__resource__": {
+     "Condition": "cCreateSubnetB"
+    }
+   },
+   "refs": [
+    "rRosaVpc"
+   ]
+  },
+  {
+   "id": "rRosaVpcSubnetC",
+   "cfg": "rRosaVpcSubnetC",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "VpcId": {
+     "ref": "rRosaVpc"
+    },
+    "CidrBlock": "10.1.128.0/17",
+    "AvailabilityZone": "us-east-1c",
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "rosa-subnet-c"
+     }
+    ],
+    "__resource__": {
+     "Condition": "cCreateSubnetC"
+    }
+   },
+   "refs": [
+    "rRosaVpc"
+   ]
+  },
+  {
+   "id": "rEgressVpc",
+   "cfg": "rEgressVpc",
+   "type": "AWS::EC2::VPC",
+   "values": {
+    "CidrBlock": "10.0.0.0/16",
+    "EnableDnsSupport": true,
+    "EnableDnsHostnames": true,
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "rosa-egress-vpc"
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "rEgressVpcPrivateSubnet",
+   "cfg": "rEgressVpcPrivateSubnet",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "VpcId": {
+     "ref": "rEgressVpc"
+    },
+    "CidrBlock": "10.0.0.0/17",
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "rosa-egress-private-subnet"
+     }
+    ]
+   },
+   "refs": [
+    "rEgressVpc"
+   ]
+  },
+  {
+   "id": "rEgressVpcPublicSubnet",
+   "cfg": "rEgressVpcPublicSubnet",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "VpcId": {
+     "ref": "rEgressVpc"
+    },
+    "CidrBlock": "10.0.128.0/19",
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "rosa-egress-public-subnet"
+     }
+    ]
+   },
+   "refs": [
+    "rEgressVpc"
+   ]
+  },
+  {
+   "id": "rInternetGateway",
+   "cfg": "rInternetGateway",
+   "type": "AWS::EC2::InternetGateway",
+   "values": {
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "rosa-igw"
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "rInternetGatewayEgressAttachment",
+   "cfg": "rInternetGatewayEgressAttachment",
+   "type": "AWS::EC2::VPCGatewayAttachment",
+   "values": {
+    "VpcId": {
+     "ref": "rEgressVpc"
+    },
+    "InternetGatewayId": {
+     "ref": "rInternetGateway"
+    }
+   },
+   "refs": [
+    "rEgressVpc",
+    "rInternetGateway"
+   ]
+  },
+  {
+   "id": "rElasticIP",
+   "cfg": "rElasticIP",
+   "type": "AWS::EC2::EIP",
+   "values": {
+    "Domain": "vpc"
+   },
+   "refs": []
+  },
+  {
+   "id": "rNATGateway",
+   "cfg": "rNATGateway",
+   "type": "AWS::EC2::NatGateway",
+   "values": {
+    "AllocationId": {
+     "ref": "rElasticIP",
+     "attr": "AllocationId"
+    },
+    "SubnetId": {
+     "ref": "rEgressVpcPublicSubnet"
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "rosa-egress-public-nat"
+     }
+    ]
+   },
+   "refs": [
+    "rEgressVpcPublicSubnet",
+    "rElasticIP"
+   ]
+  },
+  {
+   "id": "rTransitGateway",
+   "cfg": "rTransitGateway",
+   "type": "AWS::EC2::TransitGateway",
+   "values": {
+    "AutoAcceptSharedAttachments": "disable",
+    "DnsSupport": "enable",
+    "DefaultRouteTableAssociation": "disable",
+    "DefaultRouteTablePropagation": "disable",
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "rosa-tgw"
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "rRosaTransitGatewayAttachment",
+   "cfg": "rRosaTransitGatewayAttachment",
+   "type": "AWS::EC2::TransitGatewayAttachment",
+   "values": {
+    "SubnetIds": [
+     {
+      "ref": "rRosaVpcSubnetA"
+     },
+     {
+      "ref": "rRosaVpcSubnetB"
+     },
+     {
+      "ref": "rRosaVpcSubnetC"
+     }
+    ],
+    "TransitGatewayId": {
+     "ref": "rTransitGateway"
+    },
+    "VpcId": {
+     "ref": "rRosaVpc"
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "rosa-tgw-attachment"
+     }
+    ]
+   },
+   "refs": [
+    "rRosaVpc",
+    "rRosaVpcSubnetA",
+    "rRosaVpcSubnetB",
+    "rRosaVpcSubnetC",
+    "rTransitGateway"
+   ]
+  },
+  {
+   "id": "rEgressTransitGatewayAttachment",
+   "cfg": "rEgressTransitGatewayAttachment",
+   "type": "AWS::EC2::TransitGatewayAttachment",
+   "values": {
+    "SubnetIds": [
+     {
+      "ref": "rEgressVpcPrivateSubnet"
+     }
+    ],
+    "TransitGatewayId": {
+     "ref": "rTransitGateway"
+    },
+    "VpcId": {
+     "ref": "rEgressVpc"
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "rosa-egress-tgw-attachment"
+     }
+    ]
+   },
+   "refs": [
+    "rEgressVpc",
+    "rEgressVpcPrivateSubnet",
+    "rTransitGateway"
+   ]
+  },
+  {
+   "id": "rTransitGatewayRouteTable",
+   "cfg": "rTransitGatewayRouteTable",
+   "type": "AWS::EC2::TransitGatewayRouteTable",
+   "values": {
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "rosa-tgw-rt"
+     }
+    ],
+    "TransitGatewayId": {
+     "ref": "rTransitGateway"
+    }
+   },
+   "refs": [
+    "rTransitGateway"
+   ]
+  },
+  {
+   "id": "rEgressTransitGatewayRouteTableAssociation",
+   "cfg": "rEgressTransitGatewayRouteTableAssociation",
+   "type": "AWS::EC2::TransitGatewayRouteTableAssociation",
+   "values": {
+    "TransitGatewayAttachmentId": {
+     "ref": "rEgressTransitGatewayAttachment"
+    },
+    "TransitGatewayRouteTableId": {
+     "ref": "rTransitGatewayRouteTable"
+    }
+   },
+   "refs": [
+    "rEgressTransitGatewayAttachment",
+    "rTransitGatewayRouteTable"
+   ]
+  },
+  {
+   "id": "rRosaTransitGatewayRouteTableAssociation",
+   "cfg": "rRosaTransitGatewayRouteTableAssociation",
+   "type": "AWS::EC2::TransitGatewayRouteTableAssociation",
+   "values": {
+    "TransitGatewayAttachmentId": {
+     "ref": "rRosaTransitGatewayAttachment"
+    },
+    "TransitGatewayRouteTableId": {
+     "ref": "rTransitGatewayRouteTable"
+    }
+   },
+   "refs": [
+    "rRosaTransitGatewayAttachment",
+    "rTransitGatewayRouteTable"
+   ]
+  },
+  {
+   "id": "rEgressTransitGatewayRoute1",
+   "cfg": "rEgressTransitGatewayRoute1",
+   "type": "AWS::EC2::TransitGatewayRoute",
+   "values": {
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "TransitGatewayAttachmentId": {
+     "ref": "rEgressTransitGatewayAttachment"
+    },
+    "TransitGatewayRouteTableId": {
+     "ref": "rTransitGatewayRouteTable"
+    }
+   },
+   "refs": [
+    "rEgressTransitGatewayAttachment",
+    "rTransitGatewayRouteTable"
+   ]
+  },
+  {
+   "id": "rEgressTransitGatewayRoute2",
+   "cfg": "rEgressTransitGatewayRoute2",
+   "type": "AWS::EC2::TransitGatewayRoute",
+   "values": {
+    "DestinationCidrBlock": "10.0.0.0/16",
+    "TransitGatewayAttachmentId": {
+     "ref": "rEgressTransitGatewayAttachment"
+    },
+    "TransitGatewayRouteTableId": {
+     "ref": "rTransitGatewayRouteTable"
+    }
+   },
+   "refs": [
+    "rEgressTransitGatewayAttachment",
+    "rTransitGatewayRouteTable"
+   ]
+  },
+  {
+   "id": "rEgressTransitGatewayRoute3",
+   "cfg": "rEgressTransitGatewayRoute3",
+   "type": "AWS::EC2::TransitGatewayRoute",
+   "values": {
+    "DestinationCidrBlock": "10.1.0.0/16",
+    "TransitGatewayAttachmentId": {
+     "ref": "rRosaTransitGatewayAttachment"
+    },
+    "TransitGatewayRouteTableId": {
+     "ref": "rTransitGatewayRouteTable"
+    }
+   },
+   "refs": [
+    "rRosaTransitGatewayAttachment",
+    "rTransitGatewayRouteTable"
+   ]
+  },
+  {
+   "id": "rEgressPrivateRouteTable",
+   "cfg": "rEgressPrivateRouteTable",
+   "type": "AWS::EC2::RouteTable",
+   "values": {
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "rosa-egress-private-rt"
+     }
+    ],
+    "VpcId": {
+     "ref": "rEgressVpc"
+    }
+   },
+   "refs": [
+    "rEgressVpc"
+   ]
+  },
+  {
+   "id": "rEgressPrivateRouteTableAssociation",
+   "cfg": "rEgressPrivateRouteTableAssociation",
+   "type": "AWS::EC2::SubnetRouteTableAssociation",
+   "values": {
+    "SubnetId": {
+     "ref": "rEgressVpcPrivateSubnet"
+    },
+    "RouteTableId": {
+     "ref": "rEgressPrivateRouteTable"
+    }
+   },
+   "refs": [
+    "rEgressPrivateRouteTable",
+    "rEgressVpcPrivateSubnet"
+   ]
+  },
+  {
+   "id": "rEgressPrivateToNATRoute",
+   "cfg": "rEgressPrivateToNATRoute",
+   "type": "AWS::EC2::Route",
+   "values": {
+    "RouteTableId": {
+     "ref": "rEgressPrivateRouteTable"
+    },
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "NatGatewayId": {
+     "ref": "rNATGateway"
+    }
+   },
+   "refs": [
+    "rEgressPrivateRouteTable",
+    "rNATGateway"
+   ]
+  },
+  {
+   "id": "rEgressVpcPublicRouteTable",
+   "cfg": "rEgressVpcPublicRouteTable",
+   "type": "AWS::EC2::RouteTable",
+   "values": {
+    "VpcId": {
+     "ref": "rEgressVpc"
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "rosa-egress-public-rt"
+     }
+    ]
+   },
+   "refs": [
+    "rEgressVpc"
+   ]
+  },
+  {
+   "id": "rEgressPublicSubnetARouteTableAssociation",
+   "cfg": "rEgressPublicSubnetARouteTableAssociation",
+   "type": "AWS::EC2::SubnetRouteTableAssociation",
+   "values": {
+    "SubnetId": {
+     "ref": "rEgressVpcPublicSubnet"
+    },
+    "RouteTableId": {
+     "ref": "rEgressVpcPublicRouteTable"
+    }
+   },
+   "refs": [
+    "rEgressVpcPublicRouteTable",
+    "rEgressVpcPublicSubnet"
+   ]
+  },
+  {
+   "id": "rEgressPrivateToIGWRoute",
+   "cfg": "rEgressPrivateToIGWRoute",
+   "type": "AWS::EC2::Route",
+   "values": {
+    "RouteTableId": {
+     "ref": "rEgressVpcPublicRouteTable"
+    },
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "GatewayId": {
+     "ref": "rInternetGateway"
+    }
+   },
+   "refs": [
+    "rEgressVpcPublicRouteTable",
+    "rInternetGateway"
+   ]
+  },
+  {
+   "id": "rEgressPrivateToTGWRoute",
+   "cfg": "rEgressPrivateToTGWRoute",
+   "type": "AWS::EC2::Route",
+   "values": {
+    "RouteTableId": {
+     "ref": "rEgressVpcPublicRouteTable"
+    },
+    "DestinationCidrBlock": "10.1.0.0/16",
+    "TransitGatewayId": {
+     "ref": "rTransitGateway"
+    },
+    "__resource__": {
+     "DependsOn": [
+      "rEgressTransitGatewayAttachment"
+     ]
+    }
+   },
+   "refs": [
+    "rEgressVpcPublicRouteTable",
+    "rTransitGateway"
+   ]
+  },
+  {
+   "id": "rRosaVpcRouteTable",
+   "cfg": "rRosaVpcRouteTable",
+   "type": "AWS::EC2::RouteTable",
+   "values": {
+    "VpcId": {
+     "ref": "rRosaVpc"
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "rosa-private-rt"
+     }
+    ]
+   },
+   "refs": [
+    "rRosaVpc"
+   ]
+  },
+  {
+   "id": "rRosaVpcSubnetARouteTableAssociation",
+   "cfg": "rRosaVpcSubnetARouteTableAssociation",
+   "type": "AWS::EC2::SubnetRouteTableAssociation",
+   "values": {
+    "SubnetId": {
+     "ref": "rRosaVpcSubnetA"
+    },
+    "RouteTableId": {
+     "ref": "rRosaVpcRouteTable"
+    }
+   },
+   "refs": [
+    "rRosaVpcRouteTable",
+    "rRosaVpcSubnetA"
+   ]
+  },
+  {
+   "id": "rRosaVpcSubnetBRouteTableAssociation",
+   "cfg": "rRosaVpcSubnetBRouteTableAssociation",
+   "type": "AWS::EC2::SubnetRouteTableAssociation",
+   "values": {
+    "SubnetId": {
+     "ref": "rRosaVpcSubnetB"
+    },
+    "RouteTableId": {
+     "ref": "rRosaVpcRouteTable"
+    },
+    "__resource__": {
+     "Condition": "cCreateSubnetB"
+    }
+   },
+   "refs": [
+    "rRosaVpcRouteTable",
+    "rRosaVpcSubnetB"
+   ]
+  },
+  {
+   "id": "rRosaVpcSubnetCRouteTableAssociation",
+   "cfg": "rRosaVpcSubnetCRouteTableAssociation",
+   "type": "AWS::EC2::SubnetRouteTableAssociation",
+   "values": {
+    "SubnetId": {
+     "ref": "rRosaVpcSubnetC"
+    },
+    "RouteTableId": {
+     "ref": "rRosaVpcRouteTable"
+    },
+    "__resource__": {
+     "Condition": "cCreateSubnetC"
+    }
+   },
+   "refs": [
+    "rRosaVpcRouteTable",
+    "rRosaVpcSubnetC"
+   ]
+  },
+  {
+   "id": "rRosaToTGWRoute",
+   "cfg": "rRosaToTGWRoute",
+   "type": "AWS::EC2::Route",
+   "values": {
+    "RouteTableId": {
+     "ref": "rRosaVpcRouteTable"
+    },
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "TransitGatewayId": {
+     "ref": "rTransitGateway"
+    },
+    "__resource__": {
+     "DependsOn": [
+      "rRosaTransitGatewayAttachment"
+     ]
+    }
+   },
+   "refs": [
+    "rRosaVpcRouteTable",
+    "rTransitGateway"
+   ]
+  },
+  {
+   "id": "__parameter__.pNumberOfAZs",
+   "cfg": "__parameter__.pNumberOfAZs",
+   "type": "__parameter__",
+   "values": {
+    "name": "pNumberOfAZs",
+    "type": "Number",
+    "default": 3,
+    "allowed_values": [
+     1,
+     3
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.pEnableELBServiceLinkedRole",
+   "cfg": "__parameter__.pEnableELBServiceLinkedRole",
+   "type": "__parameter__",
+   "values": {
+    "name": "pEnableELBServiceLinkedRole",
+    "type": "String",
+    "default": "false",
+    "allowed_values": [
+     "true",
+     "false"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.pEnableVpcFlowLogs",
+   "cfg": "__parameter__.pEnableVpcFlowLogs",
+   "type": "__parameter__",
+   "values": {
+    "name": "pEnableVpcFlowLogs",
+    "type": "String",
+    "default": "false",
+    "allowed_values": [
+     "true",
+     "false"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.pVpcFlowLogGroupRetentionDays",
+   "cfg": "__parameter__.pVpcFlowLogGroupRetentionDays",
+   "type": "__parameter__",
+   "values": {
+    "name": "pVpcFlowLogGroupRetentionDays",
+    "type": "Number",
+    "default": 365,
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.pRosaVpcCidrBlock",
+   "cfg": "__parameter__.pRosaVpcCidrBlock",
+   "type": "__parameter__",
+   "values": {
+    "name": "pRosaVpcCidrBlock",
+    "type": "String",
+    "default": "10.1.0.0/16",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.pRosaVpcSubnetACidrBlock",
+   "cfg": "__parameter__.pRosaVpcSubnetACidrBlock",
+   "type": "__parameter__",
+   "values": {
+    "name": "pRosaVpcSubnetACidrBlock",
+    "type": "String",
+    "default": "10.1.0.0/18",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.pRosaVpcSubnetBCidrBlock",
+   "cfg": "__parameter__.pRosaVpcSubnetBCidrBlock",
+   "type": "__parameter__",
+   "values": {
+    "name": "pRosaVpcSubnetBCidrBlock",
+    "type": "String",
+    "default": "10.1.64.0/18",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.pRosaVpcSubnetCCidrBlock",
+   "cfg": "__parameter__.pRosaVpcSubnetCCidrBlock",
+   "type": "__parameter__",
+   "values": {
+    "name": "pRosaVpcSubnetCCidrBlock",
+    "type": "String",
+    "default": "10.1.128.0/17",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.pEgressVpcCidrBlock",
+   "cfg": "__parameter__.pEgressVpcCidrBlock",
+   "type": "__parameter__",
+   "values": {
+    "name": "pEgressVpcCidrBlock",
+    "type": "String",
+    "default": "10.0.0.0/16",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.pEgressVpcPrivateSubnetCidrBlock",
+   "cfg": "__parameter__.pEgressVpcPrivateSubnetCidrBlock",
+   "type": "__parameter__",
+   "values": {
+    "name": "pEgressVpcPrivateSubnetCidrBlock",
+    "type": "String",
+    "default": "10.0.0.0/17",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.pEgressVpcPublicSubnetACidrBlock",
+   "cfg": "__parameter__.pEgressVpcPublicSubnetACidrBlock",
+   "type": "__parameter__",
+   "values": {
+    "name": "pEgressVpcPublicSubnetACidrBlock",
+    "type": "String",
+    "default": "10.0.128.0/19",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.oStackName",
+   "cfg": "__output__.oStackName",
+   "type": "__output__",
+   "values": {
+    "name": "oStackName",
+    "value": "stack",
+    "description": null,
+    "export": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.oRosaVpc",
+   "cfg": "__output__.oRosaVpc",
+   "type": "__output__",
+   "values": {
+    "name": "oRosaVpc",
+    "value": {
+     "ref": "rRosaVpc"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "rRosaVpc"
+   ]
+  },
+  {
+   "id": "__output__.oRosaVpcSubnetA",
+   "cfg": "__output__.oRosaVpcSubnetA",
+   "type": "__output__",
+   "values": {
+    "name": "oRosaVpcSubnetA",
+    "value": {
+     "ref": "rRosaVpcSubnetA"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "rRosaVpcSubnetA"
+   ]
+  },
+  {
+   "id": "__output__.oRosaVpcSubnetB",
+   "cfg": "__output__.oRosaVpcSubnetB",
+   "type": "__output__",
+   "values": {
+    "name": "oRosaVpcSubnetB",
+    "value": {
+     "ref": "rRosaVpcSubnetB"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "rRosaVpcSubnetB"
+   ]
+  },
+  {
+   "id": "__output__.oRosaVpcSubnetC",
+   "cfg": "__output__.oRosaVpcSubnetC",
+   "type": "__output__",
+   "values": {
+    "name": "oRosaVpcSubnetC",
+    "value": {
+     "ref": "rRosaVpcSubnetC"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "rRosaVpcSubnetC"
+   ]
+  },
+  {
+   "id": "__output__.oEgressVpc",
+   "cfg": "__output__.oEgressVpc",
+   "type": "__output__",
+   "values": {
+    "name": "oEgressVpc",
+    "value": {
+     "ref": "rEgressVpc"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "rEgressVpc"
+   ]
+  },
+  {
+   "id": "__output__.oTransitGatewayId",
+   "cfg": "__output__.oTransitGatewayId",
+   "type": "__output__",
+   "values": {
+    "name": "oTransitGatewayId",
+    "value": {
+     "ref": "rTransitGateway"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "rTransitGateway"
+   ]
+  },
+  {
+   "id": "__output__.oEgressVpcPrivateSubnet",
+   "cfg": "__output__.oEgressVpcPrivateSubnet",
+   "type": "__output__",
+   "values": {
+    "name": "oEgressVpcPrivateSubnet",
+    "value": {
+     "ref": "rEgressVpcPrivateSubnet"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "rEgressVpcPrivateSubnet"
+   ]
+  },
+  {
+   "id": "__output__.oEgressVpcPublicSubnet",
+   "cfg": "__output__.oEgressVpcPublicSubnet",
+   "type": "__output__",
+   "values": {
+    "name": "oEgressVpcPublicSubnet",
+    "value": {
+     "ref": "rEgressVpcPublicSubnet"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "rEgressVpcPublicSubnet"
+   ]
+  },
+  {
+   "id": "__output__.oInternetGateway",
+   "cfg": "__output__.oInternetGateway",
+   "type": "__output__",
+   "values": {
+    "name": "oInternetGateway",
+    "value": {
+     "ref": "rInternetGateway"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "rInternetGateway"
+   ]
+  },
+  {
+   "id": "__output__.oInternetGatewayEgressAttachment",
+   "cfg": "__output__.oInternetGatewayEgressAttachment",
+   "type": "__output__",
+   "values": {
+    "name": "oInternetGatewayEgressAttachment",
+    "value": {
+     "ref": "rInternetGatewayEgressAttachment"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "rInternetGatewayEgressAttachment"
+   ]
+  },
+  {
+   "id": "__output__.oEIP",
+   "cfg": "__output__.oEIP",
+   "type": "__output__",
+   "values": {
+    "name": "oEIP",
+    "value": {
+     "ref": "rElasticIP"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "rElasticIP"
+   ]
+  },
+  {
+   "id": "__output__.oNAT",
+   "cfg": "__output__.oNAT",
+   "type": "__output__",
+   "values": {
+    "name": "oNAT",
+    "value": {
+     "ref": "rNATGateway"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "rNATGateway"
+   ]
+  },
+  {
+   "id": "__output__.oTransitGateway",
+   "cfg": "__output__.oTransitGateway",
+   "type": "__output__",
+   "values": {
+    "name": "oTransitGateway",
+    "value": {
+     "ref": "rTransitGateway"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "rTransitGateway"
+   ]
+  },
+  {
+   "id": "__output__.oPrivateTransitGatewayAttachment",
+   "cfg": "__output__.oPrivateTransitGatewayAttachment",
+   "type": "__output__",
+   "values": {
+    "name": "oPrivateTransitGatewayAttachment",
+    "value": {
+     "ref": "rRosaTransitGatewayAttachment"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "rRosaTransitGatewayAttachment"
+   ]
+  },
+  {
+   "id": "__output__.oEgressTransitGatewayAttachment",
+   "cfg": "__output__.oEgressTransitGatewayAttachment",
+   "type": "__output__",
+   "values": {
+    "name": "oEgressTransitGatewayAttachment",
+    "value": {
+     "ref": "rEgressTransitGatewayAttachment"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "rEgressTransitGatewayAttachment"
+   ]
+  },
+  {
+   "id": "__output__.oTransitGatewayRouteTable",
+   "cfg": "__output__.oTransitGatewayRouteTable",
+   "type": "__output__",
+   "values": {
+    "name": "oTransitGatewayRouteTable",
+    "value": {
+     "ref": "rTransitGatewayRouteTable"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "rTransitGatewayRouteTable"
+   ]
+  },
+  {
+   "id": "__output__.oEgressTransitGatewayRoute1",
+   "cfg": "__output__.oEgressTransitGatewayRoute1",
+   "type": "__output__",
+   "values": {
+    "name": "oEgressTransitGatewayRoute1",
+    "value": {
+     "ref": "rEgressTransitGatewayRoute1"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "rEgressTransitGatewayRoute1"
+   ]
+  },
+  {
+   "id": "__output__.oEgressTransitGatewayRoute2",
+   "cfg": "__output__.oEgressTransitGatewayRoute2",
+   "type": "__output__",
+   "values": {
+    "name": "oEgressTransitGatewayRoute2",
+    "value": {
+     "ref": "rEgressTransitGatewayRoute2"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "rEgressTransitGatewayRoute2"
+   ]
+  },
+  {
+   "id": "__output__.oEgressTransitGatewayRoute3",
+   "cfg": "__output__.oEgressTransitGatewayRoute3",
+   "type": "__output__",
+   "values": {
+    "name": "oEgressTransitGatewayRoute3",
+    "value": {
+     "ref": "rEgressTransitGatewayRoute3"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "rEgressTransitGatewayRoute3"
+   ]
+  },
+  {
+   "id": "__output__.oEgressPrivateRouteTable",
+   "cfg": "__output__.oEgressPrivateRouteTable",
+   "type": "__output__",
+   "values": {
+    "name": "oEgressPrivateRouteTable",
+    "value": {
+     "ref": "rEgressPrivateRouteTable"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "rEgressPrivateRouteTable"
+   ]
+  },
+  {
+   "id": "__output__.oEgressPrivateRouteTableAssociation",
+   "cfg": "__output__.oEgressPrivateRouteTableAssociation",
+   "type": "__output__",
+   "values": {
+    "name": "oEgressPrivateRouteTableAssociation",
+    "value": {
+     "ref": "rEgressPrivateRouteTableAssociation"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "rEgressPrivateRouteTableAssociation"
+   ]
+  },
+  {
+   "id": "__output__.oEgressPrivateToNATRoute",
+   "cfg": "__output__.oEgressPrivateToNATRoute",
+   "type": "__output__",
+   "values": {
+    "name": "oEgressPrivateToNATRoute",
+    "value": {
+     "ref": "rEgressPrivateToNATRoute"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "rEgressPrivateToNATRoute"
+   ]
+  },
+  {
+   "id": "__output__.oEgressVpcPublicRouteTable",
+   "cfg": "__output__.oEgressVpcPublicRouteTable",
+   "type": "__output__",
+   "values": {
+    "name": "oEgressVpcPublicRouteTable",
+    "value": {
+     "ref": "rEgressVpcPublicRouteTable"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "rEgressVpcPublicRouteTable"
+   ]
+  },
+  {
+   "id": "__output__.oPublicSubnetARouteTableAssociation",
+   "cfg": "__output__.oPublicSubnetARouteTableAssociation",
+   "type": "__output__",
+   "values": {
+    "name": "oPublicSubnetARouteTableAssociation",
+    "value": {
+     "ref": "rEgressPublicSubnetARouteTableAssociation"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "rEgressPublicSubnetARouteTableAssociation"
+   ]
+  },
+  {
+   "id": "__output__.oEgressPrivateToIGWRoute",
+   "cfg": "__output__.oEgressPrivateToIGWRoute",
+   "type": "__output__",
+   "values": {
+    "name": "oEgressPrivateToIGWRoute",
+    "value": {
+     "ref": "rEgressPrivateToIGWRoute"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "rEgressPrivateToIGWRoute"
+   ]
+  },
+  {
+   "id": "__output__.oEgressPrivateToTGWRoute",
+   "cfg": "__output__.oEgressPrivateToTGWRoute",
+   "type": "__output__",
+   "values": {
+    "name": "oEgressPrivateToTGWRoute",
+    "value": {
+     "ref": "rEgressPrivateToTGWRoute"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "rEgressPrivateToTGWRoute"
+   ]
+  },
+  {
+   "id": "__output__.oRosaVpcCIDR",
+   "cfg": "__output__.oRosaVpcCIDR",
+   "type": "__output__",
+   "values": {
+    "name": "oRosaVpcCIDR",
+    "value": {
+     "ref": "rRosaVpc",
+     "attr": "CidrBlock"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "rRosaVpc"
+   ]
+  },
+  {
+   "id": "__output__.oRosaVpcRouteTable",
+   "cfg": "__output__.oRosaVpcRouteTable",
+   "type": "__output__",
+   "values": {
+    "name": "oRosaVpcRouteTable",
+    "value": {
+     "ref": "rRosaVpcRouteTable"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "rRosaVpcRouteTable"
+   ]
+  },
+  {
+   "id": "__output__.oRosaVpcSubnetARouteTableAssociation",
+   "cfg": "__output__.oRosaVpcSubnetARouteTableAssociation",
+   "type": "__output__",
+   "values": {
+    "name": "oRosaVpcSubnetARouteTableAssociation",
+    "value": {
+     "ref": "rRosaVpcSubnetARouteTableAssociation"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "rRosaVpcSubnetARouteTableAssociation"
+   ]
+  },
+  {
+   "id": "__output__.oRosaVpcSubnetBRouteTableAssociation",
+   "cfg": "__output__.oRosaVpcSubnetBRouteTableAssociation",
+   "type": "__output__",
+   "values": {
+    "name": "oRosaVpcSubnetBRouteTableAssociation",
+    "value": {
+     "ref": "rRosaVpcSubnetBRouteTableAssociation"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "rRosaVpcSubnetBRouteTableAssociation"
+   ]
+  },
+  {
+   "id": "__output__.oRosaVpcSubnetCRouteTableAssociation",
+   "cfg": "__output__.oRosaVpcSubnetCRouteTableAssociation",
+   "type": "__output__",
+   "values": {
+    "name": "oRosaVpcSubnetCRouteTableAssociation",
+    "value": {
+     "ref": "rRosaVpcSubnetCRouteTableAssociation"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "rRosaVpcSubnetCRouteTableAssociation"
+   ]
+  },
+  {
+   "id": "__output__.oPrivateToTGWRoute",
+   "cfg": "__output__.oPrivateToTGWRoute",
+   "type": "__output__",
+   "values": {
+    "name": "oPrivateToTGWRoute",
+    "value": {
+     "ref": "rRosaToTGWRoute"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "rRosaToTGWRoute"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::IAM::ServiceLinkedRole.rELBServiceLinkedRole",
+   "cfg": "rELBServiceLinkedRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::ServiceLinkedRole",
+    "name": "rELBServiceLinkedRole",
+    "gated": true,
+    "gate": "cEnableELBServiceLinkedRole",
+    "properties": {
+     "AWSServiceName": "elasticloadbalancing.amazonaws.com",
+     "Description": "ROSA ELB service role"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPC.rRosaVpc",
+   "cfg": "rRosaVpc",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::VPC",
+    "name": "rRosaVpc",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "CidrBlock": "10.1.0.0/16",
+     "EnableDnsSupport": true,
+     "EnableDnsHostnames": true,
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "rosa-vpc"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.rRosaVpcSubnetA",
+   "cfg": "rRosaVpcSubnetA",
+   "type": "__declared__",
+   "refs": [
+    "rRosaVpc"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "rRosaVpcSubnetA",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "rRosaVpc"
+     },
+     "CidrBlock": "10.1.0.0/18",
+     "AvailabilityZone": "us-east-1a",
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "rosa-subnet-a"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.rRosaVpcSubnetB",
+   "cfg": "rRosaVpcSubnetB",
+   "type": "__declared__",
+   "refs": [
+    "rRosaVpc"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "rRosaVpcSubnetB",
+    "gated": true,
+    "gate": "cCreateSubnetB",
+    "properties": {
+     "VpcId": {
+      "ref": "rRosaVpc"
+     },
+     "CidrBlock": "10.1.64.0/18",
+     "AvailabilityZone": "us-east-1b",
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "rosa-subnet-b"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.rRosaVpcSubnetC",
+   "cfg": "rRosaVpcSubnetC",
+   "type": "__declared__",
+   "refs": [
+    "rRosaVpc"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "rRosaVpcSubnetC",
+    "gated": true,
+    "gate": "cCreateSubnetC",
+    "properties": {
+     "VpcId": {
+      "ref": "rRosaVpc"
+     },
+     "CidrBlock": "10.1.128.0/17",
+     "AvailabilityZone": "us-east-1c",
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "rosa-subnet-c"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPC.rEgressVpc",
+   "cfg": "rEgressVpc",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::VPC",
+    "name": "rEgressVpc",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "CidrBlock": "10.0.0.0/16",
+     "EnableDnsSupport": true,
+     "EnableDnsHostnames": true,
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "rosa-egress-vpc"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.rEgressVpcPrivateSubnet",
+   "cfg": "rEgressVpcPrivateSubnet",
+   "type": "__declared__",
+   "refs": [
+    "rEgressVpc"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "rEgressVpcPrivateSubnet",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "rEgressVpc"
+     },
+     "CidrBlock": "10.0.0.0/17",
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "rosa-egress-private-subnet"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.rEgressVpcPublicSubnet",
+   "cfg": "rEgressVpcPublicSubnet",
+   "type": "__declared__",
+   "refs": [
+    "rEgressVpc"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "rEgressVpcPublicSubnet",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "rEgressVpc"
+     },
+     "CidrBlock": "10.0.128.0/19",
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "rosa-egress-public-subnet"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::InternetGateway.rInternetGateway",
+   "cfg": "rInternetGateway",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::InternetGateway",
+    "name": "rInternetGateway",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "rosa-igw"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCGatewayAttachment.rInternetGatewayEgressAttachment",
+   "cfg": "rInternetGatewayEgressAttachment",
+   "type": "__declared__",
+   "refs": [
+    "rEgressVpc",
+    "rInternetGateway"
+   ],
+   "values": {
+    "type": "AWS::EC2::VPCGatewayAttachment",
+    "name": "rInternetGatewayEgressAttachment",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "rEgressVpc"
+     },
+     "InternetGatewayId": {
+      "ref": "rInternetGateway"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::EIP.rElasticIP",
+   "cfg": "rElasticIP",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::EIP",
+    "name": "rElasticIP",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Domain": "vpc"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::NatGateway.rNATGateway",
+   "cfg": "rNATGateway",
+   "type": "__declared__",
+   "refs": [
+    "rEgressVpcPublicSubnet",
+    "rElasticIP"
+   ],
+   "values": {
+    "type": "AWS::EC2::NatGateway",
+    "name": "rNATGateway",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AllocationId": {
+      "ref": "rElasticIP",
+      "attr": "AllocationId"
+     },
+     "SubnetId": {
+      "ref": "rEgressVpcPublicSubnet"
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "rosa-egress-public-nat"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::TransitGateway.rTransitGateway",
+   "cfg": "rTransitGateway",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::TransitGateway",
+    "name": "rTransitGateway",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AutoAcceptSharedAttachments": "disable",
+     "DnsSupport": "enable",
+     "DefaultRouteTableAssociation": "disable",
+     "DefaultRouteTablePropagation": "disable",
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "rosa-tgw"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::TransitGatewayAttachment.rRosaTransitGatewayAttachment",
+   "cfg": "rRosaTransitGatewayAttachment",
+   "type": "__declared__",
+   "refs": [
+    "rRosaVpc",
+    "rRosaVpcSubnetA",
+    "rRosaVpcSubnetB",
+    "rRosaVpcSubnetC",
+    "rTransitGateway"
+   ],
+   "values": {
+    "type": "AWS::EC2::TransitGatewayAttachment",
+    "name": "rRosaTransitGatewayAttachment",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "SubnetIds": [
+      {
+       "ref": "rRosaVpcSubnetA"
+      },
+      {
+       "ref": "rRosaVpcSubnetB"
+      },
+      {
+       "ref": "rRosaVpcSubnetC"
+      }
+     ],
+     "TransitGatewayId": {
+      "ref": "rTransitGateway"
+     },
+     "VpcId": {
+      "ref": "rRosaVpc"
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "rosa-tgw-attachment"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::TransitGatewayAttachment.rEgressTransitGatewayAttachment",
+   "cfg": "rEgressTransitGatewayAttachment",
+   "type": "__declared__",
+   "refs": [
+    "rEgressVpc",
+    "rEgressVpcPrivateSubnet",
+    "rTransitGateway"
+   ],
+   "values": {
+    "type": "AWS::EC2::TransitGatewayAttachment",
+    "name": "rEgressTransitGatewayAttachment",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "SubnetIds": [
+      {
+       "ref": "rEgressVpcPrivateSubnet"
+      }
+     ],
+     "TransitGatewayId": {
+      "ref": "rTransitGateway"
+     },
+     "VpcId": {
+      "ref": "rEgressVpc"
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "rosa-egress-tgw-attachment"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::KMS::Key.rVpcsLogGroupKey",
+   "cfg": "rVpcsLogGroupKey",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::KMS::Key",
+    "name": "rVpcsLogGroupKey",
+    "gated": true,
+    "gate": "cEnableVpcFlowLogs",
+    "properties": {
+     "Enabled": true,
+     "EnableKeyRotation": true,
+     "KeyPolicy": {
+      "Version": "2012-10-17",
+      "Id": "key-loggroup",
+      "Statement": [
+       {
+        "Sid": "Enable IAM User Permissions",
+        "Effect": "Allow",
+        "Principal": {
+         "AWS": [
+          "arn:aws:iam::123456789012:root"
+         ]
+        },
+        "Action": [
+         "kms:*"
+        ],
+        "Resource": [
+         "*"
+        ]
+       },
+       {
+        "Sid": "Enable Cloudwatch access",
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "logs.us-east-1.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "kms:Encrypt*",
+         "kms:Decrypt*",
+         "kms:ReEncrypt*",
+         "kms:GenerateDataKey*",
+         "kms:Describe*"
+        ],
+        "Resource": [
+         "*"
+        ]
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::LogGroup.rRosaVpcFlowLogGroup",
+   "cfg": "rRosaVpcFlowLogGroup",
+   "type": "__declared__",
+   "refs": [
+    "rVpcsLogGroupKey"
+   ],
+   "values": {
+    "type": "AWS::Logs::LogGroup",
+    "name": "rRosaVpcFlowLogGroup",
+    "gated": true,
+    "gate": "cEnableVpcFlowLogs",
+    "properties": {
+     "RetentionInDays": 365,
+     "KmsKeyId": {
+      "ref": "rVpcsLogGroupKey",
+      "attr": "Arn"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.rRosaVpcFlowLogCloudWatchRole",
+   "cfg": "rRosaVpcFlowLogCloudWatchRole",
+   "type": "__declared__",
+   "refs": [
+    "rRosaVpcFlowLogGroup"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "rRosaVpcFlowLogCloudWatchRole",
+    "gated": true,
+    "gate": "cEnableVpcFlowLogs",
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "vpc-flow-logs.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Policies": [
+      {
+       "PolicyName": "root",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Resource": {
+           "ref": "rRosaVpcFlowLogGroup",
+           "attr": "Arn"
+          },
+          "Action": [
+           "logs:CreateLogGroup",
+           "logs:CreateLogStream",
+           "logs:DescribeLogGroups",
+           "logs:DescribeLogStreams",
+           "logs:PutLogEvents"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::FlowLog.rRosaVpcFlowLogCloudWatch",
+   "cfg": "rRosaVpcFlowLogCloudWatch",
+   "type": "__declared__",
+   "refs": [
+    "rEgressVpc",
+    "rRosaVpcFlowLogCloudWatchRole",
+    "rRosaVpcFlowLogGroup"
+   ],
+   "values": {
+    "type": "AWS::EC2::FlowLog",
+    "name": "rRosaVpcFlowLogCloudWatch",
+    "gated": true,
+    "gate": "cEnableVpcFlowLogs",
+    "properties": {
+     "DeliverLogsPermissionArn": {
+      "ref": "rRosaVpcFlowLogCloudWatchRole",
+      "attr": "Arn"
+     },
+     "LogDestination": {
+      "ref": "rRosaVpcFlowLogGroup",
+      "attr": "Arn"
+     },
+     "ResourceId": {
+      "ref": "rEgressVpc"
+     },
+     "ResourceType": "VPC",
+     "TrafficType": "ALL"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::LogGroup.rEgressVpcFlowLogGroup",
+   "cfg": "rEgressVpcFlowLogGroup",
+   "type": "__declared__",
+   "refs": [
+    "rVpcsLogGroupKey"
+   ],
+   "values": {
+    "type": "AWS::Logs::LogGroup",
+    "name": "rEgressVpcFlowLogGroup",
+    "gated": true,
+    "gate": "cEnableVpcFlowLogs",
+    "properties": {
+     "RetentionInDays": 365,
+     "KmsKeyId": {
+      "ref": "rVpcsLogGroupKey",
+      "attr": "Arn"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.rEgressVpcFlowLogCloudWatchRole",
+   "cfg": "rEgressVpcFlowLogCloudWatchRole",
+   "type": "__declared__",
+   "refs": [
+    "rEgressVpcFlowLogGroup"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "rEgressVpcFlowLogCloudWatchRole",
+    "gated": true,
+    "gate": "cEnableVpcFlowLogs",
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "vpc-flow-logs.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Policies": [
+      {
+       "PolicyName": "root",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Resource": {
+           "ref": "rEgressVpcFlowLogGroup",
+           "attr": "Arn"
+          },
+          "Action": [
+           "logs:CreateLogGroup",
+           "logs:CreateLogStream",
+           "logs:DescribeLogGroups",
+           "logs:DescribeLogStreams",
+           "logs:PutLogEvents"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::FlowLog.rEgressVpcFlowLogCloudWatch",
+   "cfg": "rEgressVpcFlowLogCloudWatch",
+   "type": "__declared__",
+   "refs": [
+    "rEgressVpc",
+    "rEgressVpcFlowLogCloudWatchRole",
+    "rEgressVpcFlowLogGroup"
+   ],
+   "values": {
+    "type": "AWS::EC2::FlowLog",
+    "name": "rEgressVpcFlowLogCloudWatch",
+    "gated": true,
+    "gate": "cEnableVpcFlowLogs",
+    "properties": {
+     "DeliverLogsPermissionArn": {
+      "ref": "rEgressVpcFlowLogCloudWatchRole",
+      "attr": "Arn"
+     },
+     "LogDestination": {
+      "ref": "rEgressVpcFlowLogGroup",
+      "attr": "Arn"
+     },
+     "ResourceId": {
+      "ref": "rEgressVpc"
+     },
+     "ResourceType": "VPC",
+     "TrafficType": "ALL"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::TransitGatewayRouteTable.rTransitGatewayRouteTable",
+   "cfg": "rTransitGatewayRouteTable",
+   "type": "__declared__",
+   "refs": [
+    "rTransitGateway"
+   ],
+   "values": {
+    "type": "AWS::EC2::TransitGatewayRouteTable",
+    "name": "rTransitGatewayRouteTable",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "rosa-tgw-rt"
+      }
+     ],
+     "TransitGatewayId": {
+      "ref": "rTransitGateway"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::TransitGatewayRouteTableAssociation.rEgressTransitGatewayRouteTableAssociation",
+   "cfg": "rEgressTransitGatewayRouteTableAssociation",
+   "type": "__declared__",
+   "refs": [
+    "rEgressTransitGatewayAttachment",
+    "rTransitGatewayRouteTable"
+   ],
+   "values": {
+    "type": "AWS::EC2::TransitGatewayRouteTableAssociation",
+    "name": "rEgressTransitGatewayRouteTableAssociation",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "TransitGatewayAttachmentId": {
+      "ref": "rEgressTransitGatewayAttachment"
+     },
+     "TransitGatewayRouteTableId": {
+      "ref": "rTransitGatewayRouteTable"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::TransitGatewayRouteTableAssociation.rRosaTransitGatewayRouteTableAssociation",
+   "cfg": "rRosaTransitGatewayRouteTableAssociation",
+   "type": "__declared__",
+   "refs": [
+    "rRosaTransitGatewayAttachment",
+    "rTransitGatewayRouteTable"
+   ],
+   "values": {
+    "type": "AWS::EC2::TransitGatewayRouteTableAssociation",
+    "name": "rRosaTransitGatewayRouteTableAssociation",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "TransitGatewayAttachmentId": {
+      "ref": "rRosaTransitGatewayAttachment"
+     },
+     "TransitGatewayRouteTableId": {
+      "ref": "rTransitGatewayRouteTable"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::TransitGatewayRoute.rEgressTransitGatewayRoute1",
+   "cfg": "rEgressTransitGatewayRoute1",
+   "type": "__declared__",
+   "refs": [
+    "rEgressTransitGatewayAttachment",
+    "rTransitGatewayRouteTable"
+   ],
+   "values": {
+    "type": "AWS::EC2::TransitGatewayRoute",
+    "name": "rEgressTransitGatewayRoute1",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "DestinationCidrBlock": "0.0.0.0/0",
+     "TransitGatewayAttachmentId": {
+      "ref": "rEgressTransitGatewayAttachment"
+     },
+     "TransitGatewayRouteTableId": {
+      "ref": "rTransitGatewayRouteTable"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::TransitGatewayRoute.rEgressTransitGatewayRoute2",
+   "cfg": "rEgressTransitGatewayRoute2",
+   "type": "__declared__",
+   "refs": [
+    "rEgressTransitGatewayAttachment",
+    "rTransitGatewayRouteTable"
+   ],
+   "values": {
+    "type": "AWS::EC2::TransitGatewayRoute",
+    "name": "rEgressTransitGatewayRoute2",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "DestinationCidrBlock": "10.0.0.0/16",
+     "TransitGatewayAttachmentId": {
+      "ref": "rEgressTransitGatewayAttachment"
+     },
+     "TransitGatewayRouteTableId": {
+      "ref": "rTransitGatewayRouteTable"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::TransitGatewayRoute.rEgressTransitGatewayRoute3",
+   "cfg": "rEgressTransitGatewayRoute3",
+   "type": "__declared__",
+   "refs": [
+    "rRosaTransitGatewayAttachment",
+    "rTransitGatewayRouteTable"
+   ],
+   "values": {
+    "type": "AWS::EC2::TransitGatewayRoute",
+    "name": "rEgressTransitGatewayRoute3",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "DestinationCidrBlock": "10.1.0.0/16",
+     "TransitGatewayAttachmentId": {
+      "ref": "rRosaTransitGatewayAttachment"
+     },
+     "TransitGatewayRouteTableId": {
+      "ref": "rTransitGatewayRouteTable"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::RouteTable.rEgressPrivateRouteTable",
+   "cfg": "rEgressPrivateRouteTable",
+   "type": "__declared__",
+   "refs": [
+    "rEgressVpc"
+   ],
+   "values": {
+    "type": "AWS::EC2::RouteTable",
+    "name": "rEgressPrivateRouteTable",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "rosa-egress-private-rt"
+      }
+     ],
+     "VpcId": {
+      "ref": "rEgressVpc"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetRouteTableAssociation.rEgressPrivateRouteTableAssociation",
+   "cfg": "rEgressPrivateRouteTableAssociation",
+   "type": "__declared__",
+   "refs": [
+    "rEgressPrivateRouteTable",
+    "rEgressVpcPrivateSubnet"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetRouteTableAssociation",
+    "name": "rEgressPrivateRouteTableAssociation",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "SubnetId": {
+      "ref": "rEgressVpcPrivateSubnet"
+     },
+     "RouteTableId": {
+      "ref": "rEgressPrivateRouteTable"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Route.rEgressPrivateToNATRoute",
+   "cfg": "rEgressPrivateToNATRoute",
+   "type": "__declared__",
+   "refs": [
+    "rEgressPrivateRouteTable",
+    "rNATGateway"
+   ],
+   "values": {
+    "type": "AWS::EC2::Route",
+    "name": "rEgressPrivateToNATRoute",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RouteTableId": {
+      "ref": "rEgressPrivateRouteTable"
+     },
+     "DestinationCidrBlock": "0.0.0.0/0",
+     "NatGatewayId": {
+      "ref": "rNATGateway"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::RouteTable.rEgressVpcPublicRouteTable",
+   "cfg": "rEgressVpcPublicRouteTable",
+   "type": "__declared__",
+   "refs": [
+    "rEgressVpc"
+   ],
+   "values": {
+    "type": "AWS::EC2::RouteTable",
+    "name": "rEgressVpcPublicRouteTable",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "rEgressVpc"
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "rosa-egress-public-rt"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetRouteTableAssociation.rEgressPublicSubnetARouteTableAssociation",
+   "cfg": "rEgressPublicSubnetARouteTableAssociation",
+   "type": "__declared__",
+   "refs": [
+    "rEgressVpcPublicRouteTable",
+    "rEgressVpcPublicSubnet"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetRouteTableAssociation",
+    "name": "rEgressPublicSubnetARouteTableAssociation",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "SubnetId": {
+      "ref": "rEgressVpcPublicSubnet"
+     },
+     "RouteTableId": {
+      "ref": "rEgressVpcPublicRouteTable"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Route.rEgressPrivateToIGWRoute",
+   "cfg": "rEgressPrivateToIGWRoute",
+   "type": "__declared__",
+   "refs": [
+    "rEgressVpcPublicRouteTable",
+    "rInternetGateway"
+   ],
+   "values": {
+    "type": "AWS::EC2::Route",
+    "name": "rEgressPrivateToIGWRoute",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RouteTableId": {
+      "ref": "rEgressVpcPublicRouteTable"
+     },
+     "DestinationCidrBlock": "0.0.0.0/0",
+     "GatewayId": {
+      "ref": "rInternetGateway"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Route.rEgressPrivateToTGWRoute",
+   "cfg": "rEgressPrivateToTGWRoute",
+   "type": "__declared__",
+   "refs": [
+    "rEgressVpcPublicRouteTable",
+    "rTransitGateway"
+   ],
+   "values": {
+    "type": "AWS::EC2::Route",
+    "name": "rEgressPrivateToTGWRoute",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RouteTableId": {
+      "ref": "rEgressVpcPublicRouteTable"
+     },
+     "DestinationCidrBlock": "10.1.0.0/16",
+     "TransitGatewayId": {
+      "ref": "rTransitGateway"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::RouteTable.rRosaVpcRouteTable",
+   "cfg": "rRosaVpcRouteTable",
+   "type": "__declared__",
+   "refs": [
+    "rRosaVpc"
+   ],
+   "values": {
+    "type": "AWS::EC2::RouteTable",
+    "name": "rRosaVpcRouteTable",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "rRosaVpc"
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "rosa-private-rt"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetRouteTableAssociation.rRosaVpcSubnetARouteTableAssociation",
+   "cfg": "rRosaVpcSubnetARouteTableAssociation",
+   "type": "__declared__",
+   "refs": [
+    "rRosaVpcRouteTable",
+    "rRosaVpcSubnetA"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetRouteTableAssociation",
+    "name": "rRosaVpcSubnetARouteTableAssociation",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "SubnetId": {
+      "ref": "rRosaVpcSubnetA"
+     },
+     "RouteTableId": {
+      "ref": "rRosaVpcRouteTable"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetRouteTableAssociation.rRosaVpcSubnetBRouteTableAssociation",
+   "cfg": "rRosaVpcSubnetBRouteTableAssociation",
+   "type": "__declared__",
+   "refs": [
+    "rRosaVpcRouteTable",
+    "rRosaVpcSubnetB"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetRouteTableAssociation",
+    "name": "rRosaVpcSubnetBRouteTableAssociation",
+    "gated": true,
+    "gate": "cCreateSubnetB",
+    "properties": {
+     "SubnetId": {
+      "ref": "rRosaVpcSubnetB"
+     },
+     "RouteTableId": {
+      "ref": "rRosaVpcRouteTable"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetRouteTableAssociation.rRosaVpcSubnetCRouteTableAssociation",
+   "cfg": "rRosaVpcSubnetCRouteTableAssociation",
+   "type": "__declared__",
+   "refs": [
+    "rRosaVpcRouteTable",
+    "rRosaVpcSubnetC"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetRouteTableAssociation",
+    "name": "rRosaVpcSubnetCRouteTableAssociation",
+    "gated": true,
+    "gate": "cCreateSubnetC",
+    "properties": {
+     "SubnetId": {
+      "ref": "rRosaVpcSubnetC"
+     },
+     "RouteTableId": {
+      "ref": "rRosaVpcRouteTable"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Route.rRosaToTGWRoute",
+   "cfg": "rRosaToTGWRoute",
+   "type": "__declared__",
+   "refs": [
+    "rRosaVpcRouteTable",
+    "rTransitGateway"
+   ],
+   "values": {
+    "type": "AWS::EC2::Route",
+    "name": "rRosaToTGWRoute",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RouteTableId": {
+      "ref": "rRosaVpcRouteTable"
+     },
+     "DestinationCidrBlock": "0.0.0.0/0",
+     "TransitGatewayId": {
+      "ref": "rTransitGateway"
+     }
+    }
+   }
+  }
+ ]
+}

@@ -1,0 +1,838 @@
+package intent.cfn.row_038
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {
+  "rule": {
+   "types": [
+    "AWS::Events::Rule"
+   ],
+   "where": []
+  },
+  "cw": {
+   "types": [
+    "AWS::Events::Rule"
+   ],
+   "where": [
+    {
+     "path": [
+      "EventPattern"
+     ],
+     "op": "regex",
+     "value": "(?i)CloudWatch Alarm State Change|aws\\.cloudwatch"
+    }
+   ]
+  },
+  "cfn": {
+   "types": [
+    "AWS::Events::Rule"
+   ],
+   "where": [
+    {
+     "path": [
+      "EventPattern"
+     ],
+     "op": "regex",
+     "value": "(?i)cloudformation"
+    }
+   ]
+  },
+  "gd": {
+   "types": [
+    "AWS::Events::Rule"
+   ],
+   "where": [
+    {
+     "path": [
+      "EventPattern"
+     ],
+     "op": "regex",
+     "value": "(?i)guardduty"
+    }
+   ]
+  },
+  "slack": {
+   "types": [
+    "AWS::Events::Rule"
+   ],
+   "where": [
+    {
+     "path": [
+      "EventPattern"
+     ],
+     "op": "regex",
+     "value": "(?i)slack"
+    }
+   ]
+  },
+  "asg": {
+   "types": [
+    "AWS::Events::Rule"
+   ],
+   "where": [
+    {
+     "path": [
+      "EventPattern"
+     ],
+     "op": "regex",
+     "value": "(?i)autoscaling|Auto Scaling|EC2 Instance"
+    }
+   ]
+  },
+  "root": {
+   "types": [
+    "AWS::Events::Rule"
+   ],
+   "where": [
+    {
+     "path": [
+      "EventPattern"
+     ],
+     "op": "regex",
+     "value": "(?i)root"
+    }
+   ]
+  },
+  "iam": {
+   "types": [
+    "AWS::Events::Rule"
+   ],
+   "where": [
+    {
+     "path": [
+      "EventPattern"
+     ],
+     "op": "regex",
+     "value": "CreateAccessKey"
+    }
+   ]
+  },
+  "sso": {
+   "types": [
+    "AWS::Events::Rule"
+   ],
+   "where": [
+    {
+     "path": [
+      "EventPattern"
+     ],
+     "op": "regex",
+     "value": "CreatePermissionSet"
+    }
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "cw_bus",
+   "tier": "core",
+   "quote": "CloudWatch alarm state changes go to the CloudWatch-org-sink bus using role name PRX-CloudWatchOrgSinkRole",
+   "kind": "attr",
+   "select": "cw",
+   "cond": {
+    "path": [
+     "Targets",
+     "*",
+     "Arn"
+    ],
+    "op": "regex",
+    "value": "events:us-east-1:578003269847:event-bus/CloudWatch-org-sink$"
+   }
+  },
+  {
+   "id": "cw_role",
+   "tier": "core",
+   "quote": "CloudWatch alarm state changes go to the CloudWatch-org-sink bus using role name PRX-CloudWatchOrgSinkRole",
+   "kind": "attr",
+   "select": "cw",
+   "cond": {
+    "path": [
+     "Targets",
+     "*",
+     "RoleArn"
+    ],
+    "op": "regex",
+    "value": ":role/PRX-CloudWatchOrgSinkRole$"
+   }
+  },
+  {
+   "id": "cfn_bus",
+   "tier": "core",
+   "quote": "go to the CloudFormation-org-sink bus using role name PRX-CloudFormationOrgSinkRole",
+   "kind": "attr",
+   "select": "cfn",
+   "cond": {
+    "path": [
+     "Targets",
+     "*",
+     "Arn"
+    ],
+    "op": "regex",
+    "value": "events:us-east-1:578003269847:event-bus/CloudFormation-org-sink$"
+   }
+  },
+  {
+   "id": "cfn_role",
+   "tier": "core",
+   "quote": "go to the CloudFormation-org-sink bus using role name PRX-CloudFormationOrgSinkRole",
+   "kind": "attr",
+   "select": "cfn",
+   "cond": {
+    "path": [
+     "Targets",
+     "*",
+     "RoleArn"
+    ],
+    "op": "regex",
+    "value": ":role/PRX-CloudFormationOrgSinkRole$"
+   }
+  },
+  {
+   "id": "gd_bus",
+   "tier": "core",
+   "quote": "GuardDuty findings go to the GuardDuty-org-sink bus using role name PRX-GuardDutyOrgSinkRole",
+   "kind": "attr",
+   "select": "gd",
+   "cond": {
+    "path": [
+     "Targets",
+     "*",
+     "Arn"
+    ],
+    "op": "regex",
+    "value": "events:us-east-1:578003269847:event-bus/GuardDuty-org-sink$"
+   }
+  },
+  {
+   "id": "gd_role",
+   "tier": "core",
+   "quote": "GuardDuty findings go to the GuardDuty-org-sink bus using role name PRX-GuardDutyOrgSinkRole",
+   "kind": "attr",
+   "select": "gd",
+   "cond": {
+    "path": [
+     "Targets",
+     "*",
+     "RoleArn"
+    ],
+    "op": "regex",
+    "value": ":role/PRX-GuardDutyOrgSinkRole$"
+   }
+  },
+  {
+   "id": "slack_bus",
+   "tier": "core",
+   "quote": "Slack message relay payloads go to the Slack-org-sink bus using role name PRX-SlackOrgSinkRole",
+   "kind": "attr",
+   "select": "slack",
+   "cond": {
+    "path": [
+     "Targets",
+     "*",
+     "Arn"
+    ],
+    "op": "regex",
+    "value": "events:us-east-1:578003269847:event-bus/Slack-org-sink$"
+   }
+  },
+  {
+   "id": "slack_role",
+   "tier": "core",
+   "quote": "Slack message relay payloads go to the Slack-org-sink bus using role name PRX-SlackOrgSinkRole",
+   "kind": "attr",
+   "select": "slack",
+   "cond": {
+    "path": [
+     "Targets",
+     "*",
+     "RoleArn"
+    ],
+    "op": "regex",
+    "value": ":role/PRX-SlackOrgSinkRole$"
+   }
+  },
+  {
+   "id": "asg_bus",
+   "tier": "core",
+   "quote": "go to the AutoScaling-org-sink bus using role name PRX-AutoScalingOrgSinkRole",
+   "kind": "attr",
+   "select": "asg",
+   "cond": {
+    "path": [
+     "Targets",
+     "*",
+     "Arn"
+    ],
+    "op": "regex",
+    "value": "events:us-east-1:578003269847:event-bus/AutoScaling-org-sink$"
+   }
+  },
+  {
+   "id": "asg_role",
+   "tier": "core",
+   "quote": "go to the AutoScaling-org-sink bus using role name PRX-AutoScalingOrgSinkRole",
+   "kind": "attr",
+   "select": "asg",
+   "cond": {
+    "path": [
+     "Targets",
+     "*",
+     "RoleArn"
+    ],
+    "op": "regex",
+    "value": ":role/PRX-AutoScalingOrgSinkRole$"
+   }
+  },
+  {
+   "id": "root_bus",
+   "tier": "core",
+   "quote": "all targeting the CloudTrail-org-sink bus",
+   "kind": "attr",
+   "select": "root",
+   "cond": {
+    "path": [
+     "Targets",
+     "*",
+     "Arn"
+    ],
+    "op": "regex",
+    "value": "events:us-east-1:578003269847:event-bus/CloudTrail-org-sink$"
+   }
+  },
+  {
+   "id": "root_role",
+   "tier": "core",
+   "quote": "using role name PRX-CloudTrailOrgSinkRole",
+   "kind": "attr",
+   "select": "root",
+   "cond": {
+    "path": [
+     "Targets",
+     "*",
+     "RoleArn"
+    ],
+    "op": "regex",
+    "value": ":role/PRX-CloudTrailOrgSinkRole$"
+   }
+  },
+  {
+   "id": "iam_bus",
+   "tier": "core",
+   "quote": "all targeting the CloudTrail-org-sink bus",
+   "kind": "attr",
+   "select": "iam",
+   "cond": {
+    "path": [
+     "Targets",
+     "*",
+     "Arn"
+    ],
+    "op": "regex",
+    "value": "events:us-east-1:578003269847:event-bus/CloudTrail-org-sink$"
+   }
+  },
+  {
+   "id": "iam_role",
+   "tier": "core",
+   "quote": "using role name PRX-CloudTrailOrgSinkRole",
+   "kind": "attr",
+   "select": "iam",
+   "cond": {
+    "path": [
+     "Targets",
+     "*",
+     "RoleArn"
+    ],
+    "op": "regex",
+    "value": ":role/PRX-CloudTrailOrgSinkRole$"
+   }
+  },
+  {
+   "id": "sso_bus",
+   "tier": "core",
+   "quote": "all targeting the CloudTrail-org-sink bus",
+   "kind": "attr",
+   "select": "sso",
+   "cond": {
+    "path": [
+     "Targets",
+     "*",
+     "Arn"
+    ],
+    "op": "regex",
+    "value": "events:us-east-1:578003269847:event-bus/CloudTrail-org-sink$"
+   }
+  },
+  {
+   "id": "sso_role",
+   "tier": "core",
+   "quote": "using role name PRX-CloudTrailOrgSinkRole",
+   "kind": "attr",
+   "select": "sso",
+   "cond": {
+    "path": [
+     "Targets",
+     "*",
+     "RoleArn"
+    ],
+    "op": "regex",
+    "value": ":role/PRX-CloudTrailOrgSinkRole$"
+   }
+  },
+  {
+   "id": "trail_three_rules",
+   "tier": "core",
+   "quote": "CloudTrail activity needs three separate rules, all targeting the CloudTrail-org-sink bus using role name PRX-CloudTrailOrgSinkRole",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "AWS::Events::Rule"
+    ],
+    "where": [
+     {
+      "path": [
+       "Targets",
+       "*",
+       "Arn"
+      ],
+      "op": "regex",
+      "value": "event-bus/CloudTrail-org-sink$"
+     }
+    ]
+   },
+   "min": 3
+  },
+  {
+   "id": "cfn_detail_types",
+   "tier": "detail",
+   "quote": "covering the Resource Status Change, Stack Status Change, StackSet Status Change, and StackSet Operation Status Change detail-types",
+   "kind": "all_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "cfn",
+     "cond": {
+      "path": [
+       "EventPattern"
+      ],
+      "op": "contains",
+      "value": "Resource Status Change"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "cfn",
+     "cond": {
+      "path": [
+       "EventPattern"
+      ],
+      "op": "contains",
+      "value": "Stack Status Change"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "cfn",
+     "cond": {
+      "path": [
+       "EventPattern"
+      ],
+      "op": "contains",
+      "value": "StackSet Status Change"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "cfn",
+     "cond": {
+      "path": [
+       "EventPattern"
+      ],
+      "op": "contains",
+      "value": "StackSet Operation Status Change"
+     }
+    }
+   ]
+  },
+  {
+   "id": "asg_launch_terminate",
+   "tier": "detail",
+   "quote": "EC2 Instance Launch Successful, EC2 Instance Launch Unsuccessful, EC2 Instance Terminate Successful, and EC2 Instance Terminate Unsuccessful detail-types",
+   "kind": "all_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "asg",
+     "cond": {
+      "path": [
+       "EventPattern"
+      ],
+      "op": "contains",
+      "value": "EC2 Instance Launch Successful"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "asg",
+     "cond": {
+      "path": [
+       "EventPattern"
+      ],
+      "op": "contains",
+      "value": "EC2 Instance Launch Unsuccessful"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "asg",
+     "cond": {
+      "path": [
+       "EventPattern"
+      ],
+      "op": "contains",
+      "value": "EC2 Instance Terminate Successful"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "asg",
+     "cond": {
+      "path": [
+       "EventPattern"
+      ],
+      "op": "contains",
+      "value": "EC2 Instance Terminate Unsuccessful"
+     }
+    }
+   ]
+  },
+  {
+   "id": "asg_refresh",
+   "tier": "detail",
+   "quote": "EC2 Auto Scaling Instance Refresh Checkpoint Reached, Started, Succeeded, Failed, and Cancelled detail-types",
+   "kind": "all_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "asg",
+     "cond": {
+      "path": [
+       "EventPattern"
+      ],
+      "op": "contains",
+      "value": "Instance Refresh Checkpoint Reached"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "asg",
+     "cond": {
+      "path": [
+       "EventPattern"
+      ],
+      "op": "contains",
+      "value": "Instance Refresh Started"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "asg",
+     "cond": {
+      "path": [
+       "EventPattern"
+      ],
+      "op": "contains",
+      "value": "Instance Refresh Succeeded"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "asg",
+     "cond": {
+      "path": [
+       "EventPattern"
+      ],
+      "op": "contains",
+      "value": "Instance Refresh Failed"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "asg",
+     "cond": {
+      "path": [
+       "EventPattern"
+      ],
+      "op": "contains",
+      "value": "Instance Refresh Cancelled"
+     }
+    }
+   ]
+  },
+  {
+   "id": "root_api",
+   "tier": "detail",
+   "quote": "root user API calls and console sign-ins",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "root",
+     "cond": {
+      "path": [
+       "EventPattern"
+      ],
+      "op": "regex",
+      "value": "(?i)api call"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "root",
+     "cond": {
+      "path": [
+       "EventPattern"
+      ],
+      "op": "regex",
+      "value": "(?i)^[^-]*root[^-]*$"
+     }
+    }
+   ],
+   "justify": "API calls arrive as the AWS API Call via CloudTrail detail-type; a root pattern with no detail-type filter already matches them"
+  },
+  {
+   "id": "root_signin",
+   "tier": "detail",
+   "quote": "root user API calls and console sign-ins",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "root",
+     "cond": {
+      "path": [
+       "EventPattern"
+      ],
+      "op": "regex",
+      "value": "(?i)sign.?in|console"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "root",
+     "cond": {
+      "path": [
+       "EventPattern"
+      ],
+      "op": "regex",
+      "value": "(?i)^[^-]*root[^-]*$"
+     }
+    }
+   ],
+   "justify": "console sign-ins implies a sign-in event; a root pattern with no detail-type filter (no hyphen in the pattern) already matches them"
+  },
+  {
+   "id": "iam_events",
+   "tier": "detail",
+   "quote": "IAM CreateUser and CreateAccessKey calls",
+   "kind": "all_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "iam",
+     "cond": {
+      "path": [
+       "EventPattern"
+      ],
+      "op": "contains",
+      "value": "CreateUser"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "iam",
+     "cond": {
+      "path": [
+       "EventPattern"
+      ],
+      "op": "contains",
+      "value": "CreateAccessKey"
+     }
+    }
+   ]
+  },
+  {
+   "id": "sso_perm_events",
+   "tier": "detail",
+   "quote": "CreatePermissionSet, ProvisionPermissionSet, CreateTrustedTokenIssuer, PutInlinePolicyToPermissionSet, PutPermissionsBoundaryToPermissionSet, PutPermissionsPolicy, and UpdatePermissionSet",
+   "kind": "all_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "sso",
+     "cond": {
+      "path": [
+       "EventPattern"
+      ],
+      "op": "contains",
+      "value": "CreatePermissionSet"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "sso",
+     "cond": {
+      "path": [
+       "EventPattern"
+      ],
+      "op": "contains",
+      "value": "ProvisionPermissionSet"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "sso",
+     "cond": {
+      "path": [
+       "EventPattern"
+      ],
+      "op": "contains",
+      "value": "CreateTrustedTokenIssuer"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "sso",
+     "cond": {
+      "path": [
+       "EventPattern"
+      ],
+      "op": "contains",
+      "value": "PutInlinePolicyToPermissionSet"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "sso",
+     "cond": {
+      "path": [
+       "EventPattern"
+      ],
+      "op": "contains",
+      "value": "PutPermissionsBoundaryToPermissionSet"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "sso",
+     "cond": {
+      "path": [
+       "EventPattern"
+      ],
+      "op": "contains",
+      "value": "PutPermissionsPolicy"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "sso",
+     "cond": {
+      "path": [
+       "EventPattern"
+      ],
+      "op": "contains",
+      "value": "UpdatePermissionSet"
+     }
+    }
+   ]
+  },
+  {
+   "id": "sso_user_events",
+   "tier": "detail",
+   "quote": "CreateUser, EnableUser, AddMemberToGroup, UpdateUser, and UpdateGroup",
+   "kind": "all_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "sso",
+     "cond": {
+      "path": [
+       "EventPattern"
+      ],
+      "op": "contains",
+      "value": "CreateUser"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "sso",
+     "cond": {
+      "path": [
+       "EventPattern"
+      ],
+      "op": "contains",
+      "value": "EnableUser"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "sso",
+     "cond": {
+      "path": [
+       "EventPattern"
+      ],
+      "op": "contains",
+      "value": "AddMemberToGroup"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "sso",
+     "cond": {
+      "path": [
+       "EventPattern"
+      ],
+      "op": "contains",
+      "value": "UpdateUser"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "sso",
+     "cond": {
+      "path": [
+       "EventPattern"
+      ],
+      "op": "contains",
+      "value": "UpdateGroup"
+     }
+    }
+   ]
+  },
+  {
+   "id": "role_current_account",
+   "tier": "detail",
+   "quote": "with the role ARN built from the current account ID and partition",
+   "kind": "attr",
+   "select": "rule",
+   "cond": {
+    "path": [
+     "Targets",
+     "*",
+     "RoleArn"
+    ],
+    "op": "regex",
+    "value": "^arn:aws:iam::123456789012:role/"
+   },
+   "quantifier": "all",
+   "justify": "current account ID and partition resolve to the pseudo-parameter values 123456789012 and aws"
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

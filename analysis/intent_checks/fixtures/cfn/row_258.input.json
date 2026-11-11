@@ -1,0 +1,1361 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "sam_expanded",
+  "warnings": [],
+  "gt_hash": "da60af1f9a0c0d7f71b4793946c8e76582577d97e9ec7f93958f86219d9af1dd",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "DynamoDBTable",
+   "cfg": "DynamoDBTable",
+   "type": "AWS::DynamoDB::Table",
+   "values": {
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "short_id",
+      "AttributeType": "S"
+     }
+    ],
+    "KeySchema": [
+     {
+      "AttributeName": "short_id",
+      "KeyType": "HASH"
+     }
+    ],
+    "ProvisionedThroughput": {
+     "ReadCapacityUnits": "5",
+     "WriteCapacityUnits": "5"
+    },
+    "TableName": "url-shortener-table"
+   },
+   "refs": []
+  },
+  {
+   "id": "ApiGatewayCloudWatchLogsRole",
+   "cfg": "ApiGatewayCloudWatchLogsRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "apigateway.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Policies": [
+     {
+      "PolicyName": "ApiGatewayLogsPolicy",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:DescribeLogGroups",
+          "logs:DescribeLogStreams",
+          "logs:PutLogEvents",
+          "logs:GetLogEvents",
+          "logs:FilterLogEvents"
+         ],
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "IAMRole",
+   "cfg": "IAMRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "lambda-dynamodb-url-shortener-role"
+     },
+     {
+      "Key": "CreatedBy",
+      "Value": "<param:CreatedBy>"
+     },
+     {
+      "Key": "AccountNumber",
+      "Value": "<param:AccountNumber>"
+     },
+     {
+      "Key": "Service",
+      "Value": "<param:Service>"
+     },
+     {
+      "Key": "Environment",
+      "Value": "<param:Environment>"
+     },
+     {
+      "Key": "CreatedWith",
+      "Value": "<param:CreatedWith>"
+     },
+     {
+      "Key": "StackName",
+      "Value": "stack"
+     }
+    ],
+    "RoleName": "lambda-dynamodb-url-shortener-role",
+    "Policies": [
+     {
+      "PolicyName": "lambda-dynamodb-url-shortener",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "dynamodb:PutItem",
+          "dynamodb:DeleteItem",
+          "dynamodb:GetItem",
+          "dynamodb:Query",
+          "dynamodb:UpdateItem"
+         ],
+         "Resource": [
+          "arn:aws:dynamodb:us-east-1:123456789012:table/url-shortener-table"
+         ]
+        }
+       ]
+      }
+     }
+    ],
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       }
+      }
+     ]
+    },
+    "Path": "/",
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "apiGateway",
+   "cfg": "apiGateway",
+   "type": "AWS::ApiGateway::RestApi",
+   "values": {
+    "Description": "Example API Gateway",
+    "EndpointConfiguration": {
+     "Types": [
+      "REGIONAL"
+     ]
+    },
+    "Name": "url-shortener-api"
+   },
+   "refs": []
+  },
+  {
+   "id": "ApiGatewayAccount",
+   "cfg": "ApiGatewayAccount",
+   "type": "AWS::ApiGateway::Account",
+   "values": {
+    "CloudWatchRoleArn": {
+     "ref": "ApiGatewayCloudWatchLogsRole",
+     "attr": "Arn"
+    }
+   },
+   "refs": [
+    "ApiGatewayCloudWatchLogsRole"
+   ]
+  },
+  {
+   "id": "apiGatewayDeployment",
+   "cfg": "apiGatewayDeployment",
+   "type": "AWS::ApiGateway::Deployment",
+   "values": {
+    "RestApiId": {
+     "ref": "apiGateway"
+    },
+    "StageName": "test",
+    "__resource__": {
+     "DependsOn": [
+      "RequestPOST",
+      "RequestGET",
+      "RequestGet2"
+     ]
+    }
+   },
+   "refs": [
+    "apiGateway"
+   ]
+  },
+  {
+   "id": "LambdaPermission",
+   "cfg": "LambdaPermission",
+   "type": "AWS::Lambda::Permission",
+   "values": {
+    "Action": "lambda:invokeFunction",
+    "FunctionName": {
+     "ref": "LambdaFunctionCreate",
+     "attr": "Arn"
+    },
+    "Principal": "apigateway.amazonaws.com",
+    "SourceArn": "arn:aws:execute-api:us-east-1:123456789012:${apiGateway}/*"
+   },
+   "refs": [
+    "LambdaFunctionCreate",
+    "apiGateway"
+   ]
+  },
+  {
+   "id": "LambdaPermission2",
+   "cfg": "LambdaPermission2",
+   "type": "AWS::Lambda::Permission",
+   "values": {
+    "Action": "lambda:invokeFunction",
+    "FunctionName": {
+     "ref": "LambdaFunctionGet",
+     "attr": "Arn"
+    },
+    "Principal": "apigateway.amazonaws.com",
+    "SourceArn": "arn:aws:execute-api:us-east-1:123456789012:${apiGateway}/*"
+   },
+   "refs": [
+    "LambdaFunctionGet",
+    "apiGateway"
+   ]
+  },
+  {
+   "id": "ApiResource",
+   "cfg": "ApiResource",
+   "type": "AWS::ApiGateway::Resource",
+   "values": {
+    "RestApiId": {
+     "ref": "apiGateway"
+    },
+    "ParentId": {
+     "ref": "apiGateway",
+     "attr": "RootResourceId"
+    },
+    "PathPart": "create"
+   },
+   "refs": [
+    "apiGateway"
+   ]
+  },
+  {
+   "id": "ApiResourceGet",
+   "cfg": "ApiResourceGet",
+   "type": "AWS::ApiGateway::Resource",
+   "values": {
+    "RestApiId": {
+     "ref": "apiGateway"
+    },
+    "ParentId": {
+     "ref": "apiGateway",
+     "attr": "RootResourceId"
+    },
+    "PathPart": "admin"
+   },
+   "refs": [
+    "apiGateway"
+   ]
+  },
+  {
+   "id": "ApiResourceT",
+   "cfg": "ApiResourceT",
+   "type": "AWS::ApiGateway::Resource",
+   "values": {
+    "RestApiId": {
+     "ref": "apiGateway"
+    },
+    "ParentId": {
+     "ref": "apiGateway",
+     "attr": "RootResourceId"
+    },
+    "PathPart": "t"
+   },
+   "refs": [
+    "apiGateway"
+   ]
+  },
+  {
+   "id": "ApiResourceProxy",
+   "cfg": "ApiResourceProxy",
+   "type": "AWS::ApiGateway::Resource",
+   "values": {
+    "RestApiId": {
+     "ref": "apiGateway"
+    },
+    "ParentId": {
+     "ref": "ApiResourceT"
+    },
+    "PathPart": "{shortid}"
+   },
+   "refs": [
+    "ApiResourceT",
+    "apiGateway"
+   ]
+  },
+  {
+   "id": "RequestGET",
+   "cfg": "RequestGET",
+   "type": "AWS::ApiGateway::Method",
+   "values": {
+    "ApiKeyRequired": false,
+    "AuthorizationType": "NONE",
+    "HttpMethod": "GET",
+    "Integration": {
+     "Type": "MOCK",
+     "IntegrationHttpMethod": "GET",
+     "RequestTemplates": {
+      "application/json": "{'statusCode': 200}\n"
+     },
+     "IntegrationResponses": [
+      {
+       "StatusCode": 200,
+       "ResponseTemplates": {
+        "text/html": "<!DOCTYPE html>\n<html>\n<head>\n    <title>URL Shortener Admin Page</title>\n    <script src=\"https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js\"></script>\n</head>\n<body>\n    <h1>URL Shortener Admin</h1>\n    <form id=\"url-form\">\n        <label for=\"long-url\">Long URL:</label><br>\n        <input type=\"text\" id=\"long-url\" name=\"long-url\"><br>\n        <input type=\"submit\" value=\"Submit\">\n    </form>\n    <p id=\"result\"></p>\n\n    <script>\n    $(document).ready(function(){\n        $(\"#url-form\").on(\"submit\", function(event) {\n            event.preventDefault();\n            var longUrl = $(\"#long-url\").val();\n            $.ajax({\n                type: \"POST\",\n                url: \"CHANGE-WITH-YOUR-API-URL\",\n                data: JSON.stringify({ \"long_url\": longUrl }),\n                contentType: \"application/json; charset=utf-8\",\n                dataType: \"json\",\n                success: function(data){\n                    $(\"#result\").html('Short URL: <a href=\"' + data.short_id + '\">' + data.short_id + '</a>');\n                },\n                error: function(errMsg) {\n                    console.log(errMsg)\n                    alert(\"Error: \" + errMsg.responseText);\n                }\n            });\n        });\n    });\n    </script>\n</body>\n</html>\n"
+       }
+      }
+     ],
+     "PassthroughBehavior": "WHEN_NO_TEMPLATES"
+    },
+    "ResourceId": {
+     "ref": "ApiResourceGet"
+    },
+    "RestApiId": {
+     "ref": "apiGateway"
+    },
+    "MethodResponses": [
+     {
+      "StatusCode": 200,
+      "ResponseModels": {
+       "text/html": "Empty"
+      }
+     }
+    ],
+    "__resource__": {
+     "DependsOn": [
+      "IAMRole"
+     ]
+    }
+   },
+   "refs": [
+    "ApiResourceGet",
+    "apiGateway"
+   ]
+  },
+  {
+   "id": "RequestPOST",
+   "cfg": "RequestPOST",
+   "type": "AWS::ApiGateway::Method",
+   "values": {
+    "ApiKeyRequired": false,
+    "AuthorizationType": "NONE",
+    "HttpMethod": "POST",
+    "Integration": {
+     "Type": "AWS_PROXY",
+     "IntegrationHttpMethod": "POST",
+     "Uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/${LambdaFunctionCreate.Arn}/invocations",
+     "IntegrationResponses": [
+      {
+       "ResponseTemplates": {
+        "application/json": ""
+       },
+       "StatusCode": 200
+      }
+     ],
+     "PassthroughBehavior": "WHEN_NO_TEMPLATES"
+    },
+    "ResourceId": {
+     "ref": "ApiResource"
+    },
+    "RestApiId": {
+     "ref": "apiGateway"
+    },
+    "MethodResponses": [
+     {
+      "StatusCode": 200
+     }
+    ],
+    "__resource__": {
+     "DependsOn": [
+      "IAMRole"
+     ]
+    }
+   },
+   "refs": [
+    "ApiResource",
+    "LambdaFunctionCreate",
+    "apiGateway"
+   ]
+  },
+  {
+   "id": "RequestGet2",
+   "cfg": "RequestGet2",
+   "type": "AWS::ApiGateway::Method",
+   "values": {
+    "ApiKeyRequired": false,
+    "AuthorizationType": "NONE",
+    "HttpMethod": "GET",
+    "Integration": {
+     "Type": "AWS",
+     "IntegrationHttpMethod": "POST",
+     "Uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/${LambdaFunctionGet.Arn}/invocations",
+     "RequestTemplates": {
+      "application/json": "{\n    \"short_id\": \"$input.params('shortid')\"\n}\n"
+     },
+     "IntegrationResponses": [
+      {
+       "StatusCode": 301,
+       "ResponseParameters": {
+        "method.response.header.Location": "integration.response.body.location"
+       }
+      }
+     ],
+     "PassthroughBehavior": "NEVER"
+    },
+    "RequestParameters": {
+     "method.request.path.proxy": true
+    },
+    "ResourceId": {
+     "ref": "ApiResourceProxy"
+    },
+    "RestApiId": {
+     "ref": "apiGateway"
+    },
+    "MethodResponses": [
+     {
+      "StatusCode": 301,
+      "ResponseParameters": {
+       "method.response.header.Location": true
+      }
+     }
+    ],
+    "__resource__": {
+     "DependsOn": [
+      "IAMRole"
+     ]
+    }
+   },
+   "refs": [
+    "ApiResourceProxy",
+    "LambdaFunctionGet",
+    "apiGateway"
+   ]
+  },
+  {
+   "id": "LambdaFunctionCreate",
+   "cfg": "LambdaFunctionCreate",
+   "type": "AWS::Lambda::Function",
+   "values": {
+    "Code": {
+     "ZipFile": "import os\nimport json\nimport boto3\nfrom string import ascii_letters, digits\nfrom random import choice, randint\nfrom time import strftime, time\nfrom urllib import parse\n\napp_url = os.getenv('APP_URL') #The app_url will be your domain name, as this will be returned to the client with the short id\nmin_char = int(os.getenv('MIN_CHAR')) #min number of characters in short url unique string\nmax_char = int(os.getenv('MAX_CHAR')) #max number of characters in short url unique string\nstring_format = ascii_letters + digits\n\nddb = boto3.resource('dynamodb', region_name = 'us-west-2').Table('url-shortener-table') #Set region and Dynamo DB table\n\ndef generate_timestamp():\n    response = strftime(\"%Y-%m-%dT%H:%M:%S\")\n    return response\n\ndef expiry_date():\n    response = int(time()) + int(604800) #generate expiration date for the url based on the timestamp\n    return response\n\ndef check_id(short_id):\n    if 'Item' in ddb.get_item(Key={'short_id': short_id}):\n        response = generate_id()\n    else:\n        return short_id\n\ndef generate_id():\n    short_id = \"\".join(choice(string_format) for x in range(randint(min_char, max_char))) #generate unique value for the short url\n    print(short_id)\n    response = check_id(short_id)\n    return response\n\ndef handler(event, context):\n    analytics = {}\n    print(event)\n    short_id = generate_id()\n    short_url = app_url + short_id\n    long_url = json.loads(event.get('body')).get('long_url')\n    timestamp = generate_timestamp()\n    ttl_value = expiry_date()\n\n    analytics['user_agent'] = event.get('headers').get('User-Agent')\n    analytics['source_ip'] = event.get('headers').get('X-Forwarded-For')\n    analytics['xray_trace_id'] = event.get('headers').get('X-Amzn-Trace-Id')\n\n    if len(parse.urlsplit(long_url).query) > 0:\n        url_params = dict(parse.parse_qsl(parse.urlsplit(long_url).query))\n        for k in url_params:\n            analytics[k] = url_params[k]\n\n    #put value in dynamodb table\n    response = ddb.put_item(\n        Item={\n            'short_id': short_id,\n            'created_at': timestamp,\n            'ttl': int(ttl_value),\n            'short_url': short_url,\n            'long_url': long_url,\n            'analytics': analytics,\n            'hits': int(0)\n        }\n    )\n    body_new = '{\"short_id\":\"' +short_url+'\",\"long_url\":\"'+long_url+'\"}'\n    return {\"statusCode\": 200,\"body\": body_new} #return the body with long and short url\n"
+    },
+    "Description": "url-shortener-create-function",
+    "FunctionName": "url-shortener-create",
+    "Handler": "index.handler",
+    "Role": {
+     "ref": "IAMRole",
+     "attr": "Arn"
+    },
+    "Runtime": "python3.9",
+    "Timeout": 60,
+    "Environment": {
+     "Variables": {
+      "APP_URL": "YOUR-URL/t/",
+      "MIN_CHAR": 12,
+      "MAX_CHAR": 16
+     }
+    },
+    "Tags": [
+     {
+      "Key": "lambda:createdBy",
+      "Value": "SAM"
+     },
+     {
+      "Key": "Name",
+      "Value": "url-shortener-create"
+     },
+     {
+      "Key": "CreatedBy",
+      "Value": "<param:CreatedBy>"
+     },
+     {
+      "Key": "AccountNumber",
+      "Value": "<param:AccountNumber>"
+     },
+     {
+      "Key": "Service",
+      "Value": "<param:Service>"
+     },
+     {
+      "Key": "Environment",
+      "Value": "<param:Environment>"
+     },
+     {
+      "Key": "CreatedWith",
+      "Value": "<param:CreatedWith>"
+     },
+     {
+      "Key": "StackName",
+      "Value": "stack"
+     }
+    ]
+   },
+   "refs": [
+    "IAMRole"
+   ]
+  },
+  {
+   "id": "LambdaFunctionGet",
+   "cfg": "LambdaFunctionGet",
+   "type": "AWS::Lambda::Function",
+   "values": {
+    "Code": {
+     "ZipFile": "import os\nimport json\nimport boto3\n\nddb = boto3.resource('dynamodb', region_name = 'us-west-2').Table('url-shortener-table')\n\ndef handler(event, context):\n    short_id = event.get('short_id')\n    print(short_id)\n    print(event)\n\n    try:\n        item = ddb.get_item(Key={'short_id': short_id}) #look up the take the short id value in dynamo\n        print(item)\n        long_url = item.get('Item').get('long_url') #take the long_url value corresponding to the short id\n        print(long_url)\n        # increase the hit number on the db entry of the url (analytics?)\n        ddb.update_item(\n            Key={'short_id': short_id},\n            UpdateExpression='set hits = hits + :val',\n            ExpressionAttributeValues={':val': 1}\n        )\n\n    except:\n        return {\n            'statusCode': 301,\n            'location': 'https://objects.ruanbekker.com/assets/images/404-blue.jpg'\n        }\n\n    #return long_url and the redirection http status code 301\n    return {\n        \"statusCode\": 301,\n        \"location\": long_url\n    }\n"
+    },
+    "Description": "url-shortener-retrieve-function",
+    "FunctionName": "url-shortener-retrieve",
+    "Handler": "index.handler",
+    "Role": {
+     "ref": "IAMRole",
+     "attr": "Arn"
+    },
+    "Runtime": "python3.9",
+    "Timeout": 60,
+    "Tags": [
+     {
+      "Key": "lambda:createdBy",
+      "Value": "SAM"
+     },
+     {
+      "Key": "Name",
+      "Value": "url-shortener-retrieve"
+     },
+     {
+      "Key": "CreatedBy",
+      "Value": "<param:CreatedBy>"
+     },
+     {
+      "Key": "AccountNumber",
+      "Value": "<param:AccountNumber>"
+     },
+     {
+      "Key": "Service",
+      "Value": "<param:Service>"
+     },
+     {
+      "Key": "Environment",
+      "Value": "<param:Environment>"
+     },
+     {
+      "Key": "CreatedWith",
+      "Value": "<param:CreatedWith>"
+     },
+     {
+      "Key": "StackName",
+      "Value": "stack"
+     }
+    ]
+   },
+   "refs": [
+    "IAMRole"
+   ]
+  },
+  {
+   "id": "__parameter__.Environment",
+   "cfg": "__parameter__.Environment",
+   "type": "__parameter__",
+   "values": {
+    "name": "Environment",
+    "type": "String",
+    "default": null,
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.Service",
+   "cfg": "__parameter__.Service",
+   "type": "__parameter__",
+   "values": {
+    "name": "Service",
+    "type": "String",
+    "default": null,
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.CreatedBy",
+   "cfg": "__parameter__.CreatedBy",
+   "type": "__parameter__",
+   "values": {
+    "name": "CreatedBy",
+    "type": "String",
+    "default": null,
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.AccountNumber",
+   "cfg": "__parameter__.AccountNumber",
+   "type": "__parameter__",
+   "values": {
+    "name": "AccountNumber",
+    "type": "String",
+    "default": null,
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.CreatedWith",
+   "cfg": "__parameter__.CreatedWith",
+   "type": "__parameter__",
+   "values": {
+    "name": "CreatedWith",
+    "type": "String",
+    "default": null,
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.AWSLambdaBasicExecutionRolePolicy",
+   "cfg": "__parameter__.AWSLambdaBasicExecutionRolePolicy",
+   "type": "__parameter__",
+   "values": {
+    "name": "AWSLambdaBasicExecutionRolePolicy",
+    "type": "String",
+    "default": "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.TableName",
+   "cfg": "__parameter__.TableName",
+   "type": "__parameter__",
+   "values": {
+    "name": "TableName",
+    "type": "String",
+    "default": "url-shortener-table",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.Runtime",
+   "cfg": "__parameter__.Runtime",
+   "type": "__parameter__",
+   "values": {
+    "name": "Runtime",
+    "type": "String",
+    "default": "python3.9",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.FunctionName",
+   "cfg": "__parameter__.FunctionName",
+   "type": "__parameter__",
+   "values": {
+    "name": "FunctionName",
+    "type": "String",
+    "default": "url-shortener",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__declared__.AWS::DynamoDB::Table.DynamoDBTable",
+   "cfg": "DynamoDBTable",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::DynamoDB::Table",
+    "name": "DynamoDBTable",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AttributeDefinitions": [
+      {
+       "AttributeName": "short_id",
+       "AttributeType": "S"
+      }
+     ],
+     "KeySchema": [
+      {
+       "AttributeName": "short_id",
+       "KeyType": "HASH"
+      }
+     ],
+     "ProvisionedThroughput": {
+      "ReadCapacityUnits": "5",
+      "WriteCapacityUnits": "5"
+     },
+     "TableName": "url-shortener-table"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.ApiGatewayCloudWatchLogsRole",
+   "cfg": "ApiGatewayCloudWatchLogsRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "ApiGatewayCloudWatchLogsRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "apigateway.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Policies": [
+      {
+       "PolicyName": "ApiGatewayLogsPolicy",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "logs:CreateLogGroup",
+           "logs:CreateLogStream",
+           "logs:DescribeLogGroups",
+           "logs:DescribeLogStreams",
+           "logs:PutLogEvents",
+           "logs:GetLogEvents",
+           "logs:FilterLogEvents"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.IAMRole",
+   "cfg": "IAMRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "IAMRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "lambda-dynamodb-url-shortener-role"
+      },
+      {
+       "Key": "CreatedBy",
+       "Value": "<param:CreatedBy>"
+      },
+      {
+       "Key": "AccountNumber",
+       "Value": "<param:AccountNumber>"
+      },
+      {
+       "Key": "Service",
+       "Value": "<param:Service>"
+      },
+      {
+       "Key": "Environment",
+       "Value": "<param:Environment>"
+      },
+      {
+       "Key": "CreatedWith",
+       "Value": "<param:CreatedWith>"
+      },
+      {
+       "Key": "StackName",
+       "Value": "stack"
+      }
+     ],
+     "RoleName": "lambda-dynamodb-url-shortener-role",
+     "Policies": [
+      {
+       "PolicyName": "lambda-dynamodb-url-shortener",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "dynamodb:PutItem",
+           "dynamodb:DeleteItem",
+           "dynamodb:GetItem",
+           "dynamodb:Query",
+           "dynamodb:UpdateItem"
+          ],
+          "Resource": [
+           "arn:aws:dynamodb:us-east-1:123456789012:table/url-shortener-table"
+          ]
+         }
+        ]
+       }
+      }
+     ],
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        }
+       }
+      ]
+     },
+     "Path": "/",
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::RestApi.apiGateway",
+   "cfg": "apiGateway",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::ApiGateway::RestApi",
+    "name": "apiGateway",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Description": "Example API Gateway",
+     "EndpointConfiguration": {
+      "Types": [
+       "REGIONAL"
+      ]
+     },
+     "Name": "url-shortener-api"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::Account.ApiGatewayAccount",
+   "cfg": "ApiGatewayAccount",
+   "type": "__declared__",
+   "refs": [
+    "ApiGatewayCloudWatchLogsRole"
+   ],
+   "values": {
+    "type": "AWS::ApiGateway::Account",
+    "name": "ApiGatewayAccount",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "CloudWatchRoleArn": {
+      "ref": "ApiGatewayCloudWatchLogsRole",
+      "attr": "Arn"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::Deployment.apiGatewayDeployment",
+   "cfg": "apiGatewayDeployment",
+   "type": "__declared__",
+   "refs": [
+    "apiGateway"
+   ],
+   "values": {
+    "type": "AWS::ApiGateway::Deployment",
+    "name": "apiGatewayDeployment",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RestApiId": {
+      "ref": "apiGateway"
+     },
+     "StageName": "test"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Permission.LambdaPermission",
+   "cfg": "LambdaPermission",
+   "type": "__declared__",
+   "refs": [
+    "LambdaFunctionCreate",
+    "apiGateway"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Permission",
+    "name": "LambdaPermission",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Action": "lambda:invokeFunction",
+     "FunctionName": {
+      "ref": "LambdaFunctionCreate",
+      "attr": "Arn"
+     },
+     "Principal": "apigateway.amazonaws.com",
+     "SourceArn": "arn:aws:execute-api:us-east-1:123456789012:${apiGateway}/*"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Permission.LambdaPermission2",
+   "cfg": "LambdaPermission2",
+   "type": "__declared__",
+   "refs": [
+    "LambdaFunctionGet",
+    "apiGateway"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Permission",
+    "name": "LambdaPermission2",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Action": "lambda:invokeFunction",
+     "FunctionName": {
+      "ref": "LambdaFunctionGet",
+      "attr": "Arn"
+     },
+     "Principal": "apigateway.amazonaws.com",
+     "SourceArn": "arn:aws:execute-api:us-east-1:123456789012:${apiGateway}/*"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::Resource.ApiResource",
+   "cfg": "ApiResource",
+   "type": "__declared__",
+   "refs": [
+    "apiGateway"
+   ],
+   "values": {
+    "type": "AWS::ApiGateway::Resource",
+    "name": "ApiResource",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RestApiId": {
+      "ref": "apiGateway"
+     },
+     "ParentId": {
+      "ref": "apiGateway",
+      "attr": "RootResourceId"
+     },
+     "PathPart": "create"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::Resource.ApiResourceGet",
+   "cfg": "ApiResourceGet",
+   "type": "__declared__",
+   "refs": [
+    "apiGateway"
+   ],
+   "values": {
+    "type": "AWS::ApiGateway::Resource",
+    "name": "ApiResourceGet",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RestApiId": {
+      "ref": "apiGateway"
+     },
+     "ParentId": {
+      "ref": "apiGateway",
+      "attr": "RootResourceId"
+     },
+     "PathPart": "admin"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::Resource.ApiResourceT",
+   "cfg": "ApiResourceT",
+   "type": "__declared__",
+   "refs": [
+    "apiGateway"
+   ],
+   "values": {
+    "type": "AWS::ApiGateway::Resource",
+    "name": "ApiResourceT",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RestApiId": {
+      "ref": "apiGateway"
+     },
+     "ParentId": {
+      "ref": "apiGateway",
+      "attr": "RootResourceId"
+     },
+     "PathPart": "t"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::Resource.ApiResourceProxy",
+   "cfg": "ApiResourceProxy",
+   "type": "__declared__",
+   "refs": [
+    "ApiResourceT",
+    "apiGateway"
+   ],
+   "values": {
+    "type": "AWS::ApiGateway::Resource",
+    "name": "ApiResourceProxy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RestApiId": {
+      "ref": "apiGateway"
+     },
+     "ParentId": {
+      "ref": "ApiResourceT"
+     },
+     "PathPart": "{shortid}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::Method.RequestGET",
+   "cfg": "RequestGET",
+   "type": "__declared__",
+   "refs": [
+    "ApiResourceGet",
+    "apiGateway"
+   ],
+   "values": {
+    "type": "AWS::ApiGateway::Method",
+    "name": "RequestGET",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiKeyRequired": false,
+     "AuthorizationType": "NONE",
+     "HttpMethod": "GET",
+     "Integration": {
+      "Type": "MOCK",
+      "IntegrationHttpMethod": "GET",
+      "RequestTemplates": {
+       "application/json": "{'statusCode': 200}\n"
+      },
+      "IntegrationResponses": [
+       {
+        "StatusCode": 200,
+        "ResponseTemplates": {
+         "text/html": "<!DOCTYPE html>\n<html>\n<head>\n    <title>URL Shortener Admin Page</title>\n    <script src=\"https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js\"></script>\n</head>\n<body>\n    <h1>URL Shortener Admin</h1>\n    <form id=\"url-form\">\n        <label for=\"long-url\">Long URL:</label><br>\n        <input type=\"text\" id=\"long-url\" name=\"long-url\"><br>\n        <input type=\"submit\" value=\"Submit\">\n    </form>\n    <p id=\"result\"></p>\n\n    <script>\n    $(document).ready(function(){\n        $(\"#url-form\").on(\"submit\", function(event) {\n            event.preventDefault();\n            var longUrl = $(\"#long-url\").val();\n            $.ajax({\n                type: \"POST\",\n                url: \"CHANGE-WITH-YOUR-API-URL\",\n                data: JSON.stringify({ \"long_url\": longUrl }),\n                contentType: \"application/json; charset=utf-8\",\n                dataType: \"json\",\n                success: function(data){\n                    $(\"#result\").html('Short URL: <a href=\"' + data.short_id + '\">' + data.short_id + '</a>');\n                },\n                error: function(errMsg) {\n                    console.log(errMsg)\n                    alert(\"Error: \" + errMsg.responseText);\n                }\n            });\n        });\n    });\n    </script>\n</body>\n</html>\n"
+        }
+       }
+      ],
+      "PassthroughBehavior": "WHEN_NO_TEMPLATES"
+     },
+     "ResourceId": {
+      "ref": "ApiResourceGet"
+     },
+     "RestApiId": {
+      "ref": "apiGateway"
+     },
+     "MethodResponses": [
+      {
+       "StatusCode": 200,
+       "ResponseModels": {
+        "text/html": "Empty"
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::Method.RequestPOST",
+   "cfg": "RequestPOST",
+   "type": "__declared__",
+   "refs": [
+    "ApiResource",
+    "LambdaFunctionCreate",
+    "apiGateway"
+   ],
+   "values": {
+    "type": "AWS::ApiGateway::Method",
+    "name": "RequestPOST",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiKeyRequired": false,
+     "AuthorizationType": "NONE",
+     "HttpMethod": "POST",
+     "Integration": {
+      "Type": "AWS_PROXY",
+      "IntegrationHttpMethod": "POST",
+      "Uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/${LambdaFunctionCreate.Arn}/invocations",
+      "IntegrationResponses": [
+       {
+        "ResponseTemplates": {
+         "application/json": ""
+        },
+        "StatusCode": 200
+       }
+      ],
+      "PassthroughBehavior": "WHEN_NO_TEMPLATES"
+     },
+     "ResourceId": {
+      "ref": "ApiResource"
+     },
+     "RestApiId": {
+      "ref": "apiGateway"
+     },
+     "MethodResponses": [
+      {
+       "StatusCode": 200
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::Method.RequestGet2",
+   "cfg": "RequestGet2",
+   "type": "__declared__",
+   "refs": [
+    "ApiResourceProxy",
+    "LambdaFunctionGet",
+    "apiGateway"
+   ],
+   "values": {
+    "type": "AWS::ApiGateway::Method",
+    "name": "RequestGet2",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiKeyRequired": false,
+     "AuthorizationType": "NONE",
+     "HttpMethod": "GET",
+     "Integration": {
+      "Type": "AWS",
+      "IntegrationHttpMethod": "POST",
+      "Uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/${LambdaFunctionGet.Arn}/invocations",
+      "RequestTemplates": {
+       "application/json": "{\n    \"short_id\": \"$input.params('shortid')\"\n}\n"
+      },
+      "IntegrationResponses": [
+       {
+        "StatusCode": 301,
+        "ResponseParameters": {
+         "method.response.header.Location": "integration.response.body.location"
+        }
+       }
+      ],
+      "PassthroughBehavior": "NEVER"
+     },
+     "RequestParameters": {
+      "method.request.path.proxy": true
+     },
+     "ResourceId": {
+      "ref": "ApiResourceProxy"
+     },
+     "RestApiId": {
+      "ref": "apiGateway"
+     },
+     "MethodResponses": [
+      {
+       "StatusCode": 301,
+       "ResponseParameters": {
+        "method.response.header.Location": true
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Function.LambdaFunctionCreate",
+   "cfg": "LambdaFunctionCreate",
+   "type": "__declared__",
+   "refs": [
+    "IAMRole"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Function",
+    "name": "LambdaFunctionCreate",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Code": {
+      "ZipFile": "import os\nimport json\nimport boto3\nfrom string import ascii_letters, digits\nfrom random import choice, randint\nfrom time import strftime, time\nfrom urllib import parse\n\napp_url = os.getenv('APP_URL') #The app_url will be your domain name, as this will be returned to the client with the short id\nmin_char = int(os.getenv('MIN_CHAR')) #min number of characters in short url unique string\nmax_char = int(os.getenv('MAX_CHAR')) #max number of characters in short url unique string\nstring_format = ascii_letters + digits\n\nddb = boto3.resource('dynamodb', region_name = 'us-west-2').Table('url-shortener-table') #Set region and Dynamo DB table\n\ndef generate_timestamp():\n    response = strftime(\"%Y-%m-%dT%H:%M:%S\")\n    return response\n\ndef expiry_date():\n    response = int(time()) + int(604800) #generate expiration date for the url based on the timestamp\n    return response\n\ndef check_id(short_id):\n    if 'Item' in ddb.get_item(Key={'short_id': short_id}):\n        response = generate_id()\n    else:\n        return short_id\n\ndef generate_id():\n    short_id = \"\".join(choice(string_format) for x in range(randint(min_char, max_char))) #generate unique value for the short url\n    print(short_id)\n    response = check_id(short_id)\n    return response\n\ndef handler(event, context):\n    analytics = {}\n    print(event)\n    short_id = generate_id()\n    short_url = app_url + short_id\n    long_url = json.loads(event.get('body')).get('long_url')\n    timestamp = generate_timestamp()\n    ttl_value = expiry_date()\n\n    analytics['user_agent'] = event.get('headers').get('User-Agent')\n    analytics['source_ip'] = event.get('headers').get('X-Forwarded-For')\n    analytics['xray_trace_id'] = event.get('headers').get('X-Amzn-Trace-Id')\n\n    if len(parse.urlsplit(long_url).query) > 0:\n        url_params = dict(parse.parse_qsl(parse.urlsplit(long_url).query))\n        for k in url_params:\n            analytics[k] = url_params[k]\n\n    #put value in dynamodb table\n    response = ddb.put_item(\n        Item={\n            'short_id': short_id,\n            'created_at': timestamp,\n            'ttl': int(ttl_value),\n            'short_url': short_url,\n            'long_url': long_url,\n            'analytics': analytics,\n            'hits': int(0)\n        }\n    )\n    body_new = '{\"short_id\":\"' +short_url+'\",\"long_url\":\"'+long_url+'\"}'\n    return {\"statusCode\": 200,\"body\": body_new} #return the body with long and short url\n"
+     },
+     "Description": "url-shortener-create-function",
+     "FunctionName": "url-shortener-create",
+     "Handler": "index.handler",
+     "Role": {
+      "ref": "IAMRole",
+      "attr": "Arn"
+     },
+     "Runtime": "python3.9",
+     "Timeout": 60,
+     "Environment": {
+      "Variables": {
+       "APP_URL": "YOUR-URL/t/",
+       "MIN_CHAR": 12,
+       "MAX_CHAR": 16
+      }
+     },
+     "Tags": [
+      {
+       "Key": "lambda:createdBy",
+       "Value": "SAM"
+      },
+      {
+       "Key": "Name",
+       "Value": "url-shortener-create"
+      },
+      {
+       "Key": "CreatedBy",
+       "Value": "<param:CreatedBy>"
+      },
+      {
+       "Key": "AccountNumber",
+       "Value": "<param:AccountNumber>"
+      },
+      {
+       "Key": "Service",
+       "Value": "<param:Service>"
+      },
+      {
+       "Key": "Environment",
+       "Value": "<param:Environment>"
+      },
+      {
+       "Key": "CreatedWith",
+       "Value": "<param:CreatedWith>"
+      },
+      {
+       "Key": "StackName",
+       "Value": "stack"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Function.LambdaFunctionGet",
+   "cfg": "LambdaFunctionGet",
+   "type": "__declared__",
+   "refs": [
+    "IAMRole"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Function",
+    "name": "LambdaFunctionGet",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Code": {
+      "ZipFile": "import os\nimport json\nimport boto3\n\nddb = boto3.resource('dynamodb', region_name = 'us-west-2').Table('url-shortener-table')\n\ndef handler(event, context):\n    short_id = event.get('short_id')\n    print(short_id)\n    print(event)\n\n    try:\n        item = ddb.get_item(Key={'short_id': short_id}) #look up the take the short id value in dynamo\n        print(item)\n        long_url = item.get('Item').get('long_url') #take the long_url value corresponding to the short id\n        print(long_url)\n        # increase the hit number on the db entry of the url (analytics?)\n        ddb.update_item(\n            Key={'short_id': short_id},\n            UpdateExpression='set hits = hits + :val',\n            ExpressionAttributeValues={':val': 1}\n        )\n\n    except:\n        return {\n            'statusCode': 301,\n            'location': 'https://objects.ruanbekker.com/assets/images/404-blue.jpg'\n        }\n\n    #return long_url and the redirection http status code 301\n    return {\n        \"statusCode\": 301,\n        \"location\": long_url\n    }\n"
+     },
+     "Description": "url-shortener-retrieve-function",
+     "FunctionName": "url-shortener-retrieve",
+     "Handler": "index.handler",
+     "Role": {
+      "ref": "IAMRole",
+      "attr": "Arn"
+     },
+     "Runtime": "python3.9",
+     "Timeout": 60,
+     "Tags": [
+      {
+       "Key": "lambda:createdBy",
+       "Value": "SAM"
+      },
+      {
+       "Key": "Name",
+       "Value": "url-shortener-retrieve"
+      },
+      {
+       "Key": "CreatedBy",
+       "Value": "<param:CreatedBy>"
+      },
+      {
+       "Key": "AccountNumber",
+       "Value": "<param:AccountNumber>"
+      },
+      {
+       "Key": "Service",
+       "Value": "<param:Service>"
+      },
+      {
+       "Key": "Environment",
+       "Value": "<param:Environment>"
+      },
+      {
+       "Key": "CreatedWith",
+       "Value": "<param:CreatedWith>"
+      },
+      {
+       "Key": "StackName",
+       "Value": "stack"
+      }
+     ]
+    }
+   }
+  }
+ ]
+}

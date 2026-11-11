@@ -1,0 +1,1921 @@
+package intent.tf.row_362
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {
+  "vpc": {
+   "types": [
+    "aws_vpc"
+   ],
+   "where": [
+    {
+     "path": [
+      "cidr_block"
+     ],
+     "op": "eq",
+     "value": "192.168.0.0/16"
+    }
+   ]
+  },
+  "priv": {
+   "types": [
+    "aws_subnet"
+   ],
+   "where": [
+    {
+     "path": [
+      "cidr_block"
+     ],
+     "op": "eq",
+     "value": "192.168.0.0/24"
+    }
+   ]
+  },
+  "pub": {
+   "types": [
+    "aws_subnet"
+   ],
+   "where": [
+    {
+     "path": [
+      "cidr_block"
+     ],
+     "op": "eq",
+     "value": "192.168.10.0/24"
+    }
+   ]
+  },
+  "ce": {
+   "types": [
+    "aws_batch_compute_environment"
+   ],
+   "where": []
+  },
+  "queue": {
+   "types": [
+    "aws_batch_job_queue"
+   ],
+   "where": []
+  },
+  "nat": {
+   "types": [
+    "aws_nat_gateway"
+   ],
+   "where": []
+  },
+  "eip": {
+   "types": [
+    "aws_eip"
+   ],
+   "where": []
+  },
+  "igw": {
+   "types": [
+    "aws_internet_gateway"
+   ],
+   "where": []
+  },
+  "bucket": {
+   "types": [
+    "aws_s3_bucket"
+   ],
+   "where": [
+    {
+     "path": [
+      "bucket"
+     ],
+     "op": "regex",
+     "value": "^benchmark-batch-results"
+    }
+   ]
+  },
+  "kms_rot": {
+   "types": [
+    "aws_kms_key"
+   ],
+   "where": [
+    {
+     "path": [
+      "enable_key_rotation"
+     ],
+     "op": "truthy"
+    }
+   ]
+  },
+  "sg": {
+   "types": [
+    "aws_security_group"
+   ],
+   "where": []
+  },
+  "pab": {
+   "types": [
+    "aws_s3_bucket_public_access_block"
+   ],
+   "where": [
+    {
+     "path": [
+      "block_public_acls"
+     ],
+     "op": "truthy"
+    },
+    {
+     "path": [
+      "block_public_policy"
+     ],
+     "op": "truthy"
+    },
+    {
+     "path": [
+      "ignore_public_acls"
+     ],
+     "op": "truthy"
+    },
+    {
+     "path": [
+      "restrict_public_buckets"
+     ],
+     "op": "truthy"
+    }
+   ]
+  },
+  "sse": {
+   "types": [
+    "aws_s3_bucket_server_side_encryption_configuration"
+   ],
+   "where": [
+    {
+     "path": [
+      "rule",
+      "*",
+      "apply_server_side_encryption_by_default",
+      "*",
+      "sse_algorithm"
+     ],
+     "op": "eq",
+     "value": "aws:kms"
+    }
+   ]
+  },
+  "role": {
+   "types": [
+    "aws_iam_role"
+   ],
+   "where": []
+  },
+  "ecs_pol": {
+   "types": [
+    "aws_iam_policy",
+    "aws_iam_role_policy"
+   ],
+   "where": [
+    {
+     "path": [
+      "name"
+     ],
+     "op": "eq",
+     "value": "ecs_s3_policy"
+    }
+   ]
+  },
+  "inst_role": {
+   "types": [
+    "aws_iam_role"
+   ],
+   "where": [
+    {
+     "path": [
+      "assume_role_policy"
+     ],
+     "op": "regex",
+     "value": "ec2\\.amazonaws\\.com"
+    }
+   ]
+  },
+  "batch_role": {
+   "types": [
+    "aws_iam_role"
+   ],
+   "where": [
+    {
+     "path": [
+      "assume_role_policy"
+     ],
+     "op": "regex",
+     "value": "batch\\.amazonaws\\.com"
+    }
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "ce_name",
+   "kind": "attr",
+   "tier": "detail",
+   "select": "ce",
+   "cond": {
+    "path": [
+     "compute_environment_name"
+    ],
+    "op": "regex",
+    "value": "^default-batch"
+   },
+   "quote": "with every resource named after the Terraform workspace plus a \"-batch\" suffix",
+   "justify": "the plan's workspace is default, so the stated <workspace>-batch name is default-batch (the prompt's own example)"
+  },
+  {
+   "id": "tagged_workspace",
+   "kind": "attr",
+   "tier": "detail",
+   "quantifier": "all",
+   "quote": "and tagged accordingly",
+   "select": {
+    "types": [
+     "aws_vpc",
+     "aws_subnet",
+     "aws_batch_compute_environment",
+     "aws_batch_job_queue"
+    ],
+    "where": []
+   },
+   "cond": {
+    "path": [
+     "tags_all"
+    ],
+    "op": "regex",
+    "value": "default-batch"
+   },
+   "justify": "tagged accordingly = tagged with the default-batch (workspace + -batch) name"
+  },
+  {
+   "id": "vpc",
+   "kind": "exists",
+   "tier": "core",
+   "select": "vpc",
+   "quote": "a new VPC with CIDR 192.168.0.0/16"
+  },
+  {
+   "id": "priv",
+   "kind": "exists",
+   "tier": "core",
+   "select": "priv",
+   "quote": "a private subnet 192.168.0.0/24"
+  },
+  {
+   "id": "pub",
+   "kind": "exists",
+   "tier": "core",
+   "select": "pub",
+   "quote": "a public subnet 192.168.10.0/24"
+  },
+  {
+   "id": "priv_vpc",
+   "kind": "ref",
+   "tier": "detail",
+   "from": "priv",
+   "to": "vpc",
+   "quote": "a private subnet 192.168.0.0/24"
+  },
+  {
+   "id": "pub_vpc",
+   "kind": "ref",
+   "tier": "detail",
+   "from": "pub",
+   "to": "vpc",
+   "quote": "a public subnet 192.168.10.0/24"
+  },
+  {
+   "id": "subnets_second_az",
+   "kind": "attr",
+   "tier": "detail",
+   "quantifier": "all",
+   "quote": "both in the second availability zone of the region",
+   "select": {
+    "types": [
+     "aws_subnet"
+    ],
+    "where": [
+     {
+      "path": [
+       "cidr_block"
+      ],
+      "op": "in",
+      "value": [
+       "192.168.0.0/24",
+       "192.168.10.0/24"
+      ]
+     }
+    ]
+   },
+   "cond": {
+    "path": [
+     "availability_zone"
+    ],
+    "op": "regex",
+    "value": "^[a-z]{2}-[a-z]+-\\d+b$"
+   },
+   "justify": "the second availability zone of a region is its 'b' zone (names[1])"
+  },
+  {
+   "id": "no_auto_ip",
+   "kind": "any_of",
+   "tier": "detail",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "map_public_ip_on_launch"
+      ],
+      "op": "falsy"
+     },
+     "quantifier": "all"
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "map_public_ip_on_launch"
+      ],
+      "op": "absent"
+     },
+     "quantifier": "all"
+    }
+   ],
+   "quote": "neither subnet auto-assigns public IPs"
+  },
+  {
+   "id": "igw",
+   "kind": "exists",
+   "tier": "core",
+   "select": "igw",
+   "quote": "an internet gateway for the public subnet"
+  },
+  {
+   "id": "igw_vpc",
+   "kind": "ref",
+   "tier": "detail",
+   "from": "igw",
+   "to": "vpc",
+   "quote": "an internet gateway for the public subnet"
+  },
+  {
+   "id": "public_route",
+   "kind": "any_of",
+   "tier": "detail",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route_table"
+      ],
+      "where": []
+     },
+     "to": "igw"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route"
+      ],
+      "where": []
+     },
+     "to": "igw"
+    }
+   ],
+   "quote": "an internet gateway for the public subnet"
+  },
+  {
+   "id": "nat",
+   "kind": "exists",
+   "tier": "core",
+   "select": "nat",
+   "max": 1,
+   "quote": "a NAT gateway with an Elastic IP in the public subnet",
+   "justify": "a NAT gateway means one"
+  },
+  {
+   "id": "nat_eip",
+   "kind": "ref",
+   "tier": "core",
+   "from": "nat",
+   "to": "eip",
+   "quote": "a NAT gateway with an Elastic IP"
+  },
+  {
+   "id": "nat_public",
+   "kind": "ref",
+   "tier": "core",
+   "from": "nat",
+   "to": "pub",
+   "quote": "in the public subnet that provides outbound access for the private subnet"
+  },
+  {
+   "id": "private_route_nat",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route_table"
+      ],
+      "where": []
+     },
+     "to": "nat"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route"
+      ],
+      "where": []
+     },
+     "to": "nat"
+    }
+   ],
+   "quote": "provides outbound access for the private subnet"
+  },
+  {
+   "id": "private_assoc",
+   "kind": "ref",
+   "tier": "detail",
+   "from": {
+    "types": [
+     "aws_route_table_association"
+    ],
+    "where": []
+   },
+   "to": "priv",
+   "quote": "provides outbound access for the private subnet"
+  },
+  {
+   "id": "ce_managed",
+   "kind": "attr",
+   "tier": "core",
+   "select": "ce",
+   "cond": {
+    "path": [
+     "type"
+    ],
+    "op": "eq",
+    "value": "MANAGED"
+   },
+   "quote": "a managed, enabled EC2 compute environment"
+  },
+  {
+   "id": "ce_enabled",
+   "kind": "attr",
+   "tier": "core",
+   "select": "ce",
+   "cond": {
+    "path": [
+     "state"
+    ],
+    "op": "eq",
+    "value": "ENABLED"
+   },
+   "quote": "a managed, enabled EC2 compute environment"
+  },
+  {
+   "id": "ce_ec2",
+   "kind": "attr",
+   "tier": "core",
+   "select": "ce",
+   "cond": {
+    "path": [
+     "compute_resources",
+     "*",
+     "type"
+    ],
+    "op": "eq",
+    "value": "EC2"
+   },
+   "quote": "a managed, enabled EC2 compute environment"
+  },
+  {
+   "id": "ce_private",
+   "kind": "ref",
+   "tier": "core",
+   "from": "ce",
+   "to": "priv",
+   "quote": "in the private subnet"
+  },
+  {
+   "id": "ce_alloc",
+   "kind": "attr",
+   "tier": "core",
+   "select": "ce",
+   "cond": {
+    "path": [
+     "compute_resources",
+     "*",
+     "allocation_strategy"
+    ],
+    "op": "eq",
+    "value": "BEST_FIT"
+   },
+   "quote": "using the best-fit allocation strategy",
+   "justify": "best-fit is BEST_FIT"
+  },
+  {
+   "id": "ce_optimal",
+   "kind": "attr",
+   "tier": "core",
+   "select": "ce",
+   "cond": {
+    "path": [
+     "compute_resources",
+     "*",
+     "instance_type",
+     "*"
+    ],
+    "op": "eq",
+    "value": "optimal"
+   },
+   "quote": "\"optimal\" instance types"
+  },
+  {
+   "id": "ce_al2023",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "the AWS-managed Amazon Linux 2023 ECS-optimized image",
+   "justify": "the AL2023 ECS-optimized image can be selected by image_type ECS_AL2023 or by passing the AMI resolved from the AL2023 ECS-optimized SSM parameter or AMI name",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "ce",
+     "cond": {
+      "path": [
+       "compute_resources",
+       "*",
+       "ec2_configuration",
+       "*",
+       "image_type"
+      ],
+      "op": "eq",
+      "value": "ECS_AL2023"
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "data.aws_ssm_parameter"
+       },
+       {
+        "path": [
+         "properties",
+         "name"
+        ],
+        "op": "regex",
+        "value": "ecs/optimized-ami/amazon-linux-2023"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "data.aws_ami"
+       },
+       {
+        "path": [
+         "properties",
+         "filter"
+        ],
+        "op": "regex",
+        "value": "al2023-ami-ecs"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "ce_min",
+   "kind": "attr",
+   "tier": "core",
+   "select": "ce",
+   "cond": {
+    "path": [
+     "compute_resources",
+     "*",
+     "min_vcpus"
+    ],
+    "op": "eq",
+    "value": 0
+   },
+   "quote": "0 minimum and 4 maximum vCPUs"
+  },
+  {
+   "id": "ce_max",
+   "kind": "attr",
+   "tier": "core",
+   "select": "ce",
+   "cond": {
+    "path": [
+     "compute_resources",
+     "*",
+     "max_vcpus"
+    ],
+    "op": "eq",
+    "value": 4
+   },
+   "quote": "0 minimum and 4 maximum vCPUs"
+  },
+  {
+   "id": "ce_sg",
+   "kind": "ref",
+   "tier": "detail",
+   "from": "ce",
+   "to": "sg",
+   "quote": "a security group whose only egress rule allows HTTPS to the VPC CIDR"
+  },
+  {
+   "id": "sg_https_egress",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_security_group_rule"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "egress"
+       }
+      ]
+     },
+     "cond": {
+      "path": [],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "from_port"
+        ],
+        "op": "eq",
+        "value": 443
+       },
+       {
+        "path": [
+         "to_port"
+        ],
+        "op": "eq",
+        "value": 443
+       },
+       {
+        "path": [
+         "protocol"
+        ],
+        "op": "in",
+        "value": [
+         "tcp",
+         "6"
+        ]
+       },
+       {
+        "path": [
+         "cidr_blocks",
+         "*"
+        ],
+        "op": "eq",
+        "value": "192.168.0.0/16"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_vpc_security_group_egress_rule"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "from_port"
+        ],
+        "op": "eq",
+        "value": 443
+       },
+       {
+        "path": [
+         "to_port"
+        ],
+        "op": "eq",
+        "value": 443
+       },
+       {
+        "path": [
+         "ip_protocol"
+        ],
+        "op": "in",
+        "value": [
+         "tcp",
+         "6"
+        ]
+       },
+       {
+        "path": [
+         "cidr_ipv4"
+        ],
+        "op": "eq",
+        "value": "192.168.0.0/16"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_security_group"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "egress",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "from_port"
+        ],
+        "op": "eq",
+        "value": 443
+       },
+       {
+        "path": [
+         "to_port"
+        ],
+        "op": "eq",
+        "value": 443
+       },
+       {
+        "path": [
+         "protocol"
+        ],
+        "op": "in",
+        "value": [
+         "tcp",
+         "6"
+        ]
+       },
+       {
+        "path": [
+         "cidr_blocks",
+         "*"
+        ],
+        "op": "eq",
+        "value": "192.168.0.0/16"
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "a security group whose only egress rule allows HTTPS to the VPC CIDR",
+   "justify": "HTTPS is TCP port 443 and the VPC CIDR is the stated 192.168.0.0/16"
+  },
+  {
+   "id": "sg_egress_only",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "a security group whose only egress rule allows HTTPS to the VPC CIDR",
+   "checks": [
+    {
+     "kind": "attr",
+     "quantifier": "all",
+     "select": {
+      "types": [
+       "aws_security_group_rule"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "egress"
+       }
+      ]
+     },
+     "cond": {
+      "path": [],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "from_port"
+        ],
+        "op": "eq",
+        "value": 443
+       },
+       {
+        "path": [
+         "to_port"
+        ],
+        "op": "eq",
+        "value": 443
+       },
+       {
+        "path": [
+         "cidr_blocks",
+         "*"
+        ],
+        "op": "eq",
+        "value": "192.168.0.0/16",
+        "every": true
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "quantifier": "all",
+     "select": {
+      "types": [
+       "aws_vpc_security_group_egress_rule"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "from_port"
+        ],
+        "op": "eq",
+        "value": 443
+       },
+       {
+        "path": [
+         "to_port"
+        ],
+        "op": "eq",
+        "value": 443
+       },
+       {
+        "path": [
+         "cidr_ipv4"
+        ],
+        "op": "eq",
+        "value": "192.168.0.0/16"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_security_group"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "egress",
+       "*",
+       "cidr_blocks",
+       "*"
+      ],
+      "op": "eq",
+      "value": "192.168.0.0/16",
+      "every": true
+     }
+    }
+   ],
+   "justify": "'only egress rule ... to the VPC CIDR': every egress rule goes to the stated 192.168.0.0/16 (HTTPS = 443)"
+  },
+  {
+   "id": "sg_egress_only_port",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "a security group whose only egress rule allows HTTPS to the VPC CIDR",
+   "justify": "'only egress rule allows HTTPS': every egress rule is port 443",
+   "checks": [
+    {
+     "kind": "attr",
+     "quantifier": "all",
+     "select": {
+      "types": [
+       "aws_security_group_rule"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "egress"
+       }
+      ]
+     },
+     "cond": {
+      "path": [],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "from_port"
+        ],
+        "op": "eq",
+        "value": 443
+       },
+       {
+        "path": [
+         "to_port"
+        ],
+        "op": "eq",
+        "value": 443
+       },
+       {
+        "path": [
+         "cidr_blocks",
+         "*"
+        ],
+        "op": "eq",
+        "value": "192.168.0.0/16",
+        "every": true
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "quantifier": "all",
+     "select": {
+      "types": [
+       "aws_vpc_security_group_egress_rule"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "from_port"
+        ],
+        "op": "eq",
+        "value": 443
+       },
+       {
+        "path": [
+         "to_port"
+        ],
+        "op": "eq",
+        "value": 443
+       },
+       {
+        "path": [
+         "cidr_ipv4"
+        ],
+        "op": "eq",
+        "value": "192.168.0.0/16"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_security_group"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "egress",
+       "*",
+       "to_port"
+      ],
+      "op": "eq",
+      "value": 443,
+      "every": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "queue",
+   "kind": "exists",
+   "tier": "core",
+   "select": "queue",
+   "quote": "an enabled job queue"
+  },
+  {
+   "id": "queue_name",
+   "kind": "attr",
+   "tier": "detail",
+   "select": "queue",
+   "cond": {
+    "path": [
+     "name"
+    ],
+    "op": "regex",
+    "value": "^default-batch.*-queue$"
+   },
+   "quote": "every resource named after the Terraform workspace plus a \"-batch\" suffix (for example \"default-batch\")",
+   "justify": "the queue is named after the workspace (default) plus -batch and has the stated -queue suffix"
+  },
+  {
+   "id": "queue_enabled",
+   "kind": "attr",
+   "tier": "core",
+   "select": "queue",
+   "cond": {
+    "path": [
+     "state"
+    ],
+    "op": "eq",
+    "value": "ENABLED"
+   },
+   "quote": "an enabled job queue"
+  },
+  {
+   "id": "queue_priority",
+   "kind": "attr",
+   "tier": "core",
+   "select": "queue",
+   "cond": {
+    "path": [
+     "priority"
+    ],
+    "op": "eq",
+    "value": 1
+   },
+   "quote": "at priority 1"
+  },
+  {
+   "id": "queue_ce",
+   "kind": "ref",
+   "tier": "detail",
+   "from": "queue",
+   "to": "ce",
+   "quote": "an enabled job queue"
+  },
+  {
+   "id": "bucket",
+   "kind": "exists",
+   "tier": "core",
+   "select": {
+    "types": [
+     "aws_s3_bucket"
+    ],
+    "where": [
+     {
+      "path": [
+       "bucket"
+      ],
+      "op": "regex",
+      "value": "^benchmark-batch-results-?\\d{12}$"
+     }
+    ]
+   },
+   "quote": "an S3 bucket named \"benchmark-batch-results\" suffixed with the account ID",
+   "justify": "the account ID is a 12-digit number appended to the stated name"
+  },
+  {
+   "id": "pab",
+   "kind": "ref",
+   "tier": "core",
+   "from": "pab",
+   "to": "bucket",
+   "quote": "blocking all public access"
+  },
+  {
+   "id": "sse_kms",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_s3_bucket_server_side_encryption_configuration"
+      ],
+      "where": [
+       {
+        "path": [
+         "rule",
+         "*",
+         "apply_server_side_encryption_by_default",
+         "*",
+         "sse_algorithm"
+        ],
+        "op": "eq",
+        "value": "aws:kms"
+       }
+      ]
+     },
+     "to": "bucket"
+    },
+    {
+     "kind": "attr",
+     "select": "bucket",
+     "cond": {
+      "path": [
+       "server_side_encryption_configuration",
+       "*",
+       "rule",
+       "*",
+       "apply_server_side_encryption_by_default",
+       "*",
+       "sse_algorithm"
+      ],
+      "op": "eq",
+      "value": "aws:kms"
+     }
+    }
+   ],
+   "quote": "encrypted with a new customer-managed KMS key with rotation",
+   "justify": "customer-managed KMS encryption is aws:kms"
+  },
+  {
+   "id": "kms_rot",
+   "kind": "exists",
+   "tier": "core",
+   "select": "kms_rot",
+   "quote": "a new customer-managed KMS key with rotation"
+  },
+  {
+   "id": "sse_key",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "encrypted with a new customer-managed KMS key with rotation",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "sse",
+     "to": "kms_rot"
+    },
+    {
+     "kind": "ref",
+     "from": "bucket",
+     "to": "kms_rot"
+    }
+   ]
+  },
+  {
+   "id": "instance_profile",
+   "kind": "exists",
+   "tier": "core",
+   "select": {
+    "types": [
+     "aws_iam_instance_profile"
+    ],
+    "where": []
+   },
+   "quote": "The ECS instance role and instance profile"
+  },
+  {
+   "id": "profile_role",
+   "kind": "ref",
+   "tier": "detail",
+   "from": {
+    "types": [
+     "aws_iam_instance_profile"
+    ],
+    "where": []
+   },
+   "to": "inst_role",
+   "quote": "The ECS instance role and instance profile"
+  },
+  {
+   "id": "ecs_managed",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_role_policy_attachment"
+      ],
+      "where": [
+       {
+        "path": [
+         "policy_arn"
+        ],
+        "op": "regex",
+        "value": "AmazonEC2ContainerServiceforEC2Role"
+       }
+      ]
+     },
+     "to": "inst_role"
+    },
+    {
+     "kind": "attr",
+     "select": "inst_role",
+     "cond": {
+      "path": [
+       "managed_policy_arns",
+       "*"
+      ],
+      "op": "regex",
+      "value": "AmazonEC2ContainerServiceforEC2Role"
+     }
+    }
+   ],
+   "quote": "should carry the AWS-managed ECS-for-EC2 policy",
+   "justify": "the ECS instance role is the role trusted by EC2 (it backs the instance profile)"
+  },
+  {
+   "id": "ecs_s3_policy",
+   "kind": "exists",
+   "tier": "core",
+   "select": "ecs_pol",
+   "quote": "a custom \"ecs_s3_policy\""
+  },
+  {
+   "id": "ecs_s3_attached",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "a custom \"ecs_s3_policy\"",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_role_policy_attachment"
+      ],
+      "where": []
+     },
+     "to": "ecs_pol"
+    },
+    {
+     "kind": "ref",
+     "from": "ecs_pol",
+     "to": "inst_role"
+    }
+   ]
+  },
+  {
+   "id": "pol_read",
+   "kind": "any_of",
+   "tier": "detail",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "ecs_pol",
+     "cond": {
+      "path": [
+       "policy"
+      ],
+      "op": "regex",
+      "value": "(?i)s3:(get|list|\\*)"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "in",
+        "value": [
+         "aws_iam_policy",
+         "aws_iam_role_policy"
+        ]
+       },
+       {
+        "path": [
+         "properties",
+         "name"
+        ],
+        "op": "eq",
+        "value": "ecs_s3_policy"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "regex",
+        "value": "(?i)s3:(get|list|\\*)"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "type"
+      ],
+      "op": "in",
+      "value": [
+       "aws_iam_policy",
+       "aws_iam_role_policy"
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": "ecs_pol",
+     "to": {
+      "types": [
+       "data.aws_iam_policy_document"
+      ],
+      "where": [
+       {
+        "path": [
+         "statement",
+         "*",
+         "actions",
+         "*"
+        ],
+        "op": "regex",
+        "value": "(?i)s3:(get|list|\\*)"
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "granting read/list on S3 generally, read/write/delete on the results bucket, and decrypt/generate-data-key on the bucket key",
+   "justify": "read/list on S3 are s3:Get*/s3:List* actions"
+  },
+  {
+   "id": "pol_put",
+   "kind": "any_of",
+   "tier": "detail",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "ecs_pol",
+     "cond": {
+      "path": [
+       "policy"
+      ],
+      "op": "regex",
+      "value": "(?i)s3:(put|\\*)"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "in",
+        "value": [
+         "aws_iam_policy",
+         "aws_iam_role_policy"
+        ]
+       },
+       {
+        "path": [
+         "properties",
+         "name"
+        ],
+        "op": "eq",
+        "value": "ecs_s3_policy"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "regex",
+        "value": "(?i)s3:(put|\\*)"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "type"
+      ],
+      "op": "in",
+      "value": [
+       "aws_iam_policy",
+       "aws_iam_role_policy"
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": "ecs_pol",
+     "to": {
+      "types": [
+       "data.aws_iam_policy_document"
+      ],
+      "where": [
+       {
+        "path": [
+         "statement",
+         "*",
+         "actions",
+         "*"
+        ],
+        "op": "regex",
+        "value": "(?i)s3:(put|\\*)"
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "granting read/list on S3 generally, read/write/delete on the results bucket, and decrypt/generate-data-key on the bucket key",
+   "justify": "write on the bucket is s3:Put* actions"
+  },
+  {
+   "id": "pol_delete",
+   "kind": "any_of",
+   "tier": "detail",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "ecs_pol",
+     "cond": {
+      "path": [
+       "policy"
+      ],
+      "op": "regex",
+      "value": "(?i)s3:(delete|\\*)"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "in",
+        "value": [
+         "aws_iam_policy",
+         "aws_iam_role_policy"
+        ]
+       },
+       {
+        "path": [
+         "properties",
+         "name"
+        ],
+        "op": "eq",
+        "value": "ecs_s3_policy"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "regex",
+        "value": "(?i)s3:(delete|\\*)"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "type"
+      ],
+      "op": "in",
+      "value": [
+       "aws_iam_policy",
+       "aws_iam_role_policy"
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": "ecs_pol",
+     "to": {
+      "types": [
+       "data.aws_iam_policy_document"
+      ],
+      "where": [
+       {
+        "path": [
+         "statement",
+         "*",
+         "actions",
+         "*"
+        ],
+        "op": "regex",
+        "value": "(?i)s3:(delete|\\*)"
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "granting read/list on S3 generally, read/write/delete on the results bucket, and decrypt/generate-data-key on the bucket key",
+   "justify": "delete on the bucket is s3:Delete* actions"
+  },
+  {
+   "id": "pol_decrypt",
+   "kind": "any_of",
+   "tier": "detail",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "ecs_pol",
+     "cond": {
+      "path": [
+       "policy"
+      ],
+      "op": "regex",
+      "value": "(?i)kms:(decrypt|\\*)"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "in",
+        "value": [
+         "aws_iam_policy",
+         "aws_iam_role_policy"
+        ]
+       },
+       {
+        "path": [
+         "properties",
+         "name"
+        ],
+        "op": "eq",
+        "value": "ecs_s3_policy"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "regex",
+        "value": "(?i)kms:(decrypt|\\*)"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "type"
+      ],
+      "op": "in",
+      "value": [
+       "aws_iam_policy",
+       "aws_iam_role_policy"
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": "ecs_pol",
+     "to": {
+      "types": [
+       "data.aws_iam_policy_document"
+      ],
+      "where": [
+       {
+        "path": [
+         "statement",
+         "*",
+         "actions",
+         "*"
+        ],
+        "op": "regex",
+        "value": "(?i)kms:(decrypt|\\*)"
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "granting read/list on S3 generally, read/write/delete on the results bucket, and decrypt/generate-data-key on the bucket key",
+   "justify": "decrypt is kms:Decrypt"
+  },
+  {
+   "id": "pol_gdk",
+   "kind": "any_of",
+   "tier": "detail",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "ecs_pol",
+     "cond": {
+      "path": [
+       "policy"
+      ],
+      "op": "regex",
+      "value": "(?i)kms:(generatedatakey|\\*)"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "in",
+        "value": [
+         "aws_iam_policy",
+         "aws_iam_role_policy"
+        ]
+       },
+       {
+        "path": [
+         "properties",
+         "name"
+        ],
+        "op": "eq",
+        "value": "ecs_s3_policy"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "regex",
+        "value": "(?i)kms:(generatedatakey|\\*)"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "type"
+      ],
+      "op": "in",
+      "value": [
+       "aws_iam_policy",
+       "aws_iam_role_policy"
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": "ecs_pol",
+     "to": {
+      "types": [
+       "data.aws_iam_policy_document"
+      ],
+      "where": [
+       {
+        "path": [
+         "statement",
+         "*",
+         "actions",
+         "*"
+        ],
+        "op": "regex",
+        "value": "(?i)kms:(generatedatakey|\\*)"
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "granting read/list on S3 generally, read/write/delete on the results bucket, and decrypt/generate-data-key on the bucket key",
+   "justify": "generate-data-key is kms:GenerateDataKey"
+  },
+  {
+   "id": "pol_kms_ref",
+   "kind": "ref",
+   "tier": "detail",
+   "from": "ecs_pol",
+   "to": "kms_rot",
+   "quote": "decrypt/generate-data-key on the bucket key"
+  },
+  {
+   "id": "pol_bucket_ref",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "read/write/delete on the results bucket",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "ecs_pol",
+     "to": "bucket"
+    },
+    {
+     "kind": "attr",
+     "select": "ecs_pol",
+     "cond": {
+      "path": [
+       "policy"
+      ],
+      "op": "regex",
+      "value": "benchmark-batch-results"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "in",
+        "value": [
+         "aws_iam_policy",
+         "aws_iam_role_policy"
+        ]
+       },
+       {
+        "path": [
+         "properties",
+         "name"
+        ],
+        "op": "eq",
+        "value": "ecs_s3_policy"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "regex",
+        "value": "benchmark-batch-results"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "type"
+      ],
+      "op": "in",
+      "value": [
+       "aws_iam_policy",
+       "aws_iam_role_policy"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "batch_service_policy",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_iam_role_policy_attachment"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "policy_arn"
+      ],
+      "op": "regex",
+      "value": "AWSBatchServiceRole"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_iam_role"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "managed_policy_arns",
+       "*"
+      ],
+      "op": "regex",
+      "value": "AWSBatchServiceRole"
+     }
+    }
+   ],
+   "quote": "also create a Batch service role with the AWS-managed Batch service policy"
+  },
+  {
+   "id": "batch_service_role",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "also create a Batch service role",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_role_policy_attachment"
+      ],
+      "where": [
+       {
+        "path": [
+         "policy_arn"
+        ],
+        "op": "regex",
+        "value": "AWSBatchServiceRole"
+       }
+      ]
+     },
+     "to": "batch_role"
+    },
+    {
+     "kind": "attr",
+     "select": "batch_role",
+     "cond": {
+      "path": [
+       "managed_policy_arns",
+       "*"
+      ],
+      "op": "regex",
+      "value": "AWSBatchServiceRole"
+     }
+    }
+   ],
+   "justify": "a Batch service role is assumable by batch.amazonaws.com"
+  },
+  {
+   "id": "x_nat_igw",
+   "kind": "ref",
+   "tier": "extra",
+   "from": "nat",
+   "to": "igw"
+  },
+  {
+   "id": "x_instance_role_in_ce",
+   "kind": "ref",
+   "tier": "extra",
+   "from": "ce",
+   "to": {
+    "types": [
+     "aws_iam_instance_profile"
+    ],
+    "where": []
+   }
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

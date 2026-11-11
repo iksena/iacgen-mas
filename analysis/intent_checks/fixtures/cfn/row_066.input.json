@@ -1,0 +1,795 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "sam_expanded",
+  "warnings": [],
+  "gt_hash": "7575df7d4f66d27d77d5e29964f54d5c79e17c3f2aeb0bebcfc5aee3fe522b9b",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "SuperCoolAPI",
+   "cfg": "SuperCoolAPI",
+   "type": "AWS::AppSync::GraphQLApi",
+   "values": {
+    "Name": "SuperCoolAPI",
+    "Tags": [
+     {
+      "Key": "graphqlapi:createdBy",
+      "Value": "SAM"
+     }
+    ],
+    "AuthenticationType": "API_KEY",
+    "LogConfig": {
+     "FieldLogLevel": "ALL",
+     "CloudWatchLogsRoleArn": {
+      "ref": "SuperCoolAPICloudWatchRole",
+      "attr": "Arn"
+     }
+    },
+    "OwnerContact": "blah-blah"
+   },
+   "refs": [
+    "SuperCoolAPICloudWatchRole"
+   ]
+  },
+  {
+   "id": "SuperCoolAPISchema",
+   "cfg": "SuperCoolAPISchema",
+   "type": "AWS::AppSync::GraphQLSchema",
+   "values": {
+    "ApiId": {
+     "ref": "SuperCoolAPI",
+     "attr": "ApiId"
+    },
+    "Definition": "type Book {\n    bookName: String\n    id: ID\n}\ntype Query { getBook(bookName: String): Book }\n"
+   },
+   "refs": [
+    "SuperCoolAPI"
+   ]
+  },
+  {
+   "id": "SuperCoolAPICloudWatchRole",
+   "cfg": "SuperCoolAPICloudWatchRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "appsync.amazonaws.com"
+        ]
+       }
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/AWSAppSyncPushToCloudWatchLogs"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "SuperCoolAPIMyApiKey",
+   "cfg": "SuperCoolAPIMyApiKey",
+   "type": "AWS::AppSync::ApiKey",
+   "values": {
+    "ApiId": {
+     "ref": "SuperCoolAPI",
+     "attr": "ApiId"
+    }
+   },
+   "refs": [
+    "SuperCoolAPI"
+   ]
+  },
+  {
+   "id": "SuperCoolAPIprocessQuery",
+   "cfg": "SuperCoolAPIprocessQuery",
+   "type": "AWS::AppSync::FunctionConfiguration",
+   "values": {
+    "ApiId": {
+     "ref": "SuperCoolAPI",
+     "attr": "ApiId"
+    },
+    "Code": "import { util } from '@aws-appsync/utils';\n\nexport function request(ctx) {\n  const id = util.autoId();\n  return { payload: { ...ctx.args, id } };\n}\n\nexport function response(ctx) {\n  return ctx.result;\n}\n",
+    "DataSourceName": {
+     "ref": "SuperCoolAPINoneDataSource",
+     "attr": "Name"
+    },
+    "Name": "processQuery",
+    "Runtime": {
+     "Name": "APPSYNC_JS",
+     "RuntimeVersion": "1.0.0"
+    }
+   },
+   "refs": [
+    "SuperCoolAPI",
+    "SuperCoolAPINoneDataSource"
+   ]
+  },
+  {
+   "id": "SuperCoolAPIQuerygetBook",
+   "cfg": "SuperCoolAPIQuerygetBook",
+   "type": "AWS::AppSync::Resolver",
+   "values": {
+    "ApiId": {
+     "ref": "SuperCoolAPI",
+     "attr": "ApiId"
+    },
+    "Code": "\nexport function request(ctx) {\n    return {};\n}\n\nexport function response(ctx) {\n    return ctx.prev.result;\n}\n",
+    "FieldName": "getBook",
+    "Kind": "PIPELINE",
+    "PipelineConfig": {
+     "Functions": [
+      {
+       "ref": "SuperCoolAPIprocessQuery",
+       "attr": "FunctionId"
+      }
+     ]
+    },
+    "Runtime": {
+     "Name": "APPSYNC_JS",
+     "RuntimeVersion": "1.0.0"
+    },
+    "TypeName": "Query",
+    "__resource__": {
+     "DependsOn": [
+      "SuperCoolAPISchema"
+     ]
+    }
+   },
+   "refs": [
+    "SuperCoolAPI",
+    "SuperCoolAPIprocessQuery"
+   ]
+  },
+  {
+   "id": "SuperCoolAPINoneDataSource",
+   "cfg": "SuperCoolAPINoneDataSource",
+   "type": "AWS::AppSync::DataSource",
+   "values": {
+    "ApiId": {
+     "ref": "SuperCoolAPI",
+     "attr": "ApiId"
+    },
+    "Name": "SuperCoolAPINoneDataSource",
+    "Type": "NONE"
+   },
+   "refs": [
+    "SuperCoolAPI"
+   ]
+  },
+  {
+   "id": "IntrospectionDisableSuperCoolAPI",
+   "cfg": "IntrospectionDisableSuperCoolAPI",
+   "type": "AWS::AppSync::GraphQLApi",
+   "values": {
+    "Name": "IntrospectionDisableSuperCoolAPI",
+    "Tags": [
+     {
+      "Key": "graphqlapi:createdBy",
+      "Value": "SAM"
+     }
+    ],
+    "AuthenticationType": "API_KEY",
+    "LogConfig": {
+     "FieldLogLevel": "ALL",
+     "CloudWatchLogsRoleArn": {
+      "ref": "IntrospectionDisableSuperCoolAPICloudWatchRole",
+      "attr": "Arn"
+     }
+    },
+    "OwnerContact": "blah-blah",
+    "IntrospectionConfig": "DISABLED",
+    "QueryDepthLimit": 10,
+    "ResolverCountLimit": 100
+   },
+   "refs": [
+    "IntrospectionDisableSuperCoolAPICloudWatchRole"
+   ]
+  },
+  {
+   "id": "IntrospectionDisableSuperCoolAPISchema",
+   "cfg": "IntrospectionDisableSuperCoolAPISchema",
+   "type": "AWS::AppSync::GraphQLSchema",
+   "values": {
+    "ApiId": {
+     "ref": "IntrospectionDisableSuperCoolAPI",
+     "attr": "ApiId"
+    },
+    "Definition": "type Book {\n    bookName: String\n    id: ID\n}\ntype Query { getBook(bookName: String): Book }\n"
+   },
+   "refs": [
+    "IntrospectionDisableSuperCoolAPI"
+   ]
+  },
+  {
+   "id": "IntrospectionDisableSuperCoolAPICloudWatchRole",
+   "cfg": "IntrospectionDisableSuperCoolAPICloudWatchRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "appsync.amazonaws.com"
+        ]
+       }
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/AWSAppSyncPushToCloudWatchLogs"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "IntrospectionDisableSuperCoolAPIMyApiKey",
+   "cfg": "IntrospectionDisableSuperCoolAPIMyApiKey",
+   "type": "AWS::AppSync::ApiKey",
+   "values": {
+    "ApiId": {
+     "ref": "IntrospectionDisableSuperCoolAPI",
+     "attr": "ApiId"
+    }
+   },
+   "refs": [
+    "IntrospectionDisableSuperCoolAPI"
+   ]
+  },
+  {
+   "id": "IntrospectionDisableSuperCoolAPIprocessQuery",
+   "cfg": "IntrospectionDisableSuperCoolAPIprocessQuery",
+   "type": "AWS::AppSync::FunctionConfiguration",
+   "values": {
+    "ApiId": {
+     "ref": "IntrospectionDisableSuperCoolAPI",
+     "attr": "ApiId"
+    },
+    "Code": "import { util } from '@aws-appsync/utils';\n\nexport function request(ctx) {\n  const id = util.autoId();\n  return { payload: { ...ctx.args, id } };\n}\n\nexport function response(ctx) {\n  return ctx.result;\n}\n",
+    "DataSourceName": {
+     "ref": "IntrospectionDisableSuperCoolAPINoneDataSource",
+     "attr": "Name"
+    },
+    "Name": "processQuery",
+    "Runtime": {
+     "Name": "APPSYNC_JS",
+     "RuntimeVersion": "1.0.0"
+    }
+   },
+   "refs": [
+    "IntrospectionDisableSuperCoolAPI",
+    "IntrospectionDisableSuperCoolAPINoneDataSource"
+   ]
+  },
+  {
+   "id": "IntrospectionDisableSuperCoolAPIQuerygetBook",
+   "cfg": "IntrospectionDisableSuperCoolAPIQuerygetBook",
+   "type": "AWS::AppSync::Resolver",
+   "values": {
+    "ApiId": {
+     "ref": "IntrospectionDisableSuperCoolAPI",
+     "attr": "ApiId"
+    },
+    "Code": "\nexport function request(ctx) {\n    return {};\n}\n\nexport function response(ctx) {\n    return ctx.prev.result;\n}\n",
+    "FieldName": "getBook",
+    "Kind": "PIPELINE",
+    "PipelineConfig": {
+     "Functions": [
+      {
+       "ref": "IntrospectionDisableSuperCoolAPIprocessQuery",
+       "attr": "FunctionId"
+      }
+     ]
+    },
+    "Runtime": {
+     "Name": "APPSYNC_JS",
+     "RuntimeVersion": "1.0.0"
+    },
+    "TypeName": "Query",
+    "__resource__": {
+     "DependsOn": [
+      "IntrospectionDisableSuperCoolAPISchema"
+     ]
+    }
+   },
+   "refs": [
+    "IntrospectionDisableSuperCoolAPI",
+    "IntrospectionDisableSuperCoolAPIprocessQuery"
+   ]
+  },
+  {
+   "id": "IntrospectionDisableSuperCoolAPINoneDataSource",
+   "cfg": "IntrospectionDisableSuperCoolAPINoneDataSource",
+   "type": "AWS::AppSync::DataSource",
+   "values": {
+    "ApiId": {
+     "ref": "IntrospectionDisableSuperCoolAPI",
+     "attr": "ApiId"
+    },
+    "Name": "IntrospectionDisableSuperCoolAPINoneDataSource",
+    "Type": "NONE"
+   },
+   "refs": [
+    "IntrospectionDisableSuperCoolAPI"
+   ]
+  },
+  {
+   "id": "__output__.SuperCoolAPI",
+   "cfg": "__output__.SuperCoolAPI",
+   "type": "__output__",
+   "values": {
+    "name": "SuperCoolAPI",
+    "value": {
+     "ref": "SuperCoolAPI",
+     "attr": "GraphQLUrl"
+    },
+    "description": "AppSync API",
+    "export": null
+   },
+   "refs": [
+    "SuperCoolAPI"
+   ]
+  },
+  {
+   "id": "__output__.MyApiKey",
+   "cfg": "__output__.MyApiKey",
+   "type": "__output__",
+   "values": {
+    "name": "MyApiKey",
+    "value": {
+     "ref": "SuperCoolAPIMyApiKey",
+     "attr": "ApiKey"
+    },
+    "description": "API Id",
+    "export": null
+   },
+   "refs": [
+    "SuperCoolAPIMyApiKey"
+   ]
+  },
+  {
+   "id": "__output__.IntrospectionDisableSuperCoolAPI",
+   "cfg": "__output__.IntrospectionDisableSuperCoolAPI",
+   "type": "__output__",
+   "values": {
+    "name": "IntrospectionDisableSuperCoolAPI",
+    "value": {
+     "ref": "IntrospectionDisableSuperCoolAPI",
+     "attr": "GraphQLUrl"
+    },
+    "description": "AppSync API",
+    "export": null
+   },
+   "refs": [
+    "IntrospectionDisableSuperCoolAPI"
+   ]
+  },
+  {
+   "id": "__output__.IntrospectionDisableSuperCoolAPIMyApiKey",
+   "cfg": "__output__.IntrospectionDisableSuperCoolAPIMyApiKey",
+   "type": "__output__",
+   "values": {
+    "name": "IntrospectionDisableSuperCoolAPIMyApiKey",
+    "value": {
+     "ref": "IntrospectionDisableSuperCoolAPIMyApiKey",
+     "attr": "ApiKey"
+    },
+    "description": "API Id",
+    "export": null
+   },
+   "refs": [
+    "IntrospectionDisableSuperCoolAPIMyApiKey"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::AppSync::GraphQLApi.SuperCoolAPI",
+   "cfg": "SuperCoolAPI",
+   "type": "__declared__",
+   "refs": [
+    "SuperCoolAPICloudWatchRole"
+   ],
+   "values": {
+    "type": "AWS::AppSync::GraphQLApi",
+    "name": "SuperCoolAPI",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "SuperCoolAPI",
+     "Tags": [
+      {
+       "Key": "graphqlapi:createdBy",
+       "Value": "SAM"
+      }
+     ],
+     "AuthenticationType": "API_KEY",
+     "LogConfig": {
+      "FieldLogLevel": "ALL",
+      "CloudWatchLogsRoleArn": {
+       "ref": "SuperCoolAPICloudWatchRole",
+       "attr": "Arn"
+      }
+     },
+     "OwnerContact": "blah-blah"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::AppSync::GraphQLSchema.SuperCoolAPISchema",
+   "cfg": "SuperCoolAPISchema",
+   "type": "__declared__",
+   "refs": [
+    "SuperCoolAPI"
+   ],
+   "values": {
+    "type": "AWS::AppSync::GraphQLSchema",
+    "name": "SuperCoolAPISchema",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "SuperCoolAPI",
+      "attr": "ApiId"
+     },
+     "Definition": "type Book {\n    bookName: String\n    id: ID\n}\ntype Query { getBook(bookName: String): Book }\n"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.SuperCoolAPICloudWatchRole",
+   "cfg": "SuperCoolAPICloudWatchRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "SuperCoolAPICloudWatchRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "appsync.amazonaws.com"
+         ]
+        }
+       }
+      ]
+     },
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AWSAppSyncPushToCloudWatchLogs"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::AppSync::ApiKey.SuperCoolAPIMyApiKey",
+   "cfg": "SuperCoolAPIMyApiKey",
+   "type": "__declared__",
+   "refs": [
+    "SuperCoolAPI"
+   ],
+   "values": {
+    "type": "AWS::AppSync::ApiKey",
+    "name": "SuperCoolAPIMyApiKey",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "SuperCoolAPI",
+      "attr": "ApiId"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::AppSync::FunctionConfiguration.SuperCoolAPIprocessQuery",
+   "cfg": "SuperCoolAPIprocessQuery",
+   "type": "__declared__",
+   "refs": [
+    "SuperCoolAPI",
+    "SuperCoolAPINoneDataSource"
+   ],
+   "values": {
+    "type": "AWS::AppSync::FunctionConfiguration",
+    "name": "SuperCoolAPIprocessQuery",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "SuperCoolAPI",
+      "attr": "ApiId"
+     },
+     "Code": "import { util } from '@aws-appsync/utils';\n\nexport function request(ctx) {\n  const id = util.autoId();\n  return { payload: { ...ctx.args, id } };\n}\n\nexport function response(ctx) {\n  return ctx.result;\n}\n",
+     "DataSourceName": {
+      "ref": "SuperCoolAPINoneDataSource",
+      "attr": "Name"
+     },
+     "Name": "processQuery",
+     "Runtime": {
+      "Name": "APPSYNC_JS",
+      "RuntimeVersion": "1.0.0"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::AppSync::Resolver.SuperCoolAPIQuerygetBook",
+   "cfg": "SuperCoolAPIQuerygetBook",
+   "type": "__declared__",
+   "refs": [
+    "SuperCoolAPI",
+    "SuperCoolAPIprocessQuery"
+   ],
+   "values": {
+    "type": "AWS::AppSync::Resolver",
+    "name": "SuperCoolAPIQuerygetBook",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "SuperCoolAPI",
+      "attr": "ApiId"
+     },
+     "Code": "\nexport function request(ctx) {\n    return {};\n}\n\nexport function response(ctx) {\n    return ctx.prev.result;\n}\n",
+     "FieldName": "getBook",
+     "Kind": "PIPELINE",
+     "PipelineConfig": {
+      "Functions": [
+       {
+        "ref": "SuperCoolAPIprocessQuery",
+        "attr": "FunctionId"
+       }
+      ]
+     },
+     "Runtime": {
+      "Name": "APPSYNC_JS",
+      "RuntimeVersion": "1.0.0"
+     },
+     "TypeName": "Query"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::AppSync::DataSource.SuperCoolAPINoneDataSource",
+   "cfg": "SuperCoolAPINoneDataSource",
+   "type": "__declared__",
+   "refs": [
+    "SuperCoolAPI"
+   ],
+   "values": {
+    "type": "AWS::AppSync::DataSource",
+    "name": "SuperCoolAPINoneDataSource",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "SuperCoolAPI",
+      "attr": "ApiId"
+     },
+     "Name": "SuperCoolAPINoneDataSource",
+     "Type": "NONE"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::AppSync::GraphQLApi.IntrospectionDisableSuperCoolAPI",
+   "cfg": "IntrospectionDisableSuperCoolAPI",
+   "type": "__declared__",
+   "refs": [
+    "IntrospectionDisableSuperCoolAPICloudWatchRole"
+   ],
+   "values": {
+    "type": "AWS::AppSync::GraphQLApi",
+    "name": "IntrospectionDisableSuperCoolAPI",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "IntrospectionDisableSuperCoolAPI",
+     "Tags": [
+      {
+       "Key": "graphqlapi:createdBy",
+       "Value": "SAM"
+      }
+     ],
+     "AuthenticationType": "API_KEY",
+     "LogConfig": {
+      "FieldLogLevel": "ALL",
+      "CloudWatchLogsRoleArn": {
+       "ref": "IntrospectionDisableSuperCoolAPICloudWatchRole",
+       "attr": "Arn"
+      }
+     },
+     "OwnerContact": "blah-blah",
+     "IntrospectionConfig": "DISABLED",
+     "QueryDepthLimit": 10,
+     "ResolverCountLimit": 100
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::AppSync::GraphQLSchema.IntrospectionDisableSuperCoolAPISchema",
+   "cfg": "IntrospectionDisableSuperCoolAPISchema",
+   "type": "__declared__",
+   "refs": [
+    "IntrospectionDisableSuperCoolAPI"
+   ],
+   "values": {
+    "type": "AWS::AppSync::GraphQLSchema",
+    "name": "IntrospectionDisableSuperCoolAPISchema",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "IntrospectionDisableSuperCoolAPI",
+      "attr": "ApiId"
+     },
+     "Definition": "type Book {\n    bookName: String\n    id: ID\n}\ntype Query { getBook(bookName: String): Book }\n"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.IntrospectionDisableSuperCoolAPICloudWatchRole",
+   "cfg": "IntrospectionDisableSuperCoolAPICloudWatchRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "IntrospectionDisableSuperCoolAPICloudWatchRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "appsync.amazonaws.com"
+         ]
+        }
+       }
+      ]
+     },
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AWSAppSyncPushToCloudWatchLogs"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::AppSync::ApiKey.IntrospectionDisableSuperCoolAPIMyApiKey",
+   "cfg": "IntrospectionDisableSuperCoolAPIMyApiKey",
+   "type": "__declared__",
+   "refs": [
+    "IntrospectionDisableSuperCoolAPI"
+   ],
+   "values": {
+    "type": "AWS::AppSync::ApiKey",
+    "name": "IntrospectionDisableSuperCoolAPIMyApiKey",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "IntrospectionDisableSuperCoolAPI",
+      "attr": "ApiId"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::AppSync::FunctionConfiguration.IntrospectionDisableSuperCoolAPIprocessQuery",
+   "cfg": "IntrospectionDisableSuperCoolAPIprocessQuery",
+   "type": "__declared__",
+   "refs": [
+    "IntrospectionDisableSuperCoolAPI",
+    "IntrospectionDisableSuperCoolAPINoneDataSource"
+   ],
+   "values": {
+    "type": "AWS::AppSync::FunctionConfiguration",
+    "name": "IntrospectionDisableSuperCoolAPIprocessQuery",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "IntrospectionDisableSuperCoolAPI",
+      "attr": "ApiId"
+     },
+     "Code": "import { util } from '@aws-appsync/utils';\n\nexport function request(ctx) {\n  const id = util.autoId();\n  return { payload: { ...ctx.args, id } };\n}\n\nexport function response(ctx) {\n  return ctx.result;\n}\n",
+     "DataSourceName": {
+      "ref": "IntrospectionDisableSuperCoolAPINoneDataSource",
+      "attr": "Name"
+     },
+     "Name": "processQuery",
+     "Runtime": {
+      "Name": "APPSYNC_JS",
+      "RuntimeVersion": "1.0.0"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::AppSync::Resolver.IntrospectionDisableSuperCoolAPIQuerygetBook",
+   "cfg": "IntrospectionDisableSuperCoolAPIQuerygetBook",
+   "type": "__declared__",
+   "refs": [
+    "IntrospectionDisableSuperCoolAPI",
+    "IntrospectionDisableSuperCoolAPIprocessQuery"
+   ],
+   "values": {
+    "type": "AWS::AppSync::Resolver",
+    "name": "IntrospectionDisableSuperCoolAPIQuerygetBook",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "IntrospectionDisableSuperCoolAPI",
+      "attr": "ApiId"
+     },
+     "Code": "\nexport function request(ctx) {\n    return {};\n}\n\nexport function response(ctx) {\n    return ctx.prev.result;\n}\n",
+     "FieldName": "getBook",
+     "Kind": "PIPELINE",
+     "PipelineConfig": {
+      "Functions": [
+       {
+        "ref": "IntrospectionDisableSuperCoolAPIprocessQuery",
+        "attr": "FunctionId"
+       }
+      ]
+     },
+     "Runtime": {
+      "Name": "APPSYNC_JS",
+      "RuntimeVersion": "1.0.0"
+     },
+     "TypeName": "Query"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::AppSync::DataSource.IntrospectionDisableSuperCoolAPINoneDataSource",
+   "cfg": "IntrospectionDisableSuperCoolAPINoneDataSource",
+   "type": "__declared__",
+   "refs": [
+    "IntrospectionDisableSuperCoolAPI"
+   ],
+   "values": {
+    "type": "AWS::AppSync::DataSource",
+    "name": "IntrospectionDisableSuperCoolAPINoneDataSource",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "IntrospectionDisableSuperCoolAPI",
+      "attr": "ApiId"
+     },
+     "Name": "IntrospectionDisableSuperCoolAPINoneDataSource",
+     "Type": "NONE"
+    }
+   }
+  }
+ ]
+}

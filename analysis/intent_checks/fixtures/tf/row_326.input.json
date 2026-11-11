@@ -1,0 +1,1961 @@
+{
+ "meta": {
+  "lang": "tf",
+  "mode": "plan",
+  "warnings": [],
+  "gt_hash": "9df1eb5329e817b11231d5b09c96916121a81ced2252ef58c57b71a09e51af51",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "data.aws_iam_policy_document.glue_policy_ingestion",
+   "cfg": "data.aws_iam_policy_document.glue_policy_ingestion",
+   "type": "data.aws_iam_policy_document",
+   "values": {
+    "override_json": null,
+    "override_policy_documents": null,
+    "policy_id": null,
+    "source_json": null,
+    "source_policy_documents": null,
+    "statement": [
+     {
+      "actions": [
+       "cloudwatch:*",
+       "glue:*",
+       "glue:GetTable",
+       "logs:CreateLogGroup",
+       "logs:CreateLogStream",
+       "logs:PutLogEvents",
+       "secretsmanager:*"
+      ],
+      "condition": [],
+      "effect": "Allow",
+      "not_actions": null,
+      "not_principals": [],
+      "not_resources": null,
+      "principals": [],
+      "resources": [
+       "*"
+      ],
+      "sid": null
+     },
+     {
+      "actions": [
+       "s3:DeleteObject",
+       "s3:GetBucketLocation",
+       "s3:GetObject",
+       "s3:ListBucket",
+       "s3:PutObject"
+      ],
+      "condition": [],
+      "effect": "Allow",
+      "not_actions": null,
+      "not_principals": [],
+      "not_resources": null,
+      "principals": [],
+      "resources": [
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null
+      ],
+      "sid": null
+     }
+    ],
+    "version": "2012-10-17"
+   },
+   "refs": [
+    "aws_s3_bucket.artefact_glue",
+    "aws_s3_bucket.lake_bronze",
+    "aws_s3_bucket.lake_gold",
+    "aws_s3_bucket.lake_silver",
+    "aws_s3_bucket.lake_staging",
+    "aws_s3_bucket.logdir"
+   ]
+  },
+  {
+   "id": "aws_athena_database.database_gold",
+   "cfg": "aws_athena_database.database_gold",
+   "type": "aws_athena_database",
+   "values": {
+    "acl_configuration": [],
+    "comment": null,
+    "encryption_configuration": [
+     {
+      "encryption_option": "SSE_KMS"
+     }
+    ],
+    "expected_bucket_owner": null,
+    "force_destroy": false,
+    "name": "silver",
+    "properties": null
+   },
+   "refs": [
+    "aws_kms_key.data_lake",
+    "aws_s3_bucket.lake_silver"
+   ]
+  },
+  {
+   "id": "aws_cloudwatch_event_rule.stf_trigger_rule",
+   "cfg": "aws_cloudwatch_event_rule.stf_trigger_rule",
+   "type": "aws_cloudwatch_event_rule",
+   "values": {
+    "description": "Sample Event for Glue terraform example",
+    "event_bus_name": "default",
+    "event_pattern": null,
+    "is_enabled": null,
+    "name": "stf_trigger_rule",
+    "role_arn": null,
+    "schedule_expression": "cron(0 * * * ? *)",
+    "state": null,
+    "tags": null,
+    "tags_all": {
+     "enviroment": "data-plataform",
+     "managed-by": "terraform",
+     "owner": "tavares"
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "aws_cloudwatch_event_target.cloudwatch_event_target",
+   "cfg": "aws_cloudwatch_event_target.cloudwatch_event_target",
+   "type": "aws_cloudwatch_event_target",
+   "values": {
+    "batch_target": [],
+    "dead_letter_config": [],
+    "ecs_target": [],
+    "event_bus_name": "default",
+    "http_target": [],
+    "input": null,
+    "input_path": null,
+    "input_transformer": [],
+    "kinesis_target": [],
+    "redshift_target": [],
+    "retry_policy": [],
+    "rule": "stf_trigger_rule",
+    "run_command_targets": [],
+    "sagemaker_pipeline_target": [],
+    "sqs_target": []
+   },
+   "refs": [
+    "aws_cloudwatch_event_rule.stf_trigger_rule",
+    "aws_iam_role.allow_cloudwatch_to_execute_role",
+    "aws_sfn_state_machine.aws_step_function_workflow"
+   ]
+  },
+  {
+   "id": "aws_glue_job.etl_jobs",
+   "cfg": "aws_glue_job.etl_jobs",
+   "type": "aws_glue_job",
+   "values": {
+    "command": [
+     {
+      "name": "glueetl",
+      "python_version": "3",
+      "script_location": "s3://benchmark-glue-artefacts-000000000000/glueClima/extraiDados.py"
+     }
+    ],
+    "connections": null,
+    "default_arguments": {
+     "--TempDir": "s3://benchmark-datalake-logs-000000000000/tempClima",
+     "--enable-continuous-cloudwatch-log": "True",
+     "--enable-glue-datacatalog": "True",
+     "--enable-metrics": "True",
+     "--enable-spark-ui": "True",
+     "--job-language": "python"
+    },
+    "description": null,
+    "execution_class": null,
+    "execution_property": [
+     {
+      "max_concurrent_runs": 2
+     }
+    ],
+    "glue_version": "4.0",
+    "max_retries": 0,
+    "name": "glue-job-extrai-dados",
+    "non_overridable_arguments": null,
+    "number_of_workers": 20,
+    "security_configuration": null,
+    "tags": {
+     "manage_by": "terraform",
+     "owner": "tavares"
+    },
+    "tags_all": {
+     "enviroment": "data-plataform",
+     "manage_by": "terraform",
+     "managed-by": "terraform",
+     "owner": "tavares"
+    },
+    "timeout": 2880,
+    "worker_type": "G.1X"
+   },
+   "refs": [
+    "aws_iam_role.glue_role_ingestion_resource",
+    "data.aws_caller_identity.current"
+   ]
+  },
+  {
+   "id": "aws_glue_job.transforma_job",
+   "cfg": "aws_glue_job.transforma_job",
+   "type": "aws_glue_job",
+   "values": {
+    "command": [
+     {
+      "name": "glueetl",
+      "python_version": "3",
+      "script_location": "s3://benchmark-glue-artefacts-000000000000/glueClima/transformaDados.py"
+     }
+    ],
+    "connections": null,
+    "default_arguments": {
+     "--TempDir": "s3://benchmark-datalake-logs-000000000000/tempClima",
+     "--additional-python-modules": "requests,uuid,pyarrow,deltalake",
+     "--continuous-log-logGroup": "transformaClima",
+     "--datalake-formats": "iceberg",
+     "--enable-continuous-cloudwatch-log": "True",
+     "--enable-glue-datacatalog": "True",
+     "--enable-metrics": "True",
+     "--enable-spark-ui": "True",
+     "--extra-py-files": "s3://benchmark-glue-artefacts-000000000000/glueClima/lib.zip",
+     "--job-language": "python"
+    },
+    "description": null,
+    "execution_class": null,
+    "execution_property": [
+     {
+      "max_concurrent_runs": 2
+     }
+    ],
+    "glue_version": "4.0",
+    "max_retries": 0,
+    "name": "glue-job-transforma-dados",
+    "non_overridable_arguments": null,
+    "number_of_workers": 20,
+    "security_configuration": null,
+    "tags": {
+     "manage_by": "terraform",
+     "owner": "tavares"
+    },
+    "tags_all": {
+     "enviroment": "data-plataform",
+     "manage_by": "terraform",
+     "managed-by": "terraform",
+     "owner": "tavares"
+    },
+    "timeout": 2880,
+    "worker_type": "G.1X"
+   },
+   "refs": [
+    "aws_iam_role.glue_role_ingestion_resource",
+    "data.aws_caller_identity.current"
+   ]
+  },
+  {
+   "id": "aws_iam_role.allow_cloudwatch_to_execute_role",
+   "cfg": "aws_iam_role.allow_cloudwatch_to_execute_role",
+   "type": "aws_iam_role",
+   "values": {
+    "assume_role_policy": "{\"Statement\":[{\"Action\":\"sts:AssumeRole\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":[\"states.amazonaws.com\",\"events.amazonaws.com\"]}}],\"Version\":\"2012-10-17\"}",
+    "description": null,
+    "force_detach_policies": false,
+    "max_session_duration": 3600,
+    "name": "aws-events-invoke-StepFunction",
+    "path": "/",
+    "permissions_boundary": null,
+    "tags": null,
+    "tags_all": {
+     "enviroment": "data-plataform",
+     "managed-by": "terraform",
+     "owner": "tavares"
+    }
+   },
+   "refs": [
+    "data.aws_iam_policy_document.allow_cloudwatch_to_execute_policy"
+   ]
+  },
+  {
+   "id": "aws_iam_role.aws_stf_role",
+   "cfg": "aws_iam_role.aws_stf_role",
+   "type": "aws_iam_role",
+   "values": {
+    "assume_role_policy": "{\"Statement\":[{\"Action\":\"sts:AssumeRole\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":[\"states.amazonaws.com\"]},\"Sid\":\"StepFunctionAssumeRole\"}],\"Version\":\"2012-10-17\"}",
+    "description": null,
+    "force_detach_policies": false,
+    "max_session_duration": 3600,
+    "name": "aws-stf-role",
+    "path": "/",
+    "permissions_boundary": null,
+    "tags": null,
+    "tags_all": {
+     "enviroment": "data-plataform",
+     "managed-by": "terraform",
+     "owner": "tavares"
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "aws_iam_role.glue_role_ingestion_resource",
+   "cfg": "aws_iam_role.glue_role_ingestion_resource",
+   "type": "aws_iam_role",
+   "values": {
+    "assume_role_policy": "{\"Statement\":[{\"Action\":\"sts:AssumeRole\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"glue.amazonaws.com\"}}],\"Version\":\"2012-10-17\"}",
+    "description": null,
+    "force_detach_policies": false,
+    "max_session_duration": 3600,
+    "name": "glue-ingestion-role-000000000000",
+    "path": "/",
+    "permissions_boundary": null,
+    "tags": null,
+    "tags_all": {
+     "enviroment": "data-plataform",
+     "managed-by": "terraform",
+     "owner": "tavares"
+    }
+   },
+   "refs": [
+    "data.aws_caller_identity.current",
+    "data.aws_iam_policy_document.glue_role_ingestion"
+   ]
+  },
+  {
+   "id": "aws_iam_role_policy.policylambdabronze",
+   "cfg": "aws_iam_role_policy.policylambdabronze",
+   "type": "aws_iam_role_policy",
+   "values": {
+    "name": "glue-ingestion-policy-000000000000"
+   },
+   "refs": [
+    "aws_iam_role.glue_role_ingestion_resource",
+    "data.aws_caller_identity.current",
+    "data.aws_iam_policy_document.glue_policy_ingestion"
+   ]
+  },
+  {
+   "id": "aws_iam_role_policy.state_execution",
+   "cfg": "aws_iam_role_policy.state_execution",
+   "type": "aws_iam_role_policy",
+   "values": {
+    "name": "state_execution_policy"
+   },
+   "refs": [
+    "aws_iam_role.allow_cloudwatch_to_execute_role",
+    "aws_sfn_state_machine.aws_step_function_workflow"
+   ]
+  },
+  {
+   "id": "aws_iam_role_policy.step_function_policy",
+   "cfg": "aws_iam_role_policy.step_function_policy",
+   "type": "aws_iam_role_policy",
+   "values": {
+    "name": "aws-stf-policy"
+   },
+   "refs": [
+    "aws_glue_job.etl_jobs",
+    "aws_glue_job.transforma_job",
+    "aws_iam_role.aws_stf_role"
+   ]
+  },
+  {
+   "id": "aws_kms_alias.data_lake",
+   "cfg": "aws_kms_alias.data_lake",
+   "type": "aws_kms_alias",
+   "values": {
+    "name": "alias/benchmark-glue-artefacts-data-lake"
+   },
+   "refs": [
+    "aws_kms_key.data_lake"
+   ]
+  },
+  {
+   "id": "aws_kms_key.data_lake",
+   "cfg": "aws_kms_key.data_lake",
+   "type": "aws_kms_key",
+   "values": {
+    "bypass_policy_lockout_safety_check": false,
+    "custom_key_store_id": null,
+    "customer_master_key_spec": "SYMMETRIC_DEFAULT",
+    "deletion_window_in_days": null,
+    "description": "CMK for data-lake S3 buckets and Athena database encryption",
+    "enable_key_rotation": true,
+    "is_enabled": true,
+    "key_usage": "ENCRYPT_DECRYPT",
+    "tags": null,
+    "tags_all": {
+     "enviroment": "data-plataform",
+     "managed-by": "terraform",
+     "owner": "tavares"
+    },
+    "timeouts": null,
+    "xks_key_id": null
+   },
+   "refs": []
+  },
+  {
+   "id": "aws_s3_bucket.artefact_glue",
+   "cfg": "aws_s3_bucket.artefact_glue",
+   "type": "aws_s3_bucket",
+   "values": {
+    "bucket": "benchmark-glue-artefacts-000000000000",
+    "force_destroy": false,
+    "tags": null,
+    "tags_all": {
+     "enviroment": "data-plataform",
+     "managed-by": "terraform",
+     "owner": "tavares"
+    },
+    "timeouts": null
+   },
+   "refs": [
+    "data.aws_caller_identity.current"
+   ]
+  },
+  {
+   "id": "aws_s3_bucket.lake_bronze",
+   "cfg": "aws_s3_bucket.lake_bronze",
+   "type": "aws_s3_bucket",
+   "values": {
+    "bucket": "benchmark-datalake-bronze-000000000000",
+    "force_destroy": false,
+    "tags": null,
+    "tags_all": {
+     "enviroment": "data-plataform",
+     "managed-by": "terraform",
+     "owner": "tavares"
+    },
+    "timeouts": null
+   },
+   "refs": [
+    "data.aws_caller_identity.current"
+   ]
+  },
+  {
+   "id": "aws_s3_bucket.lake_gold",
+   "cfg": "aws_s3_bucket.lake_gold",
+   "type": "aws_s3_bucket",
+   "values": {
+    "bucket": "benchmark-datalake-gold-000000000000",
+    "force_destroy": false,
+    "tags": null,
+    "tags_all": {
+     "enviroment": "data-plataform",
+     "managed-by": "terraform",
+     "owner": "tavares"
+    },
+    "timeouts": null
+   },
+   "refs": [
+    "data.aws_caller_identity.current"
+   ]
+  },
+  {
+   "id": "aws_s3_bucket.lake_silver",
+   "cfg": "aws_s3_bucket.lake_silver",
+   "type": "aws_s3_bucket",
+   "values": {
+    "bucket": "benchmark-datalake-silver-000000000000",
+    "force_destroy": false,
+    "tags": null,
+    "tags_all": {
+     "enviroment": "data-plataform",
+     "managed-by": "terraform",
+     "owner": "tavares"
+    },
+    "timeouts": null
+   },
+   "refs": [
+    "data.aws_caller_identity.current"
+   ]
+  },
+  {
+   "id": "aws_s3_bucket.lake_staging",
+   "cfg": "aws_s3_bucket.lake_staging",
+   "type": "aws_s3_bucket",
+   "values": {
+    "bucket": "benchmark-datalake-staging-000000000000",
+    "force_destroy": false,
+    "tags": null,
+    "tags_all": {
+     "enviroment": "data-plataform",
+     "managed-by": "terraform",
+     "owner": "tavares"
+    },
+    "timeouts": null
+   },
+   "refs": [
+    "data.aws_caller_identity.current"
+   ]
+  },
+  {
+   "id": "aws_s3_bucket.logdir",
+   "cfg": "aws_s3_bucket.logdir",
+   "type": "aws_s3_bucket",
+   "values": {
+    "bucket": "benchmark-datalake-logs-000000000000",
+    "force_destroy": false,
+    "tags": null,
+    "tags_all": {
+     "enviroment": "data-plataform",
+     "managed-by": "terraform",
+     "owner": "tavares"
+    },
+    "timeouts": null
+   },
+   "refs": [
+    "data.aws_caller_identity.current"
+   ]
+  },
+  {
+   "id": "aws_s3_bucket_public_access_block.artefact_glue",
+   "cfg": "aws_s3_bucket_public_access_block.artefact_glue",
+   "type": "aws_s3_bucket_public_access_block",
+   "values": {
+    "block_public_acls": true,
+    "block_public_policy": true,
+    "ignore_public_acls": true,
+    "restrict_public_buckets": true
+   },
+   "refs": [
+    "aws_s3_bucket.artefact_glue"
+   ]
+  },
+  {
+   "id": "aws_s3_bucket_public_access_block.lake_bronze",
+   "cfg": "aws_s3_bucket_public_access_block.lake_bronze",
+   "type": "aws_s3_bucket_public_access_block",
+   "values": {
+    "block_public_acls": true,
+    "block_public_policy": true,
+    "ignore_public_acls": true,
+    "restrict_public_buckets": true
+   },
+   "refs": [
+    "aws_s3_bucket.lake_bronze"
+   ]
+  },
+  {
+   "id": "aws_s3_bucket_public_access_block.lake_gold",
+   "cfg": "aws_s3_bucket_public_access_block.lake_gold",
+   "type": "aws_s3_bucket_public_access_block",
+   "values": {
+    "block_public_acls": true,
+    "block_public_policy": true,
+    "ignore_public_acls": true,
+    "restrict_public_buckets": true
+   },
+   "refs": [
+    "aws_s3_bucket.lake_gold"
+   ]
+  },
+  {
+   "id": "aws_s3_bucket_public_access_block.lake_silver",
+   "cfg": "aws_s3_bucket_public_access_block.lake_silver",
+   "type": "aws_s3_bucket_public_access_block",
+   "values": {
+    "block_public_acls": true,
+    "block_public_policy": true,
+    "ignore_public_acls": true,
+    "restrict_public_buckets": true
+   },
+   "refs": [
+    "aws_s3_bucket.lake_silver"
+   ]
+  },
+  {
+   "id": "aws_s3_bucket_public_access_block.lake_staging",
+   "cfg": "aws_s3_bucket_public_access_block.lake_staging",
+   "type": "aws_s3_bucket_public_access_block",
+   "values": {
+    "block_public_acls": true,
+    "block_public_policy": true,
+    "ignore_public_acls": true,
+    "restrict_public_buckets": true
+   },
+   "refs": [
+    "aws_s3_bucket.lake_staging"
+   ]
+  },
+  {
+   "id": "aws_s3_bucket_public_access_block.logdir",
+   "cfg": "aws_s3_bucket_public_access_block.logdir",
+   "type": "aws_s3_bucket_public_access_block",
+   "values": {
+    "block_public_acls": true,
+    "block_public_policy": true,
+    "ignore_public_acls": true,
+    "restrict_public_buckets": true
+   },
+   "refs": [
+    "aws_s3_bucket.logdir"
+   ]
+  },
+  {
+   "id": "aws_s3_bucket_server_side_encryption_configuration.artefact_glue",
+   "cfg": "aws_s3_bucket_server_side_encryption_configuration.artefact_glue",
+   "type": "aws_s3_bucket_server_side_encryption_configuration",
+   "values": {
+    "expected_bucket_owner": null,
+    "rule": [
+     {
+      "apply_server_side_encryption_by_default": [
+       {
+        "sse_algorithm": "aws:kms"
+       }
+      ],
+      "bucket_key_enabled": null
+     }
+    ]
+   },
+   "refs": [
+    "aws_kms_key.data_lake",
+    "aws_s3_bucket.artefact_glue"
+   ]
+  },
+  {
+   "id": "aws_s3_bucket_server_side_encryption_configuration.lake_bronze",
+   "cfg": "aws_s3_bucket_server_side_encryption_configuration.lake_bronze",
+   "type": "aws_s3_bucket_server_side_encryption_configuration",
+   "values": {
+    "expected_bucket_owner": null,
+    "rule": [
+     {
+      "apply_server_side_encryption_by_default": [
+       {
+        "sse_algorithm": "aws:kms"
+       }
+      ],
+      "bucket_key_enabled": null
+     }
+    ]
+   },
+   "refs": [
+    "aws_kms_key.data_lake",
+    "aws_s3_bucket.lake_bronze"
+   ]
+  },
+  {
+   "id": "aws_s3_bucket_server_side_encryption_configuration.lake_gold",
+   "cfg": "aws_s3_bucket_server_side_encryption_configuration.lake_gold",
+   "type": "aws_s3_bucket_server_side_encryption_configuration",
+   "values": {
+    "expected_bucket_owner": null,
+    "rule": [
+     {
+      "apply_server_side_encryption_by_default": [
+       {
+        "sse_algorithm": "aws:kms"
+       }
+      ],
+      "bucket_key_enabled": null
+     }
+    ]
+   },
+   "refs": [
+    "aws_kms_key.data_lake",
+    "aws_s3_bucket.lake_gold"
+   ]
+  },
+  {
+   "id": "aws_s3_bucket_server_side_encryption_configuration.lake_silver",
+   "cfg": "aws_s3_bucket_server_side_encryption_configuration.lake_silver",
+   "type": "aws_s3_bucket_server_side_encryption_configuration",
+   "values": {
+    "expected_bucket_owner": null,
+    "rule": [
+     {
+      "apply_server_side_encryption_by_default": [
+       {
+        "sse_algorithm": "aws:kms"
+       }
+      ],
+      "bucket_key_enabled": null
+     }
+    ]
+   },
+   "refs": [
+    "aws_kms_key.data_lake",
+    "aws_s3_bucket.lake_silver"
+   ]
+  },
+  {
+   "id": "aws_s3_bucket_server_side_encryption_configuration.lake_staging",
+   "cfg": "aws_s3_bucket_server_side_encryption_configuration.lake_staging",
+   "type": "aws_s3_bucket_server_side_encryption_configuration",
+   "values": {
+    "expected_bucket_owner": null,
+    "rule": [
+     {
+      "apply_server_side_encryption_by_default": [
+       {
+        "sse_algorithm": "aws:kms"
+       }
+      ],
+      "bucket_key_enabled": null
+     }
+    ]
+   },
+   "refs": [
+    "aws_kms_key.data_lake",
+    "aws_s3_bucket.lake_staging"
+   ]
+  },
+  {
+   "id": "aws_s3_bucket_server_side_encryption_configuration.logdir",
+   "cfg": "aws_s3_bucket_server_side_encryption_configuration.logdir",
+   "type": "aws_s3_bucket_server_side_encryption_configuration",
+   "values": {
+    "expected_bucket_owner": null,
+    "rule": [
+     {
+      "apply_server_side_encryption_by_default": [
+       {
+        "sse_algorithm": "aws:kms"
+       }
+      ],
+      "bucket_key_enabled": null
+     }
+    ]
+   },
+   "refs": [
+    "aws_kms_key.data_lake",
+    "aws_s3_bucket.logdir"
+   ]
+  },
+  {
+   "id": "aws_s3_bucket_versioning.artefact_glue_versioning",
+   "cfg": "aws_s3_bucket_versioning.artefact_glue_versioning",
+   "type": "aws_s3_bucket_versioning",
+   "values": {
+    "expected_bucket_owner": null,
+    "mfa": null,
+    "versioning_configuration": [
+     {
+      "status": "Enabled"
+     }
+    ]
+   },
+   "refs": [
+    "aws_s3_bucket.artefact_glue"
+   ]
+  },
+  {
+   "id": "aws_s3_bucket_versioning.lake_versioning_bronze",
+   "cfg": "aws_s3_bucket_versioning.lake_versioning_bronze",
+   "type": "aws_s3_bucket_versioning",
+   "values": {
+    "expected_bucket_owner": null,
+    "mfa": null,
+    "versioning_configuration": [
+     {
+      "status": "Enabled"
+     }
+    ]
+   },
+   "refs": [
+    "aws_s3_bucket.lake_bronze"
+   ]
+  },
+  {
+   "id": "aws_s3_bucket_versioning.lake_versioning_gold",
+   "cfg": "aws_s3_bucket_versioning.lake_versioning_gold",
+   "type": "aws_s3_bucket_versioning",
+   "values": {
+    "expected_bucket_owner": null,
+    "mfa": null,
+    "versioning_configuration": [
+     {
+      "status": "Enabled"
+     }
+    ]
+   },
+   "refs": [
+    "aws_s3_bucket.lake_gold"
+   ]
+  },
+  {
+   "id": "aws_s3_bucket_versioning.lake_versioning_silver",
+   "cfg": "aws_s3_bucket_versioning.lake_versioning_silver",
+   "type": "aws_s3_bucket_versioning",
+   "values": {
+    "expected_bucket_owner": null,
+    "mfa": null,
+    "versioning_configuration": [
+     {
+      "status": "Enabled"
+     }
+    ]
+   },
+   "refs": [
+    "aws_s3_bucket.lake_silver"
+   ]
+  },
+  {
+   "id": "aws_sfn_state_machine.aws_step_function_workflow",
+   "cfg": "aws_sfn_state_machine.aws_step_function_workflow",
+   "type": "aws_sfn_state_machine",
+   "values": {
+    "definition": "{\n    \"Comment\":\"A description of the sample glue job state machine using Terraform\",\n    \"StartAt\":\"Glue StartJobRun\",\n    \"States\": {\n\n        \"Glue StartJobRun\": {\n            \"Type\":\"Task\",\n            \"Resource\":\"arn:aws:states:::glue:startJobRun.sync\",\n            \"Parameters\": {\n                \"JobName\":\"glue-job-extrai-dados\",\n                \"Arguments\": {\n                    \"--cidade\":\"Sao Paulo\",\n                    \"--bucketDataLakeStaging\":\"benchmark-datalake-staging-000000000000\",\n                    \"--pastaArqs\":\"clima\",\n                    \"--api_key\":\"benchmark-placeholder-api-key\"\n                }\n            },\n            \"Next\": \"Processa Dados\"\n         },\n\n        \"Processa Dados\": {\n            \"Type\":\"Task\",\n            \"Resource\":\"arn:aws:states:::glue:startJobRun.sync\",\n            \"Parameters\": {\n                \"JobName\":\"glue-job-transforma-dados\",\n                \"Arguments\": {\n                    \"--bucketDataLakeStaging\":\"benchmark-datalake-staging-000000000000\",\n                    \"--bucketDataLakeBronze\":\"benchmark-datalake-bronze-000000000000\",\n                    \"--bucketDataLakeSilver\":\"benchmark-datalake-silver-000000000000\",\n                    \"--pastaArqs\":\"clima\",\n                    \"--key\":\"benchmark-placeholder-key\"\n               }\n            },\n            \"End\":true\n        }\n    }\n}\n",
+    "name": "aws-step-function-workflow",
+    "publish": false,
+    "tags": null,
+    "tags_all": {
+     "enviroment": "data-plataform",
+     "managed-by": "terraform",
+     "owner": "tavares"
+    },
+    "timeouts": null,
+    "type": "STANDARD"
+   },
+   "refs": [
+    "aws_glue_job.etl_jobs",
+    "aws_glue_job.transforma_job",
+    "aws_iam_role.aws_stf_role",
+    "data.aws_caller_identity.current"
+   ]
+  },
+  {
+   "id": "__parameter__.Cidade_API_Clima",
+   "cfg": "__parameter__.Cidade_API_Clima",
+   "type": "__parameter__",
+   "values": {
+    "name": "Cidade_API_Clima",
+    "default": "Sao Paulo"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.bucket_artefact_glue",
+   "cfg": "__parameter__.bucket_artefact_glue",
+   "type": "__parameter__",
+   "values": {
+    "name": "bucket_artefact_glue",
+    "default": "benchmark-glue-artefacts"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.bucket_bronze_lake",
+   "cfg": "__parameter__.bucket_bronze_lake",
+   "type": "__parameter__",
+   "values": {
+    "name": "bucket_bronze_lake",
+    "default": "benchmark-datalake-bronze"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.bucket_gold_lake",
+   "cfg": "__parameter__.bucket_gold_lake",
+   "type": "__parameter__",
+   "values": {
+    "name": "bucket_gold_lake",
+    "default": "benchmark-datalake-gold"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.bucket_log",
+   "cfg": "__parameter__.bucket_log",
+   "type": "__parameter__",
+   "values": {
+    "name": "bucket_log",
+    "default": "benchmark-datalake-logs"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.bucket_silver_lake",
+   "cfg": "__parameter__.bucket_silver_lake",
+   "type": "__parameter__",
+   "values": {
+    "name": "bucket_silver_lake",
+    "default": "benchmark-datalake-silver"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.bucket_staging_lake",
+   "cfg": "__parameter__.bucket_staging_lake",
+   "type": "__parameter__",
+   "values": {
+    "name": "bucket_staging_lake",
+    "default": "benchmark-datalake-staging"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.glueJobName",
+   "cfg": "__parameter__.glueJobName",
+   "type": "__parameter__",
+   "values": {
+    "name": "glueJobName",
+    "default": "glue-job-extrai-dados"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.glueJobNameTransforma",
+   "cfg": "__parameter__.glueJobNameTransforma",
+   "type": "__parameter__",
+   "values": {
+    "name": "glueJobNameTransforma",
+    "default": "glue-job-transforma-dados"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.glueingestionpolicy",
+   "cfg": "__parameter__.glueingestionpolicy",
+   "type": "__parameter__",
+   "values": {
+    "name": "glueingestionpolicy",
+    "default": "glue-ingestion-policy"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.glueingestionrole",
+   "cfg": "__parameter__.glueingestionrole",
+   "type": "__parameter__",
+   "values": {
+    "name": "glueingestionrole",
+    "default": "glue-ingestion-role"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.keyTraduz",
+   "cfg": "__parameter__.keyTraduz",
+   "type": "__parameter__",
+   "values": {
+    "name": "keyTraduz",
+    "default": "benchmark-placeholder-key"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.key_api",
+   "cfg": "__parameter__.key_api",
+   "type": "__parameter__",
+   "values": {
+    "name": "key_api",
+    "default": "benchmark-placeholder-api-key"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.python_version",
+   "cfg": "__parameter__.python_version",
+   "type": "__parameter__",
+   "values": {
+    "name": "python_version",
+    "default": "3"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.schedulerColetaClima",
+   "cfg": "__parameter__.schedulerColetaClima",
+   "type": "__parameter__",
+   "values": {
+    "name": "schedulerColetaClima",
+    "default": "cron(0 * * * ? *)"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.aws_cloudwatch_event_rule_arn",
+   "cfg": "__output__.aws_cloudwatch_event_rule_arn",
+   "type": "__output__",
+   "values": {
+    "name": "aws_cloudwatch_event_rule_arn",
+    "value": null,
+    "description": null
+   },
+   "refs": [
+    "aws_cloudwatch_event_rule.stf_trigger_rule"
+   ]
+  },
+  {
+   "id": "__declared__.aws_athena_database.database_gold",
+   "cfg": "aws_athena_database.database_gold",
+   "type": "__declared__",
+   "refs": [
+    "aws_kms_key.data_lake",
+    "aws_s3_bucket.lake_silver"
+   ],
+   "values": {
+    "type": "aws_athena_database",
+    "name": "database_gold",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "silver",
+     "bucket": "${aws_s3_bucket.lake_silver.id}",
+     "encryption_configuration": [
+      {
+       "encryption_option": "SSE_KMS",
+       "kms_key": "${aws_kms_key.data_lake.arn}"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.data.aws_iam_policy_document.allow_cloudwatch_to_execute_policy",
+   "cfg": "data.aws_iam_policy_document.allow_cloudwatch_to_execute_policy",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "data.aws_iam_policy_document",
+    "name": "allow_cloudwatch_to_execute_policy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "statement": [
+      {
+       "actions": [
+        "sts:AssumeRole"
+       ],
+       "principals": [
+        {
+         "type": "Service",
+         "identifiers": [
+          "states.amazonaws.com",
+          "events.amazonaws.com"
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role.allow_cloudwatch_to_execute_role",
+   "cfg": "aws_iam_role.allow_cloudwatch_to_execute_role",
+   "type": "__declared__",
+   "refs": [
+    "data.aws_iam_policy_document.allow_cloudwatch_to_execute_policy"
+   ],
+   "values": {
+    "type": "aws_iam_role",
+    "name": "allow_cloudwatch_to_execute_role",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "aws-events-invoke-StepFunction",
+     "assume_role_policy": "${data.aws_iam_policy_document.allow_cloudwatch_to_execute_policy.json}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role_policy.state_execution",
+   "cfg": "aws_iam_role_policy.state_execution",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_role.allow_cloudwatch_to_execute_role",
+    "aws_sfn_state_machine.aws_step_function_workflow"
+   ],
+   "values": {
+    "type": "aws_iam_role_policy",
+    "name": "state_execution",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "state_execution_policy",
+     "role": "${aws_iam_role.allow_cloudwatch_to_execute_role.id}",
+     "policy": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Sid\": \"Stmt1647307985962\",\n      \"Action\": [\n        \"states:StartExecution\"\n      ],\n      \"Effect\": \"Allow\",\n      \"Resource\": \"${aws_sfn_state_machine.aws_step_function_workflow.arn}\"\n    }\n  ]\n}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_cloudwatch_event_rule.stf_trigger_rule",
+   "cfg": "aws_cloudwatch_event_rule.stf_trigger_rule",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_cloudwatch_event_rule",
+    "name": "stf_trigger_rule",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "stf_trigger_rule",
+     "schedule_expression": "cron(0 * * * ? *)",
+     "description": "Sample Event for Glue terraform example"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_cloudwatch_event_target.cloudwatch_event_target",
+   "cfg": "aws_cloudwatch_event_target.cloudwatch_event_target",
+   "type": "__declared__",
+   "refs": [
+    "aws_cloudwatch_event_rule.stf_trigger_rule",
+    "aws_iam_role.allow_cloudwatch_to_execute_role",
+    "aws_sfn_state_machine.aws_step_function_workflow"
+   ],
+   "values": {
+    "type": "aws_cloudwatch_event_target",
+    "name": "cloudwatch_event_target",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "rule": "${aws_cloudwatch_event_rule.stf_trigger_rule.name}",
+     "arn": "${aws_sfn_state_machine.aws_step_function_workflow.arn}",
+     "role_arn": "${aws_iam_role.allow_cloudwatch_to_execute_role.arn}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.data.aws_iam_policy_document.glue_role_ingestion",
+   "cfg": "data.aws_iam_policy_document.glue_role_ingestion",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "data.aws_iam_policy_document",
+    "name": "glue_role_ingestion",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "statement": [
+      {
+       "effect": "Allow",
+       "actions": [
+        "sts:AssumeRole"
+       ],
+       "principals": [
+        {
+         "type": "Service",
+         "identifiers": [
+          "glue.amazonaws.com"
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.data.aws_iam_policy_document.glue_policy_ingestion",
+   "cfg": "data.aws_iam_policy_document.glue_policy_ingestion",
+   "type": "__declared__",
+   "refs": [
+    "aws_s3_bucket.artefact_glue",
+    "aws_s3_bucket.lake_bronze",
+    "aws_s3_bucket.lake_gold",
+    "aws_s3_bucket.lake_silver",
+    "aws_s3_bucket.lake_staging",
+    "aws_s3_bucket.logdir"
+   ],
+   "values": {
+    "type": "data.aws_iam_policy_document",
+    "name": "glue_policy_ingestion",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "version": "2012-10-17",
+     "statement": [
+      {
+       "effect": "Allow",
+       "resources": [
+        "*"
+       ],
+       "actions": [
+        "secretsmanager:*",
+        "cloudwatch:*",
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents",
+        "glue:GetTable",
+        "glue:*"
+       ]
+      },
+      {
+       "effect": "Allow",
+       "resources": [
+        "${aws_s3_bucket.artefact_glue.arn}",
+        "${aws_s3_bucket.artefact_glue.arn}/*",
+        "${aws_s3_bucket.lake_staging.arn}",
+        "${aws_s3_bucket.lake_staging.arn}/*",
+        "${aws_s3_bucket.lake_bronze.arn}",
+        "${aws_s3_bucket.lake_bronze.arn}/*",
+        "${aws_s3_bucket.lake_silver.arn}",
+        "${aws_s3_bucket.lake_silver.arn}/*",
+        "${aws_s3_bucket.lake_gold.arn}",
+        "${aws_s3_bucket.lake_gold.arn}/*",
+        "${aws_s3_bucket.logdir.arn}",
+        "${aws_s3_bucket.logdir.arn}/*"
+       ],
+       "actions": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject",
+        "s3:ListBucket",
+        "s3:GetBucketLocation"
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_glue_job.etl_jobs",
+   "cfg": "aws_glue_job.etl_jobs",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_role.glue_role_ingestion_resource",
+    "data.aws_caller_identity.current"
+   ],
+   "values": {
+    "type": "aws_glue_job",
+    "name": "etl_jobs",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "glue-job-extrai-dados",
+     "role_arn": "${aws_iam_role.glue_role_ingestion_resource.arn}",
+     "command": [
+      {
+       "python_version": "3",
+       "script_location": "s3://${var.bucket_artefact_glue}-${local.account_id}/glueClima/extraiDados.py"
+      }
+     ],
+     "default_arguments": {
+      "--TempDir": "s3://${var.bucket_log}-${local.account_id}/tempClima",
+      "--enable-continuous-cloudwatch-log": "True",
+      "--enable-glue-datacatalog": "True",
+      "--enable-metrics": "True",
+      "--enable-spark-ui": "True",
+      "--job-language": "python"
+     },
+     "execution_property": [
+      {
+       "max_concurrent_runs": 2
+      }
+     ],
+     "glue_version": "4.0",
+     "max_retries": 0,
+     "worker_type": "G.1X",
+     "number_of_workers": 20,
+     "timeout": 2880,
+     "tags": "${local.common_tags}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_glue_job.transforma_job",
+   "cfg": "aws_glue_job.transforma_job",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_role.glue_role_ingestion_resource",
+    "data.aws_caller_identity.current"
+   ],
+   "values": {
+    "type": "aws_glue_job",
+    "name": "transforma_job",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "glue-job-transforma-dados",
+     "role_arn": "${aws_iam_role.glue_role_ingestion_resource.arn}",
+     "command": [
+      {
+       "python_version": "3",
+       "script_location": "s3://${var.bucket_artefact_glue}-${local.account_id}/glueClima/transformaDados.py"
+      }
+     ],
+     "default_arguments": {
+      "--TempDir": "s3://${var.bucket_log}-${local.account_id}/tempClima",
+      "--enable-continuous-cloudwatch-log": "True",
+      "--enable-glue-datacatalog": "True",
+      "--enable-metrics": "True",
+      "--enable-spark-ui": "True",
+      "--job-language": "python",
+      "--additional-python-modules": "requests,uuid,pyarrow,deltalake",
+      "--continuous-log-logGroup": "transformaClima",
+      "--datalake-formats": "iceberg",
+      "--extra-py-files": "s3://${var.bucket_artefact_glue}-${local.account_id}/glueClima/lib.zip"
+     },
+     "execution_property": [
+      {
+       "max_concurrent_runs": 2
+      }
+     ],
+     "glue_version": "4.0",
+     "max_retries": 0,
+     "worker_type": "G.1X",
+     "number_of_workers": 20,
+     "timeout": 2880,
+     "tags": "${local.common_tags}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role.glue_role_ingestion_resource",
+   "cfg": "aws_iam_role.glue_role_ingestion_resource",
+   "type": "__declared__",
+   "refs": [
+    "data.aws_caller_identity.current",
+    "data.aws_iam_policy_document.glue_role_ingestion"
+   ],
+   "values": {
+    "type": "aws_iam_role",
+    "name": "glue_role_ingestion_resource",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "${var.glueingestionrole}-${local.account_id}",
+     "assume_role_policy": "${data.aws_iam_policy_document.glue_role_ingestion.json}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role_policy.policylambdabronze",
+   "cfg": "aws_iam_role_policy.policylambdabronze",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_role.glue_role_ingestion_resource",
+    "data.aws_caller_identity.current",
+    "data.aws_iam_policy_document.glue_policy_ingestion"
+   ],
+   "values": {
+    "type": "aws_iam_role_policy",
+    "name": "policylambdabronze",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "${var.glueingestionpolicy}-${local.account_id}",
+     "role": "${aws_iam_role.glue_role_ingestion_resource.id}",
+     "policy": "${data.aws_iam_policy_document.glue_policy_ingestion.json}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.data.aws_caller_identity.current",
+   "cfg": "data.aws_caller_identity.current",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "data.aws_caller_identity",
+    "name": "current",
+    "gated": false,
+    "gate": null,
+    "properties": {}
+   }
+  },
+  {
+   "id": "__declared__.aws_s3_bucket.artefact_glue",
+   "cfg": "aws_s3_bucket.artefact_glue",
+   "type": "__declared__",
+   "refs": [
+    "data.aws_caller_identity.current"
+   ],
+   "values": {
+    "type": "aws_s3_bucket",
+    "name": "artefact_glue",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "bucket": "${var.bucket_artefact_glue}-${local.account_id}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_s3_bucket_versioning.artefact_glue_versioning",
+   "cfg": "aws_s3_bucket_versioning.artefact_glue_versioning",
+   "type": "__declared__",
+   "refs": [
+    "aws_s3_bucket.artefact_glue"
+   ],
+   "values": {
+    "type": "aws_s3_bucket_versioning",
+    "name": "artefact_glue_versioning",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "bucket": "${aws_s3_bucket.artefact_glue.id}",
+     "versioning_configuration": [
+      {
+       "status": "Enabled"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_s3_bucket.lake_staging",
+   "cfg": "aws_s3_bucket.lake_staging",
+   "type": "__declared__",
+   "refs": [
+    "data.aws_caller_identity.current"
+   ],
+   "values": {
+    "type": "aws_s3_bucket",
+    "name": "lake_staging",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "bucket": "${var.bucket_staging_lake}-${local.account_id}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_s3_bucket.lake_bronze",
+   "cfg": "aws_s3_bucket.lake_bronze",
+   "type": "__declared__",
+   "refs": [
+    "data.aws_caller_identity.current"
+   ],
+   "values": {
+    "type": "aws_s3_bucket",
+    "name": "lake_bronze",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "bucket": "${var.bucket_bronze_lake}-${local.account_id}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_s3_bucket_versioning.lake_versioning_bronze",
+   "cfg": "aws_s3_bucket_versioning.lake_versioning_bronze",
+   "type": "__declared__",
+   "refs": [
+    "aws_s3_bucket.lake_bronze"
+   ],
+   "values": {
+    "type": "aws_s3_bucket_versioning",
+    "name": "lake_versioning_bronze",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "bucket": "${aws_s3_bucket.lake_bronze.id}",
+     "versioning_configuration": [
+      {
+       "status": "Enabled"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_s3_bucket.lake_silver",
+   "cfg": "aws_s3_bucket.lake_silver",
+   "type": "__declared__",
+   "refs": [
+    "data.aws_caller_identity.current"
+   ],
+   "values": {
+    "type": "aws_s3_bucket",
+    "name": "lake_silver",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "bucket": "${var.bucket_silver_lake}-${local.account_id}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_s3_bucket_versioning.lake_versioning_silver",
+   "cfg": "aws_s3_bucket_versioning.lake_versioning_silver",
+   "type": "__declared__",
+   "refs": [
+    "aws_s3_bucket.lake_silver"
+   ],
+   "values": {
+    "type": "aws_s3_bucket_versioning",
+    "name": "lake_versioning_silver",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "bucket": "${aws_s3_bucket.lake_silver.id}",
+     "versioning_configuration": [
+      {
+       "status": "Enabled"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_s3_bucket.lake_gold",
+   "cfg": "aws_s3_bucket.lake_gold",
+   "type": "__declared__",
+   "refs": [
+    "data.aws_caller_identity.current"
+   ],
+   "values": {
+    "type": "aws_s3_bucket",
+    "name": "lake_gold",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "bucket": "${var.bucket_gold_lake}-${local.account_id}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_s3_bucket_versioning.lake_versioning_gold",
+   "cfg": "aws_s3_bucket_versioning.lake_versioning_gold",
+   "type": "__declared__",
+   "refs": [
+    "aws_s3_bucket.lake_gold"
+   ],
+   "values": {
+    "type": "aws_s3_bucket_versioning",
+    "name": "lake_versioning_gold",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "bucket": "${aws_s3_bucket.lake_gold.id}",
+     "versioning_configuration": [
+      {
+       "status": "Enabled"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_s3_bucket.logdir",
+   "cfg": "aws_s3_bucket.logdir",
+   "type": "__declared__",
+   "refs": [
+    "data.aws_caller_identity.current"
+   ],
+   "values": {
+    "type": "aws_s3_bucket",
+    "name": "logdir",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "bucket": "${var.bucket_log}-${local.account_id}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_s3_object.artefact_glue",
+   "cfg": "aws_s3_object.artefact_glue",
+   "type": "__declared__",
+   "refs": [
+    "aws_s3_bucket.artefact_glue",
+    "aws_s3_bucket_versioning.artefact_glue_versioning"
+   ],
+   "values": {
+    "type": "aws_s3_object",
+    "name": "artefact_glue",
+    "gated": true,
+    "gate": "fileset(\"glueClima/\", \"**\")",
+    "properties": {
+     "depends_on": [
+      "${aws_s3_bucket_versioning.artefact_glue_versioning}"
+     ],
+     "for_each": "${fileset(\"glueClima/\",\"**\")}",
+     "bucket": "${aws_s3_bucket.artefact_glue.id}",
+     "key": "glueClima/${each.value}",
+     "source": "glueClima/${each.value}",
+     "etag": "${filemd5(\"glueClima/${each.value}\")}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_kms_key.data_lake",
+   "cfg": "aws_kms_key.data_lake",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_kms_key",
+    "name": "data_lake",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "description": "CMK for data-lake S3 buckets and Athena database encryption",
+     "enable_key_rotation": true
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_kms_alias.data_lake",
+   "cfg": "aws_kms_alias.data_lake",
+   "type": "__declared__",
+   "refs": [
+    "aws_kms_key.data_lake"
+   ],
+   "values": {
+    "type": "aws_kms_alias",
+    "name": "data_lake",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "alias/${var.bucket_artefact_glue}-data-lake",
+     "target_key_id": "${aws_kms_key.data_lake.key_id}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_s3_bucket_public_access_block.artefact_glue",
+   "cfg": "aws_s3_bucket_public_access_block.artefact_glue",
+   "type": "__declared__",
+   "refs": [
+    "aws_s3_bucket.artefact_glue"
+   ],
+   "values": {
+    "type": "aws_s3_bucket_public_access_block",
+    "name": "artefact_glue",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "bucket": "${aws_s3_bucket.artefact_glue.id}",
+     "block_public_acls": true,
+     "block_public_policy": true,
+     "ignore_public_acls": true,
+     "restrict_public_buckets": true
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_s3_bucket_public_access_block.lake_staging",
+   "cfg": "aws_s3_bucket_public_access_block.lake_staging",
+   "type": "__declared__",
+   "refs": [
+    "aws_s3_bucket.lake_staging"
+   ],
+   "values": {
+    "type": "aws_s3_bucket_public_access_block",
+    "name": "lake_staging",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "bucket": "${aws_s3_bucket.lake_staging.id}",
+     "block_public_acls": true,
+     "block_public_policy": true,
+     "ignore_public_acls": true,
+     "restrict_public_buckets": true
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_s3_bucket_public_access_block.lake_bronze",
+   "cfg": "aws_s3_bucket_public_access_block.lake_bronze",
+   "type": "__declared__",
+   "refs": [
+    "aws_s3_bucket.lake_bronze"
+   ],
+   "values": {
+    "type": "aws_s3_bucket_public_access_block",
+    "name": "lake_bronze",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "bucket": "${aws_s3_bucket.lake_bronze.id}",
+     "block_public_acls": true,
+     "block_public_policy": true,
+     "ignore_public_acls": true,
+     "restrict_public_buckets": true
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_s3_bucket_public_access_block.lake_silver",
+   "cfg": "aws_s3_bucket_public_access_block.lake_silver",
+   "type": "__declared__",
+   "refs": [
+    "aws_s3_bucket.lake_silver"
+   ],
+   "values": {
+    "type": "aws_s3_bucket_public_access_block",
+    "name": "lake_silver",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "bucket": "${aws_s3_bucket.lake_silver.id}",
+     "block_public_acls": true,
+     "block_public_policy": true,
+     "ignore_public_acls": true,
+     "restrict_public_buckets": true
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_s3_bucket_public_access_block.lake_gold",
+   "cfg": "aws_s3_bucket_public_access_block.lake_gold",
+   "type": "__declared__",
+   "refs": [
+    "aws_s3_bucket.lake_gold"
+   ],
+   "values": {
+    "type": "aws_s3_bucket_public_access_block",
+    "name": "lake_gold",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "bucket": "${aws_s3_bucket.lake_gold.id}",
+     "block_public_acls": true,
+     "block_public_policy": true,
+     "ignore_public_acls": true,
+     "restrict_public_buckets": true
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_s3_bucket_public_access_block.logdir",
+   "cfg": "aws_s3_bucket_public_access_block.logdir",
+   "type": "__declared__",
+   "refs": [
+    "aws_s3_bucket.logdir"
+   ],
+   "values": {
+    "type": "aws_s3_bucket_public_access_block",
+    "name": "logdir",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "bucket": "${aws_s3_bucket.logdir.id}",
+     "block_public_acls": true,
+     "block_public_policy": true,
+     "ignore_public_acls": true,
+     "restrict_public_buckets": true
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_s3_bucket_server_side_encryption_configuration.artefact_glue",
+   "cfg": "aws_s3_bucket_server_side_encryption_configuration.artefact_glue",
+   "type": "__declared__",
+   "refs": [
+    "aws_kms_key.data_lake",
+    "aws_s3_bucket.artefact_glue"
+   ],
+   "values": {
+    "type": "aws_s3_bucket_server_side_encryption_configuration",
+    "name": "artefact_glue",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "bucket": "${aws_s3_bucket.artefact_glue.id}",
+     "rule": [
+      {
+       "apply_server_side_encryption_by_default": [
+        {
+         "sse_algorithm": "aws:kms",
+         "kms_master_key_id": "${aws_kms_key.data_lake.arn}"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_s3_bucket_server_side_encryption_configuration.lake_staging",
+   "cfg": "aws_s3_bucket_server_side_encryption_configuration.lake_staging",
+   "type": "__declared__",
+   "refs": [
+    "aws_kms_key.data_lake",
+    "aws_s3_bucket.lake_staging"
+   ],
+   "values": {
+    "type": "aws_s3_bucket_server_side_encryption_configuration",
+    "name": "lake_staging",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "bucket": "${aws_s3_bucket.lake_staging.id}",
+     "rule": [
+      {
+       "apply_server_side_encryption_by_default": [
+        {
+         "sse_algorithm": "aws:kms",
+         "kms_master_key_id": "${aws_kms_key.data_lake.arn}"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_s3_bucket_server_side_encryption_configuration.lake_bronze",
+   "cfg": "aws_s3_bucket_server_side_encryption_configuration.lake_bronze",
+   "type": "__declared__",
+   "refs": [
+    "aws_kms_key.data_lake",
+    "aws_s3_bucket.lake_bronze"
+   ],
+   "values": {
+    "type": "aws_s3_bucket_server_side_encryption_configuration",
+    "name": "lake_bronze",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "bucket": "${aws_s3_bucket.lake_bronze.id}",
+     "rule": [
+      {
+       "apply_server_side_encryption_by_default": [
+        {
+         "sse_algorithm": "aws:kms",
+         "kms_master_key_id": "${aws_kms_key.data_lake.arn}"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_s3_bucket_server_side_encryption_configuration.lake_silver",
+   "cfg": "aws_s3_bucket_server_side_encryption_configuration.lake_silver",
+   "type": "__declared__",
+   "refs": [
+    "aws_kms_key.data_lake",
+    "aws_s3_bucket.lake_silver"
+   ],
+   "values": {
+    "type": "aws_s3_bucket_server_side_encryption_configuration",
+    "name": "lake_silver",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "bucket": "${aws_s3_bucket.lake_silver.id}",
+     "rule": [
+      {
+       "apply_server_side_encryption_by_default": [
+        {
+         "sse_algorithm": "aws:kms",
+         "kms_master_key_id": "${aws_kms_key.data_lake.arn}"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_s3_bucket_server_side_encryption_configuration.lake_gold",
+   "cfg": "aws_s3_bucket_server_side_encryption_configuration.lake_gold",
+   "type": "__declared__",
+   "refs": [
+    "aws_kms_key.data_lake",
+    "aws_s3_bucket.lake_gold"
+   ],
+   "values": {
+    "type": "aws_s3_bucket_server_side_encryption_configuration",
+    "name": "lake_gold",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "bucket": "${aws_s3_bucket.lake_gold.id}",
+     "rule": [
+      {
+       "apply_server_side_encryption_by_default": [
+        {
+         "sse_algorithm": "aws:kms",
+         "kms_master_key_id": "${aws_kms_key.data_lake.arn}"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_s3_bucket_server_side_encryption_configuration.logdir",
+   "cfg": "aws_s3_bucket_server_side_encryption_configuration.logdir",
+   "type": "__declared__",
+   "refs": [
+    "aws_kms_key.data_lake",
+    "aws_s3_bucket.logdir"
+   ],
+   "values": {
+    "type": "aws_s3_bucket_server_side_encryption_configuration",
+    "name": "logdir",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "bucket": "${aws_s3_bucket.logdir.id}",
+     "rule": [
+      {
+       "apply_server_side_encryption_by_default": [
+        {
+         "sse_algorithm": "aws:kms",
+         "kms_master_key_id": "${aws_kms_key.data_lake.arn}"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role.aws_stf_role",
+   "cfg": "aws_iam_role.aws_stf_role",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_iam_role",
+    "name": "aws_stf_role",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "aws-stf-role",
+     "assume_role_policy": "{\n   \"Version\":\"2012-10-17\",\n   \"Statement\":[\n      {\n         \"Action\":\"sts:AssumeRole\",\n         \"Principal\":{\n            \"Service\":[\n                \"states.amazonaws.com\"\n            ]\n         },\n         \"Effect\":\"Allow\",\n         \"Sid\":\"StepFunctionAssumeRole\"\n      }\n   ]\n}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role_policy.step_function_policy",
+   "cfg": "aws_iam_role_policy.step_function_policy",
+   "type": "__declared__",
+   "refs": [
+    "aws_glue_job.etl_jobs",
+    "aws_glue_job.transforma_job",
+    "aws_iam_role.aws_stf_role"
+   ],
+   "values": {
+    "type": "aws_iam_role_policy",
+    "name": "step_function_policy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "aws-stf-policy",
+     "role": "${aws_iam_role.aws_stf_role.id}",
+     "policy": "{\n   \"Version\":\"2012-10-17\",\n   \"Statement\":[\n      {\n         \"Action\":[\n                \"glue:StartJobRun\",\n                \"glue:GetJobRun\",\n                \"glue:GetJobRuns\",\n                \"glue:BatchStopJobRun\"\n         ],\n         \"Effect\":\"Allow\",\n         \"Resource\":[\n         \"${aws_glue_job.etl_jobs.arn}\",\n         \"${aws_glue_job.transforma_job.arn}\"\n         ]\n      }\n  ]\n}\n"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_sfn_state_machine.aws_step_function_workflow",
+   "cfg": "aws_sfn_state_machine.aws_step_function_workflow",
+   "type": "__declared__",
+   "refs": [
+    "aws_glue_job.etl_jobs",
+    "aws_glue_job.transforma_job",
+    "aws_iam_role.aws_stf_role",
+    "data.aws_caller_identity.current"
+   ],
+   "values": {
+    "type": "aws_sfn_state_machine",
+    "name": "aws_step_function_workflow",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "aws-step-function-workflow",
+     "role_arn": "${aws_iam_role.aws_stf_role.arn}",
+     "definition": "{\n    \"Comment\":\"A description of the sample glue job state machine using Terraform\",\n    \"StartAt\":\"Glue StartJobRun\",\n    \"States\": {\n\n        \"Glue StartJobRun\": {\n            \"Type\":\"Task\",\n            \"Resource\":\"arn:aws:states:::glue:startJobRun.sync\",\n            \"Parameters\": {\n                \"JobName\":\"${aws_glue_job.etl_jobs.name}\",\n                \"Arguments\": {\n                    \"--cidade\":\"${var.Cidade_API_Clima}\",\n                    \"--bucketDataLakeStaging\":\"${var.bucket_staging_lake}-${local.account_id}\",\n                    \"--pastaArqs\":\"clima\",\n                    \"--api_key\":\"${var.key_api}\"\n                }\n            },\n            \"Next\": \"Processa Dados\"\n         },\n\n        \"Processa Dados\": {\n            \"Type\":\"Task\",\n            \"Resource\":\"arn:aws:states:::glue:startJobRun.sync\",\n            \"Parameters\": {\n                \"JobName\":\"${aws_glue_job.transforma_job.name}\",\n                \"Arguments\": {\n                    \"--bucketDataLakeStaging\":\"${var.bucket_staging_lake}-${local.account_id}\",\n                    \"--bucketDataLakeBronze\":\"${var.bucket_bronze_lake}-${local.account_id}\",\n                    \"--bucketDataLakeSilver\":\"${var.bucket_silver_lake}-${local.account_id}\",\n                    \"--pastaArqs\":\"clima\",\n                    \"--key\":\"${var.keyTraduz}\"\n               }\n            },\n            \"End\":true\n        }\n    }\n}"
+    }
+   }
+  }
+ ]
+}

@@ -1,0 +1,1137 @@
+{
+  "lang": "cfn",
+  "row_number": 206,
+  "source_hash": {
+    "gt": "8afd290f8a58bdb8ccc2cf9e819044b91cecd8fff05883e5ee10ead9d0415aa7",
+    "prompt": "de8f8f6dd7b67814ea3e2b371d798fc30caed6746ac47c26502ba51391a67e1b"
+  },
+  "selectors": {
+    "lambda_roles": {
+      "types": [
+        "AWS::IAM::Role"
+      ],
+      "where": [
+        {
+          "path": "AssumeRolePolicyDocument.Statement.*.Principal.Service.*",
+          "op": "contains",
+          "value": "lambda.amazonaws.com"
+        }
+      ]
+    },
+    "reader": {
+      "types": [
+        "AWS::IAM::Role"
+      ],
+      "where": [
+        {
+          "path": "AssumeRolePolicyDocument.Statement.*.Principal.Service.*",
+          "op": "contains",
+          "value": "lambda.amazonaws.com"
+        },
+        {
+          "path": "ManagedPolicyArns.*",
+          "op": "regex",
+          "value": "(?i):policy/(service-role/)?(ReadOnlyAccess|job-function/ViewOnlyAccess|ViewOnlyAccess)$"
+        }
+      ]
+    },
+    "cp": {
+      "types": [
+        "AWS::IAM::Role"
+      ],
+      "where": [
+        {
+          "path": "AssumeRolePolicyDocument.Statement.*.Principal.Service.*",
+          "op": "contains",
+          "value": "eks.amazonaws.com"
+        }
+      ]
+    },
+    "fargate": {
+      "types": [
+        "AWS::IAM::Role"
+      ],
+      "where": [
+        {
+          "path": "AssumeRolePolicyDocument.Statement.*.Principal.Service.*",
+          "op": "contains",
+          "value": "eks-fargate-pods.amazonaws.com"
+        }
+      ]
+    },
+    "node_roles": {
+      "types": [
+        "AWS::IAM::Role"
+      ],
+      "where": [
+        {
+          "path": "AssumeRolePolicyDocument.Statement.*.Principal.Service.*",
+          "op": "contains",
+          "value": "ec2.amazonaws.com"
+        }
+      ]
+    },
+    "vpcrole": {
+      "types": [
+        "AWS::IAM::Role"
+      ],
+      "where": [
+        {
+          "path": "AssumeRolePolicyDocument.Statement.*.Principal.Service.*",
+          "op": "contains",
+          "value": "lambda.amazonaws.com"
+        },
+        {
+          "path": "",
+          "op": "regex",
+          "value": "CloudFormation-Kubernetes-VPC"
+        }
+      ]
+    },
+    "profiles": {
+      "types": [
+        "AWS::IAM::InstanceProfile"
+      ]
+    }
+  },
+  "checks": [
+    {
+      "id": "role_prefix",
+      "kind": "attr",
+      "tier": "core",
+      "quote": "using the prefix \"eks-quickstart\" for all role names",
+      "select": {
+        "types": [
+          "AWS::IAM::Role"
+        ]
+      },
+      "quantifier": "all",
+      "cond": {
+        "path": "RoleName",
+        "op": "regex",
+        "value": "^eks-quickstart"
+      },
+      "justify": "stated prefix"
+    },
+    {
+      "id": "lambda_roles_many",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "Lambda execution roles for various EKS operations including copying zip artifacts from S3, reading resource information",
+      "select": "lambda_roles",
+      "min": 12,
+      "justify": "prompt lists 12 distinct Lambda operations (copy zips ... resolving SSM parameters)"
+    },
+    {
+      "id": "copyzips_s3",
+      "tier": "detail",
+      "quote": "copying zip artifacts from S3",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "lambda_roles",
+          "cond": {
+            "path": "Policies.*.PolicyDocument.Statement.*",
+            "op": "match",
+            "value": [
+              {
+                "path": "Action.*",
+                "op": "glob_covers",
+                "value": "s3:GetObject"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "AWS::IAM::Policy",
+              "AWS::IAM::ManagedPolicy"
+            ],
+            "where": [
+              {
+                "path": "PolicyDocument.Statement.*",
+                "op": "match",
+                "value": [
+                  {
+                    "path": "Action.*",
+                    "op": "glob_covers",
+                    "value": "s3:GetObject"
+                  }
+                ]
+              }
+            ]
+          },
+          "to": "lambda_roles",
+          "bidirectional": true
+        }
+      ],
+      "justify": "copying from S3 needs read of objects"
+    },
+    {
+      "id": "reader_readonly",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "with read-only access across the account in addition to basic Lambda execution permissions",
+      "select": "reader",
+      "min": 1
+    },
+    {
+      "id": "reader_basic",
+      "tier": "detail",
+      "quote": "in addition to basic Lambda execution permissions",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "reader",
+          "cond": {
+            "path": "ManagedPolicyArns.*",
+            "op": "regex",
+            "value": "(?i):policy/(service-role/)?AWSLambdaBasicExecutionRole$"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "reader",
+          "cond": {
+            "path": "Policies.*.PolicyDocument.Statement.*",
+            "op": "match",
+            "value": [
+              {
+                "path": "Action.*",
+                "op": "glob_covers",
+                "value": "logs:CreateLogStream"
+              },
+              {
+                "path": "Action.*",
+                "op": "glob_covers",
+                "value": "logs:PutLogEvents"
+              }
+            ]
+          }
+        }
+      ],
+      "justify": "basic Lambda execution is the AWSLambdaBasicExecutionRole managed policy or its CloudWatch Logs actions"
+    },
+    {
+      "id": "ssm_resolver",
+      "kind": "any_of",
+      "tier": "core",
+      "quote": "storing parameter values under the SSM path \"/quickstart/amazon-eks\"",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "lambda_roles",
+          "cond": {
+            "path": "",
+            "op": "contains",
+            "value": "/quickstart/amazon-eks"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "AWS::SSM::Parameter"
+            ]
+          },
+          "cond": {
+            "path": "Name",
+            "op": "contains",
+            "value": "/quickstart/amazon-eks"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "__parameter__"
+            ]
+          },
+          "cond": {
+            "path": "default",
+            "op": "contains",
+            "value": "/quickstart/amazon-eks"
+          }
+        }
+      ]
+    },
+    {
+      "id": "clean_lb",
+      "kind": "any_of",
+      "tier": "core",
+      "quote": "cleaning up load balancers",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "lambda_roles",
+          "cond": {
+            "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+            "op": "glob_covers",
+            "value": "elasticloadbalancing:DeleteLoadBalancer"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "AWS::IAM::Policy",
+              "AWS::IAM::ManagedPolicy"
+            ]
+          },
+          "cond": {
+            "path": "PolicyDocument.Statement.*.Action.*",
+            "op": "glob_covers",
+            "value": "elasticloadbalancing:DeleteLoadBalancer"
+          }
+        }
+      ],
+      "justify": "cleaning up load balancers implies deleting them"
+    },
+    {
+      "id": "clean_sg",
+      "kind": "any_of",
+      "tier": "detail",
+      "quote": "cleaning up security group dependencies",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "lambda_roles",
+          "cond": {
+            "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+            "op": "regex",
+            "value": "(?i)^(\\*|ec2:\\*|ec2:(Revoke|Delete|Detach)[a-z]*\\*?|ec2:(Revoke|Delete|Detach)[A-Za-z]*(SecurityGroup|NetworkInterface)[A-Za-z]*)$"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "AWS::IAM::Policy",
+              "AWS::IAM::ManagedPolicy"
+            ]
+          },
+          "cond": {
+            "path": "PolicyDocument.Statement.*.Action.*",
+            "op": "regex",
+            "value": "(?i)^(\\*|ec2:\\*|ec2:(Revoke|Delete|Detach)[a-z]*\\*?|ec2:(Revoke|Delete|Detach)[A-Za-z]*(SecurityGroup|NetworkInterface)[A-Za-z]*)$"
+          }
+        }
+      ],
+      "justify": "cleaning up security group dependencies means revoking rules or deleting/detaching network interfaces"
+    },
+    {
+      "id": "clean_lambda",
+      "kind": "any_of",
+      "tier": "core",
+      "quote": "cleaning up Lambda functions",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "lambda_roles",
+          "cond": {
+            "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+            "op": "glob_covers",
+            "value": "lambda:DeleteFunction"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "AWS::IAM::Policy",
+              "AWS::IAM::ManagedPolicy"
+            ]
+          },
+          "cond": {
+            "path": "PolicyDocument.Statement.*.Action.*",
+            "op": "glob_covers",
+            "value": "lambda:DeleteFunction"
+          }
+        }
+      ],
+      "justify": "cleaning up functions implies deleting them"
+    },
+    {
+      "id": "caller_arn",
+      "kind": "any_of",
+      "tier": "detail",
+      "quote": "resolving caller ARNs",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "lambda_roles",
+          "cond": {
+            "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+            "op": "glob_covers",
+            "value": "sts:GetCallerIdentity"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "AWS::IAM::Policy",
+              "AWS::IAM::ManagedPolicy"
+            ]
+          },
+          "cond": {
+            "path": "PolicyDocument.Statement.*.Action.*",
+            "op": "glob_covers",
+            "value": "sts:GetCallerIdentity"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "lambda_roles",
+          "cond": {
+            "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+            "op": "glob_covers",
+            "value": "cloudtrail:LookupEvents"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "AWS::IAM::Policy",
+              "AWS::IAM::ManagedPolicy"
+            ]
+          },
+          "cond": {
+            "path": "PolicyDocument.Statement.*.Action.*",
+            "op": "glob_covers",
+            "value": "cloudtrail:LookupEvents"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "lambda_roles",
+          "cond": {
+            "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+            "op": "glob_covers",
+            "value": "cloudformation:DescribeStacks"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "AWS::IAM::Policy",
+              "AWS::IAM::ManagedPolicy"
+            ]
+          },
+          "cond": {
+            "path": "PolicyDocument.Statement.*.Action.*",
+            "op": "glob_covers",
+            "value": "cloudformation:DescribeStacks"
+          }
+        }
+      ],
+      "justify": "caller identity is resolved via STS, CloudTrail or CloudFormation"
+    },
+    {
+      "id": "register_type",
+      "kind": "any_of",
+      "tier": "core",
+      "quote": "registering custom resource types",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "lambda_roles",
+          "cond": {
+            "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+            "op": "glob_covers",
+            "value": "cloudformation:RegisterType"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "AWS::IAM::Policy",
+              "AWS::IAM::ManagedPolicy"
+            ]
+          },
+          "cond": {
+            "path": "PolicyDocument.Statement.*.Action.*",
+            "op": "glob_covers",
+            "value": "cloudformation:RegisterType"
+          }
+        }
+      ],
+      "justify": "registering types is cloudformation:RegisterType"
+    },
+    {
+      "id": "node_sg",
+      "kind": "any_of",
+      "tier": "detail",
+      "quote": "managing node security groups",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "lambda_roles",
+          "cond": {
+            "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+            "op": "regex",
+            "value": "(?i)^(\\*|eks:(\\*|describe.*)|ec2:(\\*|.*SecurityGroup.*))$"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "AWS::IAM::Policy",
+              "AWS::IAM::ManagedPolicy"
+            ]
+          },
+          "cond": {
+            "path": "PolicyDocument.Statement.*.Action.*",
+            "op": "regex",
+            "value": "(?i)^(\\*|eks:(\\*|describe.*)|ec2:(\\*|.*SecurityGroup.*))$"
+          }
+        }
+      ],
+      "justify": "node security groups are managed through EKS describe or EC2 security group actions"
+    },
+    {
+      "id": "fargate_profile",
+      "kind": "any_of",
+      "tier": "core",
+      "quote": "creating Fargate profiles",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "lambda_roles",
+          "cond": {
+            "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+            "op": "glob_covers",
+            "value": "eks:CreateFargateProfile"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "AWS::IAM::Policy",
+              "AWS::IAM::ManagedPolicy"
+            ]
+          },
+          "cond": {
+            "path": "PolicyDocument.Statement.*.Action.*",
+            "op": "glob_covers",
+            "value": "eks:CreateFargateProfile"
+          }
+        }
+      ],
+      "justify": "creating profiles is eks:CreateFargateProfile"
+    },
+    {
+      "id": "ssm_get",
+      "kind": "any_of",
+      "tier": "core",
+      "quote": "resolving SSM parameters",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "lambda_roles",
+          "cond": {
+            "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+            "op": "glob_covers",
+            "value": "ssm:GetParameter"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "AWS::IAM::Policy",
+              "AWS::IAM::ManagedPolicy"
+            ]
+          },
+          "cond": {
+            "path": "PolicyDocument.Statement.*.Action.*",
+            "op": "glob_covers",
+            "value": "ssm:GetParameter"
+          }
+        }
+      ],
+      "justify": "resolving parameters is ssm:GetParameter"
+    },
+    {
+      "id": "cp_role",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "the EKS control plane role that can be assumed by the EKS service",
+      "select": "cp",
+      "min": 1
+    },
+    {
+      "id": "cp_cluster_policy",
+      "kind": "attr",
+      "tier": "core",
+      "quote": "attaches the AWS managed AmazonEKSClusterPolicy and AmazonEKSServicePolicy policies",
+      "select": "cp",
+      "cond": {
+        "path": "ManagedPolicyArns.*",
+        "op": "regex",
+        "value": "(?i):policy/(service-role/)?AmazonEKSClusterPolicy$"
+      }
+    },
+    {
+      "id": "cp_service_policy",
+      "kind": "attr",
+      "tier": "core",
+      "quote": "attaches the AWS managed AmazonEKSClusterPolicy and AmazonEKSServicePolicy policies",
+      "select": "cp",
+      "cond": {
+        "path": "ManagedPolicyArns.*",
+        "op": "regex",
+        "value": "(?i):policy/(service-role/)?AmazonEKSServicePolicy$"
+      }
+    },
+    {
+      "id": "cp_AccountAttributes",
+      "tier": "detail",
+      "quote": "additionally allows describing EC2 account attributes, addresses, and internet gateways",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "cp",
+          "cond": {
+            "path": "Policies.*.PolicyDocument.Statement.*",
+            "op": "match",
+            "value": [
+              {
+                "path": "Action.*",
+                "op": "glob_covers",
+                "value": "ec2:DescribeAccountAttributes"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "AWS::IAM::Policy",
+              "AWS::IAM::ManagedPolicy"
+            ],
+            "where": [
+              {
+                "path": "PolicyDocument.Statement.*",
+                "op": "match",
+                "value": [
+                  {
+                    "path": "Action.*",
+                    "op": "glob_covers",
+                    "value": "ec2:DescribeAccountAttributes"
+                  }
+                ]
+              }
+            ]
+          },
+          "to": "cp",
+          "bidirectional": true
+        }
+      ],
+      "justify": "stated describe action"
+    },
+    {
+      "id": "cp_Addresses",
+      "tier": "detail",
+      "quote": "additionally allows describing EC2 account attributes, addresses, and internet gateways",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "cp",
+          "cond": {
+            "path": "Policies.*.PolicyDocument.Statement.*",
+            "op": "match",
+            "value": [
+              {
+                "path": "Action.*",
+                "op": "glob_covers",
+                "value": "ec2:DescribeAddresses"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "AWS::IAM::Policy",
+              "AWS::IAM::ManagedPolicy"
+            ],
+            "where": [
+              {
+                "path": "PolicyDocument.Statement.*",
+                "op": "match",
+                "value": [
+                  {
+                    "path": "Action.*",
+                    "op": "glob_covers",
+                    "value": "ec2:DescribeAddresses"
+                  }
+                ]
+              }
+            ]
+          },
+          "to": "cp",
+          "bidirectional": true
+        }
+      ],
+      "justify": "stated describe action"
+    },
+    {
+      "id": "cp_InternetGateways",
+      "tier": "detail",
+      "quote": "additionally allows describing EC2 account attributes, addresses, and internet gateways",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "cp",
+          "cond": {
+            "path": "Policies.*.PolicyDocument.Statement.*",
+            "op": "match",
+            "value": [
+              {
+                "path": "Action.*",
+                "op": "glob_covers",
+                "value": "ec2:DescribeInternetGateways"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "AWS::IAM::Policy",
+              "AWS::IAM::ManagedPolicy"
+            ],
+            "where": [
+              {
+                "path": "PolicyDocument.Statement.*",
+                "op": "match",
+                "value": [
+                  {
+                    "path": "Action.*",
+                    "op": "glob_covers",
+                    "value": "ec2:DescribeInternetGateways"
+                  }
+                ]
+              }
+            ]
+          },
+          "to": "cp",
+          "bidirectional": true
+        }
+      ],
+      "justify": "stated describe action"
+    },
+    {
+      "id": "fargate_role",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "the Fargate execution role that can be assumed by the EKS Fargate pods service",
+      "select": "fargate",
+      "min": 1
+    },
+    {
+      "id": "node_roles_two",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "both managed and unmanaged node instance roles with corresponding instance profiles that can be assumed by EC2 instances",
+      "select": "node_roles",
+      "min": 2,
+      "justify": "both managed and unmanaged = two roles"
+    },
+    {
+      "id": "instance_profiles_two",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "with corresponding instance profiles",
+      "select": "profiles",
+      "min": 2,
+      "justify": "one instance profile per node role, so profiles reference at least two different roles",
+      "distinct_path": "Roles.*"
+    },
+    {
+      "id": "profiles_ref_roles",
+      "kind": "ref",
+      "tier": "core",
+      "quote": "with corresponding instance profiles",
+      "from": "profiles",
+      "to": "node_roles"
+    },
+    {
+      "id": "node_AmazonEKSWorkerNodePolicy",
+      "kind": "attr",
+      "tier": "core",
+      "quote": "attach the AWS managed AmazonEKSWorkerNodePolicy, AmazonEKS_CNI_Policy, AmazonEC2ContainerRegistryReadOnly, and AmazonElasticFileSystemReadOnlyAccess policies",
+      "select": "node_roles",
+      "quantifier": "all",
+      "cond": {
+        "path": "ManagedPolicyArns.*",
+        "op": "regex",
+        "value": "(?i):policy/(service-role/)?AmazonEKSWorkerNodePolicy$"
+      }
+    },
+    {
+      "id": "node_AmazonEKS_CNI_Policy",
+      "kind": "attr",
+      "tier": "core",
+      "quote": "attach the AWS managed AmazonEKSWorkerNodePolicy, AmazonEKS_CNI_Policy, AmazonEC2ContainerRegistryReadOnly, and AmazonElasticFileSystemReadOnlyAccess policies",
+      "select": "node_roles",
+      "quantifier": "all",
+      "cond": {
+        "path": "ManagedPolicyArns.*",
+        "op": "regex",
+        "value": "(?i):policy/(service-role/)?AmazonEKS_CNI_Policy$"
+      }
+    },
+    {
+      "id": "node_AmazonEC2ContainerRegistryReadOnly",
+      "kind": "attr",
+      "tier": "core",
+      "quote": "attach the AWS managed AmazonEKSWorkerNodePolicy, AmazonEKS_CNI_Policy, AmazonEC2ContainerRegistryReadOnly, and AmazonElasticFileSystemReadOnlyAccess policies",
+      "select": "node_roles",
+      "quantifier": "all",
+      "cond": {
+        "path": "ManagedPolicyArns.*",
+        "op": "regex",
+        "value": "(?i):policy/(service-role/)?AmazonEC2ContainerRegistryReadOnly$"
+      }
+    },
+    {
+      "id": "node_AmazonElasticFileSystemReadOnlyAccess",
+      "kind": "attr",
+      "tier": "core",
+      "quote": "attach the AWS managed AmazonEKSWorkerNodePolicy, AmazonEKS_CNI_Policy, AmazonEC2ContainerRegistryReadOnly, and AmazonElasticFileSystemReadOnlyAccess policies",
+      "select": "node_roles",
+      "quantifier": "all",
+      "cond": {
+        "path": "ManagedPolicyArns.*",
+        "op": "regex",
+        "value": "(?i):policy/(service-role/)?AmazonElasticFileSystemReadOnlyAccess$"
+      }
+    },
+    {
+      "id": "node_signal",
+      "tier": "detail",
+      "quote": "also allow signaling stack completion back to CloudFormation",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "node_roles",
+          "quantifier": "all",
+          "cond": {
+            "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+            "op": "glob_covers",
+            "value": "cloudformation:SignalResource"
+          }
+        },
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "AWS::IAM::Policy",
+              "AWS::IAM::ManagedPolicy"
+            ],
+            "where": [
+              {
+                "path": "PolicyDocument.Statement.*.Action.*",
+                "op": "glob_covers",
+                "value": "cloudformation:SignalResource"
+              }
+            ]
+          },
+          "to": "node_roles",
+          "bidirectional": true
+        }
+      ],
+      "justify": "signaling stack completion = SignalResource"
+    },
+    {
+      "id": "vpcrole_exists",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "the role creation role that allows Lambda to create the fixed-name IAM role \"CloudFormation-Kubernetes-VPC\"",
+      "select": "vpcrole",
+      "min": 1
+    },
+    {
+      "id": "vpcrole_create",
+      "tier": "core",
+      "quote": "allows Lambda to create the fixed-name IAM role \"CloudFormation-Kubernetes-VPC\"",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "lambda_roles",
+          "cond": {
+            "path": "Policies.*.PolicyDocument.Statement.*",
+            "op": "match",
+            "value": [
+              {
+                "path": "Action.*",
+                "op": "glob_covers",
+                "value": "iam:CreateRole"
+              },
+              {
+                "path": "Resource.*",
+                "op": "regex",
+                "value": "role/CloudFormation-Kubernetes-VPC$"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "AWS::IAM::Policy",
+              "AWS::IAM::ManagedPolicy"
+            ],
+            "where": [
+              {
+                "path": "PolicyDocument.Statement.*",
+                "op": "match",
+                "value": [
+                  {
+                    "path": "Action.*",
+                    "op": "glob_covers",
+                    "value": "iam:CreateRole"
+                  },
+                  {
+                    "path": "Resource.*",
+                    "op": "regex",
+                    "value": "role/CloudFormation-Kubernetes-VPC$"
+                  }
+                ]
+              }
+            ]
+          },
+          "to": "lambda_roles",
+          "bidirectional": true
+        }
+      ],
+      "justify": "creating the fixed-name role is iam:CreateRole on role/CloudFormation-Kubernetes-VPC"
+    },
+    {
+      "id": "vpcrole_attach",
+      "tier": "core",
+      "quote": "attach only the AWS managed AWSLambdaENIManagementAccess and AWSLambdaBasicExecutionRole policies to that specific role",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "lambda_roles",
+          "cond": {
+            "path": "Policies.*.PolicyDocument.Statement.*",
+            "op": "match",
+            "value": [
+              {
+                "path": "Action.*",
+                "op": "glob_covers",
+                "value": "iam:AttachRolePolicy"
+              },
+              {
+                "path": "Resource.*",
+                "op": "regex",
+                "value": "role/CloudFormation-Kubernetes-VPC$"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "AWS::IAM::Policy",
+              "AWS::IAM::ManagedPolicy"
+            ],
+            "where": [
+              {
+                "path": "PolicyDocument.Statement.*",
+                "op": "match",
+                "value": [
+                  {
+                    "path": "Action.*",
+                    "op": "glob_covers",
+                    "value": "iam:AttachRolePolicy"
+                  },
+                  {
+                    "path": "Resource.*",
+                    "op": "regex",
+                    "value": "role/CloudFormation-Kubernetes-VPC$"
+                  }
+                ]
+              }
+            ]
+          },
+          "to": "lambda_roles",
+          "bidirectional": true
+        }
+      ],
+      "justify": "attaching policies to that specific role is iam:AttachRolePolicy on role/CloudFormation-Kubernetes-VPC"
+    },
+    {
+      "id": "vpcrole_eni",
+      "tier": "core",
+      "quote": "attach only the AWS managed AWSLambdaENIManagementAccess and AWSLambdaBasicExecutionRole policies",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "lambda_roles",
+          "cond": {
+            "path": "Policies.*.PolicyDocument.Statement.*",
+            "op": "match",
+            "value": [
+              {
+                "path": "Action.*",
+                "op": "glob_covers",
+                "value": "iam:AttachRolePolicy"
+              },
+              {
+                "path": "Resource.*",
+                "op": "regex",
+                "value": "role/CloudFormation-Kubernetes-VPC$"
+              },
+              {
+                "path": "Condition",
+                "op": "regex",
+                "value": "AWSLambdaENIManagementAccess"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "AWS::IAM::Policy",
+              "AWS::IAM::ManagedPolicy"
+            ],
+            "where": [
+              {
+                "path": "PolicyDocument.Statement.*",
+                "op": "match",
+                "value": [
+                  {
+                    "path": "Action.*",
+                    "op": "glob_covers",
+                    "value": "iam:AttachRolePolicy"
+                  },
+                  {
+                    "path": "Resource.*",
+                    "op": "regex",
+                    "value": "role/CloudFormation-Kubernetes-VPC$"
+                  },
+                  {
+                    "path": "Condition",
+                    "op": "regex",
+                    "value": "AWSLambdaENIManagementAccess"
+                  }
+                ]
+              }
+            ]
+          },
+          "to": "lambda_roles",
+          "bidirectional": true
+        }
+      ],
+      "justify": "'only' these policies means the attach permission is conditioned on the policy ARN"
+    },
+    {
+      "id": "vpcrole_notadmin",
+      "tier": "detail",
+      "quote": "attach only the AWS managed AWSLambdaENIManagementAccess and AWSLambdaBasicExecutionRole policies",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "lambda_roles",
+          "cond": {
+            "path": "Policies.*.PolicyDocument.Statement.*",
+            "op": "match",
+            "value": [
+              {
+                "path": "Action.*",
+                "op": "glob_covers",
+                "value": "iam:AttachRolePolicy"
+              },
+              {
+                "path": "Resource.*",
+                "op": "regex",
+                "value": "role/CloudFormation-Kubernetes-VPC$"
+              },
+              {
+                "path": "Condition",
+                "op": "regex",
+                "value": "AWSLambdaBasicExecutionRole"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "AWS::IAM::Policy",
+              "AWS::IAM::ManagedPolicy"
+            ],
+            "where": [
+              {
+                "path": "PolicyDocument.Statement.*",
+                "op": "match",
+                "value": [
+                  {
+                    "path": "Action.*",
+                    "op": "glob_covers",
+                    "value": "iam:AttachRolePolicy"
+                  },
+                  {
+                    "path": "Resource.*",
+                    "op": "regex",
+                    "value": "role/CloudFormation-Kubernetes-VPC$"
+                  },
+                  {
+                    "path": "Condition",
+                    "op": "regex",
+                    "value": "AWSLambdaBasicExecutionRole"
+                  }
+                ]
+              }
+            ]
+          },
+          "to": "lambda_roles",
+          "bidirectional": true
+        }
+      ],
+      "justify": "'only' these policies means the attach permission is conditioned on the policy ARN"
+    },
+    {
+      "id": "x_cp_ec2",
+      "kind": "attr",
+      "tier": "extra",
+      "select": "cp",
+      "cond": {
+        "path": "Policies.*.PolicyDocument.Statement.*.Resource.*",
+        "op": "eq",
+        "value": "*"
+      }
+    }
+  ],
+  "notes": "Each Lambda role's exact name is not pinned (prompt lists operations, names are inference). PROMPT_GT_MISMATCH: prompt lists a role for deleting bucket contents but the GT DeleteBucketContents role has only basic execution (no s3:Delete* action), so no S3 delete check is written. The fixed-name role permissions are bound to one statement: the action on role/CloudFormation-Kubernetes-VPC, and for attaching, an iam:PolicyARN condition naming each allowed policy. 'Only' is checked positively (the condition names both policies); an extra unconditioned grant on that role is not detected. Candidate review (5 templates): lambda_roles_many fails DSV4F (two Lambda roles in total); reader_readonly fails DSV4F (no reader role) and GLM (a custom Describe/Get/List policy over about ten services, not account-wide read-only); register_type fails GLM (cloudformation:RegisterResourceType is not an IAM action); vpcrole_eni/vpcrole_notadmin fail OpenCode (AttachRolePolicy without a policy-ARN condition). All kept: the templates contradict the prompt."
+}

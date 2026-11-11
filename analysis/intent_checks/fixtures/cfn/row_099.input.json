@@ -1,0 +1,876 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "75aaef510bdc3c9ad71827d17286f4d829159efacb3b17c77ee3c2e9381f69b7",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "InstanceRole",
+   "cfg": "InstanceRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore",
+     "arn:aws:iam::aws:policy/EC2InstanceProfileForImageBuilder"
+    ],
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "ec2.amazonaws.com"
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "Path": "/executionServiceEC2Role/",
+    "__resource__": {
+     "Metadata": {
+      "Comment": "Role to be used by instance during image build."
+     }
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "InstanceProfile",
+   "cfg": "InstanceProfile",
+   "type": "AWS::IAM::InstanceProfile",
+   "values": {
+    "Path": "/executionServiceEC2Role/",
+    "Roles": [
+     {
+      "ref": "InstanceRole"
+     }
+    ]
+   },
+   "refs": [
+    "InstanceRole"
+   ]
+  },
+  {
+   "id": "ImageBuilderVpc",
+   "cfg": "ImageBuilderVpc",
+   "type": "AWS::EC2::VPC",
+   "values": {
+    "CidrBlock": "10.99.0.0/23"
+   },
+   "refs": []
+  },
+  {
+   "id": "ImageBuilderSubnet",
+   "cfg": "ImageBuilderSubnet",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "VpcId": {
+     "ref": "ImageBuilderVpc"
+    },
+    "CidrBlock": "10.99.0.0/24",
+    "AvailabilityZone": "us-east-1a"
+   },
+   "refs": [
+    "ImageBuilderVpc"
+   ]
+  },
+  {
+   "id": "ImageBuilderPublicSubnet",
+   "cfg": "ImageBuilderPublicSubnet",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "VpcId": {
+     "ref": "ImageBuilderVpc"
+    },
+    "CidrBlock": "10.99.1.0/24",
+    "AvailabilityZone": "us-east-1a"
+   },
+   "refs": [
+    "ImageBuilderVpc"
+   ]
+  },
+  {
+   "id": "ImageBuilderSecurityGroup",
+   "cfg": "ImageBuilderSecurityGroup",
+   "type": "AWS::EC2::SecurityGroup",
+   "values": {
+    "GroupDescription": "ImageBuilder build/test instance",
+    "VpcId": {
+     "ref": "ImageBuilderVpc"
+    }
+   },
+   "refs": [
+    "ImageBuilderVpc"
+   ]
+  },
+  {
+   "id": "ImageBuilderInternetGateway",
+   "cfg": "ImageBuilderInternetGateway",
+   "type": "AWS::EC2::InternetGateway",
+   "values": {},
+   "refs": []
+  },
+  {
+   "id": "ImageBuilderVpcGatewayAttachment",
+   "cfg": "ImageBuilderVpcGatewayAttachment",
+   "type": "AWS::EC2::VPCGatewayAttachment",
+   "values": {
+    "VpcId": {
+     "ref": "ImageBuilderVpc"
+    },
+    "InternetGatewayId": {
+     "ref": "ImageBuilderInternetGateway"
+    }
+   },
+   "refs": [
+    "ImageBuilderInternetGateway",
+    "ImageBuilderVpc"
+   ]
+  },
+  {
+   "id": "ImageBuilderPublicRouteTable",
+   "cfg": "ImageBuilderPublicRouteTable",
+   "type": "AWS::EC2::RouteTable",
+   "values": {
+    "VpcId": {
+     "ref": "ImageBuilderVpc"
+    }
+   },
+   "refs": [
+    "ImageBuilderVpc"
+   ]
+  },
+  {
+   "id": "ImageBuilderPublicRoute",
+   "cfg": "ImageBuilderPublicRoute",
+   "type": "AWS::EC2::Route",
+   "values": {
+    "RouteTableId": {
+     "ref": "ImageBuilderPublicRouteTable"
+    },
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "GatewayId": {
+     "ref": "ImageBuilderInternetGateway"
+    },
+    "__resource__": {
+     "DependsOn": [
+      "ImageBuilderVpcGatewayAttachment"
+     ]
+    }
+   },
+   "refs": [
+    "ImageBuilderInternetGateway",
+    "ImageBuilderPublicRouteTable"
+   ]
+  },
+  {
+   "id": "ImageBuilderPublicSubnetRouteTableAssociation",
+   "cfg": "ImageBuilderPublicSubnetRouteTableAssociation",
+   "type": "AWS::EC2::SubnetRouteTableAssociation",
+   "values": {
+    "SubnetId": {
+     "ref": "ImageBuilderPublicSubnet"
+    },
+    "RouteTableId": {
+     "ref": "ImageBuilderPublicRouteTable"
+    }
+   },
+   "refs": [
+    "ImageBuilderPublicRouteTable",
+    "ImageBuilderPublicSubnet"
+   ]
+  },
+  {
+   "id": "ImageBuilderNatEip",
+   "cfg": "ImageBuilderNatEip",
+   "type": "AWS::EC2::EIP",
+   "values": {
+    "Domain": "vpc",
+    "__resource__": {
+     "DependsOn": [
+      "ImageBuilderVpcGatewayAttachment"
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "ImageBuilderNatGateway",
+   "cfg": "ImageBuilderNatGateway",
+   "type": "AWS::EC2::NatGateway",
+   "values": {
+    "AllocationId": {
+     "ref": "ImageBuilderNatEip",
+     "attr": "AllocationId"
+    },
+    "SubnetId": {
+     "ref": "ImageBuilderPublicSubnet"
+    }
+   },
+   "refs": [
+    "ImageBuilderNatEip",
+    "ImageBuilderPublicSubnet"
+   ]
+  },
+  {
+   "id": "ImageBuilderPrivateRouteTable",
+   "cfg": "ImageBuilderPrivateRouteTable",
+   "type": "AWS::EC2::RouteTable",
+   "values": {
+    "VpcId": {
+     "ref": "ImageBuilderVpc"
+    }
+   },
+   "refs": [
+    "ImageBuilderVpc"
+   ]
+  },
+  {
+   "id": "ImageBuilderPrivateRoute",
+   "cfg": "ImageBuilderPrivateRoute",
+   "type": "AWS::EC2::Route",
+   "values": {
+    "RouteTableId": {
+     "ref": "ImageBuilderPrivateRouteTable"
+    },
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "NatGatewayId": {
+     "ref": "ImageBuilderNatGateway"
+    }
+   },
+   "refs": [
+    "ImageBuilderNatGateway",
+    "ImageBuilderPrivateRouteTable"
+   ]
+  },
+  {
+   "id": "ImageBuilderSubnetRouteTableAssociation",
+   "cfg": "ImageBuilderSubnetRouteTableAssociation",
+   "type": "AWS::EC2::SubnetRouteTableAssociation",
+   "values": {
+    "SubnetId": {
+     "ref": "ImageBuilderSubnet"
+    },
+    "RouteTableId": {
+     "ref": "ImageBuilderPrivateRouteTable"
+    }
+   },
+   "refs": [
+    "ImageBuilderPrivateRouteTable",
+    "ImageBuilderSubnet"
+   ]
+  },
+  {
+   "id": "ImageInfrastructureConfiguration",
+   "cfg": "ImageInfrastructureConfiguration",
+   "type": "AWS::ImageBuilder::InfrastructureConfiguration",
+   "values": {
+    "Name": "stack-Configuration",
+    "InstanceProfileName": {
+     "ref": "InstanceProfile"
+    },
+    "SubnetId": {
+     "ref": "ImageBuilderSubnet"
+    },
+    "SecurityGroupIds": [
+     {
+      "ref": "ImageBuilderSecurityGroup"
+     }
+    ]
+   },
+   "refs": [
+    "ImageBuilderSecurityGroup",
+    "ImageBuilderSubnet",
+    "InstanceProfile"
+   ]
+  },
+  {
+   "id": "ImageRecipe",
+   "cfg": "ImageRecipe",
+   "type": "AWS::ImageBuilder::ImageRecipe",
+   "values": {
+    "Name": "stack",
+    "Version": "0.0.0",
+    "ParentImage": "arn:aws:imagebuilder:us-east-1:aws:image/amazon-linux-2023-x86/x.x.x",
+    "Components": [
+     {
+      "ComponentArn": "arn:aws:imagebuilder:us-east-1:aws:component/update-linux/x.x.x"
+     }
+    ],
+    "BlockDeviceMappings": [
+     {
+      "DeviceName": "/dev/xvda",
+      "Ebs": {
+       "VolumeSize": 32
+      }
+     }
+    ],
+    "AdditionalInstanceConfiguration": {
+     "UserDataOverride": "#!/bin/bash\nsudo yum install -y https://s3.us-east-1.amazonaws.com/amazon-ssm-us-east-1/latest/linux_amd64/amazon-ssm-agent.rpm\n\n# Add mongodb yum repository\nsudo cat > /etc/yum.repos.d/mongodb-org-8.0.repo << EOF\n[mongodb-org-8.0]\nname=MongoDB Repository\nbaseurl=https://repo.mongodb.org/yum/amazon/2023/mongodb-org/8.0/x86_64/\ngpgcheck=1\nenabled=1\ngpgkey=https://pgp.mongodb.com/server-8.0.asc\nEOF\n\n# install python and mongo tools\nsudo dnf update\nsudo dnf install -y python python-pip mongodb-mongosh-shared-openssl3 mongodb-database-tools\n\n# install synapse client\nsudo pip install synapseclient\n\n# install dotnet (needed by github runner)\nsudo rpm -Uvh https://packages.microsoft.com/config/centos/8/packages-microsoft-prod.rpm\nsudo yum install -y dotnet-sdk-8.0\n"
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "Image",
+   "cfg": "Image",
+   "type": "AWS::ImageBuilder::Image",
+   "values": {
+    "ImageRecipeArn": {
+     "ref": "ImageRecipe"
+    },
+    "InfrastructureConfigurationArn": {
+     "ref": "ImageInfrastructureConfiguration"
+    },
+    "DistributionConfigurationArn": {
+     "ref": "ImageDistributionConfiguration"
+    },
+    "Tags": {
+     "Name": "stack"
+    }
+   },
+   "refs": [
+    "ImageDistributionConfiguration",
+    "ImageInfrastructureConfiguration",
+    "ImageRecipe"
+   ]
+  },
+  {
+   "id": "ImageDistributionConfiguration",
+   "cfg": "ImageDistributionConfiguration",
+   "type": "AWS::ImageBuilder::DistributionConfiguration",
+   "values": {
+    "Name": "stack-Distributions",
+    "Distributions": [
+     {
+      "Region": "us-east-1",
+      "AmiDistributionConfiguration": {
+       "AmiTags": {
+        "Name": "stack"
+       },
+       "LaunchPermissionConfiguration": {
+        "OrganizationArns": [
+         "arn:aws:organizations::123456789012:organization/o-69lcdj4kro"
+        ],
+        "UserGroups": [
+         "all"
+        ]
+       }
+      }
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.AwsOrganizationId",
+   "cfg": "__parameter__.AwsOrganizationId",
+   "type": "__parameter__",
+   "values": {
+    "name": "AwsOrganizationId",
+    "type": "String",
+    "default": "o-69lcdj4kro",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.ImageVersion",
+   "cfg": "__parameter__.ImageVersion",
+   "type": "__parameter__",
+   "values": {
+    "name": "ImageVersion",
+    "type": "String",
+    "default": "0.0.0",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.VolumeSize",
+   "cfg": "__parameter__.VolumeSize",
+   "type": "__parameter__",
+   "values": {
+    "name": "VolumeSize",
+    "type": "Number",
+    "default": 32,
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.InstanceRole",
+   "cfg": "InstanceRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "InstanceRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore",
+      "arn:aws:iam::aws:policy/EC2InstanceProfileForImageBuilder"
+     ],
+     "AssumeRolePolicyDocument": {
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "ec2.amazonaws.com"
+         ]
+        }
+       }
+      ],
+      "Version": "2012-10-17"
+     },
+     "Path": "/executionServiceEC2Role/"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::InstanceProfile.InstanceProfile",
+   "cfg": "InstanceProfile",
+   "type": "__declared__",
+   "refs": [
+    "InstanceRole"
+   ],
+   "values": {
+    "type": "AWS::IAM::InstanceProfile",
+    "name": "InstanceProfile",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Path": "/executionServiceEC2Role/",
+     "Roles": [
+      {
+       "ref": "InstanceRole"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPC.ImageBuilderVpc",
+   "cfg": "ImageBuilderVpc",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::VPC",
+    "name": "ImageBuilderVpc",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "CidrBlock": "10.99.0.0/23"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.ImageBuilderSubnet",
+   "cfg": "ImageBuilderSubnet",
+   "type": "__declared__",
+   "refs": [
+    "ImageBuilderVpc"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "ImageBuilderSubnet",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "ImageBuilderVpc"
+     },
+     "CidrBlock": "10.99.0.0/24",
+     "AvailabilityZone": "us-east-1a"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.ImageBuilderPublicSubnet",
+   "cfg": "ImageBuilderPublicSubnet",
+   "type": "__declared__",
+   "refs": [
+    "ImageBuilderVpc"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "ImageBuilderPublicSubnet",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "ImageBuilderVpc"
+     },
+     "CidrBlock": "10.99.1.0/24",
+     "AvailabilityZone": "us-east-1a"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SecurityGroup.ImageBuilderSecurityGroup",
+   "cfg": "ImageBuilderSecurityGroup",
+   "type": "__declared__",
+   "refs": [
+    "ImageBuilderVpc"
+   ],
+   "values": {
+    "type": "AWS::EC2::SecurityGroup",
+    "name": "ImageBuilderSecurityGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "GroupDescription": "ImageBuilder build/test instance",
+     "VpcId": {
+      "ref": "ImageBuilderVpc"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::InternetGateway.ImageBuilderInternetGateway",
+   "cfg": "ImageBuilderInternetGateway",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::InternetGateway",
+    "name": "ImageBuilderInternetGateway",
+    "gated": false,
+    "gate": null,
+    "properties": {}
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCGatewayAttachment.ImageBuilderVpcGatewayAttachment",
+   "cfg": "ImageBuilderVpcGatewayAttachment",
+   "type": "__declared__",
+   "refs": [
+    "ImageBuilderInternetGateway",
+    "ImageBuilderVpc"
+   ],
+   "values": {
+    "type": "AWS::EC2::VPCGatewayAttachment",
+    "name": "ImageBuilderVpcGatewayAttachment",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "ImageBuilderVpc"
+     },
+     "InternetGatewayId": {
+      "ref": "ImageBuilderInternetGateway"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::RouteTable.ImageBuilderPublicRouteTable",
+   "cfg": "ImageBuilderPublicRouteTable",
+   "type": "__declared__",
+   "refs": [
+    "ImageBuilderVpc"
+   ],
+   "values": {
+    "type": "AWS::EC2::RouteTable",
+    "name": "ImageBuilderPublicRouteTable",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "ImageBuilderVpc"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Route.ImageBuilderPublicRoute",
+   "cfg": "ImageBuilderPublicRoute",
+   "type": "__declared__",
+   "refs": [
+    "ImageBuilderInternetGateway",
+    "ImageBuilderPublicRouteTable"
+   ],
+   "values": {
+    "type": "AWS::EC2::Route",
+    "name": "ImageBuilderPublicRoute",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RouteTableId": {
+      "ref": "ImageBuilderPublicRouteTable"
+     },
+     "DestinationCidrBlock": "0.0.0.0/0",
+     "GatewayId": {
+      "ref": "ImageBuilderInternetGateway"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetRouteTableAssociation.ImageBuilderPublicSubnetRouteTableAssociation",
+   "cfg": "ImageBuilderPublicSubnetRouteTableAssociation",
+   "type": "__declared__",
+   "refs": [
+    "ImageBuilderPublicRouteTable",
+    "ImageBuilderPublicSubnet"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetRouteTableAssociation",
+    "name": "ImageBuilderPublicSubnetRouteTableAssociation",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "SubnetId": {
+      "ref": "ImageBuilderPublicSubnet"
+     },
+     "RouteTableId": {
+      "ref": "ImageBuilderPublicRouteTable"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::EIP.ImageBuilderNatEip",
+   "cfg": "ImageBuilderNatEip",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::EIP",
+    "name": "ImageBuilderNatEip",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Domain": "vpc"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::NatGateway.ImageBuilderNatGateway",
+   "cfg": "ImageBuilderNatGateway",
+   "type": "__declared__",
+   "refs": [
+    "ImageBuilderNatEip",
+    "ImageBuilderPublicSubnet"
+   ],
+   "values": {
+    "type": "AWS::EC2::NatGateway",
+    "name": "ImageBuilderNatGateway",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AllocationId": {
+      "ref": "ImageBuilderNatEip",
+      "attr": "AllocationId"
+     },
+     "SubnetId": {
+      "ref": "ImageBuilderPublicSubnet"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::RouteTable.ImageBuilderPrivateRouteTable",
+   "cfg": "ImageBuilderPrivateRouteTable",
+   "type": "__declared__",
+   "refs": [
+    "ImageBuilderVpc"
+   ],
+   "values": {
+    "type": "AWS::EC2::RouteTable",
+    "name": "ImageBuilderPrivateRouteTable",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "ImageBuilderVpc"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Route.ImageBuilderPrivateRoute",
+   "cfg": "ImageBuilderPrivateRoute",
+   "type": "__declared__",
+   "refs": [
+    "ImageBuilderNatGateway",
+    "ImageBuilderPrivateRouteTable"
+   ],
+   "values": {
+    "type": "AWS::EC2::Route",
+    "name": "ImageBuilderPrivateRoute",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RouteTableId": {
+      "ref": "ImageBuilderPrivateRouteTable"
+     },
+     "DestinationCidrBlock": "0.0.0.0/0",
+     "NatGatewayId": {
+      "ref": "ImageBuilderNatGateway"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetRouteTableAssociation.ImageBuilderSubnetRouteTableAssociation",
+   "cfg": "ImageBuilderSubnetRouteTableAssociation",
+   "type": "__declared__",
+   "refs": [
+    "ImageBuilderPrivateRouteTable",
+    "ImageBuilderSubnet"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetRouteTableAssociation",
+    "name": "ImageBuilderSubnetRouteTableAssociation",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "SubnetId": {
+      "ref": "ImageBuilderSubnet"
+     },
+     "RouteTableId": {
+      "ref": "ImageBuilderPrivateRouteTable"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ImageBuilder::InfrastructureConfiguration.ImageInfrastructureConfiguration",
+   "cfg": "ImageInfrastructureConfiguration",
+   "type": "__declared__",
+   "refs": [
+    "ImageBuilderSecurityGroup",
+    "ImageBuilderSubnet",
+    "InstanceProfile"
+   ],
+   "values": {
+    "type": "AWS::ImageBuilder::InfrastructureConfiguration",
+    "name": "ImageInfrastructureConfiguration",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "stack-Configuration",
+     "InstanceProfileName": {
+      "ref": "InstanceProfile"
+     },
+     "SubnetId": {
+      "ref": "ImageBuilderSubnet"
+     },
+     "SecurityGroupIds": [
+      {
+       "ref": "ImageBuilderSecurityGroup"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ImageBuilder::ImageRecipe.ImageRecipe",
+   "cfg": "ImageRecipe",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::ImageBuilder::ImageRecipe",
+    "name": "ImageRecipe",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "stack",
+     "Version": "0.0.0",
+     "ParentImage": "arn:aws:imagebuilder:us-east-1:aws:image/amazon-linux-2023-x86/x.x.x",
+     "Components": [
+      {
+       "ComponentArn": "arn:aws:imagebuilder:us-east-1:aws:component/update-linux/x.x.x"
+      }
+     ],
+     "BlockDeviceMappings": [
+      {
+       "DeviceName": "/dev/xvda",
+       "Ebs": {
+        "VolumeSize": 32
+       }
+      }
+     ],
+     "AdditionalInstanceConfiguration": {
+      "UserDataOverride": "#!/bin/bash\nsudo yum install -y https://s3.us-east-1.amazonaws.com/amazon-ssm-us-east-1/latest/linux_amd64/amazon-ssm-agent.rpm\n\n# Add mongodb yum repository\nsudo cat > /etc/yum.repos.d/mongodb-org-8.0.repo << EOF\n[mongodb-org-8.0]\nname=MongoDB Repository\nbaseurl=https://repo.mongodb.org/yum/amazon/2023/mongodb-org/8.0/x86_64/\ngpgcheck=1\nenabled=1\ngpgkey=https://pgp.mongodb.com/server-8.0.asc\nEOF\n\n# install python and mongo tools\nsudo dnf update\nsudo dnf install -y python python-pip mongodb-mongosh-shared-openssl3 mongodb-database-tools\n\n# install synapse client\nsudo pip install synapseclient\n\n# install dotnet (needed by github runner)\nsudo rpm -Uvh https://packages.microsoft.com/config/centos/8/packages-microsoft-prod.rpm\nsudo yum install -y dotnet-sdk-8.0\n"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ImageBuilder::Image.Image",
+   "cfg": "Image",
+   "type": "__declared__",
+   "refs": [
+    "ImageDistributionConfiguration",
+    "ImageInfrastructureConfiguration",
+    "ImageRecipe"
+   ],
+   "values": {
+    "type": "AWS::ImageBuilder::Image",
+    "name": "Image",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ImageRecipeArn": {
+      "ref": "ImageRecipe"
+     },
+     "InfrastructureConfigurationArn": {
+      "ref": "ImageInfrastructureConfiguration"
+     },
+     "DistributionConfigurationArn": {
+      "ref": "ImageDistributionConfiguration"
+     },
+     "Tags": {
+      "Name": "stack"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ImageBuilder::DistributionConfiguration.ImageDistributionConfiguration",
+   "cfg": "ImageDistributionConfiguration",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::ImageBuilder::DistributionConfiguration",
+    "name": "ImageDistributionConfiguration",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "stack-Distributions",
+     "Distributions": [
+      {
+       "Region": "us-east-1",
+       "AmiDistributionConfiguration": {
+        "AmiTags": {
+         "Name": "stack"
+        },
+        "LaunchPermissionConfiguration": {
+         "OrganizationArns": [
+          "arn:aws:organizations::123456789012:organization/o-69lcdj4kro"
+         ],
+         "UserGroups": [
+          "all"
+         ]
+        }
+       }
+      }
+     ]
+    }
+   }
+  }
+ ]
+}

@@ -1,0 +1,765 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "08fbbab043995b9db7ace7e45be93c95c10c7a732ad1fd9380c6fd3c19e892f6",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "TurbineAssetModel749BCE38",
+   "cfg": "TurbineAssetModel749BCE38",
+   "type": "AWS::IoTSiteWise::AssetModel",
+   "values": {
+    "AssetModelName": "Demo Turbine Asset Model",
+    "AssetModelDescription": "This is an asset model used in the IoT SiteWise Demo for representing a turbine in a wind farm. It will be deleted at the end of the demo.",
+    "AssetModelProperties": [
+     {
+      "DataType": "STRING",
+      "LogicalId": "TurbineAssetModelMakeAttribute",
+      "Name": "Make",
+      "Type": {
+       "Attribute": {
+        "DefaultValue": "Amazon"
+       },
+       "TypeName": "Attribute"
+      }
+     },
+     {
+      "DataType": "INTEGER",
+      "LogicalId": "TurbineAssetModelModelAttribute",
+      "Name": "Model",
+      "Type": {
+       "Attribute": {
+        "DefaultValue": "500"
+       },
+       "TypeName": "Attribute"
+      }
+     },
+     {
+      "DataType": "STRING",
+      "LogicalId": "TurbineAssetModelLocationAttribute",
+      "Name": "Location",
+      "Type": {
+       "Attribute": {
+        "DefaultValue": "Renton"
+       },
+       "TypeName": "Attribute"
+      }
+     },
+     {
+      "DataType": "DOUBLE",
+      "LogicalId": "TurbineAssetModelTorqueMeasurement",
+      "Name": "Torque (KiloNewton Meter)",
+      "Type": {
+       "TypeName": "Measurement"
+      },
+      "Unit": "kNm"
+     },
+     {
+      "DataType": "DOUBLE",
+      "LogicalId": "TurbineAssetModelWindDirectionMeasurement",
+      "Name": "Wind Direction",
+      "Type": {
+       "TypeName": "Measurement"
+      },
+      "Unit": "Degrees"
+     },
+     {
+      "DataType": "DOUBLE",
+      "LogicalId": "TurbineAssetModelRPMMeasurement",
+      "Name": "RotationsPerMinute",
+      "Type": {
+       "TypeName": "Measurement"
+      },
+      "Unit": "RPM"
+     },
+     {
+      "DataType": "DOUBLE",
+      "LogicalId": "TurbineAssetModelWindSpeedMeasurement",
+      "Name": "Wind Speed",
+      "Type": {
+       "TypeName": "Measurement"
+      },
+      "Unit": "m/s"
+     },
+     {
+      "DataType": "DOUBLE",
+      "LogicalId": "TurbineAssetModelTorqueTransform",
+      "Name": "Torque (Newton Meter)",
+      "Type": {
+       "Transform": {
+        "Expression": "knm * 1000",
+        "Variables": [
+         {
+          "Name": "knm",
+          "Value": {
+           "PropertyLogicalId": "TurbineAssetModelTorqueMeasurement"
+          }
+         }
+        ]
+       },
+       "TypeName": "Transform"
+      },
+      "Unit": "Nm"
+     },
+     {
+      "DataType": "DOUBLE",
+      "LogicalId": "TurbineAssetModelRPSTransform",
+      "Name": "RotationsPerSecond",
+      "Type": {
+       "Transform": {
+        "Expression": "rpm / 60",
+        "Variables": [
+         {
+          "Name": "rpm",
+          "Value": {
+           "PropertyLogicalId": "TurbineAssetModelRPMMeasurement"
+          }
+         }
+        ]
+       },
+       "TypeName": "Transform"
+      },
+      "Unit": "RPS"
+     },
+     {
+      "DataType": "DOUBLE",
+      "LogicalId": "TurbineAssetModelOverdriveStateTransform",
+      "Name": "Overdrive State",
+      "Type": {
+       "Transform": {
+        "Expression": "gte(torque,3)",
+        "Variables": [
+         {
+          "Name": "torque",
+          "Value": {
+           "PropertyLogicalId": "TurbineAssetModelTorqueMeasurement"
+          }
+         }
+        ]
+       },
+       "TypeName": "Transform"
+      }
+     },
+     {
+      "DataType": "DOUBLE",
+      "LogicalId": "TurbineAssetModelAverageWindSpeedMetric",
+      "Name": "Average Wind Speed",
+      "Type": {
+       "Metric": {
+        "Expression": "avg(windspeed)",
+        "Variables": [
+         {
+          "Name": "windspeed",
+          "Value": {
+           "PropertyLogicalId": "TurbineAssetModelWindSpeedMeasurement"
+          }
+         }
+        ],
+        "Window": {
+         "Tumbling": {
+          "Interval": "5m"
+         }
+        }
+       },
+       "TypeName": "Metric"
+      },
+      "Unit": "m/s"
+     },
+     {
+      "DataType": "DOUBLE",
+      "LogicalId": "TurbineAssetModelOverdriveStateTimeMetric",
+      "Name": "Overdrive State Time",
+      "Type": {
+       "Metric": {
+        "Expression": "statetime(overdrive_state)",
+        "Variables": [
+         {
+          "Name": "overdrive_state",
+          "Value": {
+           "PropertyLogicalId": "TurbineAssetModelOverdriveStateTransform"
+          }
+         }
+        ],
+        "Window": {
+         "Tumbling": {
+          "Interval": "5m"
+         }
+        }
+       },
+       "TypeName": "Metric"
+      },
+      "Unit": "Seconds"
+     },
+     {
+      "DataType": "DOUBLE",
+      "LogicalId": "TurbineAssetModelAvgPowerMetric",
+      "Name": "Avg Power",
+      "Type": {
+       "Metric": {
+        "Expression": "avg(torque) * avg(rps) * 2 * 3.14",
+        "Variables": [
+         {
+          "Name": "torque",
+          "Value": {
+           "PropertyLogicalId": "TurbineAssetModelTorqueTransform"
+          }
+         },
+         {
+          "Name": "rps",
+          "Value": {
+           "PropertyLogicalId": "TurbineAssetModelRPSTransform"
+          }
+         }
+        ],
+        "Window": {
+         "Tumbling": {
+          "Interval": "5m"
+         }
+        }
+       },
+       "TypeName": "Metric"
+      },
+      "Unit": "Watts"
+     }
+    ],
+    "__resource__": {
+     "Metadata": {
+      "aws:cdk:path": "AssetModelsStack/TurbineAssetModel/TurbineAssetModel"
+     }
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "WindFarmAssetModelA5F9DECA",
+   "cfg": "WindFarmAssetModelA5F9DECA",
+   "type": "AWS::IoTSiteWise::AssetModel",
+   "values": {
+    "AssetModelName": "Demo Wind Farm Asset Model",
+    "AssetModelDescription": "This is an asset model used in the IoT SiteWise Demo for representing a wind farm. It will be deleted at the end of the demo.",
+    "AssetModelHierarchies": [
+     {
+      "ChildAssetModelId": {
+       "ref": "TurbineAssetModel749BCE38"
+      },
+      "LogicalId": "WindFarmAssetModel-WindFarmAssetModelTurbineHierarchy",
+      "Name": "Turbine Asset Model"
+     }
+    ],
+    "AssetModelProperties": [
+     {
+      "DataType": "STRING",
+      "LogicalId": "WindFarmAssetModelReliabilityManagerAttribute",
+      "Name": "Reliability Manager",
+      "Type": {
+       "Attribute": {
+        "DefaultValue": "Mary Major"
+       },
+       "TypeName": "Attribute"
+      }
+     },
+     {
+      "DataType": "INTEGER",
+      "LogicalId": "WindFarmAssetModelCodeAttribute",
+      "Name": "Code",
+      "Type": {
+       "Attribute": {
+        "DefaultValue": "300"
+       },
+       "TypeName": "Attribute"
+      }
+     },
+     {
+      "DataType": "STRING",
+      "LogicalId": "WindFarmAssetModelLocationAttribute",
+      "Name": "Location",
+      "Type": {
+       "Attribute": {
+        "DefaultValue": "Renton"
+       },
+       "TypeName": "Attribute"
+      }
+     },
+     {
+      "DataType": "DOUBLE",
+      "LogicalId": "WindFarmAssetModelTotalAveragePowerMetric",
+      "Name": "Total Average Power",
+      "Type": {
+       "Metric": {
+        "Expression": "sum(turbine_avg_power)",
+        "Variables": [
+         {
+          "Name": "turbine_avg_power",
+          "Value": {
+           "HierarchyLogicalId": "WindFarmAssetModel-WindFarmAssetModelTurbineHierarchy",
+           "PropertyLogicalId": "TurbineAssetModelAvgPowerMetric"
+          }
+         }
+        ],
+        "Window": {
+         "Tumbling": {
+          "Interval": "5m"
+         }
+        }
+       },
+       "TypeName": "Metric"
+      },
+      "Unit": "Watts"
+     },
+     {
+      "DataType": "DOUBLE",
+      "LogicalId": "WindFarmAssetModelTotalOverdriveStateTimeMetric",
+      "Name": "Total Overdrive State Time",
+      "Type": {
+       "Metric": {
+        "Expression": "sum(overdrive_state_time)",
+        "Variables": [
+         {
+          "Name": "overdrive_state_time",
+          "Value": {
+           "HierarchyLogicalId": "WindFarmAssetModel-WindFarmAssetModelTurbineHierarchy",
+           "PropertyLogicalId": "TurbineAssetModelOverdriveStateTimeMetric"
+          }
+         }
+        ],
+        "Window": {
+         "Tumbling": {
+          "Interval": "5m"
+         }
+        }
+       },
+       "TypeName": "Metric"
+      },
+      "Unit": "seconds"
+     }
+    ],
+    "__resource__": {
+     "Metadata": {
+      "aws:cdk:path": "AssetModelsStack/WindFarmAssetModel/WindFarmAssetModel"
+     }
+    }
+   },
+   "refs": [
+    "TurbineAssetModel749BCE38"
+   ]
+  },
+  {
+   "id": "CDKMetadata",
+   "cfg": "CDKMetadata",
+   "type": "AWS::CDK::Metadata",
+   "values": {
+    "Analytics": "v2:deflate64:H4sIAAAAAAAAEyWNwQrCQAxEv8X7NmUFQW9KzyLULyjZCGl1I5vEHkr/3a2e3oMZZiKcDhB352HWBtPULiiFYLnbgFPoJKsVRwvdI9/c3v6znlS8IG1eK4mNJa9hm2AxZaOZlaCmF1WyqyR6riFXwKjtJx4h7uvnqMxN8Wz8Iuj//AIXqOyWjwAAAA==",
+    "__resource__": {
+     "Condition": "CDKMetadataAvailable",
+     "Metadata": {
+      "aws:cdk:path": "AssetModelsStack/CDKMetadata/Default"
+     }
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.TurbineAssetModelTurbineAssetModelId188850F6",
+   "cfg": "__output__.TurbineAssetModelTurbineAssetModelId188850F6",
+   "type": "__output__",
+   "values": {
+    "name": "TurbineAssetModelTurbineAssetModelId188850F6",
+    "value": {
+     "ref": "TurbineAssetModel749BCE38"
+    },
+    "description": "LogicalID of Turbine asset model.",
+    "export": null
+   },
+   "refs": [
+    "TurbineAssetModel749BCE38"
+   ]
+  },
+  {
+   "id": "__output__.WindFarmAssetModelWindFarmTurbineHierarchyLogicalId8536DB1A",
+   "cfg": "__output__.WindFarmAssetModelWindFarmTurbineHierarchyLogicalId8536DB1A",
+   "type": "__output__",
+   "values": {
+    "name": "WindFarmAssetModelWindFarmTurbineHierarchyLogicalId8536DB1A",
+    "value": "WindFarmAssetModel-WindFarmAssetModelTurbineHierarchy",
+    "description": "LogicalID of hierarchical association between Wind Farm asset model and Turbine asset model.",
+    "export": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.WindFarmAssetModelWindFarmAssetModelId52A2DA1A",
+   "cfg": "__output__.WindFarmAssetModelWindFarmAssetModelId52A2DA1A",
+   "type": "__output__",
+   "values": {
+    "name": "WindFarmAssetModelWindFarmAssetModelId52A2DA1A",
+    "value": {
+     "ref": "WindFarmAssetModelA5F9DECA"
+    },
+    "description": "LogicalID of Wind Farm asset model.",
+    "export": null
+   },
+   "refs": [
+    "WindFarmAssetModelA5F9DECA"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::IoTSiteWise::AssetModel.TurbineAssetModel749BCE38",
+   "cfg": "TurbineAssetModel749BCE38",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IoTSiteWise::AssetModel",
+    "name": "TurbineAssetModel749BCE38",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssetModelName": "Demo Turbine Asset Model",
+     "AssetModelDescription": "This is an asset model used in the IoT SiteWise Demo for representing a turbine in a wind farm. It will be deleted at the end of the demo.",
+     "AssetModelProperties": [
+      {
+       "DataType": "STRING",
+       "LogicalId": "TurbineAssetModelMakeAttribute",
+       "Name": "Make",
+       "Type": {
+        "Attribute": {
+         "DefaultValue": "Amazon"
+        },
+        "TypeName": "Attribute"
+       }
+      },
+      {
+       "DataType": "INTEGER",
+       "LogicalId": "TurbineAssetModelModelAttribute",
+       "Name": "Model",
+       "Type": {
+        "Attribute": {
+         "DefaultValue": "500"
+        },
+        "TypeName": "Attribute"
+       }
+      },
+      {
+       "DataType": "STRING",
+       "LogicalId": "TurbineAssetModelLocationAttribute",
+       "Name": "Location",
+       "Type": {
+        "Attribute": {
+         "DefaultValue": "Renton"
+        },
+        "TypeName": "Attribute"
+       }
+      },
+      {
+       "DataType": "DOUBLE",
+       "LogicalId": "TurbineAssetModelTorqueMeasurement",
+       "Name": "Torque (KiloNewton Meter)",
+       "Type": {
+        "TypeName": "Measurement"
+       },
+       "Unit": "kNm"
+      },
+      {
+       "DataType": "DOUBLE",
+       "LogicalId": "TurbineAssetModelWindDirectionMeasurement",
+       "Name": "Wind Direction",
+       "Type": {
+        "TypeName": "Measurement"
+       },
+       "Unit": "Degrees"
+      },
+      {
+       "DataType": "DOUBLE",
+       "LogicalId": "TurbineAssetModelRPMMeasurement",
+       "Name": "RotationsPerMinute",
+       "Type": {
+        "TypeName": "Measurement"
+       },
+       "Unit": "RPM"
+      },
+      {
+       "DataType": "DOUBLE",
+       "LogicalId": "TurbineAssetModelWindSpeedMeasurement",
+       "Name": "Wind Speed",
+       "Type": {
+        "TypeName": "Measurement"
+       },
+       "Unit": "m/s"
+      },
+      {
+       "DataType": "DOUBLE",
+       "LogicalId": "TurbineAssetModelTorqueTransform",
+       "Name": "Torque (Newton Meter)",
+       "Type": {
+        "Transform": {
+         "Expression": "knm * 1000",
+         "Variables": [
+          {
+           "Name": "knm",
+           "Value": {
+            "PropertyLogicalId": "TurbineAssetModelTorqueMeasurement"
+           }
+          }
+         ]
+        },
+        "TypeName": "Transform"
+       },
+       "Unit": "Nm"
+      },
+      {
+       "DataType": "DOUBLE",
+       "LogicalId": "TurbineAssetModelRPSTransform",
+       "Name": "RotationsPerSecond",
+       "Type": {
+        "Transform": {
+         "Expression": "rpm / 60",
+         "Variables": [
+          {
+           "Name": "rpm",
+           "Value": {
+            "PropertyLogicalId": "TurbineAssetModelRPMMeasurement"
+           }
+          }
+         ]
+        },
+        "TypeName": "Transform"
+       },
+       "Unit": "RPS"
+      },
+      {
+       "DataType": "DOUBLE",
+       "LogicalId": "TurbineAssetModelOverdriveStateTransform",
+       "Name": "Overdrive State",
+       "Type": {
+        "Transform": {
+         "Expression": "gte(torque,3)",
+         "Variables": [
+          {
+           "Name": "torque",
+           "Value": {
+            "PropertyLogicalId": "TurbineAssetModelTorqueMeasurement"
+           }
+          }
+         ]
+        },
+        "TypeName": "Transform"
+       }
+      },
+      {
+       "DataType": "DOUBLE",
+       "LogicalId": "TurbineAssetModelAverageWindSpeedMetric",
+       "Name": "Average Wind Speed",
+       "Type": {
+        "Metric": {
+         "Expression": "avg(windspeed)",
+         "Variables": [
+          {
+           "Name": "windspeed",
+           "Value": {
+            "PropertyLogicalId": "TurbineAssetModelWindSpeedMeasurement"
+           }
+          }
+         ],
+         "Window": {
+          "Tumbling": {
+           "Interval": "5m"
+          }
+         }
+        },
+        "TypeName": "Metric"
+       },
+       "Unit": "m/s"
+      },
+      {
+       "DataType": "DOUBLE",
+       "LogicalId": "TurbineAssetModelOverdriveStateTimeMetric",
+       "Name": "Overdrive State Time",
+       "Type": {
+        "Metric": {
+         "Expression": "statetime(overdrive_state)",
+         "Variables": [
+          {
+           "Name": "overdrive_state",
+           "Value": {
+            "PropertyLogicalId": "TurbineAssetModelOverdriveStateTransform"
+           }
+          }
+         ],
+         "Window": {
+          "Tumbling": {
+           "Interval": "5m"
+          }
+         }
+        },
+        "TypeName": "Metric"
+       },
+       "Unit": "Seconds"
+      },
+      {
+       "DataType": "DOUBLE",
+       "LogicalId": "TurbineAssetModelAvgPowerMetric",
+       "Name": "Avg Power",
+       "Type": {
+        "Metric": {
+         "Expression": "avg(torque) * avg(rps) * 2 * 3.14",
+         "Variables": [
+          {
+           "Name": "torque",
+           "Value": {
+            "PropertyLogicalId": "TurbineAssetModelTorqueTransform"
+           }
+          },
+          {
+           "Name": "rps",
+           "Value": {
+            "PropertyLogicalId": "TurbineAssetModelRPSTransform"
+           }
+          }
+         ],
+         "Window": {
+          "Tumbling": {
+           "Interval": "5m"
+          }
+         }
+        },
+        "TypeName": "Metric"
+       },
+       "Unit": "Watts"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IoTSiteWise::AssetModel.WindFarmAssetModelA5F9DECA",
+   "cfg": "WindFarmAssetModelA5F9DECA",
+   "type": "__declared__",
+   "refs": [
+    "TurbineAssetModel749BCE38"
+   ],
+   "values": {
+    "type": "AWS::IoTSiteWise::AssetModel",
+    "name": "WindFarmAssetModelA5F9DECA",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssetModelName": "Demo Wind Farm Asset Model",
+     "AssetModelDescription": "This is an asset model used in the IoT SiteWise Demo for representing a wind farm. It will be deleted at the end of the demo.",
+     "AssetModelHierarchies": [
+      {
+       "ChildAssetModelId": {
+        "ref": "TurbineAssetModel749BCE38"
+       },
+       "LogicalId": "WindFarmAssetModel-WindFarmAssetModelTurbineHierarchy",
+       "Name": "Turbine Asset Model"
+      }
+     ],
+     "AssetModelProperties": [
+      {
+       "DataType": "STRING",
+       "LogicalId": "WindFarmAssetModelReliabilityManagerAttribute",
+       "Name": "Reliability Manager",
+       "Type": {
+        "Attribute": {
+         "DefaultValue": "Mary Major"
+        },
+        "TypeName": "Attribute"
+       }
+      },
+      {
+       "DataType": "INTEGER",
+       "LogicalId": "WindFarmAssetModelCodeAttribute",
+       "Name": "Code",
+       "Type": {
+        "Attribute": {
+         "DefaultValue": "300"
+        },
+        "TypeName": "Attribute"
+       }
+      },
+      {
+       "DataType": "STRING",
+       "LogicalId": "WindFarmAssetModelLocationAttribute",
+       "Name": "Location",
+       "Type": {
+        "Attribute": {
+         "DefaultValue": "Renton"
+        },
+        "TypeName": "Attribute"
+       }
+      },
+      {
+       "DataType": "DOUBLE",
+       "LogicalId": "WindFarmAssetModelTotalAveragePowerMetric",
+       "Name": "Total Average Power",
+       "Type": {
+        "Metric": {
+         "Expression": "sum(turbine_avg_power)",
+         "Variables": [
+          {
+           "Name": "turbine_avg_power",
+           "Value": {
+            "HierarchyLogicalId": "WindFarmAssetModel-WindFarmAssetModelTurbineHierarchy",
+            "PropertyLogicalId": "TurbineAssetModelAvgPowerMetric"
+           }
+          }
+         ],
+         "Window": {
+          "Tumbling": {
+           "Interval": "5m"
+          }
+         }
+        },
+        "TypeName": "Metric"
+       },
+       "Unit": "Watts"
+      },
+      {
+       "DataType": "DOUBLE",
+       "LogicalId": "WindFarmAssetModelTotalOverdriveStateTimeMetric",
+       "Name": "Total Overdrive State Time",
+       "Type": {
+        "Metric": {
+         "Expression": "sum(overdrive_state_time)",
+         "Variables": [
+          {
+           "Name": "overdrive_state_time",
+           "Value": {
+            "HierarchyLogicalId": "WindFarmAssetModel-WindFarmAssetModelTurbineHierarchy",
+            "PropertyLogicalId": "TurbineAssetModelOverdriveStateTimeMetric"
+           }
+          }
+         ],
+         "Window": {
+          "Tumbling": {
+           "Interval": "5m"
+          }
+         }
+        },
+        "TypeName": "Metric"
+       },
+       "Unit": "seconds"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::CDK::Metadata.CDKMetadata",
+   "cfg": "CDKMetadata",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::CDK::Metadata",
+    "name": "CDKMetadata",
+    "gated": true,
+    "gate": "CDKMetadataAvailable",
+    "properties": {
+     "Analytics": "v2:deflate64:H4sIAAAAAAAAEyWNwQrCQAxEv8X7NmUFQW9KzyLULyjZCGl1I5vEHkr/3a2e3oMZZiKcDhB352HWBtPULiiFYLnbgFPoJKsVRwvdI9/c3v6znlS8IG1eK4mNJa9hm2AxZaOZlaCmF1WyqyR6riFXwKjtJx4h7uvnqMxN8Wz8Iuj//AIXqOyWjwAAAA=="
+    }
+   }
+  }
+ ]
+}

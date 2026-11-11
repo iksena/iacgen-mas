@@ -1,0 +1,281 @@
+{
+ "lang": "tf",
+ "row_number": 13,
+ "source_hash": {
+  "gt": "323204048e1aa4c780ab2e4b13121f5f869dac6113a1a3b44dd0e06a434f70b6",
+  "prompt": "9b8c8e5cd4f47d70a24ba3b241c0b93f69f68fbfa24ebf831ab164bf541c45aa"
+ },
+ "selectors": {
+  "bucket": {
+   "types": [
+    "aws_s3_bucket"
+   ],
+   "where": [
+    {
+     "path": "bucket",
+     "op": "eq",
+     "value": "terraform-remote-state-storage-s3-kjg"
+    }
+   ]
+  },
+  "kms": {
+   "types": [
+    "aws_kms_key"
+   ]
+  },
+  "table": {
+   "types": [
+    "aws_dynamodb_table"
+   ],
+   "where": [
+    {
+     "path": "name",
+     "op": "eq",
+     "value": "terraform-state-lock-dynamo"
+    }
+   ]
+  },
+  "pab": {
+   "types": [
+    "aws_s3_bucket_public_access_block"
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "bucket_named",
+   "kind": "exists",
+   "tier": "core",
+   "select": "bucket",
+   "quote": "an Amazon S3 bucket named \"terraform-remote-state-storage-s3-kjg\""
+  },
+  {
+   "id": "bucket_versioning",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "bucket",
+     "cond": {
+      "path": "versioning.*.enabled",
+      "op": "truthy"
+     }
+    },
+    {
+     "kind": "ref",
+     "to": "bucket",
+     "from": {
+      "types": [
+       "aws_s3_bucket_versioning"
+      ],
+      "where": [
+       {
+        "path": "versioning_configuration.*.status",
+        "op": "eq",
+        "value": "Enabled"
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "configured with versioning enabled"
+  },
+  {
+   "id": "bucket_sse_kms",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "bucket",
+     "cond": {
+      "path": "server_side_encryption_configuration.*.rule.*.apply_server_side_encryption_by_default.*.sse_algorithm",
+      "op": "in",
+      "value": [
+       "aws:kms",
+       "aws:kms:dsse"
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "to": "bucket",
+     "from": {
+      "types": [
+       "aws_s3_bucket_server_side_encryption_configuration"
+      ],
+      "where": [
+       {
+        "path": "rule.*.apply_server_side_encryption_by_default.*.sse_algorithm",
+        "op": "in",
+        "value": [
+         "aws:kms",
+         "aws:kms:dsse"
+        ]
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "default server-side encryption using a dedicated customer-managed KMS key"
+  },
+  {
+   "id": "bucket_uses_cmk",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "bucket",
+     "to": "kms"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_s3_bucket_server_side_encryption_configuration"
+      ]
+     },
+     "to": "kms"
+    }
+   ],
+   "quote": "a dedicated customer-managed KMS key"
+  },
+  {
+   "id": "kms_rotation",
+   "kind": "attr",
+   "tier": "core",
+   "select": "kms",
+   "cond": {
+    "path": "enable_key_rotation",
+    "op": "truthy"
+   },
+   "quote": "with automatic key rotation"
+  },
+  {
+   "id": "pab_exists",
+   "kind": "ref",
+   "tier": "core",
+   "quote": "a public access block",
+   "from": "pab",
+   "to": "bucket"
+  },
+  {
+   "id": "pab_acls",
+   "kind": "ref",
+   "tier": "core",
+   "quote": "blocks all public ACLs and policies",
+   "to": "bucket",
+   "from": {
+    "types": [
+     "aws_s3_bucket_public_access_block"
+    ],
+    "where": [
+     {
+      "path": "block_public_acls",
+      "op": "truthy"
+     }
+    ]
+   }
+  },
+  {
+   "id": "pab_policy",
+   "kind": "ref",
+   "tier": "core",
+   "quote": "blocks all public ACLs and policies",
+   "to": "bucket",
+   "from": {
+    "types": [
+     "aws_s3_bucket_public_access_block"
+    ],
+    "where": [
+     {
+      "path": "block_public_policy",
+      "op": "truthy"
+     }
+    ]
+   }
+  },
+  {
+   "id": "table_named",
+   "kind": "exists",
+   "tier": "core",
+   "select": "table",
+   "quote": "a DynamoDB table named \"terraform-state-lock-dynamo\" for state locking"
+  },
+  {
+   "id": "table_hash_key",
+   "kind": "attr",
+   "tier": "core",
+   "select": "table",
+   "cond": {
+    "path": "hash_key",
+    "op": "eq",
+    "value": "LockID"
+   },
+   "quote": "a string hash key named \"LockID\""
+  },
+  {
+   "id": "table_hash_type",
+   "kind": "attr",
+   "tier": "core",
+   "select": "table",
+   "cond": {
+    "path": "attribute.*",
+    "op": "match",
+    "value": [
+     {
+      "path": "name",
+      "op": "eq",
+      "value": "LockID"
+     },
+     {
+      "path": "type",
+      "op": "eq",
+      "value": "S"
+     }
+    ]
+   },
+   "quote": "a string hash key named \"LockID\"",
+   "justify": "string type is S"
+  },
+  {
+   "id": "table_billing",
+   "kind": "attr",
+   "tier": "core",
+   "select": "table",
+   "cond": {
+    "path": "billing_mode",
+    "op": "eq",
+    "value": "PROVISIONED"
+   },
+   "quote": "provisioned billing mode"
+  },
+  {
+   "id": "table_read",
+   "kind": "attr",
+   "tier": "core",
+   "select": "table",
+   "cond": {
+    "path": "read_capacity",
+    "op": "eq",
+    "value": 20
+   },
+   "quote": "read and write capacities set to 20 units each"
+  },
+  {
+   "id": "table_write",
+   "kind": "attr",
+   "tier": "core",
+   "select": "table",
+   "cond": {
+    "path": "write_capacity",
+    "op": "eq",
+    "value": 20
+   },
+   "quote": "read and write capacities set to 20 units each"
+  }
+ ],
+ "notes": "Versioning, SSE and public-access-block settings are bound to the named bucket (inline block or a separate resource referencing it). bucket_uses_cmk's separate-SSE-resource branch is not bound to the bucket; bucket_sse_kms supplies that binding."
+}

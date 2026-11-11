@@ -1,0 +1,1774 @@
+{
+ "lang": "tf",
+ "row_number": 145,
+ "source_hash": {
+  "gt": "07e1a46f12a60f7108255b08cc2390fd2a39d87a79743bc56248686a41661d1d",
+  "prompt": "f220e297256fef8cad695e016cec725e3d2e4a908a55bb5abc09d38311011045"
+ },
+ "selectors": {
+  "alb": {
+   "types": [
+    "aws_security_group"
+   ],
+   "where": [
+    {
+     "path": "name",
+     "op": "eq",
+     "value": "bjit-api-server-ALB-SG"
+    }
+   ]
+  },
+  "rds": {
+   "types": [
+    "aws_security_group"
+   ],
+   "where": [
+    {
+     "path": "name",
+     "op": "eq",
+     "value": "bjit-mariaDB-RDS-SG"
+    }
+   ]
+  },
+  "redis": {
+   "types": [
+    "aws_security_group"
+   ],
+   "where": [
+    {
+     "path": "name",
+     "op": "eq",
+     "value": "bjit-redis-SG"
+    }
+   ]
+  },
+  "api": {
+   "types": [
+    "aws_security_group"
+   ],
+   "where": [
+    {
+     "path": "name",
+     "op": "eq",
+     "value": "bjit-api-server-SG"
+    }
+   ]
+  },
+  "file": {
+   "types": [
+    "aws_security_group"
+   ],
+   "where": [
+    {
+     "path": "name",
+     "op": "eq",
+     "value": "bjit-file-server-SG"
+    }
+   ]
+  },
+  "ssh": {
+   "types": [
+    "aws_security_group"
+   ],
+   "where": [
+    {
+     "path": "name",
+     "op": "eq",
+     "value": "bjit-public-ssh-SG"
+    }
+   ]
+  },
+  "vpc": {
+   "types": [
+    "aws_vpc"
+   ],
+   "where": [
+    {
+     "path": "cidr_block",
+     "op": "eq",
+     "value": "10.0.0.0/16"
+    }
+   ]
+  },
+  "pub": {
+   "types": [
+    "aws_subnet"
+   ],
+   "where": [
+    {
+     "path": "cidr_block",
+     "op": "in",
+     "value": [
+      "10.0.4.0/24",
+      "10.0.6.0/24",
+      "10.0.8.0/24"
+     ]
+    }
+   ]
+  },
+  "prv": {
+   "types": [
+    "aws_subnet"
+   ],
+   "where": [
+    {
+     "path": "cidr_block",
+     "op": "in",
+     "value": [
+      "10.0.10.0/24",
+      "10.0.12.0/24",
+      "10.0.14.0/24"
+     ]
+    }
+   ]
+  },
+  "igw": {
+   "types": [
+    "aws_internet_gateway"
+   ]
+  },
+  "rt": {
+   "types": [
+    "aws_route_table"
+   ]
+  },
+  "s3ep": {
+   "types": [
+    "aws_vpc_endpoint"
+   ],
+   "where": [
+    {
+     "path": "service_name",
+     "op": "regex",
+     "value": "(?i)\\.s3$"
+    }
+   ]
+  },
+  "six": {
+   "types": [
+    "aws_security_group"
+   ],
+   "where": [
+    {
+     "path": "name",
+     "op": "in",
+     "value": [
+      "bjit-api-server-ALB-SG",
+      "bjit-mariaDB-RDS-SG",
+      "bjit-redis-SG",
+      "bjit-api-server-SG",
+      "bjit-file-server-SG",
+      "bjit-public-ssh-SG"
+     ]
+    }
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "vpc_cidr",
+   "kind": "exists",
+   "tier": "core",
+   "select": "vpc",
+   "quote": "a VPC with CIDR block \"10.0.0.0/16\""
+  },
+  {
+   "id": "vpc_dns_hostnames",
+   "kind": "attr",
+   "tier": "core",
+   "select": "vpc",
+   "cond": {
+    "path": "enable_dns_hostnames",
+    "op": "eq",
+    "value": true
+   },
+   "quote": "with DNS hostnames and DNS support enabled"
+  },
+  {
+   "id": "vpc_dns_support",
+   "kind": "attr",
+   "tier": "core",
+   "select": "vpc",
+   "cond": {
+    "path": "enable_dns_support",
+    "op": "eq",
+    "value": true
+   },
+   "quote": "with DNS hostnames and DNS support enabled"
+  },
+  {
+   "id": "vpc_tag_name",
+   "kind": "any_of",
+   "tier": "detail",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "vpc",
+     "cond": {
+      "path": "tags.Name",
+      "op": "present"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "vpc",
+     "cond": {
+      "path": "tags_all.Name",
+      "op": "present"
+     }
+    }
+   ],
+   "quote": "tagged with Name, Project (\"BJIT DevOps Task\"), and Author (\"Ariful Islam\")"
+  },
+  {
+   "id": "vpc_tag_project",
+   "kind": "any_of",
+   "tier": "detail",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "vpc",
+     "cond": {
+      "path": "tags.Project",
+      "op": "eq",
+      "value": "BJIT DevOps Task"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "vpc",
+     "cond": {
+      "path": "tags_all.Project",
+      "op": "eq",
+      "value": "BJIT DevOps Task"
+     }
+    }
+   ],
+   "quote": "Project (\"BJIT DevOps Task\")"
+  },
+  {
+   "id": "vpc_tag_author",
+   "kind": "any_of",
+   "tier": "detail",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "vpc",
+     "cond": {
+      "path": "tags.Author",
+      "op": "eq",
+      "value": "Ariful Islam"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "vpc",
+     "cond": {
+      "path": "tags_all.Author",
+      "op": "eq",
+      "value": "Ariful Islam"
+     }
+    }
+   ],
+   "quote": "Author (\"Ariful Islam\")"
+  },
+  {
+   "id": "public_subnets",
+   "kind": "exists",
+   "tier": "core",
+   "select": "pub",
+   "quote": "Provision three public subnets with CIDR blocks \"10.0.4.0/24\", \"10.0.6.0/24\", and \"10.0.8.0/24\"",
+   "min": 3,
+   "distinct_path": "availability_zone",
+   "justify": "three public subnets, one per availability zone"
+  },
+  {
+   "id": "public_no_auto_ip",
+   "kind": "attr",
+   "tier": "core",
+   "select": "pub",
+   "cond": {
+    "path": "map_public_ip_on_launch",
+    "op": "eq",
+    "value": false
+   },
+   "quote": "that do not auto-assign public IP addresses",
+   "quantifier": "all"
+  },
+  {
+   "id": "private_subnets",
+   "kind": "exists",
+   "tier": "core",
+   "select": "prv",
+   "quote": "three private subnets with CIDR blocks \"10.0.10.0/24\", \"10.0.12.0/24\", and \"10.0.14.0/24\", one of each per availability zone",
+   "min": 3,
+   "distinct_path": "availability_zone",
+   "justify": "three private subnets, one per availability zone"
+  },
+  {
+   "id": "three_azs",
+   "kind": "exists",
+   "tier": "detail",
+   "select": {
+    "types": [
+     "aws_subnet"
+    ]
+   },
+   "quote": "across three availability zones",
+   "min": 3,
+   "distinct_path": "availability_zone",
+   "justify": "three availability zones means three distinct zone values"
+  },
+  {
+   "id": "igw",
+   "kind": "exists",
+   "tier": "core",
+   "select": "igw",
+   "quote": "connected to an Internet Gateway"
+  },
+  {
+   "id": "public_rt_igw",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "rt",
+     "to": "igw"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route"
+      ]
+     },
+     "to": "igw"
+    }
+   ],
+   "quote": "Public subnets must share a public route table connected to an Internet Gateway"
+  },
+  {
+   "id": "route_tables",
+   "kind": "exists",
+   "tier": "core",
+   "select": "rt",
+   "quote": "each private subnet uses its own zone-specific private route table",
+   "min": 4,
+   "justify": "one public route table plus three private route tables, one per zone"
+  },
+  {
+   "id": "associations",
+   "kind": "exists",
+   "tier": "core",
+   "select": {
+    "types": [
+     "aws_route_table_association"
+    ]
+   },
+   "quote": "Public subnets must share a public route table",
+   "min": 6,
+   "justify": "all six subnets are associated with a route table"
+  },
+  {
+   "id": "s3_gateway_endpoint",
+   "kind": "exists",
+   "tier": "core",
+   "select": {
+    "types": [
+     "aws_vpc_endpoint"
+    ],
+    "where": [
+     {
+      "path": "service_name",
+      "op": "regex",
+      "value": "(?i)\\.s3$"
+     },
+     {
+      "path": "vpc_endpoint_type",
+      "op": "eq",
+      "value": "Gateway"
+     }
+    ]
+   },
+   "quote": "an S3 gateway VPC endpoint"
+  },
+  {
+   "id": "s3_endpoint_route_tables",
+   "kind": "any_of",
+   "tier": "detail",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "s3ep",
+     "to": "rt"
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_vpc_endpoint_route_table_association"
+      ]
+     },
+     "min": 3
+    }
+   ],
+   "quote": "all private route tables are associated with an S3 gateway VPC endpoint"
+  },
+  {
+   "id": "six_sgs",
+   "kind": "exists",
+   "tier": "core",
+   "select": {
+    "types": [
+     "aws_security_group"
+    ],
+    "where": [
+     {
+      "path": "name",
+      "op": "in",
+      "value": [
+       "bjit-api-server-ALB-SG",
+       "bjit-mariaDB-RDS-SG",
+       "bjit-redis-SG",
+       "bjit-api-server-SG",
+       "bjit-file-server-SG",
+       "bjit-public-ssh-SG"
+      ]
+     }
+    ]
+   },
+   "quote": "create six security groups",
+   "min": 6,
+   "justify": "six named security groups"
+  },
+  {
+   "id": "alb_http_https_anywhere",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_security_group"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "eq",
+        "value": "bjit-api-server-ALB-SG"
+       }
+      ]
+     },
+     "cond": {
+      "path": "ingress.*",
+      "op": "match",
+      "value": [
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 80
+       },
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 443
+       },
+       {
+        "path": "cidr_blocks.*",
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       },
+       {
+        "path": "protocol",
+        "op": "in",
+        "value": [
+         "tcp",
+         "6"
+        ]
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_security_group_rule"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "ingress"
+       },
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 80
+       },
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 443
+       },
+       {
+        "path": "cidr_blocks.*",
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       },
+       {
+        "path": "protocol",
+        "op": "in",
+        "value": [
+         "tcp",
+         "6"
+        ]
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_security_group"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "eq",
+        "value": "bjit-api-server-ALB-SG"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_vpc_security_group_ingress_rule"
+      ],
+      "where": [
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 80
+       },
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 443
+       },
+       {
+        "path": "cidr_ipv4",
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       },
+       {
+        "path": "ip_protocol",
+        "op": "in",
+        "value": [
+         "tcp",
+         "6"
+        ]
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_security_group"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "eq",
+        "value": "bjit-api-server-ALB-SG"
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "\"bjit-api-server-ALB-SG\" allowing TCP ports 80 through 443 from anywhere",
+   "justify": "from anywhere means 0.0.0.0/0; ports 80 through 443 is one TCP range covering both ends"
+  },
+  {
+   "id": "rds_3306",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_security_group"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "eq",
+        "value": "bjit-mariaDB-RDS-SG"
+       }
+      ]
+     },
+     "cond": {
+      "path": "ingress.*",
+      "op": "match",
+      "value": [
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 3306
+       },
+       {
+        "path": "cidr_blocks.*",
+        "op": "eq",
+        "value": "10.0.0.0/16"
+       },
+       {
+        "path": "protocol",
+        "op": "in",
+        "value": [
+         "tcp",
+         "6"
+        ]
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_security_group_rule"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "ingress"
+       },
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 3306
+       },
+       {
+        "path": "cidr_blocks.*",
+        "op": "eq",
+        "value": "10.0.0.0/16"
+       },
+       {
+        "path": "protocol",
+        "op": "in",
+        "value": [
+         "tcp",
+         "6"
+        ]
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_security_group"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "eq",
+        "value": "bjit-mariaDB-RDS-SG"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_vpc_security_group_ingress_rule"
+      ],
+      "where": [
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 3306
+       },
+       {
+        "path": "cidr_ipv4",
+        "op": "eq",
+        "value": "10.0.0.0/16"
+       },
+       {
+        "path": "ip_protocol",
+        "op": "in",
+        "value": [
+         "tcp",
+         "6"
+        ]
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_security_group"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "eq",
+        "value": "bjit-mariaDB-RDS-SG"
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "\"bjit-mariaDB-RDS-SG\" allowing MySQL/MariaDB (port 3306) from the VPC CIDR"
+  },
+  {
+   "id": "redis_6379",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_security_group"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "eq",
+        "value": "bjit-redis-SG"
+       }
+      ]
+     },
+     "cond": {
+      "path": "ingress.*",
+      "op": "match",
+      "value": [
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 6379
+       },
+       {
+        "path": "cidr_blocks.*",
+        "op": "eq",
+        "value": "10.0.0.0/16"
+       },
+       {
+        "path": "protocol",
+        "op": "in",
+        "value": [
+         "tcp",
+         "6"
+        ]
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_security_group_rule"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "ingress"
+       },
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 6379
+       },
+       {
+        "path": "cidr_blocks.*",
+        "op": "eq",
+        "value": "10.0.0.0/16"
+       },
+       {
+        "path": "protocol",
+        "op": "in",
+        "value": [
+         "tcp",
+         "6"
+        ]
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_security_group"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "eq",
+        "value": "bjit-redis-SG"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_vpc_security_group_ingress_rule"
+      ],
+      "where": [
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 6379
+       },
+       {
+        "path": "cidr_ipv4",
+        "op": "eq",
+        "value": "10.0.0.0/16"
+       },
+       {
+        "path": "ip_protocol",
+        "op": "in",
+        "value": [
+         "tcp",
+         "6"
+        ]
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_security_group"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "eq",
+        "value": "bjit-redis-SG"
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "\"bjit-redis-SG\" allowing Redis (port 6379) from the VPC CIDR"
+  },
+  {
+   "id": "api_8080",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_security_group"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "eq",
+        "value": "bjit-api-server-SG"
+       }
+      ]
+     },
+     "cond": {
+      "path": "ingress.*",
+      "op": "match",
+      "value": [
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 8080
+       },
+       {
+        "path": "cidr_blocks.*",
+        "op": "eq",
+        "value": "10.0.0.0/16"
+       },
+       {
+        "path": "protocol",
+        "op": "in",
+        "value": [
+         "tcp",
+         "6"
+        ]
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_security_group_rule"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "ingress"
+       },
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 8080
+       },
+       {
+        "path": "cidr_blocks.*",
+        "op": "eq",
+        "value": "10.0.0.0/16"
+       },
+       {
+        "path": "protocol",
+        "op": "in",
+        "value": [
+         "tcp",
+         "6"
+        ]
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_security_group"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "eq",
+        "value": "bjit-api-server-SG"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_vpc_security_group_ingress_rule"
+      ],
+      "where": [
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 8080
+       },
+       {
+        "path": "cidr_ipv4",
+        "op": "eq",
+        "value": "10.0.0.0/16"
+       },
+       {
+        "path": "ip_protocol",
+        "op": "in",
+        "value": [
+         "tcp",
+         "6"
+        ]
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_security_group"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "eq",
+        "value": "bjit-api-server-SG"
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "\"bjit-api-server-SG\" allowing ports 8080 and 22 from the VPC CIDR"
+  },
+  {
+   "id": "api_22",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_security_group"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "eq",
+        "value": "bjit-api-server-SG"
+       }
+      ]
+     },
+     "cond": {
+      "path": "ingress.*",
+      "op": "match",
+      "value": [
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 22
+       },
+       {
+        "path": "cidr_blocks.*",
+        "op": "eq",
+        "value": "10.0.0.0/16"
+       },
+       {
+        "path": "protocol",
+        "op": "in",
+        "value": [
+         "tcp",
+         "6"
+        ]
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_security_group_rule"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "ingress"
+       },
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 22
+       },
+       {
+        "path": "cidr_blocks.*",
+        "op": "eq",
+        "value": "10.0.0.0/16"
+       },
+       {
+        "path": "protocol",
+        "op": "in",
+        "value": [
+         "tcp",
+         "6"
+        ]
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_security_group"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "eq",
+        "value": "bjit-api-server-SG"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_vpc_security_group_ingress_rule"
+      ],
+      "where": [
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 22
+       },
+       {
+        "path": "cidr_ipv4",
+        "op": "eq",
+        "value": "10.0.0.0/16"
+       },
+       {
+        "path": "ip_protocol",
+        "op": "in",
+        "value": [
+         "tcp",
+         "6"
+        ]
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_security_group"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "eq",
+        "value": "bjit-api-server-SG"
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "\"bjit-api-server-SG\" allowing ports 8080 and 22 from the VPC CIDR"
+  },
+  {
+   "id": "file_8081",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_security_group"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "eq",
+        "value": "bjit-file-server-SG"
+       }
+      ]
+     },
+     "cond": {
+      "path": "ingress.*",
+      "op": "match",
+      "value": [
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 8081
+       },
+       {
+        "path": "cidr_blocks.*",
+        "op": "eq",
+        "value": "10.0.0.0/16"
+       },
+       {
+        "path": "protocol",
+        "op": "in",
+        "value": [
+         "tcp",
+         "6"
+        ]
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_security_group_rule"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "ingress"
+       },
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 8081
+       },
+       {
+        "path": "cidr_blocks.*",
+        "op": "eq",
+        "value": "10.0.0.0/16"
+       },
+       {
+        "path": "protocol",
+        "op": "in",
+        "value": [
+         "tcp",
+         "6"
+        ]
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_security_group"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "eq",
+        "value": "bjit-file-server-SG"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_vpc_security_group_ingress_rule"
+      ],
+      "where": [
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 8081
+       },
+       {
+        "path": "cidr_ipv4",
+        "op": "eq",
+        "value": "10.0.0.0/16"
+       },
+       {
+        "path": "ip_protocol",
+        "op": "in",
+        "value": [
+         "tcp",
+         "6"
+        ]
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_security_group"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "eq",
+        "value": "bjit-file-server-SG"
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "\"bjit-file-server-SG\" allowing ports 8081 and 22 from the VPC CIDR"
+  },
+  {
+   "id": "file_22",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_security_group"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "eq",
+        "value": "bjit-file-server-SG"
+       }
+      ]
+     },
+     "cond": {
+      "path": "ingress.*",
+      "op": "match",
+      "value": [
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 22
+       },
+       {
+        "path": "cidr_blocks.*",
+        "op": "eq",
+        "value": "10.0.0.0/16"
+       },
+       {
+        "path": "protocol",
+        "op": "in",
+        "value": [
+         "tcp",
+         "6"
+        ]
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_security_group_rule"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "ingress"
+       },
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 22
+       },
+       {
+        "path": "cidr_blocks.*",
+        "op": "eq",
+        "value": "10.0.0.0/16"
+       },
+       {
+        "path": "protocol",
+        "op": "in",
+        "value": [
+         "tcp",
+         "6"
+        ]
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_security_group"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "eq",
+        "value": "bjit-file-server-SG"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_vpc_security_group_ingress_rule"
+      ],
+      "where": [
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 22
+       },
+       {
+        "path": "cidr_ipv4",
+        "op": "eq",
+        "value": "10.0.0.0/16"
+       },
+       {
+        "path": "ip_protocol",
+        "op": "in",
+        "value": [
+         "tcp",
+         "6"
+        ]
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_security_group"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "eq",
+        "value": "bjit-file-server-SG"
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "\"bjit-file-server-SG\" allowing ports 8081 and 22 from the VPC CIDR"
+  },
+  {
+   "id": "ssh_22",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_security_group"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "eq",
+        "value": "bjit-public-ssh-SG"
+       }
+      ]
+     },
+     "cond": {
+      "path": "ingress.*",
+      "op": "match",
+      "value": [
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 22
+       },
+       {
+        "path": "cidr_blocks.*",
+        "op": "eq",
+        "value": "10.0.0.0/16"
+       },
+       {
+        "path": "protocol",
+        "op": "in",
+        "value": [
+         "tcp",
+         "6"
+        ]
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_security_group_rule"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "ingress"
+       },
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 22
+       },
+       {
+        "path": "cidr_blocks.*",
+        "op": "eq",
+        "value": "10.0.0.0/16"
+       },
+       {
+        "path": "protocol",
+        "op": "in",
+        "value": [
+         "tcp",
+         "6"
+        ]
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_security_group"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "eq",
+        "value": "bjit-public-ssh-SG"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_vpc_security_group_ingress_rule"
+      ],
+      "where": [
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 22
+       },
+       {
+        "path": "cidr_ipv4",
+        "op": "eq",
+        "value": "10.0.0.0/16"
+       },
+       {
+        "path": "ip_protocol",
+        "op": "in",
+        "value": [
+         "tcp",
+         "6"
+        ]
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_security_group"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "eq",
+        "value": "bjit-public-ssh-SG"
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "\"bjit-public-ssh-SG\" allowing SSH (port 22) from the VPC CIDR"
+  },
+  {
+   "id": "internal_sgs_not_public",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_security_group"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "in",
+        "value": [
+         "bjit-mariaDB-RDS-SG",
+         "bjit-redis-SG",
+         "bjit-api-server-SG",
+         "bjit-file-server-SG",
+         "bjit-public-ssh-SG"
+        ]
+       }
+      ]
+     },
+     "quantifier": "all",
+     "cond": {
+      "path": "ingress.*.cidr_blocks.*",
+      "op": "neq",
+      "value": "0.0.0.0/0",
+      "every": true
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_security_group_rule"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "ingress"
+       },
+       {
+        "path": "cidr_blocks.*",
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     },
+     "quantifier": "all",
+     "cond": {
+      "path": "",
+      "op": "match",
+      "value": [
+       {
+        "path": "from_port",
+        "op": "gte",
+        "value": 80
+       },
+       {
+        "path": "to_port",
+        "op": "lte",
+        "value": 443
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_vpc_security_group_ingress_rule"
+      ],
+      "where": [
+       {
+        "path": "cidr_ipv4",
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     },
+     "quantifier": "all",
+     "cond": {
+      "path": "",
+      "op": "match",
+      "value": [
+       {
+        "path": "from_port",
+        "op": "gte",
+        "value": 80
+       },
+       {
+        "path": "to_port",
+        "op": "lte",
+        "value": 443
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "from the VPC CIDR",
+   "justify": "only the ALB group is open to anywhere (ports 80 through 443); the other five allow traffic from the VPC CIDR, so no other ingress is open to 0.0.0.0/0"
+  },
+  {
+   "id": "sg_egress_vpc_cidr",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "six",
+     "cond": {
+      "path": "egress.*.cidr_blocks.*",
+      "op": "eq",
+      "value": "10.0.0.0/16",
+      "every": true
+     },
+     "quantifier": "all"
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_security_group_rule"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "egress"
+       },
+       {
+        "path": "cidr_blocks.*",
+        "op": "eq",
+        "value": "10.0.0.0/16"
+       }
+      ]
+     },
+     "min": 6
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_vpc_security_group_egress_rule"
+      ],
+      "where": [
+       {
+        "path": "cidr_ipv4",
+        "op": "eq",
+        "value": "10.0.0.0/16"
+       }
+      ]
+     },
+     "min": 6
+    }
+   ],
+   "quote": "whose outbound traffic is limited to the VPC CIDR",
+   "justify": "one VPC-CIDR egress rule per security group, six groups"
+  },
+  {
+   "id": "sg_egress_only_vpc",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "six",
+     "quantifier": "all",
+     "cond": {
+      "path": "egress.*.cidr_blocks.*",
+      "op": "eq",
+      "value": "10.0.0.0/16",
+      "every": true
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_security_group_rule"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "egress"
+       }
+      ]
+     },
+     "quantifier": "all",
+     "cond": {
+      "path": "cidr_blocks.*",
+      "op": "eq",
+      "value": "10.0.0.0/16",
+      "every": true
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_vpc_security_group_egress_rule"
+      ]
+     },
+     "quantifier": "all",
+     "cond": {
+      "path": "cidr_ipv4",
+      "op": "eq",
+      "value": "10.0.0.0/16"
+     }
+    }
+   ],
+   "quote": "whose outbound traffic is limited to the VPC CIDR",
+   "justify": "limited to the VPC CIDR: every egress destination is the VPC CIDR 10.0.0.0/16 stated for the VPC"
+  },
+  {
+   "kind": "ref",
+   "from": "igw",
+   "to": "vpc",
+   "id": "igw_attached_to_vpc",
+   "tier": "extra"
+  },
+  {
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "rt",
+     "cond": {
+      "path": "route.*.cidr_block",
+      "op": "eq",
+      "value": "0.0.0.0/0"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_route"
+      ]
+     },
+     "cond": {
+      "path": "destination_cidr_block",
+      "op": "eq",
+      "value": "0.0.0.0/0"
+     }
+    }
+   ],
+   "id": "public_default_route",
+   "tier": "extra"
+  }
+ ],
+ "notes": "Availability zone names are not pinned; region is a provider setting. alb_http_https_anywhere requires one TCP rule covering 80 through 443 (the prompt states a range); separate 80 and 443 rules do not satisfy it. sg_egress_only_vpc and internal_sgs_not_public enforce the 'limited to' and 'from the VPC CIDR' negatives; the rule-resource branches cannot tell which group a rule belongs to, and mixing inline and separate rules is not covered. Per-private-subnet route-table distinctness is approximated by route_tables (>=4): count-based association refs cannot distinguish instances. Per-port ingress checks require a TCP rule, so an all-protocol rule from the VPC CIDR does not stand in for a stated port. The six per-name existence checks were removed: six_sgs and the per-group port checks already require each named group. sg_egress_only_vpc's rule-resource branch cannot see inline egress, so a template mixing inline 0.0.0.0/0 egress with separate VPC egress rules would pass it (min-0 counts are not expressible)."
+}

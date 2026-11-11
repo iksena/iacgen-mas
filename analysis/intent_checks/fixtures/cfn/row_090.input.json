@@ -1,0 +1,726 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "sam_expanded",
+  "warnings": [],
+  "gt_hash": "4eee5aa0e10b31368aaee9a79cbbc8c9d0c86d072ebefd7c151bf6e19dfe6bb8",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "BedrockAgentCoreGatewayExecutionRole",
+   "cfg": "BedrockAgentCoreGatewayExecutionRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "bac-gateway-execution-role",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "bedrock-agentcore.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "aws:SourceAccount": "123456789012"
+        },
+        "ArnLike": {
+         "aws:SourceArn": "arn:aws:bedrock-agentcore:us-east-1:123456789012:gateway/bac-gtw-*"
+        }
+       }
+      }
+     ]
+    },
+    "Policies": [
+     {
+      "PolicyName": "BedrockAgentCoreGatewayExecutionPolicy",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Sid": "InvokeLambdaFunctions",
+         "Effect": "Allow",
+         "Action": [
+          "lambda:InvokeFunction"
+         ],
+         "Resource": [
+          "*"
+         ]
+        },
+        {
+         "Sid": "BedrockAgentCorePermissions",
+         "Effect": "Allow",
+         "Action": [
+          "bedrock-agentcore:*",
+          "iam:PassRole"
+         ],
+         "Resource": [
+          "*"
+         ]
+        },
+        {
+         "Sid": "S3Permissions",
+         "Effect": "Allow",
+         "Action": [
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:DeleteObject",
+          "s3:ListBucket",
+          "s3:GetBucketLocation"
+         ],
+         "Resource": [
+          "*"
+         ]
+        },
+        {
+         "Sid": "CloudWatchLogsPermissions",
+         "Effect": "Allow",
+         "Action": [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents",
+          "logs:DescribeLogGroups",
+          "logs:DescribeLogStreams"
+         ],
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     }
+    ],
+    "Tags": [
+     {
+      "Key": "Project",
+      "Value": "lambda-adaptor-bedrock-agentcore"
+     },
+     {
+      "Key": "Component",
+      "Value": "bedrock-agentcore-gateway-execution"
+     },
+     {
+      "Key": "Environment",
+      "Value": "prod"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "SAM"
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "MCPToolFunctionRole",
+   "cfg": "MCPToolFunctionRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      },
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "bedrock-agentcore.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+     "arn:aws:iam::aws:policy/ReadOnlyAccess"
+    ],
+    "Policies": [
+     {
+      "PolicyName": "BedrockInvokePolicy",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "bedrock:InvokeModel",
+          "bedrock:InvokeModelWithResponseStream"
+         ],
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "PolicyName": "CostExplorerPolicy",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "ce:GetCostAndUsage",
+          "ce:GetUsageReport",
+          "ce:GetReservationCoverage",
+          "ce:GetReservationPurchaseRecommendation",
+          "ce:GetReservationUtilization",
+          "ce:GetDimensionValues",
+          "ce:GetMetricValues",
+          "ce:ListCostCategoryDefinitions",
+          "ce:GetCostCategories",
+          "ce:GetRightsizingRecommendation",
+          "ce:GetSavingsPlansUtilization",
+          "ce:GetSavingsPlansUtilizationDetails",
+          "ce:GetSavingsPlansCoverage",
+          "ce:GetSavingsPlansUsage",
+          "ce:GetUsageForecast",
+          "ce:GetCostForecast"
+         ],
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "PolicyName": "CloudWatchLogsPolicy",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+         ],
+         "Resource": [
+          "arn:aws:logs:us-east-1:123456789012:log-group:/aws/lambda/bac-mcp-tool:*"
+         ]
+        }
+       ]
+      }
+     }
+    ],
+    "Tags": [
+     {
+      "Key": "Project",
+      "Value": "lambda-adaptor-bedrock-agentcore"
+     },
+     {
+      "Key": "Component",
+      "Value": "mcp-tool-lambda"
+     },
+     {
+      "Key": "Environment",
+      "Value": "prod"
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "MCPToolLogGroup",
+   "cfg": "MCPToolLogGroup",
+   "type": "AWS::Logs::LogGroup",
+   "values": {
+    "LogGroupName": "/aws/lambda/bac-mcp-tool",
+    "RetentionInDays": 14
+   },
+   "refs": []
+  },
+  {
+   "id": "MCPToolFunction",
+   "cfg": "MCPToolFunction",
+   "type": "AWS::Lambda::Function",
+   "values": {
+    "Code": {
+     "ZipFile": "def handler(event, context):\n    return {\"statusCode\": 200, \"body\": \"MCP tool stub\"}\n"
+    },
+    "Description": "MCP Tool Lambda for Bedrock AgentCore Gateway MCP testing",
+    "FunctionName": "bac-mcp-tool",
+    "Handler": "index.handler",
+    "MemorySize": 3008,
+    "Role": {
+     "ref": "MCPToolFunctionRole",
+     "attr": "Arn"
+    },
+    "Runtime": "python3.12",
+    "Timeout": 900,
+    "Environment": {
+     "Variables": {
+      "ENVIRONMENT": "prod",
+      "LOG_LEVEL": "INFO"
+     }
+    },
+    "Tags": [
+     {
+      "Key": "lambda:createdBy",
+      "Value": "SAM"
+     },
+     {
+      "Key": "Project",
+      "Value": "lambda-adaptor-bedrock-agentcore"
+     },
+     {
+      "Key": "Component",
+      "Value": "mcp-tool-lambda"
+     },
+     {
+      "Key": "Environment",
+      "Value": "prod"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "SAM"
+     }
+    ],
+    "TracingConfig": {
+     "Mode": "Active"
+    }
+   },
+   "refs": [
+    "MCPToolFunctionRole"
+   ]
+  },
+  {
+   "id": "__parameter__.Environment",
+   "cfg": "__parameter__.Environment",
+   "type": "__parameter__",
+   "values": {
+    "name": "Environment",
+    "type": "String",
+    "default": "prod",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.MCPToolFunctionArn",
+   "cfg": "__output__.MCPToolFunctionArn",
+   "type": "__output__",
+   "values": {
+    "name": "MCPToolFunctionArn",
+    "value": {
+     "ref": "MCPToolFunction",
+     "attr": "Arn"
+    },
+    "description": "MCP Tool Lambda Function ARN",
+    "export": "stack-MCPToolFunctionArn"
+   },
+   "refs": [
+    "MCPToolFunction"
+   ]
+  },
+  {
+   "id": "__output__.MCPToolFunctionName",
+   "cfg": "__output__.MCPToolFunctionName",
+   "type": "__output__",
+   "values": {
+    "name": "MCPToolFunctionName",
+    "value": {
+     "ref": "MCPToolFunction"
+    },
+    "description": "MCP Tool Lambda Function Name",
+    "export": "stack-MCPToolFunctionName"
+   },
+   "refs": [
+    "MCPToolFunction"
+   ]
+  },
+  {
+   "id": "__output__.MCPToolFunctionRoleArn",
+   "cfg": "__output__.MCPToolFunctionRoleArn",
+   "type": "__output__",
+   "values": {
+    "name": "MCPToolFunctionRoleArn",
+    "value": {
+     "ref": "MCPToolFunctionRole",
+     "attr": "Arn"
+    },
+    "description": "MCP Tool Lambda Function Role ARN",
+    "export": "stack-MCPToolFunctionRoleArn"
+   },
+   "refs": [
+    "MCPToolFunctionRole"
+   ]
+  },
+  {
+   "id": "__output__.BedrockAgentCoreGatewayExecutionRoleArn",
+   "cfg": "__output__.BedrockAgentCoreGatewayExecutionRoleArn",
+   "type": "__output__",
+   "values": {
+    "name": "BedrockAgentCoreGatewayExecutionRoleArn",
+    "value": {
+     "ref": "BedrockAgentCoreGatewayExecutionRole",
+     "attr": "Arn"
+    },
+    "description": "Bedrock AgentCore Gateway Execution Role ARN - Use this role when creating Bedrock AgentCore Gateway targets",
+    "export": "stack-BedrockAgentCoreGatewayExecutionRoleArn"
+   },
+   "refs": [
+    "BedrockAgentCoreGatewayExecutionRole"
+   ]
+  },
+  {
+   "id": "__output__.BedrockAgentCoreGatewayExecutionRoleName",
+   "cfg": "__output__.BedrockAgentCoreGatewayExecutionRoleName",
+   "type": "__output__",
+   "values": {
+    "name": "BedrockAgentCoreGatewayExecutionRoleName",
+    "value": {
+     "ref": "BedrockAgentCoreGatewayExecutionRole"
+    },
+    "description": "Bedrock AgentCore Gateway Execution Role Name",
+    "export": "stack-BedrockAgentCoreGatewayExecutionRoleName"
+   },
+   "refs": [
+    "BedrockAgentCoreGatewayExecutionRole"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.BedrockAgentCoreGatewayExecutionRole",
+   "cfg": "BedrockAgentCoreGatewayExecutionRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "BedrockAgentCoreGatewayExecutionRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "bac-gateway-execution-role",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "bedrock-agentcore.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "aws:SourceAccount": "123456789012"
+         },
+         "ArnLike": {
+          "aws:SourceArn": "arn:aws:bedrock-agentcore:us-east-1:123456789012:gateway/bac-gtw-*"
+         }
+        }
+       }
+      ]
+     },
+     "Policies": [
+      {
+       "PolicyName": "BedrockAgentCoreGatewayExecutionPolicy",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Sid": "InvokeLambdaFunctions",
+          "Effect": "Allow",
+          "Action": [
+           "lambda:InvokeFunction"
+          ],
+          "Resource": [
+           "*"
+          ]
+         },
+         {
+          "Sid": "BedrockAgentCorePermissions",
+          "Effect": "Allow",
+          "Action": [
+           "bedrock-agentcore:*",
+           "iam:PassRole"
+          ],
+          "Resource": [
+           "*"
+          ]
+         },
+         {
+          "Sid": "S3Permissions",
+          "Effect": "Allow",
+          "Action": [
+           "s3:GetObject",
+           "s3:PutObject",
+           "s3:DeleteObject",
+           "s3:ListBucket",
+           "s3:GetBucketLocation"
+          ],
+          "Resource": [
+           "*"
+          ]
+         },
+         {
+          "Sid": "CloudWatchLogsPermissions",
+          "Effect": "Allow",
+          "Action": [
+           "logs:CreateLogGroup",
+           "logs:CreateLogStream",
+           "logs:PutLogEvents",
+           "logs:DescribeLogGroups",
+           "logs:DescribeLogStreams"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      }
+     ],
+     "Tags": [
+      {
+       "Key": "Project",
+       "Value": "lambda-adaptor-bedrock-agentcore"
+      },
+      {
+       "Key": "Component",
+       "Value": "bedrock-agentcore-gateway-execution"
+      },
+      {
+       "Key": "Environment",
+       "Value": "prod"
+      },
+      {
+       "Key": "ManagedBy",
+       "Value": "SAM"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.MCPToolFunctionRole",
+   "cfg": "MCPToolFunctionRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "MCPToolFunctionRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       },
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "bedrock-agentcore.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+      "arn:aws:iam::aws:policy/ReadOnlyAccess"
+     ],
+     "Policies": [
+      {
+       "PolicyName": "BedrockInvokePolicy",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "bedrock:InvokeModel",
+           "bedrock:InvokeModelWithResponseStream"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      },
+      {
+       "PolicyName": "CostExplorerPolicy",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "ce:GetCostAndUsage",
+           "ce:GetUsageReport",
+           "ce:GetReservationCoverage",
+           "ce:GetReservationPurchaseRecommendation",
+           "ce:GetReservationUtilization",
+           "ce:GetDimensionValues",
+           "ce:GetMetricValues",
+           "ce:ListCostCategoryDefinitions",
+           "ce:GetCostCategories",
+           "ce:GetRightsizingRecommendation",
+           "ce:GetSavingsPlansUtilization",
+           "ce:GetSavingsPlansUtilizationDetails",
+           "ce:GetSavingsPlansCoverage",
+           "ce:GetSavingsPlansUsage",
+           "ce:GetUsageForecast",
+           "ce:GetCostForecast"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      },
+      {
+       "PolicyName": "CloudWatchLogsPolicy",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "logs:CreateLogGroup",
+           "logs:CreateLogStream",
+           "logs:PutLogEvents"
+          ],
+          "Resource": [
+           "arn:aws:logs:us-east-1:123456789012:log-group:/aws/lambda/bac-mcp-tool:*"
+          ]
+         }
+        ]
+       }
+      }
+     ],
+     "Tags": [
+      {
+       "Key": "Project",
+       "Value": "lambda-adaptor-bedrock-agentcore"
+      },
+      {
+       "Key": "Component",
+       "Value": "mcp-tool-lambda"
+      },
+      {
+       "Key": "Environment",
+       "Value": "prod"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::LogGroup.MCPToolLogGroup",
+   "cfg": "MCPToolLogGroup",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Logs::LogGroup",
+    "name": "MCPToolLogGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "LogGroupName": "/aws/lambda/bac-mcp-tool",
+     "RetentionInDays": 14
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Function.MCPToolFunction",
+   "cfg": "MCPToolFunction",
+   "type": "__declared__",
+   "refs": [
+    "MCPToolFunctionRole"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Function",
+    "name": "MCPToolFunction",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Code": {
+      "ZipFile": "def handler(event, context):\n    return {\"statusCode\": 200, \"body\": \"MCP tool stub\"}\n"
+     },
+     "Description": "MCP Tool Lambda for Bedrock AgentCore Gateway MCP testing",
+     "FunctionName": "bac-mcp-tool",
+     "Handler": "index.handler",
+     "MemorySize": 3008,
+     "Role": {
+      "ref": "MCPToolFunctionRole",
+      "attr": "Arn"
+     },
+     "Runtime": "python3.12",
+     "Timeout": 900,
+     "Environment": {
+      "Variables": {
+       "ENVIRONMENT": "prod",
+       "LOG_LEVEL": "INFO"
+      }
+     },
+     "Tags": [
+      {
+       "Key": "lambda:createdBy",
+       "Value": "SAM"
+      },
+      {
+       "Key": "Project",
+       "Value": "lambda-adaptor-bedrock-agentcore"
+      },
+      {
+       "Key": "Component",
+       "Value": "mcp-tool-lambda"
+      },
+      {
+       "Key": "Environment",
+       "Value": "prod"
+      },
+      {
+       "Key": "ManagedBy",
+       "Value": "SAM"
+      }
+     ],
+     "TracingConfig": {
+      "Mode": "Active"
+     }
+    }
+   }
+  }
+ ]
+}

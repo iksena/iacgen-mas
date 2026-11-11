@@ -1,0 +1,803 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [
+   "CognitoUnauthRoleV2 excluded: condition IsLexV2 false under defaults",
+   "CognitoAuthRoleV2 excluded: condition IsLexV2 false under defaults"
+  ],
+  "gt_hash": "0ae7aafdab388590aa4165626437597a2b8c36d33207459a03d51f44f1f05487",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "CognitoIdentityPool",
+   "cfg": "CognitoIdentityPool",
+   "type": "AWS::Cognito::IdentityPool",
+   "values": {
+    "IdentityPoolName": "identity pool",
+    "AllowUnauthenticatedIdentities": true,
+    "CognitoIdentityProviders": [
+     {
+      "ClientId": {
+       "ref": "CognitoUserPoolClient"
+      },
+      "ProviderName": {
+       "ref": "CognitoUserPool",
+       "attr": "ProviderName"
+      }
+     }
+    ]
+   },
+   "refs": [
+    "CognitoUserPool",
+    "CognitoUserPoolClient"
+   ]
+  },
+  {
+   "id": "CognitoIdentityPoolSetRole",
+   "cfg": "CognitoIdentityPoolSetRole",
+   "type": "AWS::Cognito::IdentityPoolRoleAttachment",
+   "values": {
+    "IdentityPoolId": {
+     "ref": "CognitoIdentityPool"
+    },
+    "Roles": {
+     "authenticated": {
+      "ref": "CognitoAuthRoleV1",
+      "attr": "Arn"
+     },
+     "unauthenticated": {
+      "ref": "CognitoUnauthRoleV1",
+      "attr": "Arn"
+     }
+    }
+   },
+   "refs": [
+    "CognitoAuthRoleV1",
+    "CognitoIdentityPool",
+    "CognitoUnauthRoleV1"
+   ]
+  },
+  {
+   "id": "CognitoUserPool",
+   "cfg": "CognitoUserPool",
+   "type": "AWS::Cognito::UserPool",
+   "values": {
+    "AutoVerifiedAttributes": [
+     "email"
+    ],
+    "MfaConfiguration": "OFF",
+    "AliasAttributes": [
+     "email"
+    ],
+    "Schema": [
+     {
+      "AttributeDataType": "String",
+      "Name": "given_name",
+      "Required": true,
+      "Mutable": true
+     },
+     {
+      "AttributeDataType": "String",
+      "Name": "family_name",
+      "Required": true,
+      "Mutable": true
+     },
+     {
+      "AttributeDataType": "String",
+      "Name": "email",
+      "Required": true,
+      "Mutable": true
+     },
+     {
+      "AttributeDataType": "String",
+      "Name": "preferred_username",
+      "Required": true,
+      "Mutable": true
+     }
+    ],
+    "UserPoolName": "UserPool-stack"
+   },
+   "refs": []
+  },
+  {
+   "id": "CognitoUserPoolClient",
+   "cfg": "CognitoUserPoolClient",
+   "type": "AWS::Cognito::UserPoolClient",
+   "values": {
+    "GenerateSecret": false,
+    "UserPoolId": {
+     "ref": "CognitoUserPool"
+    }
+   },
+   "refs": [
+    "CognitoUserPool"
+   ]
+  },
+  {
+   "id": "CognitoUnauthRoleV1",
+   "cfg": "CognitoUnauthRoleV1",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "Path": "/",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Principal": {
+        "Federated": [
+         "cognito-identity.amazonaws.com"
+        ]
+       },
+       "Effect": "Allow",
+       "Action": [
+        "sts:AssumeRoleWithWebIdentity"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "cognito-identity.amazonaws.com:aud": {
+          "ref": "CognitoIdentityPool"
+         }
+        },
+        "ForAnyValue:StringLike": {
+         "cognito-identity.amazonaws.com:amr": "unauthenticated"
+        }
+       }
+      }
+     ]
+    },
+    "Policies": [
+     {
+      "PolicyName": "LexPost",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "lex:PostText",
+          "lex:PostContent",
+          "lex:DeleteSession",
+          "lex:PutSession"
+         ],
+         "Resource": [
+          "arn:aws:lex:us-east-1:123456789012:bot:OrderFlowers:*"
+         ]
+        }
+       ]
+      }
+     }
+    ],
+    "__resource__": {
+     "Condition": "IsLexV1"
+    }
+   },
+   "refs": [
+    "CognitoIdentityPool"
+   ]
+  },
+  {
+   "id": "CognitoAuthRoleV1",
+   "cfg": "CognitoAuthRoleV1",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "Path": "/",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Principal": {
+        "Federated": [
+         "cognito-identity.amazonaws.com"
+        ]
+       },
+       "Effect": "Allow",
+       "Action": [
+        "sts:AssumeRoleWithWebIdentity"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "cognito-identity.amazonaws.com:aud": {
+          "ref": "CognitoIdentityPool"
+         }
+        },
+        "ForAnyValue:StringLike": {
+         "cognito-identity.amazonaws.com:amr": "authenticated"
+        }
+       }
+      }
+     ]
+    },
+    "Policies": [
+     {
+      "PolicyName": "PollySynth",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "polly:SynthesizeSpeech"
+         ],
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "PolicyName": "LexPost",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "lex:PostText",
+          "lex:PostContent",
+          "lex:DeleteSession",
+          "lex:PutSession"
+         ],
+         "Resource": [
+          "arn:aws:lex:us-east-1:123456789012:bot:OrderFlowers:*"
+         ]
+        }
+       ]
+      }
+     }
+    ],
+    "__resource__": {
+     "Condition": "IsLexV1"
+    }
+   },
+   "refs": [
+    "CognitoIdentityPool"
+   ]
+  },
+  {
+   "id": "__parameter__.CognitoIdentityPoolName",
+   "cfg": "__parameter__.CognitoIdentityPoolName",
+   "type": "__parameter__",
+   "values": {
+    "name": "CognitoIdentityPoolName",
+    "type": "String",
+    "default": "identity pool",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.LexBotName",
+   "cfg": "__parameter__.LexBotName",
+   "type": "__parameter__",
+   "values": {
+    "name": "LexBotName",
+    "type": "String",
+    "default": "OrderFlowers",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.LexV2BotId",
+   "cfg": "__parameter__.LexV2BotId",
+   "type": "__parameter__",
+   "values": {
+    "name": "LexV2BotId",
+    "type": "String",
+    "default": "",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.LexV2BotAliasId",
+   "cfg": "__parameter__.LexV2BotAliasId",
+   "type": "__parameter__",
+   "values": {
+    "name": "LexV2BotAliasId",
+    "type": "String",
+    "default": "",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.ForceCognitoLogin",
+   "cfg": "__parameter__.ForceCognitoLogin",
+   "type": "__parameter__",
+   "values": {
+    "name": "ForceCognitoLogin",
+    "type": "String",
+    "default": false,
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.ShouldEnableLiveChat",
+   "cfg": "__parameter__.ShouldEnableLiveChat",
+   "type": "__parameter__",
+   "values": {
+    "name": "ShouldEnableLiveChat",
+    "type": "String",
+    "default": false,
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.CognitoIdentityPoolId",
+   "cfg": "__output__.CognitoIdentityPoolId",
+   "type": "__output__",
+   "values": {
+    "name": "CognitoIdentityPoolId",
+    "value": {
+     "ref": "CognitoIdentityPool"
+    },
+    "description": "Cognito identity pool id.",
+    "export": null
+   },
+   "refs": [
+    "CognitoIdentityPool"
+   ]
+  },
+  {
+   "id": "__output__.CognitoUserPoolId",
+   "cfg": "__output__.CognitoUserPoolId",
+   "type": "__output__",
+   "values": {
+    "name": "CognitoUserPoolId",
+    "value": {
+     "ref": "CognitoUserPool"
+    },
+    "description": "Cognito user pool id.",
+    "export": null
+   },
+   "refs": [
+    "CognitoUserPool"
+   ]
+  },
+  {
+   "id": "__output__.CognitoUserPoolClientId",
+   "cfg": "__output__.CognitoUserPoolClientId",
+   "type": "__output__",
+   "values": {
+    "name": "CognitoUserPoolClientId",
+    "value": {
+     "ref": "CognitoUserPoolClient"
+    },
+    "description": "Cognito user pool client id.",
+    "export": null
+   },
+   "refs": [
+    "CognitoUserPoolClient"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::Cognito::IdentityPool.CognitoIdentityPool",
+   "cfg": "CognitoIdentityPool",
+   "type": "__declared__",
+   "refs": [
+    "CognitoUserPool",
+    "CognitoUserPoolClient"
+   ],
+   "values": {
+    "type": "AWS::Cognito::IdentityPool",
+    "name": "CognitoIdentityPool",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "IdentityPoolName": "identity pool",
+     "AllowUnauthenticatedIdentities": true,
+     "CognitoIdentityProviders": [
+      {
+       "ClientId": {
+        "ref": "CognitoUserPoolClient"
+       },
+       "ProviderName": {
+        "ref": "CognitoUserPool",
+        "attr": "ProviderName"
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::IdentityPoolRoleAttachment.CognitoIdentityPoolSetRole",
+   "cfg": "CognitoIdentityPoolSetRole",
+   "type": "__declared__",
+   "refs": [
+    "CognitoAuthRoleV1",
+    "CognitoIdentityPool",
+    "CognitoUnauthRoleV1"
+   ],
+   "values": {
+    "type": "AWS::Cognito::IdentityPoolRoleAttachment",
+    "name": "CognitoIdentityPoolSetRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "IdentityPoolId": {
+      "ref": "CognitoIdentityPool"
+     },
+     "Roles": {
+      "authenticated": {
+       "ref": "CognitoAuthRoleV1",
+       "attr": "Arn"
+      },
+      "unauthenticated": {
+       "ref": "CognitoUnauthRoleV1",
+       "attr": "Arn"
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPool.CognitoUserPool",
+   "cfg": "CognitoUserPool",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Cognito::UserPool",
+    "name": "CognitoUserPool",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AutoVerifiedAttributes": [
+      "email"
+     ],
+     "MfaConfiguration": "OFF",
+     "AliasAttributes": [
+      "email"
+     ],
+     "Schema": [
+      {
+       "AttributeDataType": "String",
+       "Name": "given_name",
+       "Required": true,
+       "Mutable": true
+      },
+      {
+       "AttributeDataType": "String",
+       "Name": "family_name",
+       "Required": true,
+       "Mutable": true
+      },
+      {
+       "AttributeDataType": "String",
+       "Name": "email",
+       "Required": true,
+       "Mutable": true
+      },
+      {
+       "AttributeDataType": "String",
+       "Name": "preferred_username",
+       "Required": true,
+       "Mutable": true
+      }
+     ],
+     "UserPoolName": "UserPool-stack"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolClient.CognitoUserPoolClient",
+   "cfg": "CognitoUserPoolClient",
+   "type": "__declared__",
+   "refs": [
+    "CognitoUserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolClient",
+    "name": "CognitoUserPoolClient",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "GenerateSecret": false,
+     "UserPoolId": {
+      "ref": "CognitoUserPool"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.CognitoUnauthRoleV1",
+   "cfg": "CognitoUnauthRoleV1",
+   "type": "__declared__",
+   "refs": [
+    "CognitoIdentityPool"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "CognitoUnauthRoleV1",
+    "gated": true,
+    "gate": "IsLexV1",
+    "properties": {
+     "Path": "/",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Principal": {
+         "Federated": [
+          "cognito-identity.amazonaws.com"
+         ]
+        },
+        "Effect": "Allow",
+        "Action": [
+         "sts:AssumeRoleWithWebIdentity"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "cognito-identity.amazonaws.com:aud": {
+           "ref": "CognitoIdentityPool"
+          }
+         },
+         "ForAnyValue:StringLike": {
+          "cognito-identity.amazonaws.com:amr": "unauthenticated"
+         }
+        }
+       }
+      ]
+     },
+     "Policies": [
+      {
+       "PolicyName": "LexPost",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "lex:PostText",
+           "lex:PostContent",
+           "lex:DeleteSession",
+           "lex:PutSession"
+          ],
+          "Resource": [
+           "arn:aws:lex:us-east-1:123456789012:bot:OrderFlowers:*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.CognitoUnauthRoleV2",
+   "cfg": "CognitoUnauthRoleV2",
+   "type": "__declared__",
+   "refs": [
+    "CognitoIdentityPool"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "CognitoUnauthRoleV2",
+    "gated": true,
+    "gate": "IsLexV2",
+    "properties": {
+     "Path": "/",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Principal": {
+         "Federated": [
+          "cognito-identity.amazonaws.com"
+         ]
+        },
+        "Effect": "Allow",
+        "Action": [
+         "sts:AssumeRoleWithWebIdentity"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "cognito-identity.amazonaws.com:aud": {
+           "ref": "CognitoIdentityPool"
+          }
+         },
+         "ForAnyValue:StringLike": {
+          "cognito-identity.amazonaws.com:amr": "unauthenticated"
+         }
+        }
+       }
+      ]
+     },
+     "Policies": [
+      {
+       "PolicyName": "LexV2",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "lex:RecognizeText",
+           "lex:RecognizeUtterance",
+           "lex:DeleteSession",
+           "lex:PutSession"
+          ],
+          "Resource": [
+           "arn:aws:lex:us-east-1:123456789012:bot-alias//"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.CognitoAuthRoleV1",
+   "cfg": "CognitoAuthRoleV1",
+   "type": "__declared__",
+   "refs": [
+    "CognitoIdentityPool"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "CognitoAuthRoleV1",
+    "gated": true,
+    "gate": "IsLexV1",
+    "properties": {
+     "Path": "/",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Principal": {
+         "Federated": [
+          "cognito-identity.amazonaws.com"
+         ]
+        },
+        "Effect": "Allow",
+        "Action": [
+         "sts:AssumeRoleWithWebIdentity"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "cognito-identity.amazonaws.com:aud": {
+           "ref": "CognitoIdentityPool"
+          }
+         },
+         "ForAnyValue:StringLike": {
+          "cognito-identity.amazonaws.com:amr": "authenticated"
+         }
+        }
+       }
+      ]
+     },
+     "Policies": [
+      {
+       "PolicyName": "PollySynth",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "polly:SynthesizeSpeech"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      },
+      {
+       "PolicyName": "LexPost",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "lex:PostText",
+           "lex:PostContent",
+           "lex:DeleteSession",
+           "lex:PutSession"
+          ],
+          "Resource": [
+           "arn:aws:lex:us-east-1:123456789012:bot:OrderFlowers:*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.CognitoAuthRoleV2",
+   "cfg": "CognitoAuthRoleV2",
+   "type": "__declared__",
+   "refs": [
+    "CognitoIdentityPool"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "CognitoAuthRoleV2",
+    "gated": true,
+    "gate": "IsLexV2",
+    "properties": {
+     "Path": "/",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Principal": {
+         "Federated": [
+          "cognito-identity.amazonaws.com"
+         ]
+        },
+        "Effect": "Allow",
+        "Action": [
+         "sts:AssumeRoleWithWebIdentity"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "cognito-identity.amazonaws.com:aud": {
+           "ref": "CognitoIdentityPool"
+          }
+         },
+         "ForAnyValue:StringLike": {
+          "cognito-identity.amazonaws.com:amr": "authenticated"
+         }
+        }
+       }
+      ]
+     },
+     "Policies": [
+      {
+       "PolicyName": "PollySynth",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "polly:SynthesizeSpeech"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      },
+      {
+       "PolicyName": "LexV2",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "lex:RecognizeText",
+           "lex:RecognizeUtterance",
+           "lex:DeleteSession",
+           "lex:PutSession"
+          ],
+          "Resource": [
+           "arn:aws:lex:us-east-1:123456789012:bot-alias//"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  }
+ ]
+}

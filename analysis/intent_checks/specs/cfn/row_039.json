@@ -1,0 +1,238 @@
+{
+  "lang": "cfn",
+  "row_number": 39,
+  "source_hash": {
+    "gt": "690a45b1637dd6412e5144c2bf2d7d9dd7da057c9c94dc9ddc7e0fe796b88a29",
+    "prompt": "6b4d3c91e89306b20dfd832f8dc829cba440f17c3012a4b71f7d46c0e9263375"
+  },
+  "selectors": {
+    "pool": {
+      "types": [
+        "AWS::Cognito::UserPool"
+      ]
+    },
+    "fn": {
+      "types": [
+        "AWS::Lambda::Function"
+      ]
+    },
+    "role": {
+      "types": [
+        "AWS::IAM::Role"
+      ]
+    },
+    "cogperm": {
+      "types": [
+        "AWS::Lambda::Permission"
+      ],
+      "where": [
+        {
+          "path": "Principal",
+          "op": "eq",
+          "value": "cognito-idp.amazonaws.com"
+        }
+      ]
+    },
+    "pool_cm": {
+      "types": [
+        "AWS::Cognito::UserPool"
+      ],
+      "where": [
+        {
+          "path": "LambdaConfig.CustomMessage",
+          "op": "present"
+        }
+      ]
+    }
+  },
+  "checks": [
+    {
+      "id": "pool",
+      "tier": "core",
+      "quote": "creates a Cognito User Pool",
+      "kind": "exists",
+      "select": "pool"
+    },
+    {
+      "id": "deletion_protection",
+      "tier": "core",
+      "quote": "with deletion protection enabled",
+      "kind": "attr",
+      "select": "pool",
+      "cond": {
+        "path": "DeletionProtection",
+        "op": "eq",
+        "value": "ACTIVE"
+      },
+      "justify": "deletion protection enabled is the ACTIVE setting"
+    },
+    {
+      "id": "fn",
+      "tier": "core",
+      "quote": "a Lambda function",
+      "kind": "exists",
+      "select": "fn"
+    },
+    {
+      "id": "runtime",
+      "tier": "core",
+      "quote": "using Python 3.11 runtime",
+      "kind": "attr",
+      "select": "fn",
+      "cond": {
+        "path": "Runtime",
+        "op": "eq",
+        "value": "python3.11"
+      }
+    },
+    {
+      "id": "handler",
+      "tier": "core",
+      "quote": "a handler named \"bar\"",
+      "kind": "attr",
+      "select": "fn",
+      "cond": {
+        "path": "Handler",
+        "op": "regex",
+        "value": "(?i)(^|\\.)bar$"
+      }
+    },
+    {
+      "id": "inline_code",
+      "tier": "detail",
+      "quote": "a simple inline code placeholder",
+      "kind": "attr",
+      "select": "fn",
+      "cond": {
+        "path": "Code.ZipFile",
+        "op": "present"
+      }
+    },
+    {
+      "id": "trigger",
+      "tier": "core",
+      "quote": "the Lambda function is configured as the custom message trigger for the user pool",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "ref",
+          "from": "pool_cm",
+          "to": "fn"
+        },
+        {
+          "kind": "attr",
+          "select": "pool",
+          "cond": {
+            "path": "LambdaConfig.CustomMessage",
+            "op": "regex",
+            "value": ":function:"
+          }
+        }
+      ]
+    },
+    {
+      "id": "role",
+      "tier": "core",
+      "quote": "the necessary IAM role",
+      "kind": "exists",
+      "select": "role"
+    },
+    {
+      "id": "fn_role",
+      "tier": "detail",
+      "quote": "the necessary IAM role",
+      "kind": "ref",
+      "from": "fn",
+      "to": "role"
+    },
+    {
+      "id": "basic_exec",
+      "tier": "core",
+      "quote": "the AWSLambdaBasicExecutionRole managed policy",
+      "kind": "attr",
+      "select": "role",
+      "cond": {
+        "path": "ManagedPolicyArns.*",
+        "op": "regex",
+        "value": "service-role/AWSLambdaBasicExecutionRole$"
+      }
+    },
+    {
+      "id": "cognito_perm",
+      "tier": "core",
+      "quote": "a Lambda resource-based permission that allows Cognito to invoke the function",
+      "kind": "exists",
+      "select": "cogperm"
+    },
+    {
+      "id": "perm_fn",
+      "tier": "detail",
+      "quote": "allows Cognito to invoke the function",
+      "kind": "ref",
+      "from": "cogperm",
+      "to": "fn"
+    },
+    {
+      "id": "perm_action",
+      "tier": "detail",
+      "quote": "allows Cognito to invoke the function",
+      "kind": "attr",
+      "select": "cogperm",
+      "cond": {
+        "path": "Action",
+        "op": "glob_covers",
+        "value": "lambda:InvokeFunction"
+      },
+      "justify": "invoke implies lambda:InvokeFunction"
+    },
+    {
+      "id": "fn_tag",
+      "tier": "detail",
+      "quote": "all tagged with lambda:createdBy=SAM",
+      "kind": "attr",
+      "select": "fn",
+      "cond": {
+        "path": "Tags.*",
+        "op": "has_kv",
+        "value": {
+          "key": "lambda:createdBy",
+          "value": "SAM"
+        }
+      }
+    },
+    {
+      "id": "role_tag",
+      "tier": "detail",
+      "quote": "all tagged with lambda:createdBy=SAM",
+      "kind": "attr",
+      "select": "role",
+      "cond": {
+        "path": "Tags.*",
+        "op": "has_kv",
+        "value": {
+          "key": "lambda:createdBy",
+          "value": "SAM"
+        }
+      }
+    },
+    {
+      "id": "trust_lambda",
+      "tier": "extra",
+      "kind": "attr",
+      "select": "role",
+      "cond": {
+        "path": "AssumeRolePolicyDocument.Statement.*.Principal.Service.*",
+        "op": "eq",
+        "value": "lambda.amazonaws.com"
+      }
+    },
+    {
+      "id": "perm_source_pool",
+      "tier": "extra",
+      "kind": "ref",
+      "from": "cogperm",
+      "to": "pool"
+    }
+  ],
+  "notes": "PROMPT_GT_MISMATCH: prompt says \"all tagged\" but the user pool carries no tags in the ground truth; only function and role tags are checked."
+}

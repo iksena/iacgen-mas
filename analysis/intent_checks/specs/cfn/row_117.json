@@ -1,0 +1,498 @@
+{
+  "lang": "cfn",
+  "row_number": 117,
+  "source_hash": {
+    "gt": "3a0a0d9be839aa726f75247efab2da876ae276a2777b13af90db124c9a83772d",
+    "prompt": "08d613db8898a0c03aa11ab9d11c10f5e6d7cb8833a89a4c84ef4efdbddcd069"
+  },
+  "selectors": {
+    "vpc": {
+      "types": [
+        "AWS::EC2::VPC"
+      ]
+    },
+    "sub": {
+      "types": [
+        "AWS::EC2::Subnet"
+      ]
+    },
+    "igw": {
+      "types": [
+        "AWS::EC2::InternetGateway"
+      ]
+    },
+    "att": {
+      "types": [
+        "AWS::EC2::VPCGatewayAttachment"
+      ]
+    },
+    "rt": {
+      "types": [
+        "AWS::EC2::RouteTable"
+      ]
+    },
+    "route": {
+      "types": [
+        "AWS::EC2::Route"
+      ],
+      "where": [
+        {
+          "path": "DestinationCidrBlock",
+          "op": "eq",
+          "value": "0.0.0.0/0"
+        }
+      ]
+    },
+    "assoc": {
+      "types": [
+        "AWS::EC2::SubnetRouteTableAssociation"
+      ]
+    },
+    "hz": {
+      "types": [
+        "AWS::Route53::HostedZone"
+      ],
+      "where": [
+        {
+          "path": "Name",
+          "op": "regex",
+          "value": "(?i)^example\\.com\\.?$"
+        }
+      ]
+    },
+    "recs": {
+      "types": [
+        "AWS::Route53::RecordSet"
+      ]
+    },
+    "out": {
+      "types": [
+        "__output__"
+      ]
+    },
+    "params": {
+      "types": [
+        "__parameter__"
+      ]
+    },
+    "r1": {
+      "types": [
+        "AWS::Route53::RecordSet"
+      ],
+      "where": [
+        {
+          "path": "Name",
+          "op": "regex",
+          "value": "(?i)^puppet\\.example\\.com\\.?$"
+        },
+        {
+          "path": "Type",
+          "op": "eq",
+          "value": "A"
+        },
+        {
+          "path": "ResourceRecords.*",
+          "op": "eq",
+          "value": "10.0.0.10"
+        }
+      ]
+    },
+    "r2": {
+      "types": [
+        "AWS::Route53::RecordSet"
+      ],
+      "where": [
+        {
+          "path": "Name",
+          "op": "regex",
+          "value": "(?i)^linuxagent\\.example\\.com\\.?$"
+        },
+        {
+          "path": "Type",
+          "op": "eq",
+          "value": "A"
+        },
+        {
+          "path": "ResourceRecords.*",
+          "op": "eq",
+          "value": "10.0.0.11"
+        }
+      ]
+    },
+    "r3": {
+      "types": [
+        "AWS::Route53::RecordSet"
+      ],
+      "where": [
+        {
+          "path": "Name",
+          "op": "regex",
+          "value": "(?i)^windowsagent\\.example\\.com\\.?$"
+        },
+        {
+          "path": "Type",
+          "op": "eq",
+          "value": "A"
+        },
+        {
+          "path": "ResourceRecords.*",
+          "op": "eq",
+          "value": "10.0.0.12"
+        }
+      ]
+    },
+    "rsg": {
+      "types": [
+        "AWS::Route53::RecordSetGroup"
+      ]
+    }
+  },
+  "checks": [
+    {
+      "id": "vpc_cidr",
+      "kind": "attr",
+      "tier": "core",
+      "quote": "a VPC with CIDR 10.0.0.0/16",
+      "select": "vpc",
+      "cond": {
+        "path": "CidrBlock",
+        "op": "eq",
+        "value": "10.0.0.0/16"
+      }
+    },
+    {
+      "id": "vpc_dns_hostnames",
+      "kind": "attr",
+      "tier": "core",
+      "quote": "with DNS hostnames enabled",
+      "select": "vpc",
+      "cond": {
+        "path": "EnableDnsHostnames",
+        "op": "truthy"
+      }
+    },
+    {
+      "id": "subnet_cidr",
+      "kind": "attr",
+      "tier": "core",
+      "quote": "a public subnet with CIDR 10.0.0.0/19",
+      "select": "sub",
+      "cond": {
+        "path": "CidrBlock",
+        "op": "eq",
+        "value": "10.0.0.0/19"
+      }
+    },
+    {
+      "id": "subnet_az_second",
+      "kind": "any_of",
+      "tier": "core",
+      "quote": "in the second availability zone",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "sub",
+          "cond": {
+            "path": "AvailabilityZone",
+            "op": "eq",
+            "value": "us-east-1b"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "sub",
+          "cond": {
+            "path": "AvailabilityZone",
+            "op": "regex",
+            "value": "(?is)select.{0,40}\\b1\\b.{0,80}getazs|getazs.{0,80}\\b1\\b"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "sub",
+          "cond": {
+            "path": "AvailabilityZone",
+            "op": "regex",
+            "value": "(?i)[a-z]{2}-[a-z]+-\\d+b$"
+          }
+        }
+      ],
+      "justify": "second AZ of us-east-1 is us-east-1b, or Select index 1 of GetAZs"
+    },
+    {
+      "id": "subnet_in_vpc",
+      "kind": "ref",
+      "tier": "detail",
+      "quote": "a public subnet",
+      "from": "sub",
+      "to": "vpc"
+    },
+    {
+      "id": "igw",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "an internet gateway",
+      "select": "igw"
+    },
+    {
+      "id": "igw_attached",
+      "kind": "ref",
+      "tier": "core",
+      "quote": "an internet gateway attached to the VPC",
+      "from": "att",
+      "to": "igw"
+    },
+    {
+      "id": "igw_attached_vpc",
+      "kind": "ref",
+      "tier": "core",
+      "quote": "an internet gateway attached to the VPC",
+      "from": "att",
+      "to": "vpc"
+    },
+    {
+      "id": "public_rt",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "a public route table",
+      "select": "rt"
+    },
+    {
+      "id": "default_route_igw",
+      "kind": "ref",
+      "tier": "core",
+      "quote": "a public route table with a default route to the internet gateway",
+      "justify": "default route is 0.0.0.0/0",
+      "from": "route",
+      "to": "igw"
+    },
+    {
+      "id": "route_in_rt",
+      "kind": "ref",
+      "tier": "detail",
+      "quote": "a public route table with a default route to the internet gateway",
+      "justify": "default route is 0.0.0.0/0",
+      "from": "route",
+      "to": "rt"
+    },
+    {
+      "id": "subnet_assoc",
+      "kind": "exists",
+      "tier": "detail",
+      "quote": "a public subnet",
+      "select": "assoc",
+      "justify": "public subnet uses the public route table"
+    },
+    {
+      "id": "hosted_zone",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "a Route53 hosted zone for example.com",
+      "select": "hz"
+    },
+    {
+      "id": "hz_vpc",
+      "kind": "ref",
+      "tier": "core",
+      "quote": "all associated with the VPC",
+      "from": "hz",
+      "to": "vpc"
+    },
+    {
+      "id": "rec_puppet",
+      "kind": "any_of",
+      "tier": "core",
+      "quote": "A records for puppet.example.com pointing to 10.0.0.10",
+      "checks": [
+        {
+          "kind": "exists",
+          "select": "r1"
+        },
+        {
+          "kind": "attr",
+          "select": "rsg",
+          "cond": {
+            "path": "RecordSets.*",
+            "op": "match",
+            "value": [
+              {
+                "path": "Name",
+                "op": "regex",
+                "value": "(?i)^puppet\\.example\\.com\\.?$"
+              },
+              {
+                "path": "Type",
+                "op": "eq",
+                "value": "A"
+              },
+              {
+                "path": "ResourceRecords.*",
+                "op": "eq",
+                "value": "10.0.0.10"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "rec_linux",
+      "kind": "any_of",
+      "tier": "core",
+      "quote": "linuxagent.example.com pointing to 10.0.0.11",
+      "checks": [
+        {
+          "kind": "exists",
+          "select": "r2"
+        },
+        {
+          "kind": "attr",
+          "select": "rsg",
+          "cond": {
+            "path": "RecordSets.*",
+            "op": "match",
+            "value": [
+              {
+                "path": "Name",
+                "op": "regex",
+                "value": "(?i)^linuxagent\\.example\\.com\\.?$"
+              },
+              {
+                "path": "Type",
+                "op": "eq",
+                "value": "A"
+              },
+              {
+                "path": "ResourceRecords.*",
+                "op": "eq",
+                "value": "10.0.0.11"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "rec_windows",
+      "kind": "any_of",
+      "tier": "core",
+      "quote": "windowsagent.example.com pointing to 10.0.0.12",
+      "checks": [
+        {
+          "kind": "exists",
+          "select": "r3"
+        },
+        {
+          "kind": "attr",
+          "select": "rsg",
+          "cond": {
+            "path": "RecordSets.*",
+            "op": "match",
+            "value": [
+              {
+                "path": "Name",
+                "op": "regex",
+                "value": "(?i)^windowsagent\\.example\\.com\\.?$"
+              },
+              {
+                "path": "Type",
+                "op": "eq",
+                "value": "A"
+              },
+              {
+                "path": "ResourceRecords.*",
+                "op": "eq",
+                "value": "10.0.0.12"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "recs_in_zone",
+      "kind": "any_of",
+      "tier": "detail",
+      "quote": "A records for puppet.example.com",
+      "checks": [
+        {
+          "kind": "ref",
+          "from": "recs",
+          "to": "hz"
+        },
+        {
+          "kind": "attr",
+          "select": "recs",
+          "cond": {
+            "path": "HostedZoneName",
+            "op": "regex",
+            "value": "(?i)^example\\.com\\.?$"
+          }
+        },
+        {
+          "kind": "ref",
+          "from": "rsg",
+          "to": "hz"
+        },
+        {
+          "kind": "attr",
+          "select": "rsg",
+          "cond": {
+            "path": "HostedZoneName",
+            "op": "regex",
+            "value": "(?i)^example\\.com\\.?$"
+          }
+        }
+      ]
+    },
+    {
+      "id": "five_params",
+      "kind": "exists",
+      "tier": "detail",
+      "quote": "accept parameters for the VPC CIDR, subnet CIDR, and the three IP addresses",
+      "select": "params",
+      "min": 5,
+      "justify": "VPC CIDR + subnet CIDR + three IPs"
+    },
+    {
+      "id": "output_vpc",
+      "kind": "ref",
+      "tier": "detail",
+      "quote": "output the VPC ID",
+      "from": "out",
+      "to": "vpc"
+    },
+    {
+      "id": "output_subnet",
+      "kind": "ref",
+      "tier": "detail",
+      "quote": "and subnet ID",
+      "from": "out",
+      "to": "sub"
+    },
+    {
+      "id": "x_record_ttl",
+      "kind": "any_of",
+      "tier": "extra",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "recs",
+          "cond": {
+            "path": "TTL",
+            "op": "present"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "rsg",
+          "cond": {
+            "path": "RecordSets.*.TTL",
+            "op": "present"
+          }
+        }
+      ]
+    }
+  ],
+  "notes": "Subnet AZ accepts us-east-1b (fixture), Fn::Select index 1 of GetAZs, or any 'b' zone. A records are accepted as separate RecordSet resources or inside a RecordSetGroup."
+}

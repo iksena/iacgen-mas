@@ -1,0 +1,165 @@
+{
+  "lang": "cfn",
+  "row_number": 8,
+  "source_hash": {
+    "gt": "5a52069d8257198aedcb6fd02e0185c202e5bcaca85693b4db7cfb344cd31a22",
+    "prompt": "5cda76554d94492470b30784f8a5ce870cf928fc43842efa095d78aaf6da16c4"
+  },
+  "selectors": {
+    "d": {
+      "types": [
+        "AWS::GuardDuty::Detector"
+      ]
+    }
+  },
+  "checks": [
+    {
+      "id": "detector",
+      "kind": "exists",
+      "select": "d",
+      "tier": "core",
+      "quote": "creates a GuardDuty detector"
+    },
+    {
+      "id": "enabled",
+      "kind": "attr",
+      "select": "d",
+      "cond": {
+        "path": "Enable",
+        "op": "truthy"
+      },
+      "tier": "core",
+      "quote": "enabling it"
+    },
+    {
+      "id": "frequency",
+      "kind": "attr",
+      "select": "d",
+      "cond": {
+        "path": "FindingPublishingFrequency",
+        "op": "eq",
+        "value": "FIFTEEN_MINUTES"
+      },
+      "tier": "core",
+      "quote": "a finding publishing frequency of fifteen minutes"
+    },
+    {
+      "id": "s3_logs",
+      "kind": "any_of",
+      "tier": "core",
+      "quote": "S3 logs",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "d",
+          "cond": {
+            "path": "DataSources.S3Logs.Enable",
+            "op": "truthy"
+          },
+          "quantifier": "some"
+        },
+        {
+          "kind": "attr",
+          "select": "d",
+          "cond": {
+            "path": "Features.*",
+            "op": "match",
+            "value": [
+              {
+                "path": "Name",
+                "op": "eq",
+                "value": "S3_DATA_EVENTS"
+              },
+              {
+                "path": "Status",
+                "op": "eq",
+                "value": "ENABLED"
+              }
+            ]
+          },
+          "quantifier": "some"
+        }
+      ],
+      "justify": "S3 logs protection = S3Logs datasource or S3_DATA_EVENTS feature"
+    },
+    {
+      "id": "ec2_malware",
+      "kind": "any_of",
+      "tier": "core",
+      "quote": "malware protection for EC2 instances with findings",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "d",
+          "cond": {
+            "path": "DataSources.MalwareProtection.ScanEc2InstanceWithFindings.EbsVolumes",
+            "op": "truthy"
+          },
+          "quantifier": "some"
+        },
+        {
+          "kind": "attr",
+          "select": "d",
+          "cond": {
+            "path": "Features.*",
+            "op": "match",
+            "value": [
+              {
+                "path": "Name",
+                "op": "eq",
+                "value": "EBS_MALWARE_PROTECTION"
+              },
+              {
+                "path": "Status",
+                "op": "eq",
+                "value": "ENABLED"
+              }
+            ]
+          },
+          "quantifier": "some"
+        }
+      ],
+      "justify": "EBS_MALWARE_PROTECTION is the Features name for malware protection for EC2 instances with findings; ENABLED is its on state"
+    },
+    {
+      "id": "k8s_audit_off",
+      "kind": "any_of",
+      "tier": "core",
+      "quote": "disabling Kubernetes audit logs",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "d",
+          "cond": {
+            "path": "DataSources.Kubernetes.AuditLogs.Enable",
+            "op": "falsy"
+          },
+          "quantifier": "some"
+        },
+        {
+          "kind": "attr",
+          "select": "d",
+          "cond": {
+            "path": "Features.*",
+            "op": "match",
+            "value": [
+              {
+                "path": "Name",
+                "op": "eq",
+                "value": "EKS_AUDIT_LOGS"
+              },
+              {
+                "path": "Status",
+                "op": "eq",
+                "value": "DISABLED"
+              }
+            ]
+          },
+          "quantifier": "some"
+        }
+      ],
+      "justify": "disabled feature status is DISABLED"
+    }
+  ],
+  "notes": "All checks are core because the short prompt states only the detector and its load-bearing settings. Omitting Kubernetes audit logs does not disable them on a new detector, so k8s_audit_off requires an explicit off."
+}

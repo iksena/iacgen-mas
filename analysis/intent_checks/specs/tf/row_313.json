@@ -1,0 +1,969 @@
+{
+ "lang": "tf",
+ "row_number": 313,
+ "source_hash": {
+  "gt": "08bc61dde437be7ec39d2ea0f01dd8848548ef14c5d18e53967330111e635beb",
+  "prompt": "29229b76ddb7ec7f3e847b68ab0724c512f3b5520d4b6f3f56e4d6f0dc5ee422"
+ },
+ "selectors": {
+  "trail": {
+   "types": [
+    "aws_cloudtrail"
+   ]
+  },
+  "bucket": {
+   "types": [
+    "aws_s3_bucket"
+   ]
+  },
+  "kms": {
+   "types": [
+    "aws_kms_key"
+   ]
+  },
+  "kms_rot": {
+   "types": [
+    "aws_kms_key"
+   ],
+   "where": [
+    {
+     "path": "enable_key_rotation",
+     "op": "truthy"
+    }
+   ]
+  },
+  "lg": {
+   "types": [
+    "aws_cloudwatch_log_group"
+   ],
+   "where": [
+    {
+     "path": "name",
+     "op": "eq",
+     "value": "cloudtrail_to_cloudwatch_logs"
+    }
+   ]
+  },
+  "role": {
+   "types": [
+    "aws_iam_role"
+   ]
+  },
+  "mf": {
+   "types": [
+    "aws_cloudwatch_log_metric_filter"
+   ]
+  },
+  "alarms": {
+   "types": [
+    "aws_cloudwatch_metric_alarm"
+   ]
+  },
+  "topic": {
+   "types": [
+    "aws_sns_topic"
+   ],
+   "where": [
+    {
+     "path": "name",
+     "op": "eq",
+     "value": "management-updates"
+    }
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "trail_named",
+   "tier": "core",
+   "quote": "a multi-region CloudTrail trail named \"monitor_account_activities\"",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_cloudtrail"
+    ],
+    "where": [
+     {
+      "path": "name",
+      "op": "eq",
+      "value": "monitor_account_activities"
+     }
+    ]
+   }
+  },
+  {
+   "id": "trail_multi_region",
+   "tier": "core",
+   "quote": "multi-region CloudTrail trail",
+   "kind": "attr",
+   "select": "trail",
+   "cond": {
+    "path": "is_multi_region_trail",
+    "op": "truthy"
+   }
+  },
+  {
+   "id": "trail_global_events",
+   "tier": "core",
+   "quote": "global service events",
+   "kind": "attr",
+   "select": "trail",
+   "cond": {
+    "path": "include_global_service_events",
+    "op": "truthy"
+   }
+  },
+  {
+   "id": "trail_log_validation",
+   "tier": "core",
+   "quote": "log file validation enabled",
+   "kind": "attr",
+   "select": "trail",
+   "cond": {
+    "path": "enable_log_file_validation",
+    "op": "truthy"
+   }
+  },
+  {
+   "id": "trail_all_management_events",
+   "tier": "core",
+   "quote": "recording all management events",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "trail",
+     "cond": {
+      "path": "event_selector.*",
+      "op": "match",
+      "value": [
+       {
+        "path": "include_management_events",
+        "op": "truthy"
+       },
+       {
+        "path": "read_write_type",
+        "op": "eq",
+        "value": "All"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "trail",
+     "cond": {
+      "path": "advanced_event_selector",
+      "op": "regex",
+      "value": "(?i)Management"
+     }
+    }
+   ]
+  },
+  {
+   "id": "trail_excludes_kms",
+   "tier": "core",
+   "quote": "except those from KMS and RDS Data",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "trail",
+     "cond": {
+      "path": "event_selector.*.exclude_management_event_sources.*",
+      "op": "eq",
+      "value": "kms.amazonaws.com"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "trail",
+     "cond": {
+      "path": "advanced_event_selector",
+      "op": "regex",
+      "value": "kms\\.amazonaws\\.com"
+     }
+    }
+   ]
+  },
+  {
+   "id": "trail_excludes_rdsdata",
+   "tier": "core",
+   "quote": "except those from KMS and RDS Data",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "trail",
+     "cond": {
+      "path": "event_selector.*.exclude_management_event_sources.*",
+      "op": "eq",
+      "value": "rdsdata.amazonaws.com"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "trail",
+     "cond": {
+      "path": "advanced_event_selector",
+      "op": "regex",
+      "value": "rdsdata\\.amazonaws\\.com"
+     }
+    }
+   ]
+  },
+  {
+   "id": "trail_encrypted_cmk_rotation",
+   "tier": "core",
+   "quote": "encrypted with a dedicated customer-managed KMS key with automatic rotation",
+   "kind": "ref",
+   "from": "trail",
+   "to": "kms_rot"
+  },
+  {
+   "id": "two_rotating_keys",
+   "tier": "core",
+   "quote": "a dedicated customer-managed KMS key with automatic rotation",
+   "kind": "exists",
+   "select": "kms_rot",
+   "min": 2,
+   "justify": "one rotating key for the trail and a second for the SNS topic ('its own rotating customer-managed KMS key')"
+  },
+  {
+   "id": "bucket_named_with_account",
+   "tier": "core",
+   "quote": "an S3 bucket named \"cloudtrail-monitor-management-event-logs\" suffixed with the account ID",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "bucket",
+     "cond": {
+      "path": "bucket",
+      "op": "regex",
+      "value": "^cloudtrail-monitor-management-event-logs.*[0-9]{12}$"
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_s3_bucket"
+       },
+       {
+        "path": "properties",
+        "op": "regex",
+        "value": "(?i)cloudtrail-monitor-management-event-logs.*account_id"
+       }
+      ]
+     }
+    }
+   ],
+   "justify": "an AWS account ID is 12 digits; accept resolved name or account-id interpolation"
+  },
+  {
+   "id": "trail_delivers_to_bucket",
+   "tier": "core",
+   "quote": "The trail delivers logs to an S3 bucket",
+   "kind": "ref",
+   "from": "trail",
+   "to": "bucket"
+  },
+  {
+   "id": "bucket_public_blocked",
+   "tier": "core",
+   "quote": "which blocks all public access",
+   "kind": "ref",
+   "from": {
+    "types": [
+     "aws_s3_bucket_public_access_block"
+    ],
+    "where": [
+     {
+      "path": "block_public_acls",
+      "op": "truthy"
+     },
+     {
+      "path": "block_public_policy",
+      "op": "truthy"
+     },
+     {
+      "path": "ignore_public_acls",
+      "op": "truthy"
+     },
+     {
+      "path": "restrict_public_buckets",
+      "op": "truthy"
+     }
+    ]
+   },
+   "to": "bucket",
+   "justify": "all public access blocked means all four flags on"
+  },
+  {
+   "id": "bucket_sse_kms",
+   "tier": "core",
+   "quote": "uses SSE-KMS with the trail key",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_s3_bucket_server_side_encryption_configuration"
+      ],
+      "where": [
+       {
+        "path": "rule.*.apply_server_side_encryption_by_default.*.sse_algorithm",
+        "op": "eq",
+        "value": "aws:kms"
+       }
+      ]
+     },
+     "to": "kms_rot"
+    },
+    {
+     "kind": "attr",
+     "select": "bucket",
+     "cond": {
+      "path": "server_side_encryption_configuration.*.rule.*.apply_server_side_encryption_by_default.*.sse_algorithm",
+      "op": "eq",
+      "value": "aws:kms"
+     }
+    }
+   ]
+  },
+  {
+   "id": "bucket_policy_attached",
+   "tier": "detail",
+   "quote": "grants CloudTrail the permissions it needs to write logs",
+   "kind": "ref",
+   "from": {
+    "types": [
+     "aws_s3_bucket_policy"
+    ]
+   },
+   "to": "bucket"
+  },
+  {
+   "id": "bucket_policy_cloudtrail_write",
+   "tier": "core",
+   "quote": "grants CloudTrail the permissions it needs to write logs",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "in",
+        "value": [
+         "aws_s3_bucket_policy",
+         "data.aws_iam_policy_document"
+        ]
+       },
+       {
+        "path": "properties",
+        "op": "regex",
+        "value": "cloudtrail\\.amazonaws\\.com"
+       },
+       {
+        "path": "properties",
+        "op": "regex",
+        "value": "s3:PutObject"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_s3_bucket_policy"
+      ]
+     },
+     "cond": {
+      "path": "policy",
+      "op": "regex",
+      "value": "(?s)cloudtrail\\.amazonaws\\.com.*s3:PutObject|s3:PutObject.*cloudtrail\\.amazonaws\\.com"
+     }
+    }
+   ],
+   "justify": "writing logs to a bucket means s3:PutObject for the CloudTrail service principal"
+  },
+  {
+   "id": "log_group_named",
+   "tier": "core",
+   "quote": "a CloudWatch Logs group named \"cloudtrail_to_cloudwatch_logs\"",
+   "kind": "exists",
+   "select": "lg"
+  },
+  {
+   "id": "trail_streams_to_log_group",
+   "tier": "core",
+   "quote": "it also streams events to a CloudWatch Logs group",
+   "kind": "ref",
+   "from": "trail",
+   "to": "lg"
+  },
+  {
+   "id": "cloudtrail_role",
+   "tier": "core",
+   "quote": "through an IAM role that CloudTrail can assume",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "role",
+     "cond": {
+      "path": "assume_role_policy",
+      "op": "regex",
+      "value": "cloudtrail\\.amazonaws\\.com"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": "role",
+     "to": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "data.aws_iam_policy_document"
+       },
+       {
+        "path": "properties",
+        "op": "regex",
+        "value": "cloudtrail\\.amazonaws\\.com"
+       },
+       {
+        "path": "properties",
+        "op": "regex",
+        "value": "sts:AssumeRole"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_iam_role"
+       },
+       {
+        "path": "properties.assume_role_policy",
+        "op": "regex",
+        "value": "cloudtrail\\.amazonaws\\.com"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "trail_uses_role",
+   "tier": "core",
+   "quote": "through an IAM role that CloudTrail can assume",
+   "kind": "ref",
+   "from": "trail",
+   "to": "role"
+  },
+  {
+   "id": "filters_namespace",
+   "tier": "core",
+   "quote": "In the \"management_activities\" metric namespace",
+   "kind": "attr",
+   "select": "mf",
+   "cond": {
+    "path": "metric_transformation.*.namespace",
+    "op": "eq",
+    "value": "management_activities"
+   },
+   "quantifier": "all"
+  },
+  {
+   "id": "filter_count",
+   "tier": "core",
+   "quote": "create CloudWatch Logs metric filters with matching alarms",
+   "kind": "exists",
+   "select": "mf",
+   "min": 7,
+   "justify": "seven distinct event categories are listed (the three policy-change kinds may share one filter)"
+  },
+  {
+   "id": "filters_on_log_group",
+   "tier": "detail",
+   "quote": "create CloudWatch Logs metric filters",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "mf",
+     "to": "lg"
+    },
+    {
+     "kind": "attr",
+     "select": "mf",
+     "cond": {
+      "path": "log_group_name",
+      "op": "eq",
+      "value": "cloudtrail_to_cloudwatch_logs"
+     },
+     "quantifier": "all"
+    }
+   ]
+  },
+  {
+   "id": "filter_security_group",
+   "tier": "detail",
+   "quote": "security group changes",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_cloudwatch_log_metric_filter"
+    ],
+    "where": [
+     {
+      "path": "pattern",
+      "op": "regex",
+      "value": "SecurityGroup"
+     },
+     {
+      "path": "metric_transformation.*.namespace",
+      "op": "eq",
+      "value": "management_activities"
+     }
+    ]
+   }
+  },
+  {
+   "id": "filter_user_create_delete",
+   "tier": "detail",
+   "quote": "IAM user creation or deletion",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_cloudwatch_log_metric_filter"
+    ],
+    "where": [
+     {
+      "path": "pattern",
+      "op": "regex",
+      "value": "(CreateUser|DeleteUser)"
+     },
+     {
+      "path": "metric_transformation.*.namespace",
+      "op": "eq",
+      "value": "management_activities"
+     }
+    ]
+   }
+  },
+  {
+   "id": "filter_console_login_failed",
+   "tier": "detail",
+   "quote": "failed console logins",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_cloudwatch_log_metric_filter"
+    ],
+    "where": [
+     {
+      "path": "pattern",
+      "op": "regex",
+      "value": "ConsoleLogin"
+     },
+     {
+      "path": "pattern",
+      "op": "regex",
+      "value": "(?i)fail"
+     },
+     {
+      "path": "metric_transformation.*.namespace",
+      "op": "eq",
+      "value": "management_activities"
+     }
+    ]
+   }
+  },
+  {
+   "id": "filter_group_policy",
+   "tier": "detail",
+   "quote": "IAM group, role, and user policy changes",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_cloudwatch_log_metric_filter"
+    ],
+    "where": [
+     {
+      "path": "pattern",
+      "op": "regex",
+      "value": "GroupPolicy"
+     },
+     {
+      "path": "metric_transformation.*.namespace",
+      "op": "eq",
+      "value": "management_activities"
+     }
+    ]
+   }
+  },
+  {
+   "id": "filter_role_policy",
+   "tier": "detail",
+   "quote": "IAM group, role, and user policy changes",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_cloudwatch_log_metric_filter"
+    ],
+    "where": [
+     {
+      "path": "pattern",
+      "op": "regex",
+      "value": "RolePolicy"
+     },
+     {
+      "path": "metric_transformation.*.namespace",
+      "op": "eq",
+      "value": "management_activities"
+     }
+    ]
+   },
+   "justify": "role policy changes match the RolePolicy API events"
+  },
+  {
+   "id": "filter_user_policy",
+   "tier": "detail",
+   "quote": "IAM group, role, and user policy changes",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_cloudwatch_log_metric_filter"
+    ],
+    "where": [
+     {
+      "path": "pattern",
+      "op": "regex",
+      "value": "UserPolicy"
+     },
+     {
+      "path": "metric_transformation.*.namespace",
+      "op": "eq",
+      "value": "management_activities"
+     }
+    ]
+   }
+  },
+  {
+   "id": "filter_iam_policy",
+   "tier": "detail",
+   "quote": "IAM policy changes",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_cloudwatch_log_metric_filter"
+    ],
+    "where": [
+     {
+      "path": "pattern",
+      "op": "regex",
+      "value": "(CreatePolicy|DeletePolicy)"
+     },
+     {
+      "path": "metric_transformation.*.namespace",
+      "op": "eq",
+      "value": "management_activities"
+     }
+    ]
+   }
+  },
+  {
+   "id": "filter_user_added_to_group",
+   "tier": "detail",
+   "quote": "users being added to groups",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_cloudwatch_log_metric_filter"
+    ],
+    "where": [
+     {
+      "path": "pattern",
+      "op": "regex",
+      "value": "AddUserToGroup"
+     },
+     {
+      "path": "metric_transformation.*.namespace",
+      "op": "eq",
+      "value": "management_activities"
+     }
+    ]
+   }
+  },
+  {
+   "id": "filter_role_create_delete",
+   "tier": "detail",
+   "quote": "IAM role creation or deletion",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_cloudwatch_log_metric_filter"
+    ],
+    "where": [
+     {
+      "path": "pattern",
+      "op": "regex",
+      "value": "(CreateRole|DeleteRole)"
+     },
+     {
+      "path": "metric_transformation.*.namespace",
+      "op": "eq",
+      "value": "management_activities"
+     }
+    ]
+   }
+  },
+  {
+   "id": "alarm_count",
+   "tier": "core",
+   "quote": "with matching alarms",
+   "kind": "exists",
+   "select": "alarms",
+   "min": 7,
+   "justify": "one alarm per metric filter"
+  },
+  {
+   "id": "alarm_matches_filter",
+   "tier": "detail",
+   "quote": "with matching alarms",
+   "kind": "join",
+   "from": "alarms",
+   "from_path": "metric_name",
+   "to": "mf",
+   "to_path": "metric_transformation.*.name"
+  },
+  {
+   "id": "alarm_namespace",
+   "tier": "core",
+   "quote": "In the \"management_activities\" metric namespace",
+   "kind": "attr",
+   "select": "alarms",
+   "cond": {
+    "path": "namespace",
+    "op": "eq",
+    "value": "management_activities"
+   },
+   "quantifier": "all"
+  },
+  {
+   "id": "alarm_threshold",
+   "tier": "core",
+   "quote": "each alarm fires when the metric reaches 1 or more",
+   "kind": "attr",
+   "select": "alarms",
+   "cond": {
+    "path": "threshold",
+    "op": "eq",
+    "value": 1
+   },
+   "quantifier": "all"
+  },
+  {
+   "id": "alarm_operator",
+   "tier": "core",
+   "quote": "each alarm fires when the metric reaches 1 or more",
+   "kind": "attr",
+   "select": "alarms",
+   "cond": {
+    "path": "comparison_operator",
+    "op": "eq",
+    "value": "GreaterThanOrEqualToThreshold"
+   },
+   "quantifier": "all",
+   "justify": "reaches 1 or more means GreaterThanOrEqualToThreshold"
+  },
+  {
+   "id": "alarm_period",
+   "tier": "core",
+   "quote": "within a 60-second period",
+   "kind": "attr",
+   "select": "alarms",
+   "cond": {
+    "path": "period",
+    "op": "eq",
+    "value": 60
+   },
+   "quantifier": "all"
+  },
+  {
+   "id": "alarms_notify_topic",
+   "tier": "core",
+   "quote": "Every alarm must notify an SNS topic named \"management-updates\"",
+   "kind": "ref",
+   "from": "alarms",
+   "to": "topic"
+  },
+  {
+   "id": "topic_named",
+   "tier": "core",
+   "quote": "an SNS topic named \"management-updates\"",
+   "kind": "exists",
+   "select": "topic"
+  },
+  {
+   "id": "topic_cmk_rotation",
+   "tier": "core",
+   "quote": "encrypted with its own rotating customer-managed KMS key",
+   "kind": "ref",
+   "from": "topic",
+   "to": "kms_rot"
+  },
+  {
+   "id": "kms_allows_cloudwatch",
+   "tier": "detail",
+   "quote": "allowing CloudWatch to publish",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "topic",
+     "to": {
+      "types": [
+       "aws_kms_key"
+      ],
+      "where": [
+       {
+        "path": "policy",
+        "op": "regex",
+        "value": "cloudwatch\\.amazonaws\\.com"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": "topic",
+     "to": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_kms_key"
+       },
+       {
+        "path": "properties",
+        "op": "regex",
+        "value": "cloudwatch\\.amazonaws\\.com"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "email_subscriptions",
+   "tier": "core",
+   "quote": "with email subscriptions",
+   "kind": "ref",
+   "from": {
+    "types": [
+     "aws_sns_topic_subscription"
+    ],
+    "where": [
+     {
+      "path": "protocol",
+      "op": "eq",
+      "value": "email"
+     }
+    ]
+   },
+   "to": "topic"
+  },
+  {
+   "id": "recipients_configurable",
+   "tier": "detail",
+   "quote": "for a configurable list of recipients defaulting to a single placeholder address",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": "name",
+      "op": "regex",
+      "value": "(?i)(email|recipient|subscri|mail)"
+     },
+     {
+      "path": "default",
+      "op": "regex",
+      "value": "^\\[\"[^\",]*\"\\]$"
+     }
+    ]
+   },
+   "justify": "a list defaulting to a single placeholder address is a one-element list"
+  },
+  {
+   "id": "trail_logging_enabled",
+   "tier": "extra",
+   "kind": "attr",
+   "select": "trail",
+   "cond": {
+    "path": "enable_logging",
+    "op": "truthy"
+   }
+  },
+  {
+   "id": "cloudtrail_role_log_permissions",
+   "tier": "extra",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": "type",
+      "op": "in",
+      "value": [
+       "aws_iam_role_policy",
+       "aws_iam_policy",
+       "data.aws_iam_policy_document"
+      ]
+     },
+     {
+      "path": "properties",
+      "op": "regex",
+      "value": "logs:PutLogEvents"
+     }
+    ]
+   }
+  }
+ ],
+ "notes": "Not expressible: that the bucket SSE key is the same key as the trail key, that the SNS key is distinct from the trail key beyond requiring two rotating keys, and that every alarm (not just one) targets the topic. The 'IAM group, role, and user policy changes' phrase may be one or three filters, so filter count is the lowest the prompt guarantees (7) and each policy kind is a detail pattern check. Email recipient variable name is not stated; the default is checked only as a one-element list, the placeholder address itself is not pinned. The SNS key's CloudWatch grant is bound to the key the topic references (key-policy text on the key itself; a separate aws_kms_key_policy resource is not followed)."
+}

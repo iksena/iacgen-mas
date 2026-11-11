@@ -1,0 +1,320 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "b69063bb42a876203abcbf6c25f16006b0778761a618bd6f0f1d65c40183f4f8",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "HelloWorldLambdaRole",
+   "cfg": "HelloWorldLambdaRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "HelloWorldLambdaRole",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "HelloWorldFunction",
+   "cfg": "HelloWorldFunction",
+   "type": "AWS::Lambda::Function",
+   "values": {
+    "FunctionName": "HelloWorldFunction",
+    "Runtime": "python3.12",
+    "Handler": "index.lambda_handler",
+    "Role": {
+     "ref": "HelloWorldLambdaRole",
+     "attr": "Arn"
+    },
+    "Code": {
+     "ZipFile": "def lambda_handler(event, context):\n   return \"Hello, World\"\n"
+    }
+   },
+   "refs": [
+    "HelloWorldLambdaRole"
+   ]
+  },
+  {
+   "id": "ApiGateway",
+   "cfg": "ApiGateway",
+   "type": "AWS::ApiGateway::RestApi",
+   "values": {
+    "Name": "HelloWorldApi"
+   },
+   "refs": []
+  },
+  {
+   "id": "HelloResource",
+   "cfg": "HelloResource",
+   "type": "AWS::ApiGateway::Resource",
+   "values": {
+    "RestApiId": {
+     "ref": "ApiGateway"
+    },
+    "ParentId": {
+     "ref": "ApiGateway",
+     "attr": "RootResourceId"
+    },
+    "PathPart": "hello"
+   },
+   "refs": [
+    "ApiGateway"
+   ]
+  },
+  {
+   "id": "HelloMethod",
+   "cfg": "HelloMethod",
+   "type": "AWS::ApiGateway::Method",
+   "values": {
+    "RestApiId": {
+     "ref": "ApiGateway"
+    },
+    "ResourceId": {
+     "ref": "HelloResource"
+    },
+    "HttpMethod": "GET",
+    "AuthorizationType": "NONE",
+    "Integration": {
+     "Type": "AWS_PROXY",
+     "IntegrationHttpMethod": "POST",
+     "Uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/${HelloWorldFunction.Arn}/invocations"
+    }
+   },
+   "refs": [
+    "ApiGateway",
+    "HelloResource",
+    "HelloWorldFunction"
+   ]
+  },
+  {
+   "id": "ApiGatewayInvokePermission",
+   "cfg": "ApiGatewayInvokePermission",
+   "type": "AWS::Lambda::Permission",
+   "values": {
+    "FunctionName": {
+     "ref": "HelloWorldFunction"
+    },
+    "Action": "lambda:InvokeFunction",
+    "Principal": "apigateway.amazonaws.com",
+    "SourceArn": "arn:aws:execute-api:us-east-1:123456789012:${ApiGateway}/*/GET/hello"
+   },
+   "refs": [
+    "ApiGateway",
+    "HelloWorldFunction"
+   ]
+  },
+  {
+   "id": "ApiDeployment",
+   "cfg": "ApiDeployment",
+   "type": "AWS::ApiGateway::Deployment",
+   "values": {
+    "RestApiId": {
+     "ref": "ApiGateway"
+    },
+    "StageName": "prod",
+    "__resource__": {
+     "DependsOn": [
+      "HelloMethod"
+     ]
+    }
+   },
+   "refs": [
+    "ApiGateway"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.HelloWorldLambdaRole",
+   "cfg": "HelloWorldLambdaRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "HelloWorldLambdaRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "HelloWorldLambdaRole",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Function.HelloWorldFunction",
+   "cfg": "HelloWorldFunction",
+   "type": "__declared__",
+   "refs": [
+    "HelloWorldLambdaRole"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Function",
+    "name": "HelloWorldFunction",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "FunctionName": "HelloWorldFunction",
+     "Runtime": "python3.12",
+     "Handler": "index.lambda_handler",
+     "Role": {
+      "ref": "HelloWorldLambdaRole",
+      "attr": "Arn"
+     },
+     "Code": {
+      "ZipFile": "def lambda_handler(event, context):\n   return \"Hello, World\"\n"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::RestApi.ApiGateway",
+   "cfg": "ApiGateway",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::ApiGateway::RestApi",
+    "name": "ApiGateway",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "HelloWorldApi"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::Resource.HelloResource",
+   "cfg": "HelloResource",
+   "type": "__declared__",
+   "refs": [
+    "ApiGateway"
+   ],
+   "values": {
+    "type": "AWS::ApiGateway::Resource",
+    "name": "HelloResource",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RestApiId": {
+      "ref": "ApiGateway"
+     },
+     "ParentId": {
+      "ref": "ApiGateway",
+      "attr": "RootResourceId"
+     },
+     "PathPart": "hello"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::Method.HelloMethod",
+   "cfg": "HelloMethod",
+   "type": "__declared__",
+   "refs": [
+    "ApiGateway",
+    "HelloResource",
+    "HelloWorldFunction"
+   ],
+   "values": {
+    "type": "AWS::ApiGateway::Method",
+    "name": "HelloMethod",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RestApiId": {
+      "ref": "ApiGateway"
+     },
+     "ResourceId": {
+      "ref": "HelloResource"
+     },
+     "HttpMethod": "GET",
+     "AuthorizationType": "NONE",
+     "Integration": {
+      "Type": "AWS_PROXY",
+      "IntegrationHttpMethod": "POST",
+      "Uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/${HelloWorldFunction.Arn}/invocations"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Permission.ApiGatewayInvokePermission",
+   "cfg": "ApiGatewayInvokePermission",
+   "type": "__declared__",
+   "refs": [
+    "ApiGateway",
+    "HelloWorldFunction"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Permission",
+    "name": "ApiGatewayInvokePermission",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "FunctionName": {
+      "ref": "HelloWorldFunction"
+     },
+     "Action": "lambda:InvokeFunction",
+     "Principal": "apigateway.amazonaws.com",
+     "SourceArn": "arn:aws:execute-api:us-east-1:123456789012:${ApiGateway}/*/GET/hello"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::Deployment.ApiDeployment",
+   "cfg": "ApiDeployment",
+   "type": "__declared__",
+   "refs": [
+    "ApiGateway"
+   ],
+   "values": {
+    "type": "AWS::ApiGateway::Deployment",
+    "name": "ApiDeployment",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RestApiId": {
+      "ref": "ApiGateway"
+     },
+     "StageName": "prod"
+    }
+   }
+  }
+ ]
+}

@@ -1,0 +1,352 @@
+{
+ "lang": "tf",
+ "row_number": 355,
+ "source_hash": {
+  "gt": "170d0c4c23ea8d7b1eee9c36e33781e0d037496b95088926bc4b835ca8b0b731",
+  "prompt": "50e0b5a156faf52cd4725c0139a4491e900ca8a780da6e2ea989c68747634a8f"
+ },
+ "selectors": {},
+ "checks": [
+  {
+   "id": "detector_exists",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_guardduty_detector"
+    ],
+    "where": []
+   },
+   "tier": "core",
+   "quote": "creates and enables an Amazon GuardDuty detector"
+  },
+  {
+   "id": "detector_enabled",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_guardduty_detector"
+    ],
+    "where": []
+   },
+   "cond": {
+    "path": "enable",
+    "op": "truthy"
+   },
+   "tier": "core",
+   "quote": "creates and enables an Amazon GuardDuty detector"
+  },
+  {
+   "id": "detector_region",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "for the account in us-east-1",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_guardduty_detector"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": "region",
+      "op": "eq",
+      "value": "us-east-1"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_guardduty_detector"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": "region",
+      "op": "absent"
+     }
+    }
+   ],
+   "justify": "when the planned detector carries no region attribute it deploys to the configured provider region, which the plan does not expose"
+  },
+  {
+   "id": "s3_protection_off",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_guardduty_detector"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": "datasources.*.s3_logs.*.enable",
+      "op": "eq",
+      "value": "false"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_guardduty_detector_feature"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "eq",
+        "value": "S3_DATA_EVENTS"
+       }
+      ]
+     },
+     "cond": {
+      "path": "status",
+      "op": "eq",
+      "value": "DISABLED"
+     }
+    }
+   ],
+   "tier": "core",
+   "quote": "with S3 protection turned off",
+   "justify": "turned off means enable false or feature DISABLED"
+  },
+  {
+   "id": "publishing_frequency_default",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_guardduty_detector"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": "finding_publishing_frequency",
+      "op": "absent"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_guardduty_detector"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": "finding_publishing_frequency",
+      "op": "eq",
+      "value": "SIX_HOURS"
+     }
+    }
+   ],
+   "tier": "detail",
+   "quote": "the finding publishing frequency left at the service default",
+   "justify": "service default is SIX_HOURS; unset also accepted"
+  },
+  {
+   "id": "cloud_posse_label_inputs",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "using Cloud Posse label conventions for naming",
+   "justify": "Cloud Posse label conventions use namespace/stage/tenant/context inputs and emit Namespace/Stage tags",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "in",
+        "value": [
+         "namespace",
+         "stage",
+         "tenant",
+         "context"
+        ]
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_guardduty_detector"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": "tags.Namespace",
+      "op": "present"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_guardduty_detector"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": "tags.Stage",
+      "op": "present"
+     }
+    }
+   ]
+  },
+  {
+   "id": "eventbridge_rule_declared",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": "type",
+      "op": "eq",
+      "value": "aws_cloudwatch_event_rule"
+     }
+    ]
+   },
+   "tier": "core",
+   "quote": "Optional EventBridge rules"
+  },
+  {
+   "id": "eventbridge_rule_optional",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": "type",
+      "op": "eq",
+      "value": "aws_cloudwatch_event_rule"
+     }
+    ]
+   },
+   "cond": {
+    "path": "gated",
+    "op": "truthy"
+   },
+   "tier": "core",
+   "quote": "Optional EventBridge rules and SNS topic notifications for findings should be supported but disabled by default",
+   "justify": "disabled by default means conditionally created",
+   "quantifier": "all"
+  },
+  {
+   "id": "sns_notifications_declared",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": "type",
+      "op": "in",
+      "value": [
+       "aws_sns_topic",
+       "aws_sns_topic_policy",
+       "aws_sns_topic_subscription"
+      ]
+     }
+    ]
+   },
+   "tier": "core",
+   "quote": "SNS topic notifications for findings should be supported"
+  },
+  {
+   "id": "sns_optional",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": "type",
+      "op": "in",
+      "value": [
+       "aws_sns_topic",
+       "aws_sns_topic_policy"
+      ]
+     }
+    ]
+   },
+   "cond": {
+    "path": "gated",
+    "op": "truthy"
+   },
+   "tier": "core",
+   "quantifier": "all",
+   "quote": "supported but disabled by default, so no topic, topic policy, or event rule is created",
+   "justify": "disabled by default means conditionally created"
+  },
+  {
+   "id": "x_target_to_rule",
+   "kind": "ref",
+   "from": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": "type",
+      "op": "eq",
+      "value": "aws_cloudwatch_event_target"
+     }
+    ]
+   },
+   "to": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": "type",
+      "op": "eq",
+      "value": "aws_cloudwatch_event_rule"
+     }
+    ]
+   },
+   "tier": "extra"
+  },
+  {
+   "id": "x_sns_publish",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": "type",
+      "op": "eq",
+      "value": "data.aws_iam_policy_document"
+     }
+    ]
+   },
+   "cond": {
+    "path": "properties.statement.*.actions.*",
+    "op": "eq",
+    "value": "sns:Publish"
+   },
+   "tier": "extra"
+  }
+ ],
+ "notes": "Disabled-by-default (no topic/policy/rule created) is expressed as gated declarations; absence of the planned resources cannot be asserted (exists.min>=1). Cloud Posse label conventions are recognised by the label input variables (namespace/stage/tenant/context) or by the Namespace/Stage tags the label module emits; generic 'name'/'environment' variables alone do not count. Region: the plan carries the provider region only with newer AWS providers, so a detector without a planned region attribute is accepted (Partial). Omitting datasources does not turn S3 protection off (new detectors enable it), so that encoding fails s3_protection_off by design. Every declared event rule, topic and topic policy must be gated (quantifier all); exists cannot take min 0 and an always-false 'all' check would pass the empty template, so planned absence is not asserted directly. GLM53F omits the S3 data source entirely, which leaves S3 protection on for a new detector; s3_protection_off is kept failing it."
+}

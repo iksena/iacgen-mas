@@ -1,0 +1,807 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "9d51ba1eeb43e997aec81441607b9e2c9971d5196f492fe6888af64504b566d5",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "ObjectStorageBucket",
+   "cfg": "ObjectStorageBucket",
+   "type": "AWS::S3::Bucket",
+   "values": {
+    "BucketEncryption": {
+     "ServerSideEncryptionConfiguration": [
+      {
+       "ServerSideEncryptionByDefault": {
+        "SSEAlgorithm": "AES256"
+       }
+      }
+     ]
+    },
+    "BucketName": "testanu-us-east-1-123456789012",
+    "LoggingConfiguration": {
+     "DestinationBucketName": {
+      "ref": "ObjectStorageLogBucket"
+     }
+    },
+    "ObjectLockEnabled": false,
+    "PublicAccessBlockConfiguration": {
+     "BlockPublicAcls": true,
+     "BlockPublicPolicy": true,
+     "IgnorePublicAcls": true,
+     "RestrictPublicBuckets": true
+    },
+    "ReplicationConfiguration": {
+     "Role": {
+      "ref": "ObjectStorageReplicationRole",
+      "attr": "Arn"
+     },
+     "Rules": [
+      {
+       "Destination": {
+        "Bucket": {
+         "ref": "ObjectStorageReplicaBucket",
+         "attr": "Arn"
+        }
+       },
+       "Status": "Enabled"
+      }
+     ]
+    },
+    "VersioningConfiguration": {
+     "Status": "Enabled"
+    }
+   },
+   "refs": [
+    "ObjectStorageLogBucket",
+    "ObjectStorageReplicaBucket",
+    "ObjectStorageReplicationRole"
+   ]
+  },
+  {
+   "id": "ObjectStorageBucketPolicyPolicy",
+   "cfg": "ObjectStorageBucketPolicyPolicy",
+   "type": "AWS::S3::BucketPolicy",
+   "values": {
+    "Bucket": "testanu-us-east-1-123456789012",
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "s3:*"
+       ],
+       "Condition": {
+        "Bool": {
+         "aws:SecureTransport": false
+        }
+       },
+       "Effect": "Deny",
+       "Principal": {
+        "AWS": [
+         "*"
+        ]
+       },
+       "Resource": [
+        "arn:aws:s3:::testanu-us-east-1-123456789012",
+        "arn:aws:s3:::testanu-us-east-1-123456789012/*"
+       ]
+      },
+      {
+       "Action": [
+        "s3:PutObject"
+       ],
+       "Condition": {
+        "ArnLike": {
+         "aws:SourceArn": "arn:aws:s3:::testanu-us-east-1-123456789012"
+        },
+        "StringEquals": {
+         "aws:SourceAccount": "123456789012"
+        }
+       },
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "logging.s3.amazonaws.com"
+        ]
+       },
+       "Resource": [
+        "arn:aws:s3:::testanu-us-east-1-123456789012/*"
+       ]
+      }
+     ],
+     "Version": "2012-10-17"
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "ObjectStorageLogBucket",
+   "cfg": "ObjectStorageLogBucket",
+   "type": "AWS::S3::Bucket",
+   "values": {
+    "BucketEncryption": {
+     "ServerSideEncryptionConfiguration": [
+      {
+       "ServerSideEncryptionByDefault": {
+        "SSEAlgorithm": "AES256"
+       }
+      }
+     ]
+    },
+    "BucketName": "testanu-logs-us-east-1-123456789012",
+    "ObjectLockConfiguration": {
+     "ObjectLockEnabled": "Enabled",
+     "Rule": {
+      "DefaultRetention": {
+       "Mode": "COMPLIANCE",
+       "Years": 1
+      }
+     }
+    },
+    "ObjectLockEnabled": true,
+    "PublicAccessBlockConfiguration": {
+     "BlockPublicAcls": true,
+     "BlockPublicPolicy": true,
+     "IgnorePublicAcls": true,
+     "RestrictPublicBuckets": true
+    },
+    "VersioningConfiguration": {
+     "Status": "Enabled"
+    },
+    "__resource__": {
+     "Metadata": {
+      "Comment": "This bucket records access logs for the main bucket"
+     }
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "ObjectStorageLogBucketPolicyPolicy",
+   "cfg": "ObjectStorageLogBucketPolicyPolicy",
+   "type": "AWS::S3::BucketPolicy",
+   "values": {
+    "Bucket": "testanu-logs-us-east-1-123456789012",
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "s3:*"
+       ],
+       "Condition": {
+        "Bool": {
+         "aws:SecureTransport": false
+        }
+       },
+       "Effect": "Deny",
+       "Principal": {
+        "AWS": [
+         "*"
+        ]
+       },
+       "Resource": [
+        "arn:aws:s3:::testanu-logs-us-east-1-123456789012",
+        "arn:aws:s3:::testanu-logs-us-east-1-123456789012/*"
+       ]
+      },
+      {
+       "Action": [
+        "s3:PutObject"
+       ],
+       "Condition": {
+        "ArnLike": {
+         "aws:SourceArn": "arn:aws:s3:::testanu-logs-us-east-1-123456789012"
+        },
+        "StringEquals": {
+         "aws:SourceAccount": "123456789012"
+        }
+       },
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "logging.s3.amazonaws.com"
+        ]
+       },
+       "Resource": [
+        "arn:aws:s3:::testanu-logs-us-east-1-123456789012/*"
+       ]
+      }
+     ],
+     "Version": "2012-10-17"
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "ObjectStorageReplicaBucket",
+   "cfg": "ObjectStorageReplicaBucket",
+   "type": "AWS::S3::Bucket",
+   "values": {
+    "BucketEncryption": {
+     "ServerSideEncryptionConfiguration": [
+      {
+       "ServerSideEncryptionByDefault": {
+        "SSEAlgorithm": "AES256"
+       }
+      }
+     ]
+    },
+    "BucketName": "testanu-replicas-us-east-1-123456789012",
+    "ObjectLockEnabled": false,
+    "PublicAccessBlockConfiguration": {
+     "BlockPublicAcls": true,
+     "BlockPublicPolicy": true,
+     "IgnorePublicAcls": true,
+     "RestrictPublicBuckets": true
+    },
+    "VersioningConfiguration": {
+     "Status": "Enabled"
+    },
+    "__resource__": {
+     "Metadata": {
+      "Comment": "This bucket is used as a target for replicas from the main bucket"
+     }
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "ObjectStorageReplicaBucketPolicyPolicy",
+   "cfg": "ObjectStorageReplicaBucketPolicyPolicy",
+   "type": "AWS::S3::BucketPolicy",
+   "values": {
+    "Bucket": "testanu-replicas-us-east-1-123456789012",
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "s3:*"
+       ],
+       "Condition": {
+        "Bool": {
+         "aws:SecureTransport": false
+        }
+       },
+       "Effect": "Deny",
+       "Principal": {
+        "AWS": [
+         "*"
+        ]
+       },
+       "Resource": [
+        "arn:aws:s3:::testanu-replicas-us-east-1-123456789012",
+        "arn:aws:s3:::testanu-replicas-us-east-1-123456789012/*"
+       ]
+      },
+      {
+       "Action": [
+        "s3:PutObject"
+       ],
+       "Condition": {
+        "ArnLike": {
+         "aws:SourceArn": "arn:aws:s3:::testanu-replicas-us-east-1-123456789012"
+        },
+        "StringEquals": {
+         "aws:SourceAccount": "123456789012"
+        }
+       },
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "logging.s3.amazonaws.com"
+        ]
+       },
+       "Resource": [
+        "arn:aws:s3:::testanu-replicas-us-east-1-123456789012/*"
+       ]
+      }
+     ],
+     "Version": "2012-10-17"
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "ObjectStorageReplicationPolicy",
+   "cfg": "ObjectStorageReplicationPolicy",
+   "type": "AWS::IAM::RolePolicy",
+   "values": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "s3:GetReplicationConfiguration",
+        "s3:ListBucket"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        "arn:aws:s3:::testanu-us-east-1-123456789012"
+       ]
+      },
+      {
+       "Action": [
+        "s3:GetObjectVersionForReplication",
+        "s3:GetObjectVersionAcl",
+        "s3:GetObjectVersionTagging"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        "arn:aws:s3:::testanu-us-east-1-123456789012/*"
+       ]
+      },
+      {
+       "Action": [
+        "s3:ReplicateObject",
+        "s3:ReplicateDelete",
+        "s3:ReplicationTags"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        "arn:aws:s3:::testanu-replicas-us-east-1-123456789012/*"
+       ]
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "bucket-replication-policy",
+    "RoleName": {
+     "ref": "ObjectStorageReplicationRole"
+    }
+   },
+   "refs": [
+    "ObjectStorageReplicationRole"
+   ]
+  },
+  {
+   "id": "ObjectStorageReplicationRole",
+   "cfg": "ObjectStorageReplicationRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "s3.amazonaws.com"
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "Path": "/"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.AppName",
+   "cfg": "__parameter__.AppName",
+   "type": "__parameter__",
+   "values": {
+    "name": "AppName",
+    "type": "String",
+    "default": "testanu",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__declared__.AWS::S3::Bucket.ObjectStorageBucket",
+   "cfg": "ObjectStorageBucket",
+   "type": "__declared__",
+   "refs": [
+    "ObjectStorageLogBucket",
+    "ObjectStorageReplicaBucket",
+    "ObjectStorageReplicationRole"
+   ],
+   "values": {
+    "type": "AWS::S3::Bucket",
+    "name": "ObjectStorageBucket",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "BucketEncryption": {
+      "ServerSideEncryptionConfiguration": [
+       {
+        "ServerSideEncryptionByDefault": {
+         "SSEAlgorithm": "AES256"
+        }
+       }
+      ]
+     },
+     "BucketName": "testanu-us-east-1-123456789012",
+     "LoggingConfiguration": {
+      "DestinationBucketName": {
+       "ref": "ObjectStorageLogBucket"
+      }
+     },
+     "ObjectLockEnabled": false,
+     "PublicAccessBlockConfiguration": {
+      "BlockPublicAcls": true,
+      "BlockPublicPolicy": true,
+      "IgnorePublicAcls": true,
+      "RestrictPublicBuckets": true
+     },
+     "ReplicationConfiguration": {
+      "Role": {
+       "ref": "ObjectStorageReplicationRole",
+       "attr": "Arn"
+      },
+      "Rules": [
+       {
+        "Destination": {
+         "Bucket": {
+          "ref": "ObjectStorageReplicaBucket",
+          "attr": "Arn"
+         }
+        },
+        "Status": "Enabled"
+       }
+      ]
+     },
+     "VersioningConfiguration": {
+      "Status": "Enabled"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::S3::BucketPolicy.ObjectStorageBucketPolicyPolicy",
+   "cfg": "ObjectStorageBucketPolicyPolicy",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::S3::BucketPolicy",
+    "name": "ObjectStorageBucketPolicyPolicy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Bucket": "testanu-us-east-1-123456789012",
+     "PolicyDocument": {
+      "Statement": [
+       {
+        "Action": [
+         "s3:*"
+        ],
+        "Condition": {
+         "Bool": {
+          "aws:SecureTransport": false
+         }
+        },
+        "Effect": "Deny",
+        "Principal": {
+         "AWS": [
+          "*"
+         ]
+        },
+        "Resource": [
+         "arn:aws:s3:::testanu-us-east-1-123456789012",
+         "arn:aws:s3:::testanu-us-east-1-123456789012/*"
+        ]
+       },
+       {
+        "Action": [
+         "s3:PutObject"
+        ],
+        "Condition": {
+         "ArnLike": {
+          "aws:SourceArn": "arn:aws:s3:::testanu-us-east-1-123456789012"
+         },
+         "StringEquals": {
+          "aws:SourceAccount": "123456789012"
+         }
+        },
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "logging.s3.amazonaws.com"
+         ]
+        },
+        "Resource": [
+         "arn:aws:s3:::testanu-us-east-1-123456789012/*"
+        ]
+       }
+      ],
+      "Version": "2012-10-17"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::S3::Bucket.ObjectStorageLogBucket",
+   "cfg": "ObjectStorageLogBucket",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::S3::Bucket",
+    "name": "ObjectStorageLogBucket",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "BucketEncryption": {
+      "ServerSideEncryptionConfiguration": [
+       {
+        "ServerSideEncryptionByDefault": {
+         "SSEAlgorithm": "AES256"
+        }
+       }
+      ]
+     },
+     "BucketName": "testanu-logs-us-east-1-123456789012",
+     "ObjectLockConfiguration": {
+      "ObjectLockEnabled": "Enabled",
+      "Rule": {
+       "DefaultRetention": {
+        "Mode": "COMPLIANCE",
+        "Years": 1
+       }
+      }
+     },
+     "ObjectLockEnabled": true,
+     "PublicAccessBlockConfiguration": {
+      "BlockPublicAcls": true,
+      "BlockPublicPolicy": true,
+      "IgnorePublicAcls": true,
+      "RestrictPublicBuckets": true
+     },
+     "VersioningConfiguration": {
+      "Status": "Enabled"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::S3::BucketPolicy.ObjectStorageLogBucketPolicyPolicy",
+   "cfg": "ObjectStorageLogBucketPolicyPolicy",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::S3::BucketPolicy",
+    "name": "ObjectStorageLogBucketPolicyPolicy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Bucket": "testanu-logs-us-east-1-123456789012",
+     "PolicyDocument": {
+      "Statement": [
+       {
+        "Action": [
+         "s3:*"
+        ],
+        "Condition": {
+         "Bool": {
+          "aws:SecureTransport": false
+         }
+        },
+        "Effect": "Deny",
+        "Principal": {
+         "AWS": [
+          "*"
+         ]
+        },
+        "Resource": [
+         "arn:aws:s3:::testanu-logs-us-east-1-123456789012",
+         "arn:aws:s3:::testanu-logs-us-east-1-123456789012/*"
+        ]
+       },
+       {
+        "Action": [
+         "s3:PutObject"
+        ],
+        "Condition": {
+         "ArnLike": {
+          "aws:SourceArn": "arn:aws:s3:::testanu-logs-us-east-1-123456789012"
+         },
+         "StringEquals": {
+          "aws:SourceAccount": "123456789012"
+         }
+        },
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "logging.s3.amazonaws.com"
+         ]
+        },
+        "Resource": [
+         "arn:aws:s3:::testanu-logs-us-east-1-123456789012/*"
+        ]
+       }
+      ],
+      "Version": "2012-10-17"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::S3::Bucket.ObjectStorageReplicaBucket",
+   "cfg": "ObjectStorageReplicaBucket",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::S3::Bucket",
+    "name": "ObjectStorageReplicaBucket",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "BucketEncryption": {
+      "ServerSideEncryptionConfiguration": [
+       {
+        "ServerSideEncryptionByDefault": {
+         "SSEAlgorithm": "AES256"
+        }
+       }
+      ]
+     },
+     "BucketName": "testanu-replicas-us-east-1-123456789012",
+     "ObjectLockEnabled": false,
+     "PublicAccessBlockConfiguration": {
+      "BlockPublicAcls": true,
+      "BlockPublicPolicy": true,
+      "IgnorePublicAcls": true,
+      "RestrictPublicBuckets": true
+     },
+     "VersioningConfiguration": {
+      "Status": "Enabled"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::S3::BucketPolicy.ObjectStorageReplicaBucketPolicyPolicy",
+   "cfg": "ObjectStorageReplicaBucketPolicyPolicy",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::S3::BucketPolicy",
+    "name": "ObjectStorageReplicaBucketPolicyPolicy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Bucket": "testanu-replicas-us-east-1-123456789012",
+     "PolicyDocument": {
+      "Statement": [
+       {
+        "Action": [
+         "s3:*"
+        ],
+        "Condition": {
+         "Bool": {
+          "aws:SecureTransport": false
+         }
+        },
+        "Effect": "Deny",
+        "Principal": {
+         "AWS": [
+          "*"
+         ]
+        },
+        "Resource": [
+         "arn:aws:s3:::testanu-replicas-us-east-1-123456789012",
+         "arn:aws:s3:::testanu-replicas-us-east-1-123456789012/*"
+        ]
+       },
+       {
+        "Action": [
+         "s3:PutObject"
+        ],
+        "Condition": {
+         "ArnLike": {
+          "aws:SourceArn": "arn:aws:s3:::testanu-replicas-us-east-1-123456789012"
+         },
+         "StringEquals": {
+          "aws:SourceAccount": "123456789012"
+         }
+        },
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "logging.s3.amazonaws.com"
+         ]
+        },
+        "Resource": [
+         "arn:aws:s3:::testanu-replicas-us-east-1-123456789012/*"
+        ]
+       }
+      ],
+      "Version": "2012-10-17"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::RolePolicy.ObjectStorageReplicationPolicy",
+   "cfg": "ObjectStorageReplicationPolicy",
+   "type": "__declared__",
+   "refs": [
+    "ObjectStorageReplicationRole"
+   ],
+   "values": {
+    "type": "AWS::IAM::RolePolicy",
+    "name": "ObjectStorageReplicationPolicy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "PolicyDocument": {
+      "Statement": [
+       {
+        "Action": [
+         "s3:GetReplicationConfiguration",
+         "s3:ListBucket"
+        ],
+        "Effect": "Allow",
+        "Resource": [
+         "arn:aws:s3:::testanu-us-east-1-123456789012"
+        ]
+       },
+       {
+        "Action": [
+         "s3:GetObjectVersionForReplication",
+         "s3:GetObjectVersionAcl",
+         "s3:GetObjectVersionTagging"
+        ],
+        "Effect": "Allow",
+        "Resource": [
+         "arn:aws:s3:::testanu-us-east-1-123456789012/*"
+        ]
+       },
+       {
+        "Action": [
+         "s3:ReplicateObject",
+         "s3:ReplicateDelete",
+         "s3:ReplicationTags"
+        ],
+        "Effect": "Allow",
+        "Resource": [
+         "arn:aws:s3:::testanu-replicas-us-east-1-123456789012/*"
+        ]
+       }
+      ],
+      "Version": "2012-10-17"
+     },
+     "PolicyName": "bucket-replication-policy",
+     "RoleName": {
+      "ref": "ObjectStorageReplicationRole"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.ObjectStorageReplicationRole",
+   "cfg": "ObjectStorageReplicationRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "ObjectStorageReplicationRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "s3.amazonaws.com"
+         ]
+        }
+       }
+      ],
+      "Version": "2012-10-17"
+     },
+     "Path": "/"
+    }
+   }
+  }
+ ]
+}

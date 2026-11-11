@@ -1,0 +1,2212 @@
+{
+ "lang": "tf",
+ "row_number": 222,
+ "source_hash": {
+  "gt": "c94c75ccbf5012508a26e08c1bec0f6056afa73777f7da1f425c0f10cfc426b4",
+  "prompt": "001029b5dd71fa15052ab552ee29687f5e7e3d9d30d2fdb9672c3593f4780804"
+ },
+ "selectors": {},
+ "checks": [
+  {
+   "id": "vpc",
+   "tier": "core",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_vpc"
+    ]
+   },
+   "quote": "a complete multi-AZ networking stack"
+  },
+  {
+   "id": "vpc_cidr",
+   "tier": "core",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_vpc"
+    ]
+   },
+   "cond": {
+    "path": "cidr_block",
+    "op": "eq",
+    "value": "10.0.0.0/16"
+   },
+   "quote": "default CIDR block of \"10.0.0.0/16\""
+  },
+  {
+   "id": "vpc_dns",
+   "tier": "core",
+   "kind": "all_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_vpc"
+      ]
+     },
+     "cond": {
+      "path": "enable_dns_hostnames",
+      "op": "truthy"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_vpc"
+      ]
+     },
+     "cond": {
+      "path": "enable_dns_support",
+      "op": "truthy"
+     }
+    }
+   ],
+   "quote": "with DNS hostnames and DNS support enabled"
+  },
+  {
+   "id": "vpc_name_default",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "eq",
+        "value": "vpc_name"
+       }
+      ]
+     },
+     "cond": {
+      "path": "default",
+      "op": "eq",
+      "value": "benchmark-vpc"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_vpc"
+      ]
+     },
+     "cond": {
+      "path": "tags.Name",
+      "op": "eq",
+      "value": "benchmark-vpc"
+     }
+    }
+   ],
+   "quote": "tagged with a default vpc_name of \"benchmark-vpc\""
+  },
+  {
+   "id": "vpc_additional_tags",
+   "tier": "detail",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": "type",
+      "op": "eq",
+      "value": "aws_vpc"
+     }
+    ]
+   },
+   "cond": {
+    "path": "properties.tags",
+    "op": "regex",
+    "value": "(var|local)\\.[a-z_]*tag"
+   },
+   "quote": "alongside a configurable map of additional tags"
+  },
+  {
+   "id": "subnets_multi_az",
+   "tier": "core",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_subnet"
+    ]
+   },
+   "distinct_path": "availability_zone",
+   "min": 2,
+   "quote": "across all available opt-in availability zones"
+  },
+  {
+   "id": "subnets_in_us_east_1",
+   "tier": "detail",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_subnet"
+    ]
+   },
+   "cond": {
+    "path": "availability_zone",
+    "op": "regex",
+    "value": "^us-east-1"
+   },
+   "quantifier": "all",
+   "quote": "defaulting to us-east-1"
+  },
+  {
+   "id": "subnets_cidrsubnet",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_subnet"
+       }
+      ]
+     },
+     "cond": {
+      "path": "properties.cidr_block",
+      "op": "regex",
+      "value": "cidrsubnet|local\\."
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_subnet"
+       }
+      ]
+     },
+     "cond": {
+      "path": "properties.for_each",
+      "op": "regex",
+      "value": "cidrsubnet|local\\."
+     }
+    }
+   ],
+   "quote": "dynamically calculated using cidrsubnet functions"
+  },
+  {
+   "id": "public_private_subnets",
+   "tier": "core",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_subnet"
+    ]
+   },
+   "min": 4,
+   "quote": "matching public subnets (not mapping public IPs on launch) and private subnets",
+   "justify": "public and private subnets in at least two AZs"
+  },
+  {
+   "id": "no_public_ip_on_launch",
+   "tier": "detail",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_subnet"
+    ]
+   },
+   "cond": {
+    "path": "map_public_ip_on_launch",
+    "op": "none_eq",
+    "value": "true"
+   },
+   "quantifier": "all",
+   "quote": "not mapping public IPs on launch",
+   "justify": "\"not mapping public IPs\" means map_public_ip_on_launch is not true"
+  },
+  {
+   "id": "igw",
+   "tier": "core",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_internet_gateway"
+    ]
+   },
+   "quote": "an Internet Gateway"
+  },
+  {
+   "id": "eip",
+   "tier": "core",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_eip"
+    ]
+   },
+   "quote": "a dedicated Elastic IP"
+  },
+  {
+   "id": "nat",
+   "tier": "core",
+   "kind": "ref",
+   "from": {
+    "types": [
+     "aws_nat_gateway"
+    ]
+   },
+   "to": {
+    "types": [
+     "aws_subnet"
+    ]
+   },
+   "quote": "a NAT Gateway positioned in the first public subnet"
+  },
+  {
+   "id": "nat_eip",
+   "tier": "detail",
+   "kind": "ref",
+   "from": {
+    "types": [
+     "aws_nat_gateway"
+    ]
+   },
+   "to": {
+    "types": [
+     "aws_eip"
+    ]
+   },
+   "quote": "a dedicated Elastic IP, and a NAT Gateway"
+  },
+  {
+   "id": "public_route_igw",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route"
+      ],
+      "where": [
+       {
+        "path": "destination_cidr_block",
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_internet_gateway"
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route_table"
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_internet_gateway"
+      ]
+     }
+    }
+   ],
+   "quote": "Routing must direct all public subnet traffic to the Internet Gateway",
+   "justify": "all traffic is 0.0.0.0/0"
+  },
+  {
+   "id": "private_route_nat",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route"
+      ],
+      "where": [
+       {
+        "path": "destination_cidr_block",
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_nat_gateway"
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route_table"
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_nat_gateway"
+      ]
+     }
+    }
+   ],
+   "quote": "the private subnets route outbound traffic to the NAT Gateway",
+   "justify": "outbound traffic is 0.0.0.0/0"
+  },
+  {
+   "id": "main_route_table",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_main_route_table_association"
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_default_route_table"
+      ]
+     }
+    }
+   ],
+   "quote": "as the main VPC route table association"
+  },
+  {
+   "id": "default_nacl",
+   "tier": "core",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_default_network_acl"
+    ]
+   },
+   "quote": "manage the default Network ACL"
+  },
+  {
+   "id": "default_sg",
+   "tier": "core",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_default_security_group"
+    ]
+   },
+   "quote": "default security group"
+  },
+  {
+   "id": "default_tags",
+   "tier": "detail",
+   "kind": "all_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_default_network_acl"
+      ]
+     },
+     "cond": {
+      "path": "tags.Name",
+      "op": "regex",
+      "value": "(?i)benchmark-vpc.*default|default.*benchmark-vpc"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_default_security_group"
+      ]
+     },
+     "cond": {
+      "path": "tags.Name",
+      "op": "regex",
+      "value": "(?i)benchmark-vpc.*default|default.*benchmark-vpc"
+     }
+    }
+   ],
+   "quote": "tagging them with a name combining the VPC name value and the word \"Default\""
+  },
+  {
+   "id": "custom_sgs",
+   "tier": "core",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_security_group"
+    ]
+   },
+   "min": 2,
+   "quote": "custom security groups",
+   "justify": "public and private tiers"
+  },
+  {
+   "id": "custom_nacls",
+   "tier": "core",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_network_acl"
+    ]
+   },
+   "min": 2,
+   "quote": "explicit Network ACLs for both public and private tiers",
+   "justify": "public and private tiers"
+  },
+  {
+   "id": "sg_http_in",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_security_group_rule"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "ingress"
+       },
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 80
+       },
+       {
+        "path": "cidr_blocks.*",
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_vpc_security_group_ingress_rule"
+      ],
+      "where": [
+       {
+        "path": "from_port",
+        "op": "eq",
+        "value": 80
+       },
+       {
+        "path": "cidr_ipv4",
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_security_group"
+      ],
+      "where": [
+       {
+        "path": "ingress.*",
+        "op": "match",
+        "value": [
+         {
+          "path": "",
+          "op": "port_covers",
+          "value": 80
+         },
+         {
+          "path": "cidr_blocks.*",
+          "op": "eq",
+          "value": "0.0.0.0/0"
+         }
+        ]
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "Public security group rules must allow HTTP and HTTPS inbound from everywhere",
+   "justify": "HTTP is port 80; everywhere is 0.0.0.0/0"
+  },
+  {
+   "id": "sg_https_in",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_security_group_rule"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "ingress"
+       },
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 443
+       },
+       {
+        "path": "cidr_blocks.*",
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_vpc_security_group_ingress_rule"
+      ],
+      "where": [
+       {
+        "path": "from_port",
+        "op": "eq",
+        "value": 443
+       },
+       {
+        "path": "cidr_ipv4",
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_security_group"
+      ],
+      "where": [
+       {
+        "path": "ingress.*",
+        "op": "match",
+        "value": [
+         {
+          "path": "",
+          "op": "port_covers",
+          "value": 443
+         },
+         {
+          "path": "cidr_blocks.*",
+          "op": "eq",
+          "value": "0.0.0.0/0"
+         }
+        ]
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "HTTP and HTTPS inbound from everywhere",
+   "justify": "HTTPS is port 443; everywhere is 0.0.0.0/0"
+  },
+  {
+   "id": "sg_ssh_in",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_security_group_rule"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "ingress"
+       },
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 22
+       },
+       {
+        "path": "cidr_blocks.*",
+        "op": "eq",
+        "value": "10.0.0.0/16"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_vpc_security_group_ingress_rule"
+      ],
+      "where": [
+       {
+        "path": "from_port",
+        "op": "eq",
+        "value": 22
+       },
+       {
+        "path": "cidr_ipv4",
+        "op": "eq",
+        "value": "10.0.0.0/16"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_security_group"
+      ],
+      "where": [
+       {
+        "path": "ingress.*",
+        "op": "match",
+        "value": [
+         {
+          "path": "",
+          "op": "port_covers",
+          "value": 22
+         },
+         {
+          "path": "cidr_blocks.*",
+          "op": "eq",
+          "value": "10.0.0.0/16"
+         }
+        ]
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "SSH inbound restricted to the CIDR ranges specified in the ssh_inbound list variable (defaulting to [\"10.0.0.0/16\"])",
+   "justify": "SSH is port 22; default list value stated"
+  },
+  {
+   "id": "ssh_variable",
+   "tier": "detail",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": "name",
+      "op": "eq",
+      "value": "ssh_inbound"
+     }
+    ]
+   },
+   "cond": {
+    "path": "default",
+    "op": "contains",
+    "value": "10.0.0.0/16"
+   },
+   "quote": "the ssh_inbound list variable (defaulting to [\"10.0.0.0/16\"])"
+  },
+  {
+   "id": "sg_http_out_vpc",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_security_group_rule"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "egress"
+       },
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 80
+       },
+       {
+        "path": "cidr_blocks.*",
+        "op": "eq",
+        "value": "10.0.0.0/16"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_vpc_security_group_egress_rule"
+      ],
+      "where": [
+       {
+        "path": "from_port",
+        "op": "eq",
+        "value": 80
+       },
+       {
+        "path": "cidr_ipv4",
+        "op": "eq",
+        "value": "10.0.0.0/16"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_security_group"
+      ],
+      "where": [
+       {
+        "path": "egress.*",
+        "op": "match",
+        "value": [
+         {
+          "path": "",
+          "op": "port_covers",
+          "value": 80
+         },
+         {
+          "path": "cidr_blocks.*",
+          "op": "eq",
+          "value": "10.0.0.0/16"
+         }
+        ]
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "HTTP/HTTPS outbound only within the VPC CIDR",
+   "justify": "HTTP is port 80; VPC CIDR default stated"
+  },
+  {
+   "id": "sg_https_out_vpc",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_security_group_rule"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "egress"
+       },
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 443
+       },
+       {
+        "path": "cidr_blocks.*",
+        "op": "eq",
+        "value": "10.0.0.0/16"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_vpc_security_group_egress_rule"
+      ],
+      "where": [
+       {
+        "path": "from_port",
+        "op": "eq",
+        "value": 443
+       },
+       {
+        "path": "cidr_ipv4",
+        "op": "eq",
+        "value": "10.0.0.0/16"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_security_group"
+      ],
+      "where": [
+       {
+        "path": "egress.*",
+        "op": "match",
+        "value": [
+         {
+          "path": "",
+          "op": "port_covers",
+          "value": 443
+         },
+         {
+          "path": "cidr_blocks.*",
+          "op": "eq",
+          "value": "10.0.0.0/16"
+         }
+        ]
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "HTTPS outbound only within the VPC CIDR",
+   "justify": "HTTPS is port 443; VPC CIDR default stated"
+  },
+  {
+   "id": "sg_egress_only_within_vpc",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_security_group_rule"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "egress"
+       }
+      ]
+     },
+     "cond": {
+      "path": "cidr_blocks.*",
+      "op": "none_eq",
+      "value": "0.0.0.0/0"
+     },
+     "quantifier": "all"
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_vpc_security_group_egress_rule"
+      ]
+     },
+     "cond": {
+      "path": "cidr_ipv4",
+      "op": "none_eq",
+      "value": "0.0.0.0/0"
+     },
+     "quantifier": "all"
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_security_group"
+      ],
+      "where": [
+       {
+        "path": "egress.*",
+        "op": "present"
+       }
+      ]
+     },
+     "cond": {
+      "path": "egress.*.cidr_blocks.*",
+      "op": "none_eq",
+      "value": "0.0.0.0/0"
+     },
+     "quantifier": "all"
+    }
+   ],
+   "quote": "HTTP/HTTPS outbound only within the VPC CIDR",
+   "justify": "only within the VPC CIDR rules out the any-IP CIDR"
+  },
+  {
+   "id": "private_sg_http_in",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_security_group_rule"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "ingress"
+       },
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 80
+       },
+       {
+        "path": "cidr_blocks.*",
+        "op": "none_eq",
+        "value": "0.0.0.0/0"
+       },
+       {
+        "path": "cidr_blocks.*",
+        "op": "none_eq",
+        "value": "10.0.0.0/16"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_subnet"
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_security_group_rule"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "ingress"
+       },
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 80
+       },
+       {
+        "path": "cidr_blocks.*",
+        "op": "regex",
+        "value": "^(10|172|192)\\."
+       },
+       {
+        "path": "cidr_blocks.*",
+        "op": "none_eq",
+        "value": "10.0.0.0/16"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_vpc_security_group_ingress_rule"
+      ],
+      "where": [
+       {
+        "path": "from_port",
+        "op": "eq",
+        "value": 80
+       },
+       {
+        "path": "cidr_ipv4",
+        "op": "regex",
+        "value": "^(10|172|192)\\."
+       },
+       {
+        "path": "cidr_ipv4",
+        "op": "neq",
+        "value": "10.0.0.0/16"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_security_group"
+      ],
+      "where": [
+       {
+        "path": "ingress.*",
+        "op": "match",
+        "value": [
+         {
+          "path": "",
+          "op": "port_covers",
+          "value": 80
+         },
+         {
+          "path": "cidr_blocks.*",
+          "op": "regex",
+          "value": "^(10|172|192)\\."
+         },
+         {
+          "path": "cidr_blocks.*",
+          "op": "none_eq",
+          "value": "10.0.0.0/16"
+         }
+        ]
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "Private security group rules must permit HTTP and HTTPS inbound exclusively from the public subnets' CIDRs",
+   "justify": "HTTP is port 80; public subnet CIDRs are inside the stated VPC range, and exclusively from them rules out the whole VPC CIDR and the any-IP CIDR"
+  },
+  {
+   "id": "private_sg_https_in",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_security_group_rule"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "ingress"
+       },
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 443
+       },
+       {
+        "path": "cidr_blocks.*",
+        "op": "none_eq",
+        "value": "0.0.0.0/0"
+       },
+       {
+        "path": "cidr_blocks.*",
+        "op": "none_eq",
+        "value": "10.0.0.0/16"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_subnet"
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_security_group_rule"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "ingress"
+       },
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 443
+       },
+       {
+        "path": "cidr_blocks.*",
+        "op": "regex",
+        "value": "^(10|172|192)\\."
+       },
+       {
+        "path": "cidr_blocks.*",
+        "op": "none_eq",
+        "value": "10.0.0.0/16"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_vpc_security_group_ingress_rule"
+      ],
+      "where": [
+       {
+        "path": "from_port",
+        "op": "eq",
+        "value": 443
+       },
+       {
+        "path": "cidr_ipv4",
+        "op": "regex",
+        "value": "^(10|172|192)\\."
+       },
+       {
+        "path": "cidr_ipv4",
+        "op": "neq",
+        "value": "10.0.0.0/16"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_security_group"
+      ],
+      "where": [
+       {
+        "path": "ingress.*",
+        "op": "match",
+        "value": [
+         {
+          "path": "",
+          "op": "port_covers",
+          "value": 443
+         },
+         {
+          "path": "cidr_blocks.*",
+          "op": "regex",
+          "value": "^(10|172|192)\\."
+         },
+         {
+          "path": "cidr_blocks.*",
+          "op": "none_eq",
+          "value": "10.0.0.0/16"
+         }
+        ]
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "HTTP and HTTPS inbound exclusively from the public subnets' CIDRs",
+   "justify": "HTTPS is port 443; public subnet CIDRs are inside the stated VPC range, and exclusively from them rules out the whole VPC CIDR and the any-IP CIDR"
+  },
+  {
+   "id": "nacl_http_in",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_network_acl_rule"
+      ],
+      "where": [
+       {
+        "path": "egress",
+        "op": "eq",
+        "value": false
+       },
+       {
+        "path": "from_port",
+        "op": "eq",
+        "value": 80
+       },
+       {
+        "path": "to_port",
+        "op": "eq",
+        "value": 80
+       },
+       {
+        "path": "rule_action",
+        "op": "eq",
+        "value": "allow"
+       }
+      ]
+     },
+     "min": 2
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_network_acl"
+      ],
+      "where": [
+       {
+        "path": "ingress.*",
+        "op": "match",
+        "value": [
+         {
+          "path": "from_port",
+          "op": "eq",
+          "value": 80
+         },
+         {
+          "path": "to_port",
+          "op": "eq",
+          "value": 80
+         },
+         {
+          "path": "action",
+          "op": "eq",
+          "value": "allow"
+         }
+        ]
+       }
+      ]
+     },
+     "min": 2
+    }
+   ],
+   "quote": "Public NACL rules must allow ingress for HTTP, HTTPS, ephemeral ports (1024-65535), and SSH",
+   "justify": "HTTP is 80; public and private NACLs both allow it"
+  },
+  {
+   "id": "nacl_https_in",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_network_acl_rule"
+      ],
+      "where": [
+       {
+        "path": "egress",
+        "op": "eq",
+        "value": false
+       },
+       {
+        "path": "from_port",
+        "op": "eq",
+        "value": 443
+       },
+       {
+        "path": "to_port",
+        "op": "eq",
+        "value": 443
+       },
+       {
+        "path": "rule_action",
+        "op": "eq",
+        "value": "allow"
+       }
+      ]
+     },
+     "min": 2
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_network_acl"
+      ],
+      "where": [
+       {
+        "path": "ingress.*",
+        "op": "match",
+        "value": [
+         {
+          "path": "from_port",
+          "op": "eq",
+          "value": 443
+         },
+         {
+          "path": "to_port",
+          "op": "eq",
+          "value": 443
+         },
+         {
+          "path": "action",
+          "op": "eq",
+          "value": "allow"
+         }
+        ]
+       }
+      ]
+     },
+     "min": 2
+    }
+   ],
+   "quote": "allow ingress for HTTP, HTTPS, ephemeral ports",
+   "justify": "HTTPS is 443; public and private NACLs both allow it"
+  },
+  {
+   "id": "nacl_ephemeral_in",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_network_acl_rule"
+      ],
+      "where": [
+       {
+        "path": "egress",
+        "op": "eq",
+        "value": false
+       },
+       {
+        "path": "from_port",
+        "op": "eq",
+        "value": 1024
+       },
+       {
+        "path": "to_port",
+        "op": "eq",
+        "value": 65535
+       },
+       {
+        "path": "rule_action",
+        "op": "eq",
+        "value": "allow"
+       }
+      ]
+     },
+     "min": 2
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_network_acl"
+      ],
+      "where": [
+       {
+        "path": "ingress.*",
+        "op": "match",
+        "value": [
+         {
+          "path": "from_port",
+          "op": "eq",
+          "value": 1024
+         },
+         {
+          "path": "to_port",
+          "op": "eq",
+          "value": 65535
+         },
+         {
+          "path": "action",
+          "op": "eq",
+          "value": "allow"
+         }
+        ]
+       }
+      ]
+     },
+     "min": 2
+    }
+   ],
+   "quote": "ephemeral ports (1024-65535)",
+   "justify": "the public NACL allows ephemeral ingress, stated with no source, and the private NACL allows it from everywhere, so both NACLs have such a rule"
+  },
+  {
+   "id": "private_nacl_ephemeral_in_everywhere",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_network_acl_rule"
+      ],
+      "where": [
+       {
+        "path": "egress",
+        "op": "eq",
+        "value": false
+       },
+       {
+        "path": "from_port",
+        "op": "eq",
+        "value": 1024
+       },
+       {
+        "path": "to_port",
+        "op": "eq",
+        "value": 65535
+       },
+       {
+        "path": "rule_action",
+        "op": "eq",
+        "value": "allow"
+       },
+       {
+        "path": "cidr_block",
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_network_acl"
+      ],
+      "where": [
+       {
+        "path": "ingress.*",
+        "op": "match",
+        "value": [
+         {
+          "path": "from_port",
+          "op": "eq",
+          "value": 1024
+         },
+         {
+          "path": "to_port",
+          "op": "eq",
+          "value": 65535
+         },
+         {
+          "path": "action",
+          "op": "eq",
+          "value": "allow"
+         },
+         {
+          "path": "cidr_block",
+          "op": "eq",
+          "value": "0.0.0.0/0"
+         }
+        ]
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "ephemeral ports from everywhere",
+   "justify": "ephemeral means the 1024-65535 range the prompt gives for the public NACL; everywhere is 0.0.0.0/0"
+  },
+  {
+   "id": "nacl_ssh_in",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_network_acl_rule"
+      ],
+      "where": [
+       {
+        "path": "egress",
+        "op": "eq",
+        "value": false
+       },
+       {
+        "path": "from_port",
+        "op": "eq",
+        "value": 22
+       },
+       {
+        "path": "to_port",
+        "op": "eq",
+        "value": 22
+       },
+       {
+        "path": "rule_action",
+        "op": "eq",
+        "value": "allow"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_network_acl"
+      ],
+      "where": [
+       {
+        "path": "ingress.*",
+        "op": "match",
+        "value": [
+         {
+          "path": "from_port",
+          "op": "eq",
+          "value": 22
+         },
+         {
+          "path": "to_port",
+          "op": "eq",
+          "value": 22
+         },
+         {
+          "path": "action",
+          "op": "eq",
+          "value": "allow"
+         }
+        ]
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "and SSH (using rule numbers starting at 100 for each allowed SSH CIDR)",
+   "justify": "SSH is port 22"
+  },
+  {
+   "id": "nacl_ssh_rule_100",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_network_acl_rule"
+      ],
+      "where": [
+       {
+        "path": "egress",
+        "op": "eq",
+        "value": false
+       },
+       {
+        "path": "from_port",
+        "op": "eq",
+        "value": 22
+       },
+       {
+        "path": "rule_number",
+        "op": "eq",
+        "value": 100
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_network_acl"
+      ],
+      "where": [
+       {
+        "path": "ingress.*",
+        "op": "match",
+        "value": [
+         {
+          "path": "from_port",
+          "op": "eq",
+          "value": 22
+         },
+         {
+          "path": "rule_no",
+          "op": "eq",
+          "value": 100
+         }
+        ]
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "using rule numbers starting at 100",
+   "justify": "SSH is port 22"
+  },
+  {
+   "id": "nacl_http_out",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_network_acl_rule"
+      ],
+      "where": [
+       {
+        "path": "egress",
+        "op": "eq",
+        "value": true
+       },
+       {
+        "path": "from_port",
+        "op": "eq",
+        "value": 80
+       },
+       {
+        "path": "to_port",
+        "op": "eq",
+        "value": 80
+       },
+       {
+        "path": "rule_action",
+        "op": "eq",
+        "value": "allow"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_network_acl"
+      ],
+      "where": [
+       {
+        "path": "egress.*",
+        "op": "match",
+        "value": [
+         {
+          "path": "from_port",
+          "op": "eq",
+          "value": 80
+         },
+         {
+          "path": "to_port",
+          "op": "eq",
+          "value": 80
+         },
+         {
+          "path": "action",
+          "op": "eq",
+          "value": "allow"
+         }
+        ]
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "while permitting egress for HTTP, HTTPS, and ephemeral ports",
+   "justify": "HTTP is port 80"
+  },
+  {
+   "id": "nacl_https_out",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_network_acl_rule"
+      ],
+      "where": [
+       {
+        "path": "egress",
+        "op": "eq",
+        "value": true
+       },
+       {
+        "path": "from_port",
+        "op": "eq",
+        "value": 443
+       },
+       {
+        "path": "to_port",
+        "op": "eq",
+        "value": 443
+       },
+       {
+        "path": "rule_action",
+        "op": "eq",
+        "value": "allow"
+       }
+      ]
+     },
+     "min": 2
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_network_acl"
+      ],
+      "where": [
+       {
+        "path": "egress.*",
+        "op": "match",
+        "value": [
+         {
+          "path": "from_port",
+          "op": "eq",
+          "value": 443
+         },
+         {
+          "path": "to_port",
+          "op": "eq",
+          "value": 443
+         },
+         {
+          "path": "action",
+          "op": "eq",
+          "value": "allow"
+         }
+        ]
+       }
+      ]
+     },
+     "min": 2
+    }
+   ],
+   "quote": "HTTPS, and ephemeral ports",
+   "justify": "HTTPS is 443; public and private NACLs both allow it"
+  },
+  {
+   "id": "nacl_ephemeral_out",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_network_acl_rule"
+      ],
+      "where": [
+       {
+        "path": "egress",
+        "op": "eq",
+        "value": true
+       },
+       {
+        "path": "from_port",
+        "op": "eq",
+        "value": 1024
+       },
+       {
+        "path": "to_port",
+        "op": "eq",
+        "value": 65535
+       },
+       {
+        "path": "rule_action",
+        "op": "eq",
+        "value": "allow"
+       }
+      ]
+     },
+     "min": 2
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_network_acl"
+      ],
+      "where": [
+       {
+        "path": "egress.*",
+        "op": "match",
+        "value": [
+         {
+          "path": "from_port",
+          "op": "eq",
+          "value": 1024
+         },
+         {
+          "path": "to_port",
+          "op": "eq",
+          "value": 65535
+         },
+         {
+          "path": "action",
+          "op": "eq",
+          "value": "allow"
+         }
+        ]
+       }
+      ]
+     },
+     "min": 2
+    }
+   ],
+   "quote": "and ephemeral ports",
+   "justify": "public and private NACLs both allow ephemeral egress"
+  },
+  {
+   "id": "private_nacl_http_in_from_subnets",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_network_acl_rule"
+      ],
+      "where": [
+       {
+        "path": "egress",
+        "op": "eq",
+        "value": false
+       },
+       {
+        "path": "from_port",
+        "op": "eq",
+        "value": 80
+       },
+       {
+        "path": "cidr_block",
+        "op": "regex",
+        "value": "^(10|172|192)\\."
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_network_acl"
+      ],
+      "where": [
+       {
+        "path": "ingress.*",
+        "op": "match",
+        "value": [
+         {
+          "path": "from_port",
+          "op": "eq",
+          "value": 80
+         },
+         {
+          "path": "cidr_block",
+          "op": "regex",
+          "value": "^(10|172|192)\\."
+         }
+        ]
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "Private NACL rules must allow ingress for HTTP and HTTPS from the public subnets' CIDRs",
+   "justify": "public subnet CIDRs are within the VPC range"
+  },
+  {
+   "id": "private_nacl_https_in_from_subnets",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_network_acl_rule"
+      ],
+      "where": [
+       {
+        "path": "egress",
+        "op": "eq",
+        "value": false
+       },
+       {
+        "path": "from_port",
+        "op": "eq",
+        "value": 443
+       },
+       {
+        "path": "cidr_block",
+        "op": "regex",
+        "value": "^(10|172|192)\\."
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_network_acl"
+      ],
+      "where": [
+       {
+        "path": "ingress.*",
+        "op": "match",
+        "value": [
+         {
+          "path": "from_port",
+          "op": "eq",
+          "value": 443
+         },
+         {
+          "path": "cidr_block",
+          "op": "regex",
+          "value": "^(10|172|192)\\."
+         }
+        ]
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "HTTP and HTTPS from the public subnets' CIDRs",
+   "justify": "public subnet CIDRs are within the VPC range"
+  },
+  {
+   "id": "private_nacl_https_out_everywhere",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_network_acl_rule"
+      ],
+      "where": [
+       {
+        "path": "egress",
+        "op": "eq",
+        "value": true
+       },
+       {
+        "path": "from_port",
+        "op": "eq",
+        "value": 443
+       },
+       {
+        "path": "to_port",
+        "op": "eq",
+        "value": 443
+       },
+       {
+        "path": "rule_action",
+        "op": "eq",
+        "value": "allow"
+       },
+       {
+        "path": "cidr_block",
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_network_acl"
+      ],
+      "where": [
+       {
+        "path": "egress.*",
+        "op": "match",
+        "value": [
+         {
+          "path": "from_port",
+          "op": "eq",
+          "value": 443
+         },
+         {
+          "path": "to_port",
+          "op": "eq",
+          "value": 443
+         },
+         {
+          "path": "action",
+          "op": "eq",
+          "value": "allow"
+         },
+         {
+          "path": "cidr_block",
+          "op": "eq",
+          "value": "0.0.0.0/0"
+         }
+        ]
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "permitting egress for HTTPS to everywhere",
+   "justify": "HTTPS is 443; everywhere is 0.0.0.0/0"
+  },
+  {
+   "id": "nacl_ephemeral_out_to_subnets",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_network_acl_rule"
+      ],
+      "where": [
+       {
+        "path": "egress",
+        "op": "eq",
+        "value": true
+       },
+       {
+        "path": "from_port",
+        "op": "eq",
+        "value": 1024
+       },
+       {
+        "path": "to_port",
+        "op": "eq",
+        "value": 65535
+       },
+       {
+        "path": "rule_action",
+        "op": "eq",
+        "value": "allow"
+       },
+       {
+        "path": "cidr_block",
+        "op": "regex",
+        "value": "^(10|172|192)\\."
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_network_acl"
+      ],
+      "where": [
+       {
+        "path": "egress.*",
+        "op": "match",
+        "value": [
+         {
+          "path": "from_port",
+          "op": "eq",
+          "value": 1024
+         },
+         {
+          "path": "to_port",
+          "op": "eq",
+          "value": 65535
+         },
+         {
+          "path": "action",
+          "op": "eq",
+          "value": "allow"
+         },
+         {
+          "path": "cidr_block",
+          "op": "regex",
+          "value": "^(10|172|192)\\."
+         }
+        ]
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "local ephemeral return traffic to the private subnets, and ephemeral traffic to the public subnets",
+   "justify": "subnet CIDRs are within the VPC range"
+  },
+  {
+   "id": "x_eip_domain",
+   "tier": "extra",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_eip"
+    ]
+   },
+   "cond": {
+    "path": "domain",
+    "op": "eq",
+    "value": "vpc"
+   }
+  },
+  {
+   "id": "x_tenancy",
+   "tier": "extra",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_vpc"
+    ]
+   },
+   "cond": {
+    "path": "instance_tenancy",
+    "op": "eq",
+    "value": "default"
+   }
+  },
+  {
+   "id": "x_nacl_allow",
+   "tier": "extra",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_network_acl_rule"
+    ]
+   },
+   "cond": {
+    "path": "rule_action",
+    "op": "eq",
+    "value": "allow"
+   },
+   "quantifier": "all"
+  },
+  {
+   "id": "extra_type_aws_route_table_association",
+   "kind": "exists",
+   "tier": "extra",
+   "select": {
+    "types": [
+     "aws_route_table_association"
+    ],
+    "where": []
+   }
+  }
+ ],
+ "notes": "The default region is checked through subnet availability zones, because the provider block is invisible in the plan. subnets_cidrsubnet also accepts a local, because models keep the cidrsubnet calls in locals, which the normalised input does not show. vpc_additional_tags reads the declared tags expression by word, since the prompt does not name the variable. NACL rules are not attributed to the public or private NACL (counts use min 2 where both tiers allow the rule). Security-group rules are not attributed to the public or private group. sg_egress_only_within_vpc cannot combine rule styles, so a template mixing inline egress with separate rule resources is judged on one style only. Candidate review: no planned candidates exist for this row, so the 3 raw templates were read and scored in static mode, which cannot resolve planned values. The new checks have not been scored on a planned candidate."
+}

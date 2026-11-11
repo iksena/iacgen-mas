@@ -1,0 +1,730 @@
+{
+ "meta": {
+  "lang": "tf",
+  "mode": "plan",
+  "warnings": [],
+  "gt_hash": "60475241541b6d543395c22fe416248105878870bc674a2c80d22f90cac029a3",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "aws_ebs_default_kms_key.ebs",
+   "cfg": "aws_ebs_default_kms_key.ebs",
+   "type": "aws_ebs_default_kms_key",
+   "values": {
+    "region": "us-east-1"
+   },
+   "refs": [
+    "aws_kms_key.compute"
+   ]
+  },
+  {
+   "id": "aws_ebs_encryption_by_default.enabled",
+   "cfg": "aws_ebs_encryption_by_default.enabled",
+   "type": "aws_ebs_encryption_by_default",
+   "values": {
+    "enabled": true,
+    "region": "us-east-1"
+   },
+   "refs": []
+  },
+  {
+   "id": "aws_ebs_snapshot_block_public_access.enabled",
+   "cfg": "aws_ebs_snapshot_block_public_access.enabled",
+   "type": "aws_ebs_snapshot_block_public_access",
+   "values": {
+    "region": "us-east-1",
+    "state": "block-all-sharing"
+   },
+   "refs": []
+  },
+  {
+   "id": "aws_ec2_image_block_public_access.enabled",
+   "cfg": "aws_ec2_image_block_public_access.enabled",
+   "type": "aws_ec2_image_block_public_access",
+   "values": {
+    "region": "us-east-1",
+    "state": "block-new-sharing",
+    "timeouts": null
+   },
+   "refs": []
+  },
+  {
+   "id": "aws_ec2_instance_metadata_defaults.imdsv2[0]",
+   "cfg": "aws_ec2_instance_metadata_defaults.imdsv2",
+   "type": "aws_ec2_instance_metadata_defaults",
+   "values": {
+    "http_endpoint": "enabled",
+    "http_put_response_hop_limit": 1,
+    "http_tokens": "required",
+    "instance_metadata_tags": "disabled",
+    "region": "us-east-1"
+   },
+   "refs": []
+  },
+  {
+   "id": "aws_ec2_serial_console_access.disabled[0]",
+   "cfg": "aws_ec2_serial_console_access.disabled",
+   "type": "aws_ec2_serial_console_access",
+   "values": {
+    "enabled": false,
+    "region": "us-east-1"
+   },
+   "refs": []
+  },
+  {
+   "id": "aws_emr_block_public_access_configuration.enabled[0]",
+   "cfg": "aws_emr_block_public_access_configuration.enabled",
+   "type": "aws_emr_block_public_access_configuration",
+   "values": {
+    "block_public_security_group_rules": true,
+    "permitted_public_security_group_rule_range": [],
+    "region": "us-east-1"
+   },
+   "refs": []
+  },
+  {
+   "id": "aws_kms_alias.compute",
+   "cfg": "aws_kms_alias.compute",
+   "type": "aws_kms_alias",
+   "values": {
+    "name": "alias/benchmark-compute",
+    "region": "us-east-1"
+   },
+   "refs": [
+    "aws_kms_key.compute"
+   ]
+  },
+  {
+   "id": "aws_kms_alias.observability",
+   "cfg": "aws_kms_alias.observability",
+   "type": "aws_kms_alias",
+   "values": {
+    "name": "alias/benchmark-observability",
+    "region": "us-east-1"
+   },
+   "refs": [
+    "aws_kms_key.observability"
+   ]
+  },
+  {
+   "id": "aws_kms_alias.storage",
+   "cfg": "aws_kms_alias.storage",
+   "type": "aws_kms_alias",
+   "values": {
+    "name": "alias/benchmark-storage",
+    "region": "us-east-1"
+   },
+   "refs": [
+    "aws_kms_key.storage"
+   ]
+  },
+  {
+   "id": "aws_kms_key.compute",
+   "cfg": "aws_kms_key.compute",
+   "type": "aws_kms_key",
+   "values": {
+    "bypass_policy_lockout_safety_check": false,
+    "custom_key_store_id": null,
+    "customer_master_key_spec": "SYMMETRIC_DEFAULT",
+    "deletion_window_in_days": 30,
+    "description": "KMS key for benchmark compute layer - EBS and Auto Scaling",
+    "enable_key_rotation": true,
+    "is_enabled": true,
+    "key_usage": "ENCRYPT_DECRYPT",
+    "policy": "{\"Statement\":[{\"Action\":\"kms:*\",\"Effect\":\"Allow\",\"Principal\":{\"AWS\":\"arn:aws:iam::000000000000:root\"},\"Resource\":\"*\",\"Sid\":\"EnableIAMUserPermissions\"},{\"Action\":[\"kms:Encrypt\",\"kms:Decrypt\",\"kms:ReEncrypt*\",\"kms:GenerateDataKey*\",\"kms:DescribeKey\"],\"Condition\":{\"StringEquals\":{\"aws:SourceAccount\":\"000000000000\"}},\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"ec2.amazonaws.com\"},\"Resource\":\"*\",\"Sid\":\"AllowEC2ToUseTheKey\"},{\"Action\":[\"kms:Encrypt\",\"kms:Decrypt\",\"kms:ReEncrypt*\",\"kms:GenerateDataKey*\",\"kms:DescribeKey\"],\"Effect\":\"Allow\",\"Principal\":{\"AWS\":\"arn:aws:iam::000000000000:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling\"},\"Resource\":\"*\",\"Sid\":\"AllowAutoScalingToUseTheKey\"},{\"Action\":\"kms:CreateGrant\",\"Condition\":{\"Bool\":{\"kms:GrantIsForAWSResource\":\"true\"}},\"Effect\":\"Allow\",\"Principal\":{\"AWS\":\"arn:aws:iam::000000000000:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling\"},\"Resource\":\"*\",\"Sid\":\"AllowAutoScalingToCreateGrants\"}],\"Version\":\"2012-10-17\"}",
+    "region": "us-east-1",
+    "rotation_period_in_days": 90,
+    "tags": {
+     "Name": "benchmark-kms-compute",
+     "Purpose": "Encryption for EBS volumes and Auto Scaling",
+     "Security": "encryption-at-rest"
+    },
+    "tags_all": {
+     "Name": "benchmark-kms-compute",
+     "Purpose": "Encryption for EBS volumes and Auto Scaling",
+     "Security": "encryption-at-rest"
+    },
+    "timeouts": null,
+    "xks_key_id": null
+   },
+   "refs": [
+    "data.aws_caller_identity.current"
+   ]
+  },
+  {
+   "id": "aws_kms_key.observability",
+   "cfg": "aws_kms_key.observability",
+   "type": "aws_kms_key",
+   "values": {
+    "bypass_policy_lockout_safety_check": false,
+    "custom_key_store_id": null,
+    "customer_master_key_spec": "SYMMETRIC_DEFAULT",
+    "deletion_window_in_days": 30,
+    "description": "KMS key for benchmark observability layer - CloudTrail, CloudWatch, SNS",
+    "enable_key_rotation": true,
+    "is_enabled": true,
+    "key_usage": "ENCRYPT_DECRYPT",
+    "policy": "{\"Statement\":[{\"Action\":\"kms:*\",\"Effect\":\"Allow\",\"Principal\":{\"AWS\":\"arn:aws:iam::000000000000:root\"},\"Resource\":\"*\",\"Sid\":\"EnableIAMUserPermissions\"},{\"Action\":[\"kms:Encrypt\",\"kms:Decrypt\",\"kms:ReEncrypt*\",\"kms:GenerateDataKey*\",\"kms:DescribeKey\"],\"Condition\":{\"ArnLike\":{\"kms:EncryptionContext:aws:logs:arn\":\"arn:aws:logs:us-east-1:000000000000:*\"}},\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"logs.us-east-1.amazonaws.com\"},\"Resource\":\"*\",\"Sid\":\"AllowCloudWatchLogsToUseTheKey\"},{\"Action\":[\"kms:Encrypt\",\"kms:Decrypt\",\"kms:ReEncrypt*\",\"kms:GenerateDataKey*\",\"kms:DescribeKey\"],\"Condition\":{\"StringLike\":{\"kms:EncryptionContext:aws:cloudtrail:arn\":\"arn:aws:cloudtrail:*:000000000000:trail/*\"}},\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"cloudtrail.amazonaws.com\"},\"Resource\":\"*\",\"Sid\":\"AllowCloudTrailToUseTheKey\"},{\"Action\":[\"kms:GenerateDataKey*\",\"kms:Decrypt\"],\"Condition\":{\"StringEquals\":{\"aws:SourceAccount\":\"000000000000\"}},\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"cloudwatch.amazonaws.com\"},\"Resource\":\"*\",\"Sid\":\"AllowCloudWatchAlarmsToUseTheKey\"},{\"Action\":[\"kms:GenerateDataKey*\",\"kms:Decrypt\"],\"Condition\":{\"StringEquals\":{\"aws:SourceAccount\":\"000000000000\"}},\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"sns.amazonaws.com\"},\"Resource\":\"*\",\"Sid\":\"AllowSNSToUseTheKey\"},{\"Action\":[\"kms:GenerateDataKey*\",\"kms:Decrypt\"],\"Condition\":{\"StringEquals\":{\"aws:SourceAccount\":\"000000000000\"}},\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"sqs.amazonaws.com\"},\"Resource\":\"*\",\"Sid\":\"AllowSQSToUseTheKey\"},{\"Action\":[\"kms:GenerateDataKey*\",\"kms:Decrypt\",\"kms:DescribeKey\"],\"Condition\":{\"StringEquals\":{\"aws:SourceAccount\":\"000000000000\"}},\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"events.amazonaws.com\"},\"Resource\":\"*\",\"Sid\":\"AllowEventBridgeToUseTheKey\"}],\"Version\":\"2012-10-17\"}",
+    "region": "us-east-1",
+    "rotation_period_in_days": 90,
+    "tags": {
+     "Name": "benchmark-kms-observability",
+     "Purpose": "Encryption for CloudTrail CloudWatch Logs and SNS",
+     "Security": "encryption-at-rest"
+    },
+    "tags_all": {
+     "Name": "benchmark-kms-observability",
+     "Purpose": "Encryption for CloudTrail CloudWatch Logs and SNS",
+     "Security": "encryption-at-rest"
+    },
+    "timeouts": null,
+    "xks_key_id": null
+   },
+   "refs": [
+    "data.aws_caller_identity.current",
+    "data.aws_region.current"
+   ]
+  },
+  {
+   "id": "aws_kms_key.storage",
+   "cfg": "aws_kms_key.storage",
+   "type": "aws_kms_key",
+   "values": {
+    "bypass_policy_lockout_safety_check": false,
+    "custom_key_store_id": null,
+    "customer_master_key_spec": "SYMMETRIC_DEFAULT",
+    "deletion_window_in_days": 30,
+    "description": "KMS key for benchmark storage layer - S3 log buckets",
+    "enable_key_rotation": true,
+    "is_enabled": true,
+    "key_usage": "ENCRYPT_DECRYPT",
+    "policy": "{\"Statement\":[{\"Action\":\"kms:*\",\"Effect\":\"Allow\",\"Principal\":{\"AWS\":\"arn:aws:iam::000000000000:root\"},\"Resource\":\"*\",\"Sid\":\"EnableIAMUserPermissions\"},{\"Action\":[\"kms:Encrypt\",\"kms:Decrypt\",\"kms:ReEncrypt*\",\"kms:GenerateDataKey*\",\"kms:DescribeKey\"],\"Condition\":{\"StringEquals\":{\"aws:SourceAccount\":\"000000000000\"}},\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"s3.amazonaws.com\"},\"Resource\":\"*\",\"Sid\":\"AllowS3ToUseTheKey\"},{\"Action\":[\"kms:Encrypt\",\"kms:GenerateDataKey*\"],\"Condition\":{\"StringEquals\":{\"aws:SourceAccount\":\"000000000000\"}},\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"config.amazonaws.com\"},\"Resource\":\"*\",\"Sid\":\"AllowConfigToDeliverEncryptedSnapshots\"},{\"Action\":[\"kms:GenerateDataKey*\",\"kms:DescribeKey\"],\"Condition\":{\"StringLike\":{\"kms:EncryptionContext:aws:cloudtrail:arn\":\"arn:aws:cloudtrail:*:000000000000:trail/*\"}},\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"cloudtrail.amazonaws.com\"},\"Resource\":\"*\",\"Sid\":\"AllowCloudTrailToEncryptLogs\"}],\"Version\":\"2012-10-17\"}",
+    "region": "us-east-1",
+    "rotation_period_in_days": 90,
+    "tags": {
+     "Name": "benchmark-kms-storage",
+     "Purpose": "Encryption for S3 audit log buckets and Config snapshots",
+     "Security": "encryption-at-rest"
+    },
+    "tags_all": {
+     "Name": "benchmark-kms-storage",
+     "Purpose": "Encryption for S3 audit log buckets and Config snapshots",
+     "Security": "encryption-at-rest"
+    },
+    "timeouts": null,
+    "xks_key_id": null
+   },
+   "refs": [
+    "data.aws_caller_identity.current"
+   ]
+  },
+  {
+   "id": "__parameter__.disable_ec2_serial_console",
+   "cfg": "__parameter__.disable_ec2_serial_console",
+   "type": "__parameter__",
+   "values": {
+    "name": "disable_ec2_serial_console",
+    "default": true
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.ebs_default_kms_key_arn",
+   "cfg": "__parameter__.ebs_default_kms_key_arn",
+   "type": "__parameter__",
+   "values": {
+    "name": "ebs_default_kms_key_arn",
+    "default": ""
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.enable_emr_block_public_access",
+   "cfg": "__parameter__.enable_emr_block_public_access",
+   "type": "__parameter__",
+   "values": {
+    "name": "enable_emr_block_public_access",
+    "default": true
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.enable_imdsv2_default",
+   "cfg": "__parameter__.enable_imdsv2_default",
+   "type": "__parameter__",
+   "values": {
+    "name": "enable_imdsv2_default",
+    "default": true
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.imdsv2_hop_limit",
+   "cfg": "__parameter__.imdsv2_hop_limit",
+   "type": "__parameter__",
+   "values": {
+    "name": "imdsv2_hop_limit",
+    "default": 1
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.kms_rotation_period_days",
+   "cfg": "__parameter__.kms_rotation_period_days",
+   "type": "__parameter__",
+   "values": {
+    "name": "kms_rotation_period_days",
+    "default": 90
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.project_name",
+   "cfg": "__parameter__.project_name",
+   "type": "__parameter__",
+   "values": {
+    "name": "project_name",
+    "default": "benchmark"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.ami_block_public_access_state",
+   "cfg": "__output__.ami_block_public_access_state",
+   "type": "__output__",
+   "values": {
+    "name": "ami_block_public_access_state",
+    "value": "block-new-sharing",
+    "description": "State of AMI public access blocking"
+   },
+   "refs": [
+    "aws_ec2_image_block_public_access.enabled"
+   ]
+  },
+  {
+   "id": "__output__.ebs_encryption_enabled",
+   "cfg": "__output__.ebs_encryption_enabled",
+   "type": "__output__",
+   "values": {
+    "name": "ebs_encryption_enabled",
+    "value": true,
+    "description": "Whether EBS encryption by default is enabled"
+   },
+   "refs": [
+    "aws_ebs_encryption_by_default.enabled"
+   ]
+  },
+  {
+   "id": "__output__.ebs_snapshot_block_public_access_state",
+   "cfg": "__output__.ebs_snapshot_block_public_access_state",
+   "type": "__output__",
+   "values": {
+    "name": "ebs_snapshot_block_public_access_state",
+    "value": "block-all-sharing",
+    "description": "State of EBS snapshot public access blocking"
+   },
+   "refs": [
+    "aws_ebs_snapshot_block_public_access.enabled"
+   ]
+  },
+  {
+   "id": "__output__.ec2_serial_console_disabled",
+   "cfg": "__output__.ec2_serial_console_disabled",
+   "type": "__output__",
+   "values": {
+    "name": "ec2_serial_console_disabled",
+    "value": true,
+    "description": "Whether EC2 Serial Console access is disabled"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.emr_block_public_access_enabled",
+   "cfg": "__output__.emr_block_public_access_enabled",
+   "type": "__output__",
+   "values": {
+    "name": "emr_block_public_access_enabled",
+    "value": true,
+    "description": "Whether EMR block public access is enabled"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.imdsv2_default_enabled",
+   "cfg": "__output__.imdsv2_default_enabled",
+   "type": "__output__",
+   "values": {
+    "name": "imdsv2_default_enabled",
+    "value": true,
+    "description": "Whether IMDSv2 is enforced as the account default for new instances"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.kms_compute_key_arn",
+   "cfg": "__output__.kms_compute_key_arn",
+   "type": "__output__",
+   "values": {
+    "name": "kms_compute_key_arn",
+    "value": null,
+    "description": "ARN of the compute layer KMS key (EBS, Auto Scaling)"
+   },
+   "refs": [
+    "aws_kms_key.compute"
+   ]
+  },
+  {
+   "id": "__output__.kms_compute_key_id",
+   "cfg": "__output__.kms_compute_key_id",
+   "type": "__output__",
+   "values": {
+    "name": "kms_compute_key_id",
+    "value": null,
+    "description": "ID of the compute layer KMS key"
+   },
+   "refs": [
+    "aws_kms_key.compute"
+   ]
+  },
+  {
+   "id": "__output__.kms_observability_key_arn",
+   "cfg": "__output__.kms_observability_key_arn",
+   "type": "__output__",
+   "values": {
+    "name": "kms_observability_key_arn",
+    "value": null,
+    "description": "ARN of the observability layer KMS key (CloudTrail, CloudWatch, SNS)"
+   },
+   "refs": [
+    "aws_kms_key.observability"
+   ]
+  },
+  {
+   "id": "__output__.kms_observability_key_id",
+   "cfg": "__output__.kms_observability_key_id",
+   "type": "__output__",
+   "values": {
+    "name": "kms_observability_key_id",
+    "value": null,
+    "description": "ID of the observability layer KMS key"
+   },
+   "refs": [
+    "aws_kms_key.observability"
+   ]
+  },
+  {
+   "id": "__output__.kms_storage_key_arn",
+   "cfg": "__output__.kms_storage_key_arn",
+   "type": "__output__",
+   "values": {
+    "name": "kms_storage_key_arn",
+    "value": null,
+    "description": "ARN of the storage layer KMS key (S3 log buckets)"
+   },
+   "refs": [
+    "aws_kms_key.storage"
+   ]
+  },
+  {
+   "id": "__output__.kms_storage_key_id",
+   "cfg": "__output__.kms_storage_key_id",
+   "type": "__output__",
+   "values": {
+    "name": "kms_storage_key_id",
+    "value": null,
+    "description": "ID of the storage layer KMS key"
+   },
+   "refs": [
+    "aws_kms_key.storage"
+   ]
+  },
+  {
+   "id": "__declared__.data.aws_caller_identity.current",
+   "cfg": "data.aws_caller_identity.current",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "data.aws_caller_identity",
+    "name": "current",
+    "gated": false,
+    "gate": null,
+    "properties": {}
+   }
+  },
+  {
+   "id": "__declared__.data.aws_region.current",
+   "cfg": "data.aws_region.current",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "data.aws_region",
+    "name": "current",
+    "gated": false,
+    "gate": null,
+    "properties": {}
+   }
+  },
+  {
+   "id": "__declared__.aws_ebs_encryption_by_default.enabled",
+   "cfg": "aws_ebs_encryption_by_default.enabled",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_ebs_encryption_by_default",
+    "name": "enabled",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "enabled": true
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_kms_key.compute",
+   "cfg": "aws_kms_key.compute",
+   "type": "__declared__",
+   "refs": [
+    "data.aws_caller_identity.current"
+   ],
+   "values": {
+    "type": "aws_kms_key",
+    "name": "compute",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "description": "KMS key for ${var.project_name} compute layer - EBS and Auto Scaling",
+     "deletion_window_in_days": 30,
+     "enable_key_rotation": true,
+     "rotation_period_in_days": 90,
+     "policy": "${jsonencode({'Version': '2012-10-17', 'Statement': [{'Sid': 'EnableIAMUserPermissions', 'Effect': 'Allow', 'Principal': {'AWS': 'arn:aws:iam::${local.account_id}:root'}, 'Action': 'kms:*', 'Resource': '*'}, {'Sid': 'AllowEC2ToUseTheKey', 'Effect': 'Allow', 'Principal': {'Service': 'ec2.amazonaws.com'}, 'Action': ['kms:Encrypt', 'kms:Decrypt', 'kms:ReEncrypt*', 'kms:GenerateDataKey*', 'kms:DescribeKey'], 'Resource': '*', 'Condition': {'StringEquals': {'aws:SourceAccount': '${local.account_id}'}}}, {'Sid': 'AllowAutoScalingToUseTheKey', 'Effect': 'Allow', 'Principal': {'AWS': 'arn:aws:iam::${local.account_id}:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling'}, 'Action': ['kms:Encrypt', 'kms:Decrypt', 'kms:ReEncrypt*', 'kms:GenerateDataKey*', 'kms:DescribeKey'], 'Resource': '*'}, {'Sid': 'AllowAutoScalingToCreateGrants', 'Effect': 'Allow', 'Principal': {'AWS': 'arn:aws:iam::${local.account_id}:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling'}, 'Action': 'kms:CreateGrant', 'Resource': '*', 'Condition': {'Bool': {'kms:GrantIsForAWSResource': 'true'}}}]})}",
+     "tags": {
+      "Name": "${var.project_name}-kms-compute",
+      "Purpose": "Encryption for EBS volumes and Auto Scaling",
+      "Security": "encryption-at-rest"
+     },
+     "lifecycle": [
+      {
+       "prevent_destroy": true
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_kms_alias.compute",
+   "cfg": "aws_kms_alias.compute",
+   "type": "__declared__",
+   "refs": [
+    "aws_kms_key.compute"
+   ],
+   "values": {
+    "type": "aws_kms_alias",
+    "name": "compute",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "alias/${var.project_name}-compute",
+     "target_key_id": "${aws_kms_key.compute.key_id}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_ebs_default_kms_key.ebs",
+   "cfg": "aws_ebs_default_kms_key.ebs",
+   "type": "__declared__",
+   "refs": [
+    "aws_kms_key.compute"
+   ],
+   "values": {
+    "type": "aws_ebs_default_kms_key",
+    "name": "ebs",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "key_arn": "${var.ebs_default_kms_key_arn != \"\" ? var.ebs_default_kms_key_arn : aws_kms_key.compute.arn}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_kms_key.observability",
+   "cfg": "aws_kms_key.observability",
+   "type": "__declared__",
+   "refs": [
+    "data.aws_caller_identity.current",
+    "data.aws_region.current"
+   ],
+   "values": {
+    "type": "aws_kms_key",
+    "name": "observability",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "description": "KMS key for ${var.project_name} observability layer - CloudTrail, CloudWatch, SNS",
+     "deletion_window_in_days": 30,
+     "enable_key_rotation": true,
+     "rotation_period_in_days": 90,
+     "policy": "${jsonencode({'Version': '2012-10-17', 'Statement': [{'Sid': 'EnableIAMUserPermissions', 'Effect': 'Allow', 'Principal': {'AWS': 'arn:aws:iam::${local.account_id}:root'}, 'Action': 'kms:*', 'Resource': '*'}, {'Sid': 'AllowCloudWatchLogsToUseTheKey', 'Effect': 'Allow', 'Principal': {'Service': 'logs.${local.region}.amazonaws.com'}, 'Action': ['kms:Encrypt', 'kms:Decrypt', 'kms:ReEncrypt*', 'kms:GenerateDataKey*', 'kms:DescribeKey'], 'Resource': '*', 'Condition': {'ArnLike': {'kms:EncryptionContext:aws:logs:arn': 'arn:aws:logs:${local.region}:${local.account_id}:*'}}}, {'Sid': 'AllowCloudTrailToUseTheKey', 'Effect': 'Allow', 'Principal': {'Service': 'cloudtrail.amazonaws.com'}, 'Action': ['kms:Encrypt', 'kms:Decrypt', 'kms:ReEncrypt*', 'kms:GenerateDataKey*', 'kms:DescribeKey'], 'Resource': '*', 'Condition': {'StringLike': {'kms:EncryptionContext:aws:cloudtrail:arn': 'arn:aws:cloudtrail:*:${local.account_id}:trail/*'}}}, {'Sid': 'AllowCloudWatchAlarmsToUseTheKey', 'Effect': 'Allow', 'Principal': {'Service': 'cloudwatch.amazonaws.com'}, 'Action': ['kms:GenerateDataKey*', 'kms:Decrypt'], 'Resource': '*', 'Condition': {'StringEquals': {'aws:SourceAccount': '${local.account_id}'}}}, {'Sid': 'AllowSNSToUseTheKey', 'Effect': 'Allow', 'Principal': {'Service': 'sns.amazonaws.com'}, 'Action': ['kms:GenerateDataKey*', 'kms:Decrypt'], 'Resource': '*', 'Condition': {'StringEquals': {'aws:SourceAccount': '${local.account_id}'}}}, {'Sid': 'AllowSQSToUseTheKey', 'Effect': 'Allow', 'Principal': {'Service': 'sqs.amazonaws.com'}, 'Action': ['kms:GenerateDataKey*', 'kms:Decrypt'], 'Resource': '*', 'Condition': {'StringEquals': {'aws:SourceAccount': '${local.account_id}'}}}, {'Sid': 'AllowEventBridgeToUseTheKey', 'Effect': 'Allow', 'Principal': {'Service': 'events.amazonaws.com'}, 'Action': ['kms:GenerateDataKey*', 'kms:Decrypt', 'kms:DescribeKey'], 'Resource': '*', 'Condition': {'StringEquals': {'aws:SourceAccount': '${local.account_id}'}}}]})}",
+     "tags": {
+      "Name": "${var.project_name}-kms-observability",
+      "Purpose": "Encryption for CloudTrail CloudWatch Logs and SNS",
+      "Security": "encryption-at-rest"
+     },
+     "lifecycle": [
+      {
+       "prevent_destroy": true
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_kms_alias.observability",
+   "cfg": "aws_kms_alias.observability",
+   "type": "__declared__",
+   "refs": [
+    "aws_kms_key.observability"
+   ],
+   "values": {
+    "type": "aws_kms_alias",
+    "name": "observability",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "alias/${var.project_name}-observability",
+     "target_key_id": "${aws_kms_key.observability.key_id}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_kms_key.storage",
+   "cfg": "aws_kms_key.storage",
+   "type": "__declared__",
+   "refs": [
+    "data.aws_caller_identity.current"
+   ],
+   "values": {
+    "type": "aws_kms_key",
+    "name": "storage",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "description": "KMS key for ${var.project_name} storage layer - S3 log buckets",
+     "deletion_window_in_days": 30,
+     "enable_key_rotation": true,
+     "rotation_period_in_days": 90,
+     "policy": "${jsonencode({'Version': '2012-10-17', 'Statement': [{'Sid': 'EnableIAMUserPermissions', 'Effect': 'Allow', 'Principal': {'AWS': 'arn:aws:iam::${local.account_id}:root'}, 'Action': 'kms:*', 'Resource': '*'}, {'Sid': 'AllowS3ToUseTheKey', 'Effect': 'Allow', 'Principal': {'Service': 's3.amazonaws.com'}, 'Action': ['kms:Encrypt', 'kms:Decrypt', 'kms:ReEncrypt*', 'kms:GenerateDataKey*', 'kms:DescribeKey'], 'Resource': '*', 'Condition': {'StringEquals': {'aws:SourceAccount': '${local.account_id}'}}}, {'Sid': 'AllowConfigToDeliverEncryptedSnapshots', 'Effect': 'Allow', 'Principal': {'Service': 'config.amazonaws.com'}, 'Action': ['kms:Encrypt', 'kms:GenerateDataKey*'], 'Resource': '*', 'Condition': {'StringEquals': {'aws:SourceAccount': '${local.account_id}'}}}, {'Sid': 'AllowCloudTrailToEncryptLogs', 'Effect': 'Allow', 'Principal': {'Service': 'cloudtrail.amazonaws.com'}, 'Action': ['kms:GenerateDataKey*', 'kms:DescribeKey'], 'Resource': '*', 'Condition': {'StringLike': {'kms:EncryptionContext:aws:cloudtrail:arn': 'arn:aws:cloudtrail:*:${local.account_id}:trail/*'}}}]})}",
+     "tags": {
+      "Name": "${var.project_name}-kms-storage",
+      "Purpose": "Encryption for S3 audit log buckets and Config snapshots",
+      "Security": "encryption-at-rest"
+     },
+     "lifecycle": [
+      {
+       "prevent_destroy": true
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_kms_alias.storage",
+   "cfg": "aws_kms_alias.storage",
+   "type": "__declared__",
+   "refs": [
+    "aws_kms_key.storage"
+   ],
+   "values": {
+    "type": "aws_kms_alias",
+    "name": "storage",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "alias/${var.project_name}-storage",
+     "target_key_id": "${aws_kms_key.storage.key_id}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_ec2_image_block_public_access.enabled",
+   "cfg": "aws_ec2_image_block_public_access.enabled",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_ec2_image_block_public_access",
+    "name": "enabled",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "state": "block-new-sharing"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_ebs_snapshot_block_public_access.enabled",
+   "cfg": "aws_ebs_snapshot_block_public_access.enabled",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_ebs_snapshot_block_public_access",
+    "name": "enabled",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "state": "block-all-sharing"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_ec2_instance_metadata_defaults.imdsv2",
+   "cfg": "aws_ec2_instance_metadata_defaults.imdsv2",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_ec2_instance_metadata_defaults",
+    "name": "imdsv2",
+    "gated": true,
+    "gate": "var.enable_imdsv2_default ? 1 : 0",
+    "properties": {
+     "count": "${var.enable_imdsv2_default ? 1 : 0}",
+     "http_tokens": "required",
+     "http_put_response_hop_limit": 1,
+     "http_endpoint": "enabled",
+     "instance_metadata_tags": "disabled"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_ec2_serial_console_access.disabled",
+   "cfg": "aws_ec2_serial_console_access.disabled",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_ec2_serial_console_access",
+    "name": "disabled",
+    "gated": true,
+    "gate": "var.disable_ec2_serial_console ? 1 : 0",
+    "properties": {
+     "count": "${var.disable_ec2_serial_console ? 1 : 0}",
+     "enabled": false
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_emr_block_public_access_configuration.enabled",
+   "cfg": "aws_emr_block_public_access_configuration.enabled",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_emr_block_public_access_configuration",
+    "name": "enabled",
+    "gated": true,
+    "gate": "var.enable_emr_block_public_access ? 1 : 0",
+    "properties": {
+     "count": "${var.enable_emr_block_public_access ? 1 : 0}",
+     "block_public_security_group_rules": true
+    }
+   }
+  }
+ ]
+}

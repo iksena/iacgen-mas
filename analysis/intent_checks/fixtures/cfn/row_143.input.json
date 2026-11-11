@@ -1,0 +1,692 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "02d57ad276d9e2515a2b29275cc432027ce9069a2eb16f90d74da09998e09f41",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "UserPool",
+   "cfg": "UserPool",
+   "type": "AWS::Cognito::UserPool",
+   "values": {
+    "UserPoolName": "agentops-ecommerce-users",
+    "Schema": [
+     {
+      "Name": "email",
+      "AttributeDataType": "String",
+      "Required": true,
+      "Mutable": true
+     },
+     {
+      "Name": "name",
+      "AttributeDataType": "String",
+      "Mutable": true
+     },
+     {
+      "Name": "role",
+      "AttributeDataType": "String",
+      "Mutable": true,
+      "DeveloperOnlyAttribute": false
+     }
+    ],
+    "AutoVerifiedAttributes": [
+     "email"
+    ],
+    "MfaConfiguration": "OPTIONAL",
+    "Policies": {
+     "PasswordPolicy": {
+      "MinimumLength": 8,
+      "RequireUppercase": true,
+      "RequireLowercase": true,
+      "RequireNumbers": true,
+      "RequireSymbols": false
+     }
+    },
+    "AccountRecoverySetting": {
+     "RecoveryMechanisms": [
+      {
+       "Name": "verified_email",
+       "Priority": 1
+      }
+     ]
+    },
+    "UserAttributeUpdateSettings": {
+     "AttributesRequireVerificationBeforeUpdate": [
+      "email"
+     ]
+    },
+    "EnabledMfas": [
+     "SOFTWARE_TOKEN_MFA"
+    ],
+    "EmailConfiguration": {
+     "EmailSendingAccount": "COGNITO_DEFAULT"
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "UserPoolClient",
+   "cfg": "UserPoolClient",
+   "type": "AWS::Cognito::UserPoolClient",
+   "values": {
+    "ClientName": "agentops-web-client",
+    "UserPoolId": {
+     "ref": "UserPool"
+    },
+    "GenerateSecret": false,
+    "ExplicitAuthFlows": [
+     "ALLOW_USER_PASSWORD_AUTH",
+     "ALLOW_REFRESH_TOKEN_AUTH",
+     "ALLOW_USER_SRP_AUTH"
+    ],
+    "AllowedOAuthFlows": [
+     "code"
+    ],
+    "AllowedOAuthScopes": [
+     "email",
+     "openid",
+     "profile"
+    ],
+    "AllowedOAuthFlowsUserPoolClient": true,
+    "CallbackURLs": [
+     "http://localhost:3000/auth/callback"
+    ],
+    "LogoutURLs": [
+     "http://localhost:3000",
+     "http://localhost:3000/logout"
+    ],
+    "SupportedIdentityProviders": [
+     "COGNITO"
+    ],
+    "PreventUserExistenceErrors": "ENABLED",
+    "RefreshTokenValidity": 30,
+    "AccessTokenValidity": 1,
+    "IdTokenValidity": 1,
+    "TokenValidityUnits": {
+     "AccessToken": "hours",
+     "IdToken": "hours",
+     "RefreshToken": "days"
+    }
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "TeamAlphaGroup",
+   "cfg": "TeamAlphaGroup",
+   "type": "AWS::Cognito::UserPoolGroup",
+   "values": {
+    "GroupName": "team-alpha",
+    "UserPoolId": {
+     "ref": "UserPool"
+    },
+    "Description": "Team Alpha members and admins",
+    "Precedence": 10
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "TeamBetaGroup",
+   "cfg": "TeamBetaGroup",
+   "type": "AWS::Cognito::UserPoolGroup",
+   "values": {
+    "GroupName": "team-beta",
+    "UserPoolId": {
+     "ref": "UserPool"
+    },
+    "Description": "Team Beta members and admins",
+    "Precedence": 20
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "AdminGroup",
+   "cfg": "AdminGroup",
+   "type": "AWS::Cognito::UserPoolGroup",
+   "values": {
+    "GroupName": "admin",
+    "UserPoolId": {
+     "ref": "UserPool"
+    },
+    "Description": "System administrators",
+    "Precedence": 1
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "CognitoSeederRole",
+   "cfg": "CognitoSeederRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+    ],
+    "Policies": [
+     {
+      "PolicyName": "CognitoSeeder",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "cognito-idp:AdminCreateUser",
+          "cognito-idp:AdminGetUser",
+          "cognito-idp:AdminSetUserPassword",
+          "cognito-idp:AdminAddUserToGroup",
+          "cognito-idp:ListUsers",
+          "cognito-idp:AdminDeleteUser"
+         ],
+         "Resource": {
+          "ref": "UserPool",
+          "attr": "Arn"
+         }
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "CognitoSeederFunction",
+   "cfg": "CognitoSeederFunction",
+   "type": "AWS::Lambda::Function",
+   "values": {
+    "FunctionName": "agentops-ecommerce-users-seeder",
+    "Runtime": "python3.12",
+    "Handler": "index.lambda_handler",
+    "Role": {
+     "ref": "CognitoSeederRole",
+     "attr": "Arn"
+    },
+    "Timeout": 60,
+    "Code": {
+     "ZipFile": "import json\nimport boto3\nimport cfnresponse\nimport logging\n\nlogger = logging.getLogger()\nlogger.setLevel(logging.INFO)\n\ncognito = boto3.client('cognito-idp')\n\n# Test user definitions: email, password, groups, custom:role\nTEST_USERS = [\n    {\n        'email': 'alice@demo.local',\n        'password': 'Demo1234!',\n        'groups': ['team-alpha'],\n        'role': 'member'\n    },\n    {\n        'email': 'bob@demo.local',\n        'password': 'Demo1234!',\n        'groups': ['team-alpha'],\n        'role': 'member'\n    },\n    {\n        'email': 'charlie@demo.local',\n        'password': 'Demo1234!',\n        'groups': ['team-alpha'],\n        'role': 'team_admin'\n    },\n    {\n        'email': 'dave@demo.local',\n        'password': 'Demo1234!',\n        'groups': ['team-beta'],\n        'role': 'member'\n    },\n    {\n        'email': 'eve@demo.local',\n        'password': 'Demo1234!',\n        'groups': ['team-beta'],\n        'role': 'team_admin'\n    },\n    {\n        'email': 'admin@demo.local',\n        'password': 'Demo1234!',\n        'groups': ['admin'],\n        'role': 'admin'\n    }\n]\n\ndef create_users(user_pool_id):\n    \"\"\"Create test users, set passwords, and add to groups.\"\"\"\n    for user_data in TEST_USERS:\n        email = user_data['email']\n        password = user_data['password']\n        groups = user_data['groups']\n        role = user_data['role']\n\n        try:\n            # Check if user exists; if so, delete and recreate\n            try:\n                cognito.admin_get_user(UserPoolId=user_pool_id, Username=email)\n                logger.info(f\"Deleting existing user: {email}\")\n                cognito.admin_delete_user(UserPoolId=user_pool_id, Username=email)\n            except cognito.exceptions.UserNotFoundException:\n                pass\n\n            # Create user with admin_create_user\n            logger.info(f\"Creating user: {email}\")\n            cognito.admin_create_user(\n                UserPoolId=user_pool_id,\n                Username=email,\n                UserAttributes=[\n                    {'Name': 'email', 'Value': email},\n                    {'Name': 'email_verified', 'Value': 'true'},\n                    {'Name': 'custom:role', 'Value': role}\n                ],\n                TemporaryPassword=password,\n                MessageAction='SUPPRESS'\n            )\n\n            # Set permanent password\n            logger.info(f\"Setting permanent password for: {email}\")\n            cognito.admin_set_user_password(\n                UserPoolId=user_pool_id,\n                Username=email,\n                Password=password,\n                Permanent=True\n            )\n\n            # Add user to groups\n            for group in groups:\n                logger.info(f\"Adding {email} to group: {group}\")\n                cognito.admin_add_user_to_group(\n                    UserPoolId=user_pool_id,\n                    Username=email,\n                    GroupName=group\n                )\n\n        except Exception as e:\n            logger.error(f\"Error creating user {email}: {str(e)}\")\n            raise\n\n    logger.info(\"All test users created successfully\")\n\ndef lambda_handler(event, context):\n    \"\"\"CloudFormation custom resource handler.\"\"\"\n    try:\n        logger.info(f\"Event: {json.dumps(event)}\")\n        request_type = event['RequestType']\n        user_pool_id = event['ResourceProperties']['UserPoolId']\n\n        if request_type == 'Create' or request_type == 'Update':\n            create_users(user_pool_id)\n            cfnresponse.send(\n                event,\n                context,\n                cfnresponse.SUCCESS,\n                {'Message': 'Users created successfully'},\n                f\"CognitoSeeder-{user_pool_id}\"\n            )\n        elif request_type == 'Delete':\n            # On stack delete, just return success (UserPool deletion cleans up users)\n            cfnresponse.send(\n                event,\n                context,\n                cfnresponse.SUCCESS,\n                {'Message': 'Stack deletion in progress'},\n                f\"CognitoSeeder-{user_pool_id}\"\n            )\n        else:\n            cfnresponse.send(\n                event,\n                context,\n                cfnresponse.FAILED,\n                {'Message': f'Unknown RequestType: {request_type}'},\n                context.aws_request_id\n            )\n\n    except Exception as e:\n        logger.error(f\"Exception: {str(e)}\")\n        cfnresponse.send(\n            event,\n            context,\n            cfnresponse.FAILED,\n            {'Message': str(e)},\n            context.aws_request_id\n        )\n"
+    }
+   },
+   "refs": [
+    "CognitoSeederRole"
+   ]
+  },
+  {
+   "id": "CognitoSeederCustomResource",
+   "cfg": "CognitoSeederCustomResource",
+   "type": "AWS::CloudFormation::CustomResource",
+   "values": {
+    "ServiceToken": {
+     "ref": "CognitoSeederFunction",
+     "attr": "Arn"
+    },
+    "UserPoolId": {
+     "ref": "UserPool"
+    },
+    "__resource__": {
+     "DependsOn": [
+      "TeamAlphaGroup",
+      "TeamBetaGroup",
+      "AdminGroup"
+     ]
+    }
+   },
+   "refs": [
+    "CognitoSeederFunction",
+    "UserPool"
+   ]
+  },
+  {
+   "id": "__parameter__.UserPoolName",
+   "cfg": "__parameter__.UserPoolName",
+   "type": "__parameter__",
+   "values": {
+    "name": "UserPoolName",
+    "type": "String",
+    "default": "agentops-ecommerce-users",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.AppClientName",
+   "cfg": "__parameter__.AppClientName",
+   "type": "__parameter__",
+   "values": {
+    "name": "AppClientName",
+    "type": "String",
+    "default": "agentops-web-client",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.CallbackUrl",
+   "cfg": "__parameter__.CallbackUrl",
+   "type": "__parameter__",
+   "values": {
+    "name": "CallbackUrl",
+    "type": "String",
+    "default": "http://localhost:3000/auth/callback",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.UserPoolId",
+   "cfg": "__output__.UserPoolId",
+   "type": "__output__",
+   "values": {
+    "name": "UserPoolId",
+    "value": {
+     "ref": "UserPool"
+    },
+    "description": "Cognito User Pool ID.",
+    "export": "stack-UserPoolId"
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "__output__.UserPoolArn",
+   "cfg": "__output__.UserPoolArn",
+   "type": "__output__",
+   "values": {
+    "name": "UserPoolArn",
+    "value": {
+     "ref": "UserPool",
+     "attr": "Arn"
+    },
+    "description": "Cognito User Pool ARN.",
+    "export": "stack-UserPoolArn"
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "__output__.AppClientId",
+   "cfg": "__output__.AppClientId",
+   "type": "__output__",
+   "values": {
+    "name": "AppClientId",
+    "value": {
+     "ref": "UserPoolClient"
+    },
+    "description": "Cognito App Client ID for web/mobile applications.",
+    "export": "stack-AppClientId"
+   },
+   "refs": [
+    "UserPoolClient"
+   ]
+  },
+  {
+   "id": "__output__.CognitoRegion",
+   "cfg": "__output__.CognitoRegion",
+   "type": "__output__",
+   "values": {
+    "name": "CognitoRegion",
+    "value": "us-east-1",
+    "description": "AWS region where the User Pool is located.",
+    "export": "stack-CognitoRegion"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.UserPoolDomain",
+   "cfg": "__output__.UserPoolDomain",
+   "type": "__output__",
+   "values": {
+    "name": "UserPoolDomain",
+    "value": "https://cognito-idp.us-east-1.amazonaws.com/${UserPool}",
+    "description": "Cognito User Pool domain for OAuth flows (can be created separately).",
+    "export": null
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "__output__.SeederFunctionArn",
+   "cfg": "__output__.SeederFunctionArn",
+   "type": "__output__",
+   "values": {
+    "name": "SeederFunctionArn",
+    "value": {
+     "ref": "CognitoSeederFunction",
+     "attr": "Arn"
+    },
+    "description": "ARN of the custom resource Lambda function.",
+    "export": null
+   },
+   "refs": [
+    "CognitoSeederFunction"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPool.UserPool",
+   "cfg": "UserPool",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Cognito::UserPool",
+    "name": "UserPool",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "UserPoolName": "agentops-ecommerce-users",
+     "Schema": [
+      {
+       "Name": "email",
+       "AttributeDataType": "String",
+       "Required": true,
+       "Mutable": true
+      },
+      {
+       "Name": "name",
+       "AttributeDataType": "String",
+       "Mutable": true
+      },
+      {
+       "Name": "role",
+       "AttributeDataType": "String",
+       "Mutable": true,
+       "DeveloperOnlyAttribute": false
+      }
+     ],
+     "AutoVerifiedAttributes": [
+      "email"
+     ],
+     "MfaConfiguration": "OPTIONAL",
+     "Policies": {
+      "PasswordPolicy": {
+       "MinimumLength": 8,
+       "RequireUppercase": true,
+       "RequireLowercase": true,
+       "RequireNumbers": true,
+       "RequireSymbols": false
+      }
+     },
+     "AccountRecoverySetting": {
+      "RecoveryMechanisms": [
+       {
+        "Name": "verified_email",
+        "Priority": 1
+       }
+      ]
+     },
+     "UserAttributeUpdateSettings": {
+      "AttributesRequireVerificationBeforeUpdate": [
+       "email"
+      ]
+     },
+     "EnabledMfas": [
+      "SOFTWARE_TOKEN_MFA"
+     ],
+     "EmailConfiguration": {
+      "EmailSendingAccount": "COGNITO_DEFAULT"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolClient.UserPoolClient",
+   "cfg": "UserPoolClient",
+   "type": "__declared__",
+   "refs": [
+    "UserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolClient",
+    "name": "UserPoolClient",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ClientName": "agentops-web-client",
+     "UserPoolId": {
+      "ref": "UserPool"
+     },
+     "GenerateSecret": false,
+     "ExplicitAuthFlows": [
+      "ALLOW_USER_PASSWORD_AUTH",
+      "ALLOW_REFRESH_TOKEN_AUTH",
+      "ALLOW_USER_SRP_AUTH"
+     ],
+     "AllowedOAuthFlows": [
+      "code"
+     ],
+     "AllowedOAuthScopes": [
+      "email",
+      "openid",
+      "profile"
+     ],
+     "AllowedOAuthFlowsUserPoolClient": true,
+     "CallbackURLs": [
+      "http://localhost:3000/auth/callback"
+     ],
+     "LogoutURLs": [
+      "http://localhost:3000",
+      "http://localhost:3000/logout"
+     ],
+     "SupportedIdentityProviders": [
+      "COGNITO"
+     ],
+     "PreventUserExistenceErrors": "ENABLED",
+     "RefreshTokenValidity": 30,
+     "AccessTokenValidity": 1,
+     "IdTokenValidity": 1,
+     "TokenValidityUnits": {
+      "AccessToken": "hours",
+      "IdToken": "hours",
+      "RefreshToken": "days"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolGroup.TeamAlphaGroup",
+   "cfg": "TeamAlphaGroup",
+   "type": "__declared__",
+   "refs": [
+    "UserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolGroup",
+    "name": "TeamAlphaGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "GroupName": "team-alpha",
+     "UserPoolId": {
+      "ref": "UserPool"
+     },
+     "Description": "Team Alpha members and admins",
+     "Precedence": 10
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolGroup.TeamBetaGroup",
+   "cfg": "TeamBetaGroup",
+   "type": "__declared__",
+   "refs": [
+    "UserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolGroup",
+    "name": "TeamBetaGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "GroupName": "team-beta",
+     "UserPoolId": {
+      "ref": "UserPool"
+     },
+     "Description": "Team Beta members and admins",
+     "Precedence": 20
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolGroup.AdminGroup",
+   "cfg": "AdminGroup",
+   "type": "__declared__",
+   "refs": [
+    "UserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolGroup",
+    "name": "AdminGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "GroupName": "admin",
+     "UserPoolId": {
+      "ref": "UserPool"
+     },
+     "Description": "System administrators",
+     "Precedence": 1
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.CognitoSeederRole",
+   "cfg": "CognitoSeederRole",
+   "type": "__declared__",
+   "refs": [
+    "UserPool"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "CognitoSeederRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+     ],
+     "Policies": [
+      {
+       "PolicyName": "CognitoSeeder",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "cognito-idp:AdminCreateUser",
+           "cognito-idp:AdminGetUser",
+           "cognito-idp:AdminSetUserPassword",
+           "cognito-idp:AdminAddUserToGroup",
+           "cognito-idp:ListUsers",
+           "cognito-idp:AdminDeleteUser"
+          ],
+          "Resource": {
+           "ref": "UserPool",
+           "attr": "Arn"
+          }
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Function.CognitoSeederFunction",
+   "cfg": "CognitoSeederFunction",
+   "type": "__declared__",
+   "refs": [
+    "CognitoSeederRole"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Function",
+    "name": "CognitoSeederFunction",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "FunctionName": "agentops-ecommerce-users-seeder",
+     "Runtime": "python3.12",
+     "Handler": "index.lambda_handler",
+     "Role": {
+      "ref": "CognitoSeederRole",
+      "attr": "Arn"
+     },
+     "Timeout": 60,
+     "Code": {
+      "ZipFile": "import json\nimport boto3\nimport cfnresponse\nimport logging\n\nlogger = logging.getLogger()\nlogger.setLevel(logging.INFO)\n\ncognito = boto3.client('cognito-idp')\n\n# Test user definitions: email, password, groups, custom:role\nTEST_USERS = [\n    {\n        'email': 'alice@demo.local',\n        'password': 'Demo1234!',\n        'groups': ['team-alpha'],\n        'role': 'member'\n    },\n    {\n        'email': 'bob@demo.local',\n        'password': 'Demo1234!',\n        'groups': ['team-alpha'],\n        'role': 'member'\n    },\n    {\n        'email': 'charlie@demo.local',\n        'password': 'Demo1234!',\n        'groups': ['team-alpha'],\n        'role': 'team_admin'\n    },\n    {\n        'email': 'dave@demo.local',\n        'password': 'Demo1234!',\n        'groups': ['team-beta'],\n        'role': 'member'\n    },\n    {\n        'email': 'eve@demo.local',\n        'password': 'Demo1234!',\n        'groups': ['team-beta'],\n        'role': 'team_admin'\n    },\n    {\n        'email': 'admin@demo.local',\n        'password': 'Demo1234!',\n        'groups': ['admin'],\n        'role': 'admin'\n    }\n]\n\ndef create_users(user_pool_id):\n    \"\"\"Create test users, set passwords, and add to groups.\"\"\"\n    for user_data in TEST_USERS:\n        email = user_data['email']\n        password = user_data['password']\n        groups = user_data['groups']\n        role = user_data['role']\n\n        try:\n            # Check if user exists; if so, delete and recreate\n            try:\n                cognito.admin_get_user(UserPoolId=user_pool_id, Username=email)\n                logger.info(f\"Deleting existing user: {email}\")\n                cognito.admin_delete_user(UserPoolId=user_pool_id, Username=email)\n            except cognito.exceptions.UserNotFoundException:\n                pass\n\n            # Create user with admin_create_user\n            logger.info(f\"Creating user: {email}\")\n            cognito.admin_create_user(\n                UserPoolId=user_pool_id,\n                Username=email,\n                UserAttributes=[\n                    {'Name': 'email', 'Value': email},\n                    {'Name': 'email_verified', 'Value': 'true'},\n                    {'Name': 'custom:role', 'Value': role}\n                ],\n                TemporaryPassword=password,\n                MessageAction='SUPPRESS'\n            )\n\n            # Set permanent password\n            logger.info(f\"Setting permanent password for: {email}\")\n            cognito.admin_set_user_password(\n                UserPoolId=user_pool_id,\n                Username=email,\n                Password=password,\n                Permanent=True\n            )\n\n            # Add user to groups\n            for group in groups:\n                logger.info(f\"Adding {email} to group: {group}\")\n                cognito.admin_add_user_to_group(\n                    UserPoolId=user_pool_id,\n                    Username=email,\n                    GroupName=group\n                )\n\n        except Exception as e:\n            logger.error(f\"Error creating user {email}: {str(e)}\")\n            raise\n\n    logger.info(\"All test users created successfully\")\n\ndef lambda_handler(event, context):\n    \"\"\"CloudFormation custom resource handler.\"\"\"\n    try:\n        logger.info(f\"Event: {json.dumps(event)}\")\n        request_type = event['RequestType']\n        user_pool_id = event['ResourceProperties']['UserPoolId']\n\n        if request_type == 'Create' or request_type == 'Update':\n            create_users(user_pool_id)\n            cfnresponse.send(\n                event,\n                context,\n                cfnresponse.SUCCESS,\n                {'Message': 'Users created successfully'},\n                f\"CognitoSeeder-{user_pool_id}\"\n            )\n        elif request_type == 'Delete':\n            # On stack delete, just return success (UserPool deletion cleans up users)\n            cfnresponse.send(\n                event,\n                context,\n                cfnresponse.SUCCESS,\n                {'Message': 'Stack deletion in progress'},\n                f\"CognitoSeeder-{user_pool_id}\"\n            )\n        else:\n            cfnresponse.send(\n                event,\n                context,\n                cfnresponse.FAILED,\n                {'Message': f'Unknown RequestType: {request_type}'},\n                context.aws_request_id\n            )\n\n    except Exception as e:\n        logger.error(f\"Exception: {str(e)}\")\n        cfnresponse.send(\n            event,\n            context,\n            cfnresponse.FAILED,\n            {'Message': str(e)},\n            context.aws_request_id\n        )\n"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::CloudFormation::CustomResource.CognitoSeederCustomResource",
+   "cfg": "CognitoSeederCustomResource",
+   "type": "__declared__",
+   "refs": [
+    "CognitoSeederFunction",
+    "UserPool"
+   ],
+   "values": {
+    "type": "AWS::CloudFormation::CustomResource",
+    "name": "CognitoSeederCustomResource",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ServiceToken": {
+      "ref": "CognitoSeederFunction",
+      "attr": "Arn"
+     },
+     "UserPoolId": {
+      "ref": "UserPool"
+     }
+    }
+   }
+  }
+ ]
+}

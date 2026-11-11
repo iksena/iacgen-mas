@@ -1,0 +1,730 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "56d6e36739d8007b190f4d2c30723a3ed764dcc5707eb9fd306fe5a9c59763d5",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "LambdaWriteDynamoDBPolicy",
+   "cfg": "LambdaWriteDynamoDBPolicy",
+   "type": "AWS::IAM::ManagedPolicy",
+   "values": {
+    "ManagedPolicyName": "Lambda-Write-DynamoDB-dev",
+    "Description": "Policy for Lambda function to write to DynamoDB",
+    "PolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Sid": "DynamoDBTableAccess",
+       "Effect": "Allow",
+       "Action": [
+        "dynamodb:PutItem",
+        "dynamodb:DescribeTable"
+       ],
+       "Resource": [
+        "arn:aws:dynamodb:us-east-1:123456789012:table/ecommerce-orders-dev"
+       ]
+      }
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "LambdaSNSPublishPolicy",
+   "cfg": "LambdaSNSPublishPolicy",
+   "type": "AWS::IAM::ManagedPolicy",
+   "values": {
+    "ManagedPolicyName": "Lambda-SNS-Publish-dev",
+    "Description": "Policy for SNS to get, list, and publish topics that are received by Lambda",
+    "PolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Sid": "SNSTopicAccess",
+       "Effect": "Allow",
+       "Action": [
+        "sns:Publish",
+        "sns:GetTopicAttributes"
+       ],
+       "Resource": [
+        "arn:aws:sns:us-east-1:123456789012:POC-Topic-dev"
+       ]
+      }
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "LambdaDynamoDBStreamsReadPolicy",
+   "cfg": "LambdaDynamoDBStreamsReadPolicy",
+   "type": "AWS::IAM::ManagedPolicy",
+   "values": {
+    "ManagedPolicyName": "Lambda-DynamoDBStreams-Read-dev",
+    "Description": "Policy for Lambda function to read records from DynamoDB Streams",
+    "PolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Sid": "DynamoDBStreamAccess",
+       "Effect": "Allow",
+       "Action": [
+        "dynamodb:GetShardIterator",
+        "dynamodb:DescribeStream",
+        "dynamodb:GetRecords"
+       ],
+       "Resource": [
+        "arn:aws:dynamodb:us-east-1:123456789012:table/ecommerce-orders-dev/stream/*"
+       ]
+      },
+      {
+       "Sid": "DynamoDBTableStreamInfo",
+       "Effect": "Allow",
+       "Action": [
+        "dynamodb:ListStreams",
+        "dynamodb:DescribeTable"
+       ],
+       "Resource": [
+        "arn:aws:dynamodb:us-east-1:123456789012:table/ecommerce-orders-dev"
+       ]
+      }
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "LambdaReadSQSPolicy",
+   "cfg": "LambdaReadSQSPolicy",
+   "type": "AWS::IAM::ManagedPolicy",
+   "values": {
+    "ManagedPolicyName": "Lambda-Read-SQS-dev",
+    "Description": "Policy for Lambda function to read messages from SQS",
+    "PolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Sid": "SQSQueueAccess",
+       "Effect": "Allow",
+       "Action": [
+        "sqs:DeleteMessage",
+        "sqs:ReceiveMessage",
+        "sqs:GetQueueAttributes",
+        "sqs:ChangeMessageVisibility"
+       ],
+       "Resource": [
+        "arn:aws:sqs:us-east-1:123456789012:POC-Queue-dev"
+       ]
+      }
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "LambdaBasicExecutionPolicy",
+   "cfg": "LambdaBasicExecutionPolicy",
+   "type": "AWS::IAM::ManagedPolicy",
+   "values": {
+    "ManagedPolicyName": "Lambda-Basic-Execution-dev",
+    "Description": "Basic execution policy for Lambda functions to write logs",
+    "PolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Action": [
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+       ],
+       "Resource": [
+        "*"
+       ]
+      }
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "LambdaSQSDynamoDBRole",
+   "cfg": "LambdaSQSDynamoDBRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "POC-Lambda-SQS-DynamoDB-Role-dev",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     {
+      "ref": "LambdaBasicExecutionPolicy"
+     },
+     {
+      "ref": "LambdaReadSQSPolicy"
+     },
+     {
+      "ref": "LambdaWriteDynamoDBPolicy"
+     }
+    ],
+    "Tags": [
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     }
+    ]
+   },
+   "refs": [
+    "LambdaBasicExecutionPolicy",
+    "LambdaReadSQSPolicy",
+    "LambdaWriteDynamoDBPolicy"
+   ]
+  },
+  {
+   "id": "LambdaDynamoDBSNSRole",
+   "cfg": "LambdaDynamoDBSNSRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "POC-Lambda-DynamoDB-SNS-Role-dev",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     {
+      "ref": "LambdaBasicExecutionPolicy"
+     },
+     {
+      "ref": "LambdaDynamoDBStreamsReadPolicy"
+     },
+     {
+      "ref": "LambdaSNSPublishPolicy"
+     }
+    ],
+    "Tags": [
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     }
+    ]
+   },
+   "refs": [
+    "LambdaBasicExecutionPolicy",
+    "LambdaDynamoDBStreamsReadPolicy",
+    "LambdaSNSPublishPolicy"
+   ]
+  },
+  {
+   "id": "APIGatewaySQSPolicy",
+   "cfg": "APIGatewaySQSPolicy",
+   "type": "AWS::IAM::ManagedPolicy",
+   "values": {
+    "ManagedPolicyName": "API-Gateway-SQS-SendMessage-dev",
+    "Description": "Policy for API Gateway to send messages to SQS",
+    "PolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Sid": "VisualEditor0",
+       "Effect": "Allow",
+       "Action": [
+        "sqs:SendMessage"
+       ],
+       "Resource": [
+        "*"
+       ]
+      }
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "APIGatewaySQSRole",
+   "cfg": "APIGatewaySQSRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "POC-API-Gateway-SQS-Role-dev",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "apigateway.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     {
+      "ref": "APIGatewaySQSPolicy"
+     }
+    ],
+    "Tags": [
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     }
+    ]
+   },
+   "refs": [
+    "APIGatewaySQSPolicy"
+   ]
+  },
+  {
+   "id": "__parameter__.Environment",
+   "cfg": "__parameter__.Environment",
+   "type": "__parameter__",
+   "values": {
+    "name": "Environment",
+    "type": "String",
+    "default": "dev",
+    "allowed_values": [
+     "dev",
+     "test",
+     "prod"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.LambdaSQSDynamoDBRoleARN",
+   "cfg": "__output__.LambdaSQSDynamoDBRoleARN",
+   "type": "__output__",
+   "values": {
+    "name": "LambdaSQSDynamoDBRoleARN",
+    "value": {
+     "ref": "LambdaSQSDynamoDBRole",
+     "attr": "Arn"
+    },
+    "description": "ARN of the Lambda SQS DynamoDB Role",
+    "export": "stack-LambdaSQSDynamoDBRoleARN"
+   },
+   "refs": [
+    "LambdaSQSDynamoDBRole"
+   ]
+  },
+  {
+   "id": "__output__.LambdaDynamoDBSNSRoleARN",
+   "cfg": "__output__.LambdaDynamoDBSNSRoleARN",
+   "type": "__output__",
+   "values": {
+    "name": "LambdaDynamoDBSNSRoleARN",
+    "value": {
+     "ref": "LambdaDynamoDBSNSRole",
+     "attr": "Arn"
+    },
+    "description": "ARN of the Lambda DynamoDB SNS Role",
+    "export": "stack-LambdaDynamoDBSNSRoleARN"
+   },
+   "refs": [
+    "LambdaDynamoDBSNSRole"
+   ]
+  },
+  {
+   "id": "__output__.APIGatewaySQSRoleARN",
+   "cfg": "__output__.APIGatewaySQSRoleARN",
+   "type": "__output__",
+   "values": {
+    "name": "APIGatewaySQSRoleARN",
+    "value": {
+     "ref": "APIGatewaySQSRole",
+     "attr": "Arn"
+    },
+    "description": "ARN of the API Gateway SQS Role",
+    "export": "stack-APIGatewaySQSRoleARN"
+   },
+   "refs": [
+    "APIGatewaySQSRole"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::IAM::ManagedPolicy.LambdaWriteDynamoDBPolicy",
+   "cfg": "LambdaWriteDynamoDBPolicy",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::ManagedPolicy",
+    "name": "LambdaWriteDynamoDBPolicy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ManagedPolicyName": "Lambda-Write-DynamoDB-dev",
+     "Description": "Policy for Lambda function to write to DynamoDB",
+     "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Sid": "DynamoDBTableAccess",
+        "Effect": "Allow",
+        "Action": [
+         "dynamodb:PutItem",
+         "dynamodb:DescribeTable"
+        ],
+        "Resource": [
+         "arn:aws:dynamodb:us-east-1:123456789012:table/ecommerce-orders-dev"
+        ]
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::ManagedPolicy.LambdaSNSPublishPolicy",
+   "cfg": "LambdaSNSPublishPolicy",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::ManagedPolicy",
+    "name": "LambdaSNSPublishPolicy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ManagedPolicyName": "Lambda-SNS-Publish-dev",
+     "Description": "Policy for SNS to get, list, and publish topics that are received by Lambda",
+     "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Sid": "SNSTopicAccess",
+        "Effect": "Allow",
+        "Action": [
+         "sns:Publish",
+         "sns:GetTopicAttributes"
+        ],
+        "Resource": [
+         "arn:aws:sns:us-east-1:123456789012:POC-Topic-dev"
+        ]
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::ManagedPolicy.LambdaDynamoDBStreamsReadPolicy",
+   "cfg": "LambdaDynamoDBStreamsReadPolicy",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::ManagedPolicy",
+    "name": "LambdaDynamoDBStreamsReadPolicy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ManagedPolicyName": "Lambda-DynamoDBStreams-Read-dev",
+     "Description": "Policy for Lambda function to read records from DynamoDB Streams",
+     "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Sid": "DynamoDBStreamAccess",
+        "Effect": "Allow",
+        "Action": [
+         "dynamodb:GetShardIterator",
+         "dynamodb:DescribeStream",
+         "dynamodb:GetRecords"
+        ],
+        "Resource": [
+         "arn:aws:dynamodb:us-east-1:123456789012:table/ecommerce-orders-dev/stream/*"
+        ]
+       },
+       {
+        "Sid": "DynamoDBTableStreamInfo",
+        "Effect": "Allow",
+        "Action": [
+         "dynamodb:ListStreams",
+         "dynamodb:DescribeTable"
+        ],
+        "Resource": [
+         "arn:aws:dynamodb:us-east-1:123456789012:table/ecommerce-orders-dev"
+        ]
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::ManagedPolicy.LambdaReadSQSPolicy",
+   "cfg": "LambdaReadSQSPolicy",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::ManagedPolicy",
+    "name": "LambdaReadSQSPolicy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ManagedPolicyName": "Lambda-Read-SQS-dev",
+     "Description": "Policy for Lambda function to read messages from SQS",
+     "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Sid": "SQSQueueAccess",
+        "Effect": "Allow",
+        "Action": [
+         "sqs:DeleteMessage",
+         "sqs:ReceiveMessage",
+         "sqs:GetQueueAttributes",
+         "sqs:ChangeMessageVisibility"
+        ],
+        "Resource": [
+         "arn:aws:sqs:us-east-1:123456789012:POC-Queue-dev"
+        ]
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::ManagedPolicy.LambdaBasicExecutionPolicy",
+   "cfg": "LambdaBasicExecutionPolicy",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::ManagedPolicy",
+    "name": "LambdaBasicExecutionPolicy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ManagedPolicyName": "Lambda-Basic-Execution-dev",
+     "Description": "Basic execution policy for Lambda functions to write logs",
+     "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Action": [
+         "logs:CreateLogGroup",
+         "logs:CreateLogStream",
+         "logs:PutLogEvents"
+        ],
+        "Resource": [
+         "*"
+        ]
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.LambdaSQSDynamoDBRole",
+   "cfg": "LambdaSQSDynamoDBRole",
+   "type": "__declared__",
+   "refs": [
+    "LambdaBasicExecutionPolicy",
+    "LambdaReadSQSPolicy",
+    "LambdaWriteDynamoDBPolicy"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "LambdaSQSDynamoDBRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "POC-Lambda-SQS-DynamoDB-Role-dev",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "ManagedPolicyArns": [
+      {
+       "ref": "LambdaBasicExecutionPolicy"
+      },
+      {
+       "ref": "LambdaReadSQSPolicy"
+      },
+      {
+       "ref": "LambdaWriteDynamoDBPolicy"
+      }
+     ],
+     "Tags": [
+      {
+       "Key": "Environment",
+       "Value": "dev"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.LambdaDynamoDBSNSRole",
+   "cfg": "LambdaDynamoDBSNSRole",
+   "type": "__declared__",
+   "refs": [
+    "LambdaBasicExecutionPolicy",
+    "LambdaDynamoDBStreamsReadPolicy",
+    "LambdaSNSPublishPolicy"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "LambdaDynamoDBSNSRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "POC-Lambda-DynamoDB-SNS-Role-dev",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "ManagedPolicyArns": [
+      {
+       "ref": "LambdaBasicExecutionPolicy"
+      },
+      {
+       "ref": "LambdaDynamoDBStreamsReadPolicy"
+      },
+      {
+       "ref": "LambdaSNSPublishPolicy"
+      }
+     ],
+     "Tags": [
+      {
+       "Key": "Environment",
+       "Value": "dev"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::ManagedPolicy.APIGatewaySQSPolicy",
+   "cfg": "APIGatewaySQSPolicy",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::ManagedPolicy",
+    "name": "APIGatewaySQSPolicy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ManagedPolicyName": "API-Gateway-SQS-SendMessage-dev",
+     "Description": "Policy for API Gateway to send messages to SQS",
+     "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Sid": "VisualEditor0",
+        "Effect": "Allow",
+        "Action": [
+         "sqs:SendMessage"
+        ],
+        "Resource": [
+         "*"
+        ]
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.APIGatewaySQSRole",
+   "cfg": "APIGatewaySQSRole",
+   "type": "__declared__",
+   "refs": [
+    "APIGatewaySQSPolicy"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "APIGatewaySQSRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "POC-API-Gateway-SQS-Role-dev",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "apigateway.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "ManagedPolicyArns": [
+      {
+       "ref": "APIGatewaySQSPolicy"
+      }
+     ],
+     "Tags": [
+      {
+       "Key": "Environment",
+       "Value": "dev"
+      }
+     ]
+    }
+   }
+  }
+ ]
+}

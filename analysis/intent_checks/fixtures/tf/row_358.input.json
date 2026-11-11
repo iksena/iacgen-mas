@@ -1,0 +1,384 @@
+{
+ "meta": {
+  "lang": "tf",
+  "mode": "plan",
+  "warnings": [],
+  "gt_hash": "686c77d925db2ca25414efd2c48b33344f21599ae4fe2192d8e42276afb9937b",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "aws_cloudwatch_event_rule.guardduty_findings",
+   "cfg": "aws_cloudwatch_event_rule.guardduty_findings",
+   "type": "aws_cloudwatch_event_rule",
+   "values": {
+    "description": "AWS GuardDuty event findings",
+    "event_bus_name": "default",
+    "event_pattern": "{\"detail-type\":[\"GuardDuty Finding\"],\"source\":[\"aws.guardduty\"]}",
+    "is_enabled": true,
+    "name": "guardduty-finding-events",
+    "role_arn": null,
+    "schedule_expression": null,
+    "tags": null
+   },
+   "refs": []
+  },
+  {
+   "id": "aws_guardduty_detector.main",
+   "cfg": "aws_guardduty_detector.main",
+   "type": "aws_guardduty_detector",
+   "values": {
+    "enable": true,
+    "finding_publishing_frequency": "FIFTEEN_MINUTES",
+    "tags": null
+   },
+   "refs": [
+    "aws_kms_alias.guardduty",
+    "aws_kms_key.guardduty"
+   ]
+  },
+  {
+   "id": "aws_kms_alias.guardduty",
+   "cfg": "aws_kms_alias.guardduty",
+   "type": "aws_kms_alias",
+   "values": {
+    "name": "alias/guardduty"
+   },
+   "refs": [
+    "aws_kms_key.guardduty"
+   ]
+  },
+  {
+   "id": "aws_kms_key.guardduty",
+   "cfg": "aws_kms_key.guardduty",
+   "type": "aws_kms_key",
+   "values": {
+    "bypass_policy_lockout_safety_check": false,
+    "customer_master_key_spec": "SYMMETRIC_DEFAULT",
+    "deletion_window_in_days": 30,
+    "description": "Key used to encrypt GuardDuty findings.",
+    "enable_key_rotation": true,
+    "is_enabled": true,
+    "key_usage": "ENCRYPT_DECRYPT",
+    "policy": "{\n  \"Version\": \"2012-10-17\",\n  \"Id\": \"key-consolepolicy\",\n  \"Statement\": [\n    {\n      \"Sid\": \"Enable IAM User Permissions\",\n      \"Effect\": \"Allow\",\n      \"Action\": \"kms:*\",\n      \"Resource\": \"*\",\n      \"Principal\": {\n        \"AWS\": \"arn:aws:iam::000000000000:root\"\n      }\n    },\n    {\n      \"Sid\": \"Allow GuardDuty to use the key\",\n      \"Effect\": \"Allow\",\n      \"Action\": \"kms:GenerateDataKey\",\n      \"Resource\": \"*\",\n      \"Principal\": {\n        \"Service\": \"guardduty.amazonaws.com\"\n      }\n    }\n  ]\n}",
+    "tags": null
+   },
+   "refs": [
+    "data.aws_iam_policy_document.key_policy"
+   ]
+  },
+  {
+   "id": "__parameter__.enable",
+   "cfg": "__parameter__.enable",
+   "type": "__parameter__",
+   "values": {
+    "name": "enable",
+    "default": true
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.finding_publishing_frequency",
+   "cfg": "__parameter__.finding_publishing_frequency",
+   "type": "__parameter__",
+   "values": {
+    "name": "finding_publishing_frequency",
+    "default": "FIFTEEN_MINUTES"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.kms_alias_name",
+   "cfg": "__parameter__.kms_alias_name",
+   "type": "__parameter__",
+   "values": {
+    "name": "kms_alias_name",
+    "default": "alias/guardduty"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.kms_key_tags",
+   "cfg": "__parameter__.kms_key_tags",
+   "type": "__parameter__",
+   "values": {
+    "name": "kms_key_tags",
+    "default": {}
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.s3_bucket_name",
+   "cfg": "__parameter__.s3_bucket_name",
+   "type": "__parameter__",
+   "values": {
+    "name": "s3_bucket_name",
+    "default": ""
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.s3_bucket_prefix",
+   "cfg": "__parameter__.s3_bucket_prefix",
+   "type": "__parameter__",
+   "values": {
+    "name": "s3_bucket_prefix",
+    "default": "/guardduty"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.aws_cloudwatch_event_rule_name",
+   "cfg": "__output__.aws_cloudwatch_event_rule_name",
+   "type": "__output__",
+   "values": {
+    "name": "aws_cloudwatch_event_rule_name",
+    "value": "guardduty-finding-events",
+    "description": "Name of the CloudWatch rule that watches for AWS GuardDuty findings."
+   },
+   "refs": [
+    "aws_cloudwatch_event_rule.guardduty_findings"
+   ]
+  },
+  {
+   "id": "__output__.aws_guardduty_detector_id",
+   "cfg": "__output__.aws_guardduty_detector_id",
+   "type": "__output__",
+   "values": {
+    "name": "aws_guardduty_detector_id",
+    "value": null,
+    "description": "The ID of the GuardDuty detector."
+   },
+   "refs": [
+    "aws_guardduty_detector.main"
+   ]
+  },
+  {
+   "id": "__declared__.data.aws_caller_identity.current",
+   "cfg": "data.aws_caller_identity.current",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "data.aws_caller_identity",
+    "name": "current",
+    "gated": false,
+    "gate": null,
+    "properties": {}
+   }
+  },
+  {
+   "id": "__declared__.data.aws_partition.current",
+   "cfg": "data.aws_partition.current",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "data.aws_partition",
+    "name": "current",
+    "gated": false,
+    "gate": null,
+    "properties": {}
+   }
+  },
+  {
+   "id": "__declared__.data.aws_iam_policy_document.key_policy",
+   "cfg": "data.aws_iam_policy_document.key_policy",
+   "type": "__declared__",
+   "refs": [
+    "data.aws_caller_identity.current",
+    "data.aws_partition.current"
+   ],
+   "values": {
+    "type": "data.aws_iam_policy_document",
+    "name": "key_policy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "policy_id": "key-consolepolicy",
+     "statement": [
+      {
+       "sid": "Enable IAM User Permissions",
+       "actions": [
+        "kms:*"
+       ],
+       "effect": "Allow",
+       "principals": [
+        {
+         "type": "AWS",
+         "identifiers": [
+          "${format(\"arn:%s:iam::%s:root\",data.aws_partition.current.partition,data.aws_caller_identity.current.account_id)}"
+         ]
+        }
+       ],
+       "resources": [
+        "*"
+       ]
+      },
+      {
+       "sid": "Allow GuardDuty to use the key",
+       "actions": [
+        "kms:GenerateDataKey"
+       ],
+       "effect": "Allow",
+       "principals": [
+        {
+         "type": "Service",
+         "identifiers": [
+          "guardduty.amazonaws.com"
+         ]
+        }
+       ],
+       "resources": [
+        "*"
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_kms_key.guardduty",
+   "cfg": "aws_kms_key.guardduty",
+   "type": "__declared__",
+   "refs": [
+    "data.aws_iam_policy_document.key_policy"
+   ],
+   "values": {
+    "type": "aws_kms_key",
+    "name": "guardduty",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "description": "Key used to encrypt GuardDuty findings.",
+     "key_usage": "ENCRYPT_DECRYPT",
+     "deletion_window_in_days": 30,
+     "policy": "${data.aws_iam_policy_document.key_policy.json}",
+     "enable_key_rotation": true,
+     "tags": [
+      {}
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_kms_alias.guardduty",
+   "cfg": "aws_kms_alias.guardduty",
+   "type": "__declared__",
+   "refs": [
+    "aws_kms_key.guardduty"
+   ],
+   "values": {
+    "type": "aws_kms_alias",
+    "name": "guardduty",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "alias/guardduty",
+     "target_key_id": "${aws_kms_key.guardduty.key_id}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_guardduty_detector.main",
+   "cfg": "aws_guardduty_detector.main",
+   "type": "__declared__",
+   "refs": [
+    "aws_kms_alias.guardduty",
+    "aws_kms_key.guardduty"
+   ],
+   "values": {
+    "type": "aws_guardduty_detector",
+    "name": "main",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "enable": true,
+     "finding_publishing_frequency": "FIFTEEN_MINUTES",
+     "depends_on": [
+      "${aws_kms_key.guardduty}",
+      "${aws_kms_alias.guardduty}"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.data.aws_s3_bucket.main",
+   "cfg": "data.aws_s3_bucket.main",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "data.aws_s3_bucket",
+    "name": "main",
+    "gated": true,
+    "gate": "length(var.s3_bucket_name) > 0 ? 1 : 0",
+    "properties": {
+     "count": "${length(var.s3_bucket_name) > 0 ? 1 : 0}",
+     "bucket": ""
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_s3_bucket_object.guardduty",
+   "cfg": "aws_s3_bucket_object.guardduty",
+   "type": "__declared__",
+   "refs": [
+    "data.aws_s3_bucket.main"
+   ],
+   "values": {
+    "type": "aws_s3_bucket_object",
+    "name": "guardduty",
+    "gated": true,
+    "gate": "length(var.s3_bucket_name) > 0 && length(var.s3_bucket_prefix) > 0 ? 1 : 0",
+    "properties": {
+     "count": "${length(var.s3_bucket_name) > 0 && length(var.s3_bucket_prefix) > 0 ? 1 : 0}",
+     "bucket": "${data.aws_s3_bucket.main[0].id}",
+     "acl": "private",
+     "key": "${var.s3_bucket_prefix == \"/\" ? \"/\" : format(\"%s/\",substr(var.s3_bucket_prefix,0,1) == \"/\" ? substr(var.s3_bucket_prefix,1,length(var.s3_bucket_prefix)) : var.s3_bucket_prefix)}",
+     "source": "/dev/null"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_guardduty_publishing_destination.main",
+   "cfg": "aws_guardduty_publishing_destination.main",
+   "type": "__declared__",
+   "refs": [
+    "aws_guardduty_detector.main",
+    "aws_kms_key.guardduty",
+    "aws_s3_bucket_object.guardduty",
+    "data.aws_s3_bucket.main"
+   ],
+   "values": {
+    "type": "aws_guardduty_publishing_destination",
+    "name": "main",
+    "gated": true,
+    "gate": "length(var.s3_bucket_name) > 0 ? 1 : 0",
+    "properties": {
+     "count": "${length(var.s3_bucket_name) > 0 ? 1 : 0}",
+     "detector_id": "${aws_guardduty_detector.main.id}",
+     "destination_arn": "${format(\"%s%s\",data.aws_s3_bucket.main[0].arn,length(var.s3_bucket_prefix) > 0 ? var.s3_bucket_prefix : \"/\")}",
+     "kms_key_arn": "${aws_kms_key.guardduty.arn}",
+     "depends_on": [
+      "${aws_s3_bucket_object.guardduty}"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_cloudwatch_event_rule.guardduty_findings",
+   "cfg": "aws_cloudwatch_event_rule.guardduty_findings",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_cloudwatch_event_rule",
+    "name": "guardduty_findings",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "guardduty-finding-events",
+     "description": "AWS GuardDuty event findings",
+     "event_pattern": "  {\n    \"detail-type\": [\n      \"GuardDuty Finding\"\n    ],\n    \"source\": [\n      \"aws.guardduty\"\n    ]\n  }"
+    }
+   }
+  }
+ ]
+}

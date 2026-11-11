@@ -1,0 +1,1085 @@
+package intent.cfn.row_247
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {
+  "key": {
+   "types": [
+    "AWS::KMS::Key"
+   ],
+   "where": []
+  },
+  "alias": {
+   "types": [
+    "AWS::KMS::Alias"
+   ],
+   "where": []
+  },
+  "d_rule": {
+   "types": [
+    "__declared__"
+   ],
+   "where": [
+    {
+     "path": [
+      "type"
+     ],
+     "op": "eq",
+     "value": "AWS::Events::Rule"
+    }
+   ]
+  },
+  "p_ParentAlertStack": {
+   "types": [
+    "__parameter__"
+   ],
+   "where": [
+    {
+     "path": [
+      "name"
+     ],
+     "op": "eq",
+     "value": "ParentAlertStack"
+    }
+   ]
+  },
+  "p_Service": {
+   "types": [
+    "__parameter__"
+   ],
+   "where": [
+    {
+     "path": [
+      "name"
+     ],
+     "op": "eq",
+     "value": "Service"
+    }
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "p_alert",
+   "kind": "attr",
+   "tier": "core",
+   "select": "p_ParentAlertStack",
+   "cond": {
+    "path": [
+     "default"
+    ],
+    "op": "eq",
+    "value": ""
+   },
+   "quote": "ParentAlertStack defaulting to an empty string"
+  },
+  {
+   "id": "p_service",
+   "kind": "attr",
+   "tier": "core",
+   "select": "p_Service",
+   "cond": {
+    "path": [
+     "default"
+    ],
+    "op": "eq",
+    "value": "ALL_SERVICES"
+   },
+   "quote": "Service defaulting to \"ALL_SERVICES\""
+  },
+  {
+   "id": "p_options",
+   "kind": "all_of",
+   "tier": "detail",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "p_Service",
+     "cond": {
+      "path": [
+       "allowed_values",
+       "*"
+      ],
+      "op": "eq",
+      "value": "ALL_SERVICES"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "p_Service",
+     "cond": {
+      "path": [
+       "allowed_values",
+       "*"
+      ],
+      "op": "eq",
+      "value": "S3_PUBLIC_ACCESS"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "p_Service",
+     "cond": {
+      "path": [
+       "allowed_values",
+       "*"
+      ],
+      "op": "eq",
+      "value": "connect"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "p_Service",
+     "cond": {
+      "path": [
+       "allowed_values",
+       "*"
+      ],
+      "op": "eq",
+      "value": "dms"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "p_Service",
+     "cond": {
+      "path": [
+       "allowed_values",
+       "*"
+      ],
+      "op": "eq",
+      "value": "ssm"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "p_Service",
+     "cond": {
+      "path": [
+       "allowed_values",
+       "*"
+      ],
+      "op": "eq",
+      "value": "ec2"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "p_Service",
+     "cond": {
+      "path": [
+       "allowed_values",
+       "*"
+      ],
+      "op": "eq",
+      "value": "elasticfilesystem"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "p_Service",
+     "cond": {
+      "path": [
+       "allowed_values",
+       "*"
+      ],
+      "op": "eq",
+      "value": "es"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "p_Service",
+     "cond": {
+      "path": [
+       "allowed_values",
+       "*"
+      ],
+      "op": "eq",
+      "value": "kinesis"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "p_Service",
+     "cond": {
+      "path": [
+       "allowed_values",
+       "*"
+      ],
+      "op": "eq",
+      "value": "kinesisvideo"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "p_Service",
+     "cond": {
+      "path": [
+       "allowed_values",
+       "*"
+      ],
+      "op": "eq",
+      "value": "lambda"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "p_Service",
+     "cond": {
+      "path": [
+       "allowed_values",
+       "*"
+      ],
+      "op": "eq",
+      "value": "lex"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "p_Service",
+     "cond": {
+      "path": [
+       "allowed_values",
+       "*"
+      ],
+      "op": "eq",
+      "value": "redshift"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "p_Service",
+     "cond": {
+      "path": [
+       "allowed_values",
+       "*"
+      ],
+      "op": "eq",
+      "value": "rds"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "p_Service",
+     "cond": {
+      "path": [
+       "allowed_values",
+       "*"
+      ],
+      "op": "eq",
+      "value": "secretsmanager"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "p_Service",
+     "cond": {
+      "path": [
+       "allowed_values",
+       "*"
+      ],
+      "op": "eq",
+      "value": "ses"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "p_Service",
+     "cond": {
+      "path": [
+       "allowed_values",
+       "*"
+      ],
+      "op": "eq",
+      "value": "s3"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "p_Service",
+     "cond": {
+      "path": [
+       "allowed_values",
+       "*"
+      ],
+      "op": "eq",
+      "value": "importexport"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "p_Service",
+     "cond": {
+      "path": [
+       "allowed_values",
+       "*"
+      ],
+      "op": "eq",
+      "value": "sqs"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "p_Service",
+     "cond": {
+      "path": [
+       "allowed_values",
+       "*"
+      ],
+      "op": "eq",
+      "value": "workmail"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "p_Service",
+     "cond": {
+      "path": [
+       "allowed_values",
+       "*"
+      ],
+      "op": "eq",
+      "value": "workspaces"
+     }
+    }
+   ],
+   "quote": "(with supported options including \"ALL_SERVICES\", \"S3_PUBLIC_ACCESS\", connect, dms, ssm, ec2, elasticfilesystem, es, kinesis, kinesisvideo, lambda, lex, redshift, rds, secretsmanager, ses, s3, importexport, sqs, workmail, and workspaces)"
+  },
+  {
+   "id": "key",
+   "kind": "exists",
+   "tier": "core",
+   "select": "key",
+   "quote": "a customer-managed KMS key"
+  },
+  {
+   "id": "rotation",
+   "kind": "attr",
+   "tier": "core",
+   "select": "key",
+   "cond": {
+    "path": [
+     "EnableKeyRotation"
+    ],
+    "op": "eq",
+    "value": true
+   },
+   "quote": "key rotation enabled"
+  },
+  {
+   "id": "key_del",
+   "kind": "attr",
+   "tier": "core",
+   "select": "key",
+   "cond": {
+    "path": [
+     "__resource__",
+     "DeletionPolicy"
+    ],
+    "op": "eq",
+    "value": "Retain"
+   },
+   "quote": "deletion and update-replace retention policies set to retain"
+  },
+  {
+   "id": "key_upd",
+   "kind": "attr",
+   "tier": "core",
+   "select": "key",
+   "cond": {
+    "path": [
+     "__resource__",
+     "UpdateReplacePolicy"
+    ],
+    "op": "eq",
+    "value": "Retain"
+   },
+   "quote": "deletion and update-replace retention policies set to retain"
+  },
+  {
+   "id": "root_admin",
+   "tier": "core",
+   "quote": "a key policy granting full KMS administration to the root account",
+   "justify": "full KMS administration is kms:* or the full administrative action set",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "key",
+     "cond": {
+      "path": [
+       "KeyPolicy",
+       "Statement",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "Effect"
+        ],
+        "op": "eq",
+        "value": "Allow"
+       },
+       {
+        "path": [
+         "Principal",
+         "AWS",
+         "*"
+        ],
+        "op": "regex",
+        "value": "(:root$|^[0-9]{12}$)"
+       },
+       {
+        "path": [
+         "Action",
+         "*"
+        ],
+        "op": "glob_covers",
+        "value": "kms:*"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "key",
+     "cond": {
+      "path": [
+       "KeyPolicy",
+       "Statement",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "Effect"
+        ],
+        "op": "eq",
+        "value": "Allow"
+       },
+       {
+        "path": [
+         "Principal",
+         "AWS",
+         "*"
+        ],
+        "op": "regex",
+        "value": "(:root$|^[0-9]{12}$)"
+       },
+       {
+        "path": [
+         "Action",
+         "*"
+        ],
+        "op": "glob_covers",
+        "value": "kms:CreateAlias"
+       },
+       {
+        "path": [
+         "Action",
+         "*"
+        ],
+        "op": "glob_covers",
+        "value": "kms:PutKeyPolicy"
+       },
+       {
+        "path": [
+         "Action",
+         "*"
+        ],
+        "op": "glob_covers",
+        "value": "kms:DisableKey"
+       },
+       {
+        "path": [
+         "Action",
+         "*"
+        ],
+        "op": "glob_covers",
+        "value": "kms:UpdateAlias"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "crypto_enc",
+   "tier": "detail",
+   "quote": "permitting cryptographic operations to the caller account",
+   "justify": "cryptographic operations include Encrypt",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "key",
+     "cond": {
+      "path": [
+       "KeyPolicy",
+       "Statement",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "Effect"
+        ],
+        "op": "eq",
+        "value": "Allow"
+       },
+       {
+        "path": [
+         "Principal",
+         "AWS",
+         "*"
+        ],
+        "op": "regex",
+        "value": "(:root$|^[0-9]{12}$)"
+       },
+       {
+        "path": [
+         "Action",
+         "*"
+        ],
+        "op": "regex",
+        "value": "^kms:Encrypt"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "key",
+     "cond": {
+      "path": [
+       "KeyPolicy",
+       "Statement",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "Effect"
+        ],
+        "op": "eq",
+        "value": "Allow"
+       },
+       {
+        "path": [
+         "Principal",
+         "AWS",
+         "*"
+        ],
+        "op": "eq",
+        "value": "*"
+       },
+       {
+        "path": [
+         "Condition"
+        ],
+        "op": "regex",
+        "value": "(?i)kms:CallerAccount"
+       },
+       {
+        "path": [
+         "Action",
+         "*"
+        ],
+        "op": "glob_covers",
+        "value": "kms:Encrypt"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "crypto_dec",
+   "tier": "detail",
+   "quote": "permitting cryptographic operations to the caller account",
+   "justify": "cryptographic operations include Decrypt",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "key",
+     "cond": {
+      "path": [
+       "KeyPolicy",
+       "Statement",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "Effect"
+        ],
+        "op": "eq",
+        "value": "Allow"
+       },
+       {
+        "path": [
+         "Principal",
+         "AWS",
+         "*"
+        ],
+        "op": "regex",
+        "value": "(:root$|^[0-9]{12}$)"
+       },
+       {
+        "path": [
+         "Action",
+         "*"
+        ],
+        "op": "regex",
+        "value": "^kms:Decrypt"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "key",
+     "cond": {
+      "path": [
+       "KeyPolicy",
+       "Statement",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "Effect"
+        ],
+        "op": "eq",
+        "value": "Allow"
+       },
+       {
+        "path": [
+         "Principal",
+         "AWS",
+         "*"
+        ],
+        "op": "eq",
+        "value": "*"
+       },
+       {
+        "path": [
+         "Condition"
+        ],
+        "op": "regex",
+        "value": "(?i)kms:CallerAccount"
+       },
+       {
+        "path": [
+         "Action",
+         "*"
+        ],
+        "op": "glob_covers",
+        "value": "kms:Decrypt"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "caller",
+   "tier": "detail",
+   "quote": "permitting cryptographic operations to the caller account",
+   "justify": "the caller account is its root principal with cryptographic actions named, or any principal restricted by kms:CallerAccount; the root admin statement alone does not state this",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "key",
+     "cond": {
+      "path": [
+       "KeyPolicy",
+       "Statement",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "Effect"
+        ],
+        "op": "eq",
+        "value": "Allow"
+       },
+       {
+        "path": [
+         "Principal",
+         "AWS",
+         "*"
+        ],
+        "op": "regex",
+        "value": "(:root$|^[0-9]{12}$)"
+       },
+       {
+        "path": [
+         "Action",
+         "*"
+        ],
+        "op": "regex",
+        "value": "^kms:(Encrypt|Decrypt|GenerateDataKey)"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "key",
+     "cond": {
+      "path": [
+       "KeyPolicy",
+       "Statement",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "Effect"
+        ],
+        "op": "eq",
+        "value": "Allow"
+       },
+       {
+        "path": [
+         "Principal",
+         "AWS",
+         "*"
+        ],
+        "op": "eq",
+        "value": "*"
+       },
+       {
+        "path": [
+         "Condition"
+        ],
+        "op": "regex",
+        "value": "(?i)kms:CallerAccount"
+       },
+       {
+        "path": [
+         "Action",
+         "*"
+        ],
+        "op": "glob_covers",
+        "value": "kms:Encrypt"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "alias",
+   "kind": "exists",
+   "tier": "core",
+   "select": "alias",
+   "quote": "a retained KMS key alias"
+  },
+  {
+   "id": "alias_name",
+   "kind": "attr",
+   "tier": "core",
+   "select": "alias",
+   "cond": {
+    "path": [
+     "AliasName"
+    ],
+    "op": "eq",
+    "value": "alias/stack"
+   },
+   "quote": "a retained KMS key alias named \"alias/{StackName}\"",
+   "justify": "StackName resolves to the stack name"
+  },
+  {
+   "id": "alias_key",
+   "kind": "ref",
+   "tier": "core",
+   "from": "alias",
+   "to": "key",
+   "quote": "mapping to the created key"
+  },
+  {
+   "id": "alias_del",
+   "kind": "attr",
+   "tier": "core",
+   "select": "alias",
+   "cond": {
+    "path": [
+     "__resource__",
+     "DeletionPolicy"
+    ],
+    "op": "eq",
+    "value": "Retain"
+   },
+   "quote": "a retained KMS key alias"
+  },
+  {
+   "id": "alias_upd",
+   "kind": "attr",
+   "tier": "extra",
+   "select": "alias",
+   "cond": {
+    "path": [
+     "__resource__",
+     "UpdateReplacePolicy"
+    ],
+    "op": "eq",
+    "value": "Retain"
+   }
+  },
+  {
+   "id": "rule",
+   "kind": "exists",
+   "tier": "core",
+   "select": "d_rule",
+   "quote": "conditionally deploy an EventBridge rule when ParentAlertStack is provided"
+  },
+  {
+   "id": "rule_gated",
+   "kind": "attr",
+   "tier": "core",
+   "select": "d_rule",
+   "cond": {
+    "path": [
+     "gated"
+    ],
+    "op": "truthy"
+   },
+   "quote": "conditionally deploy an EventBridge rule when ParentAlertStack is provided"
+  },
+  {
+   "id": "rule_events",
+   "kind": "attr",
+   "tier": "core",
+   "select": "d_rule",
+   "cond": {
+    "path": [
+     "properties",
+     "EventPattern",
+     "detail",
+     "eventName",
+     "*"
+    ],
+    "op": "eq",
+    "value": "ScheduleKeyDeletion"
+   },
+   "quote": "detects ScheduleKeyDeletion and DisableKey events for the key"
+  },
+  {
+   "id": "rule_events2",
+   "kind": "attr",
+   "tier": "core",
+   "select": "d_rule",
+   "cond": {
+    "path": [
+     "properties",
+     "EventPattern",
+     "detail",
+     "eventName",
+     "*"
+    ],
+    "op": "eq",
+    "value": "DisableKey"
+   },
+   "quote": "detects ScheduleKeyDeletion and DisableKey events for the key"
+  },
+  {
+   "id": "rule_key",
+   "kind": "ref",
+   "tier": "detail",
+   "from": "d_rule",
+   "to": "key",
+   "quote": "events for the key"
+  },
+  {
+   "id": "rule_target",
+   "tier": "detail",
+   "quote": "targets the imported SNS topic ARN from the parent alert stack",
+   "kind": "attr",
+   "select": "d_rule",
+   "cond": {
+    "path": [
+     "properties",
+     "Targets",
+     "*",
+     "Arn",
+     "import"
+    ],
+    "op": "present"
+   }
+  },
+  {
+   "id": "out_keyid",
+   "tier": "detail",
+   "quote": "exporting the key ID",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__output__"
+      ],
+      "where": [
+       {
+        "path": [
+         "value",
+         "attr"
+        ],
+        "op": "absent"
+       }
+      ]
+     },
+     "to": "key"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__output__"
+      ],
+      "where": [
+       {
+        "path": [
+         "value",
+         "attr"
+        ],
+        "op": "eq",
+        "value": "KeyId"
+       }
+      ]
+     },
+     "to": "key"
+    }
+   ]
+  },
+  {
+   "id": "out_keyarn",
+   "kind": "ref",
+   "tier": "detail",
+   "from": {
+    "types": [
+     "__output__"
+    ],
+    "where": [
+     {
+      "path": [
+       "value",
+       "attr"
+      ],
+      "op": "eq",
+      "value": "Arn"
+     }
+    ]
+   },
+   "to": "key",
+   "quote": "key ARN in the outputs"
+  },
+  {
+   "id": "out_export",
+   "kind": "exists",
+   "tier": "detail",
+   "select": {
+    "types": [
+     "__output__"
+    ],
+    "where": [
+     {
+      "path": [
+       "export"
+      ],
+      "op": "present"
+     }
+    ]
+   },
+   "min": 2,
+   "quote": "exporting the key ID and key ARN in the outputs",
+   "justify": "two exported values are the key ID and key ARN"
+  },
+  {
+   "id": "x_src",
+   "kind": "attr",
+   "tier": "extra",
+   "select": "d_rule",
+   "cond": {
+    "path": [
+     "properties",
+     "EventPattern",
+     "source",
+     "*"
+    ],
+    "op": "eq",
+    "value": "aws.kms"
+   }
+  },
+  {
+   "id": "x_src2",
+   "kind": "attr",
+   "tier": "extra",
+   "select": "d_rule",
+   "cond": {
+    "path": [
+     "properties",
+     "EventPattern",
+     "detail",
+     "eventSource",
+     "*"
+    ],
+    "op": "eq",
+    "value": "kms.amazonaws.com"
+   }
+  },
+  {
+   "id": "x_state",
+   "kind": "attr",
+   "tier": "extra",
+   "select": "d_rule",
+   "cond": {
+    "path": [
+     "properties",
+     "State"
+    ],
+    "op": "eq",
+    "value": "ENABLED"
+   }
+  },
+  {
+   "id": "x_allow",
+   "kind": "attr",
+   "tier": "extra",
+   "select": "key",
+   "cond": {
+    "path": [
+     "KeyPolicy",
+     "Statement",
+     "*",
+     "Effect"
+    ],
+    "op": "eq",
+    "value": "Allow"
+   }
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

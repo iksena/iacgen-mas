@@ -1,0 +1,218 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "aeee8139107974b210b4d23d6e7d8a2430198179652c4a86989b4d2784581ba3",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "LambdaExecutionRole",
+   "cfg": "LambdaExecutionRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "Path": "/",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+    ],
+    "Policies": [
+     {
+      "PolicyName": "iot-core-policy-generator-policy-us-east-1",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "iot:CreatePolicy"
+         ],
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "IotPolicyGenerator",
+   "cfg": "IotPolicyGenerator",
+   "type": "AWS::Lambda::Function",
+   "values": {
+    "FunctionName": "IotPolicyGenerator",
+    "Handler": "index.handler",
+    "Runtime": "nodejs24.x",
+    "MemorySize": 128,
+    "Timeout": 15,
+    "Role": {
+     "ref": "LambdaExecutionRole",
+     "attr": "Arn"
+    },
+    "TracingConfig": {
+     "Mode": "Active"
+    },
+    "Code": {
+     "ZipFile": "const { IoTClient, CreatePolicyCommand } = require(\"@aws-sdk/client-iot\");\nconst response = require('cfn-response');\nexports.handler = async function(event, context) {\n    console.log(\"REQUEST RECEIVED:\\n\" + JSON.stringify(event));\n    if (event.RequestType == \"Delete\") {\n        await sendResponse(event, context, response.SUCCESS, {});\n        return;\n    }\n    const policyName = \"device-onboarding\";\n    const region = process.env.AWS_REGION;\n    const awsAccountId = context.invokedFunctionArn.split(':')[4];\n    const policyDocument = `{\n        \"Version\": \"2012-10-17\",\n        \"Statement\": [\n        {\n            \"Effect\": \"Allow\",\n            \"Action\": [\n            \"iot:Connect\"\n            ],\n            \"Resource\": [\n            \"arn:aws:iot:${region}:${awsAccountId}:client/\\${iot:Connection.Thing.ThingName}\"\n            ]\n        },\n        {\n            \"Effect\": \"Allow\",\n            \"Action\": [\n            \"iot:Publish\",\n            \"iot:Receive\"\n            ],\n            \"Resource\": [\n            \"arn:aws:iot:${region}:${awsAccountId}:topic/\\${iot:Connection.Thing.ThingName}/*\"\n            ]\n        },\n        {\n            \"Effect\": \"Allow\",\n            \"Action\": [\n            \"iot:Subscribe\"\n            ],\n            \"Resource\": [\n            \"arn:aws:iot:${region}:${awsAccountId}:topicfilter/\\${iot:Connection.Thing.ThingName}/*\"\n            ]\n        }\n        ]\n    }`;\n    console.log(\"Policy document:\\n\", policyDocument);\n    const iot = new IoTClient();\n    try {\n        const data = await iot.send(new CreatePolicyCommand({policyName, policyDocument}));\n        const responseData = { policyName: data.policyName };\n        console.log('Response data: ' + JSON.stringify(responseData));\n        await sendResponse(event, context, response.SUCCESS, responseData);\n    } catch (err) {\n        const responseData = { Error: \"createIoTPolicy call failed\" };\n        console.error(responseData.Error + \":\\n\", err);\n        await sendResponse(event, context, response.FAILED, responseData);\n    }\n};\n// Wrap cfn-response's callback-based send so it can be awaited in the async handler.\nfunction sendResponse(event, context, status, data) {\n    return new Promise(function(resolve) {\n        const done = context.done;\n        context.done = function() {\n            resolve();\n            if (done) {\n                done.apply(context, arguments);\n            }\n        };\n        response.send(event, context, status, data);\n    });\n}\n"
+    }
+   },
+   "refs": [
+    "LambdaExecutionRole"
+   ]
+  },
+  {
+   "id": "IoTPolicy",
+   "cfg": "IoTPolicy",
+   "type": "Custom::IotPolicyGenerator",
+   "values": {
+    "ServiceToken": {
+     "ref": "IotPolicyGenerator",
+     "attr": "Arn"
+    }
+   },
+   "refs": [
+    "IotPolicyGenerator"
+   ]
+  },
+  {
+   "id": "__output__.IOTCorePolicyName",
+   "cfg": "__output__.IOTCorePolicyName",
+   "type": "__output__",
+   "values": {
+    "name": "IOTCorePolicyName",
+    "value": {
+     "ref": "IoTPolicy",
+     "attr": "policyName"
+    },
+    "description": "The name of the newly created IOT Core Policy",
+    "export": null
+   },
+   "refs": [
+    "IoTPolicy"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.LambdaExecutionRole",
+   "cfg": "LambdaExecutionRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "LambdaExecutionRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Path": "/",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+     ],
+     "Policies": [
+      {
+       "PolicyName": "iot-core-policy-generator-policy-us-east-1",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "iot:CreatePolicy"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Function.IotPolicyGenerator",
+   "cfg": "IotPolicyGenerator",
+   "type": "__declared__",
+   "refs": [
+    "LambdaExecutionRole"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Function",
+    "name": "IotPolicyGenerator",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "FunctionName": "IotPolicyGenerator",
+     "Handler": "index.handler",
+     "Runtime": "nodejs24.x",
+     "MemorySize": 128,
+     "Timeout": 15,
+     "Role": {
+      "ref": "LambdaExecutionRole",
+      "attr": "Arn"
+     },
+     "TracingConfig": {
+      "Mode": "Active"
+     },
+     "Code": {
+      "ZipFile": "const { IoTClient, CreatePolicyCommand } = require(\"@aws-sdk/client-iot\");\nconst response = require('cfn-response');\nexports.handler = async function(event, context) {\n    console.log(\"REQUEST RECEIVED:\\n\" + JSON.stringify(event));\n    if (event.RequestType == \"Delete\") {\n        await sendResponse(event, context, response.SUCCESS, {});\n        return;\n    }\n    const policyName = \"device-onboarding\";\n    const region = process.env.AWS_REGION;\n    const awsAccountId = context.invokedFunctionArn.split(':')[4];\n    const policyDocument = `{\n        \"Version\": \"2012-10-17\",\n        \"Statement\": [\n        {\n            \"Effect\": \"Allow\",\n            \"Action\": [\n            \"iot:Connect\"\n            ],\n            \"Resource\": [\n            \"arn:aws:iot:${region}:${awsAccountId}:client/\\${iot:Connection.Thing.ThingName}\"\n            ]\n        },\n        {\n            \"Effect\": \"Allow\",\n            \"Action\": [\n            \"iot:Publish\",\n            \"iot:Receive\"\n            ],\n            \"Resource\": [\n            \"arn:aws:iot:${region}:${awsAccountId}:topic/\\${iot:Connection.Thing.ThingName}/*\"\n            ]\n        },\n        {\n            \"Effect\": \"Allow\",\n            \"Action\": [\n            \"iot:Subscribe\"\n            ],\n            \"Resource\": [\n            \"arn:aws:iot:${region}:${awsAccountId}:topicfilter/\\${iot:Connection.Thing.ThingName}/*\"\n            ]\n        }\n        ]\n    }`;\n    console.log(\"Policy document:\\n\", policyDocument);\n    const iot = new IoTClient();\n    try {\n        const data = await iot.send(new CreatePolicyCommand({policyName, policyDocument}));\n        const responseData = { policyName: data.policyName };\n        console.log('Response data: ' + JSON.stringify(responseData));\n        await sendResponse(event, context, response.SUCCESS, responseData);\n    } catch (err) {\n        const responseData = { Error: \"createIoTPolicy call failed\" };\n        console.error(responseData.Error + \":\\n\", err);\n        await sendResponse(event, context, response.FAILED, responseData);\n    }\n};\n// Wrap cfn-response's callback-based send so it can be awaited in the async handler.\nfunction sendResponse(event, context, status, data) {\n    return new Promise(function(resolve) {\n        const done = context.done;\n        context.done = function() {\n            resolve();\n            if (done) {\n                done.apply(context, arguments);\n            }\n        };\n        response.send(event, context, status, data);\n    });\n}\n"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.Custom::IotPolicyGenerator.IoTPolicy",
+   "cfg": "IoTPolicy",
+   "type": "__declared__",
+   "refs": [
+    "IotPolicyGenerator"
+   ],
+   "values": {
+    "type": "Custom::IotPolicyGenerator",
+    "name": "IoTPolicy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ServiceToken": {
+      "ref": "IotPolicyGenerator",
+      "attr": "Arn"
+     }
+    }
+   }
+  }
+ ]
+}

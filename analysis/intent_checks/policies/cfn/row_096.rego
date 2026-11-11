@@ -1,0 +1,810 @@
+package intent.cfn.row_096
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {
+  "api": {
+   "types": [
+    "AWS::ApiGateway::RestApi"
+   ],
+   "where": []
+  },
+  "post": {
+   "types": [
+    "AWS::ApiGateway::Method"
+   ],
+   "where": [
+    {
+     "path": [
+      "HttpMethod"
+     ],
+     "op": "eq",
+     "value": "POST"
+    }
+   ]
+  },
+  "key": {
+   "types": [
+    "AWS::ApiGateway::ApiKey"
+   ],
+   "where": []
+  },
+  "plan": {
+   "types": [
+    "AWS::ApiGateway::UsagePlan"
+   ],
+   "where": []
+  },
+  "pk": {
+   "types": [
+    "AWS::ApiGateway::UsagePlanKey"
+   ],
+   "where": []
+  },
+  "validator": {
+   "types": [
+    "AWS::ApiGateway::RequestValidator"
+   ],
+   "where": []
+  },
+  "model": {
+   "types": [
+    "AWS::ApiGateway::Model"
+   ],
+   "where": []
+  },
+  "deploy": {
+   "types": [
+    "AWS::ApiGateway::Deployment"
+   ],
+   "where": []
+  },
+  "stage": {
+   "types": [
+    "AWS::ApiGateway::Stage"
+   ],
+   "where": []
+  },
+  "body_validator": {
+   "types": [
+    "AWS::ApiGateway::RequestValidator"
+   ],
+   "where": [
+    {
+     "path": [
+      "ValidateRequestBody"
+     ],
+     "op": "truthy"
+    }
+   ]
+  },
+  "ses_role": {
+   "types": [
+    "AWS::IAM::Role"
+   ],
+   "where": [
+    {
+     "path": [
+      "Policies",
+      "*",
+      "PolicyDocument",
+      "Statement",
+      "*"
+     ],
+     "op": "match",
+     "value": [
+      {
+       "path": [
+        "Effect"
+       ],
+       "op": "eq",
+       "value": "Allow"
+      },
+      {
+       "path": [
+        "Action",
+        "*"
+       ],
+       "op": "glob_covers",
+       "value": "ses:SendEmail"
+      }
+     ]
+    }
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "rest_api",
+   "tier": "core",
+   "kind": "exists",
+   "select": "api",
+   "quote": "a serverless REST API using API Gateway"
+  },
+  {
+   "id": "post_method",
+   "tier": "core",
+   "kind": "exists",
+   "select": "post",
+   "quote": "accept email submissions via a POST endpoint"
+  },
+  {
+   "id": "ses_integration",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "post",
+     "cond": {
+      "path": [
+       "Integration",
+       "Uri"
+      ],
+      "op": "regex",
+      "value": "(?i)(action/SendEmail|:(email|ses):)"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::Lambda::Function"
+      ],
+      "where": []
+     },
+     "to": "ses_role"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy"
+      ],
+      "where": [
+       {
+        "path": [
+         "PolicyDocument",
+         "Statement",
+         "*"
+        ],
+        "op": "match",
+        "value": [
+         {
+          "path": [
+           "Effect"
+          ],
+          "op": "eq",
+          "value": "Allow"
+         },
+         {
+          "path": [
+           "Action",
+           "*"
+          ],
+          "op": "glob_covers",
+          "value": "ses:SendEmail"
+         }
+        ]
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "AWS::IAM::Role"
+      ],
+      "where": []
+     },
+     "bidirectional": true
+    }
+   ],
+   "quote": "send them through Amazon SES"
+  },
+  {
+   "id": "sendemail_template",
+   "tier": "detail",
+   "kind": "attr",
+   "select": "post",
+   "cond": {
+    "path": [
+     "Integration",
+     "RequestTemplates"
+    ],
+    "op": "regex",
+    "value": "(?i)(SendEmail|ToAddresses)"
+   },
+   "quote": "The integration should transform the incoming JSON into the SES SendEmail action format",
+   "justify": "SES SendEmail request shape (Action=SendEmail, or SES JSON with ToAddresses)"
+  },
+  {
+   "id": "api_key",
+   "tier": "core",
+   "kind": "exists",
+   "select": "key",
+   "quote": "secured with an API key"
+  },
+  {
+   "id": "key_required",
+   "tier": "core",
+   "kind": "attr",
+   "select": "post",
+   "cond": {
+    "path": [
+     "ApiKeyRequired"
+    ],
+    "op": "truthy"
+   },
+   "quote": "secured with an API key"
+  },
+  {
+   "id": "usage_plan",
+   "tier": "core",
+   "kind": "exists",
+   "select": "plan",
+   "quote": "a usage plan that includes throttling"
+  },
+  {
+   "id": "throttle",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "plan",
+     "cond": {
+      "path": [
+       "Throttle"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "RateLimit"
+        ],
+        "op": "eq",
+        "value": 500
+       },
+       {
+        "path": [
+         "BurstLimit"
+        ],
+        "op": "eq",
+        "value": 1000
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "plan",
+     "cond": {
+      "path": [
+       "ApiStages",
+       "*",
+       "Throttle",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "RateLimit"
+        ],
+        "op": "eq",
+        "value": 500
+       },
+       {
+        "path": [
+         "BurstLimit"
+        ],
+        "op": "eq",
+        "value": 1000
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "throttling (500 requests per second, burst 1000)"
+  },
+  {
+   "id": "quota",
+   "tier": "core",
+   "kind": "attr",
+   "select": "plan",
+   "cond": {
+    "path": [
+     "Quota"
+    ],
+    "op": "match",
+    "value": [
+     {
+      "path": [
+       "Limit"
+      ],
+      "op": "eq",
+      "value": 10000
+     },
+     {
+      "path": [
+       "Period"
+      ],
+      "op": "eq",
+      "value": "MONTH"
+     }
+    ]
+   },
+   "quote": "a monthly quota of 10,000 requests",
+   "justify": "monthly = Period MONTH"
+  },
+  {
+   "id": "key_in_plan",
+   "tier": "detail",
+   "kind": "all_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "pk",
+     "to": "key"
+    },
+    {
+     "kind": "ref",
+     "from": "pk",
+     "to": "plan"
+    }
+   ],
+   "quote": "secured with an API key and a usage plan"
+  },
+  {
+   "id": "request_validator",
+   "tier": "core",
+   "kind": "attr",
+   "select": "validator",
+   "cond": {
+    "path": [
+     "ValidateRequestBody"
+    ],
+    "op": "truthy"
+   },
+   "quote": "the API must be deployed with a request validator"
+  },
+  {
+   "id": "method_uses_validator",
+   "tier": "core",
+   "kind": "ref",
+   "from": "post",
+   "to": "body_validator",
+   "quote": "The API should validate the request body against a JSON schema"
+  },
+  {
+   "id": "model",
+   "tier": "core",
+   "kind": "exists",
+   "select": "model",
+   "quote": "a model for the schema"
+  },
+  {
+   "id": "schema_required",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "model",
+     "cond": {
+      "path": [
+       "Schema"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "required",
+         "*"
+        ],
+        "op": "eq",
+        "value": "to"
+       },
+       {
+        "path": [
+         "required",
+         "*"
+        ],
+        "op": "eq",
+        "value": "from"
+       },
+       {
+        "path": [
+         "required",
+         "*"
+        ],
+        "op": "eq",
+        "value": "html"
+       },
+       {
+        "path": [
+         "required",
+         "*"
+        ],
+        "op": "eq",
+        "value": "text"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "model",
+     "cond": {
+      "path": [
+       "Schema"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [],
+        "op": "regex",
+        "value": "(?s)\"required\"\\s*:\\s*\\[[^\\]]*\"to\""
+       },
+       {
+        "path": [],
+        "op": "regex",
+        "value": "(?s)\"required\"\\s*:\\s*\\[[^\\]]*\"from\""
+       },
+       {
+        "path": [],
+        "op": "regex",
+        "value": "(?s)\"required\"\\s*:\\s*\\[[^\\]]*\"html\""
+       },
+       {
+        "path": [],
+        "op": "regex",
+        "value": "(?s)\"required\"\\s*:\\s*\\[[^\\]]*\"text\""
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "requiring \"to\" (array), \"from\" (string), \"html\" (string), and \"text\" (string)",
+   "justify": "JSON-schema required list of the four stated fields (object or string form)"
+  },
+  {
+   "id": "schema_types",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "model",
+     "cond": {
+      "path": [
+       "Schema"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "properties",
+         "to",
+         "type"
+        ],
+        "op": "eq",
+        "value": "array"
+       },
+       {
+        "path": [
+         "properties",
+         "from",
+         "type"
+        ],
+        "op": "eq",
+        "value": "string"
+       },
+       {
+        "path": [
+         "properties",
+         "html",
+         "type"
+        ],
+        "op": "eq",
+        "value": "string"
+       },
+       {
+        "path": [
+         "properties",
+         "text",
+         "type"
+        ],
+        "op": "eq",
+        "value": "string"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "model",
+     "cond": {
+      "path": [
+       "Schema"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [],
+        "op": "regex",
+        "value": "(?s)\"to\"\\s*:\\s*\\{(?:[^{}]|\\{[^{}]*\\})*\"type\"\\s*:\\s*\"array\""
+       },
+       {
+        "path": [],
+        "op": "regex",
+        "value": "(?s)\"from\"\\s*:\\s*\\{[^}]*\"type\"\\s*:\\s*\"string\""
+       },
+       {
+        "path": [],
+        "op": "regex",
+        "value": "(?s)\"html\"\\s*:\\s*\\{[^}]*\"type\"\\s*:\\s*\"string\""
+       },
+       {
+        "path": [],
+        "op": "regex",
+        "value": "(?s)\"text\"\\s*:\\s*\\{[^}]*\"type\"\\s*:\\s*\"string\""
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "\"to\" (array), \"from\" (string), \"html\" (string), and \"text\" (string)",
+   "justify": "JSON-schema types stated in prompt"
+  },
+  {
+   "id": "schema_optional",
+   "tier": "detail",
+   "kind": "attr",
+   "select": "model",
+   "cond": {
+    "path": [
+     "Schema"
+    ],
+    "op": "match",
+    "value": [
+     {
+      "path": [],
+      "op": "regex",
+      "value": "\"cc\"\\s*:"
+     },
+     {
+      "path": [],
+      "op": "regex",
+      "value": "\"bcc\"\\s*:"
+     },
+     {
+      "path": [],
+      "op": "regex",
+      "value": "\"subject\"\\s*:"
+     },
+     {
+      "path": [],
+      "op": "regex",
+      "value": "\"required\"\\s*:\\s*\\[(\\s*\"(to|from|html|text)\"\\s*,?)*\\s*\\]"
+     }
+    ]
+   },
+   "quote": "with optional \"cc\", \"bcc\", and \"subject\" fields",
+   "justify": "optional = declared in properties and left out of the required list, which holds only the four stated fields"
+  },
+  {
+   "id": "deployment",
+   "tier": "core",
+   "kind": "exists",
+   "select": "deploy",
+   "quote": "the API must be deployed"
+  },
+  {
+   "id": "stage_dev",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "deploy",
+     "cond": {
+      "path": [
+       "StageName"
+      ],
+      "op": "eq",
+      "value": "dev"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "stage",
+     "cond": {
+      "path": [
+       "StageName"
+      ],
+      "op": "eq",
+      "value": "dev"
+     }
+    }
+   ],
+   "quote": "The stage name should default to \"dev\""
+  },
+  {
+   "id": "apikey_name",
+   "tier": "core",
+   "kind": "attr",
+   "select": "key",
+   "cond": {
+    "path": [
+     "Name"
+    ],
+    "op": "eq",
+    "value": "email-apikey"
+   },
+   "quote": "the API key name to \"email-apikey\""
+  },
+  {
+   "id": "stage_param",
+   "tier": "detail",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": [
+       "default"
+      ],
+      "op": "eq",
+      "value": "dev"
+     }
+    ]
+   },
+   "quote": "but both should be configurable as parameters"
+  },
+  {
+   "id": "apikey_name_param",
+   "tier": "detail",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": [
+       "default"
+      ],
+      "op": "eq",
+      "value": "email-apikey"
+     }
+    ]
+   },
+   "quote": "but both should be configurable as parameters"
+  },
+  {
+   "id": "plan_on_api",
+   "tier": "detail",
+   "kind": "ref",
+   "from": "plan",
+   "to": "api",
+   "quote": "secured with an API key and a usage plan"
+  },
+  {
+   "id": "x_integration_aws",
+   "tier": "extra",
+   "kind": "attr",
+   "select": "post",
+   "cond": {
+    "path": [
+     "Integration",
+     "Type"
+    ],
+    "op": "eq",
+    "value": "AWS"
+   }
+  },
+  {
+   "id": "x_ses_send_permission",
+   "tier": "extra",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "PolicyDocument",
+       "Statement",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "Effect"
+        ],
+        "op": "eq",
+        "value": "Allow"
+       },
+       {
+        "path": [
+         "Action",
+         "*"
+        ],
+        "op": "glob_covers",
+        "value": "ses:SendEmail"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "AWS::IAM::Role"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "Policies",
+       "*",
+       "PolicyDocument",
+       "Statement",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "Effect"
+        ],
+        "op": "eq",
+        "value": "Allow"
+       },
+       {
+        "path": [
+         "Action",
+         "*"
+        ],
+        "op": "glob_covers",
+        "value": "ses:SendEmail"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "x_regional",
+   "tier": "extra",
+   "kind": "attr",
+   "select": "api",
+   "cond": {
+    "path": [
+     "EndpointConfiguration",
+     "Types",
+     "*"
+    ],
+    "op": "eq",
+    "value": "REGIONAL"
+   }
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

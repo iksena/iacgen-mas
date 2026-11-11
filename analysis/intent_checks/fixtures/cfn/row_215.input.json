@@ -1,0 +1,1596 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "2d949ce695ec3888aa22bec960d8fec38264f4edd6bb76dc1c9be1b7f3036987",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "WSLambdaExecutionRole",
+   "cfg": "WSLambdaExecutionRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "nih-grants-lambda-ws-execution-role",
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+    ],
+    "Path": "/"
+   },
+   "refs": []
+  },
+  {
+   "id": "lambdanihgrantsdynamodbpolicy",
+   "cfg": "lambdanihgrantsdynamodbpolicy",
+   "type": "AWS::IAM::Policy",
+   "values": {
+    "PolicyName": "lambda-nih-grants-dynamodb-policy",
+    "Roles": [
+     {
+      "ref": "WSLambdaExecutionRole"
+     }
+    ],
+    "PolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Action": [
+        "dynamodb:BatchGetItem",
+        "dynamodb:BatchWriteItem",
+        "dynamodb:PutItem",
+        "dynamodb:GetItem",
+        "dynamodb:Scan",
+        "dynamodb:DeleteItem",
+        "dynamodb:Query",
+        "dynamodb:UpdateItem",
+        "dynamodb:GetRecords"
+       ],
+       "Resource": [
+        "arn:aws:dynamodb:us-east-1:123456789012:table/nih-ws-table"
+       ]
+      },
+      {
+       "Effect": "Allow",
+       "Action": [
+        "kms:Decrypt"
+       ],
+       "Resource": [
+        "arn:aws:kms:us-east-1:123456789012:key/*"
+       ]
+      }
+     ]
+    },
+    "__resource__": {
+     "DependsOn": [
+      "WSLambdaExecutionRole"
+     ]
+    }
+   },
+   "refs": [
+    "WSLambdaExecutionRole"
+   ]
+  },
+  {
+   "id": "LambdaKMSKey",
+   "cfg": "LambdaKMSKey",
+   "type": "AWS::KMS::Key",
+   "values": {
+    "Description": "KMS key for Lambda environment variables",
+    "EnableKeyRotation": true,
+    "KeyPolicy": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Sid": "Enable IAM User Permissions",
+       "Effect": "Allow",
+       "Principal": {
+        "AWS": [
+         "arn:aws:iam::123456789012:root"
+        ]
+       },
+       "Action": [
+        "kms:*"
+       ],
+       "Resource": [
+        "*"
+       ]
+      },
+      {
+       "Sid": "Allow Lambda service to use the key",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "kms:Decrypt",
+        "kms:GenerateDataKey",
+        "kms:CreateGrant",
+        "kms:DescribeKey"
+       ],
+       "Resource": [
+        "*"
+       ],
+       "Condition": {
+        "ArnLike": {
+         "aws:SourceArn": [
+          "arn:aws:lambda:us-east-1:123456789012:function:NIHGrantListS3Artifacts",
+          "arn:aws:lambda:us-east-1:123456789012:function:NIHGrantCheckTemplateStatus",
+          "arn:aws:lambda:us-east-1:123456789012:function:ContextHTMLScraper",
+          "arn:aws:lambda:us-east-1:123456789012:function:TextTractPDF2TextAsync",
+          "arn:aws:lambda:us-east-1:123456789012:function:NIHGrantLoader",
+          "arn:aws:lambda:us-east-1:123456789012:function:NIHWSFunction",
+          "arn:aws:lambda:us-east-1:123456789012:function:NIHQueryGrants",
+          "arn:aws:lambda:us-east-1:123456789012:function:NIHModelPrompts"
+         ]
+        }
+       }
+      }
+     ]
+    },
+    "__resource__": {
+     "DependsOn": [
+      "WSLambdaExecutionRole"
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "LambdaKMSPolicy",
+   "cfg": "LambdaKMSPolicy",
+   "type": "AWS::IAM::Policy",
+   "values": {
+    "PolicyName": "lambda-kms-policy",
+    "Roles": [
+     {
+      "ref": "WSLambdaExecutionRole"
+     }
+    ],
+    "PolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Action": [
+        "kms:Decrypt",
+        "kms:GenerateDataKey"
+       ],
+       "Resource": {
+        "ref": "LambdaKMSKey",
+        "attr": "Arn"
+       }
+      }
+     ]
+    },
+    "__resource__": {
+     "DependsOn": [
+      "LambdaKMSKey"
+     ]
+    }
+   },
+   "refs": [
+    "LambdaKMSKey",
+    "WSLambdaExecutionRole"
+   ]
+  },
+  {
+   "id": "NIHWSFunction",
+   "cfg": "NIHWSFunction",
+   "type": "AWS::Lambda::Function",
+   "values": {
+    "FunctionName": "NIHWSFunction",
+    "Description": "Lambda NIHWSFunction",
+    "Handler": "index.lambda_handler",
+    "Runtime": "python3.12",
+    "Role": {
+     "ref": "WSLambdaExecutionRole",
+     "attr": "Arn"
+    },
+    "Timeout": 900,
+    "MemorySize": 3008,
+    "Code": {
+     "ZipFile": "def lambda_handler(event, context):\n    return {\"statusCode\": 200}\n"
+    },
+    "Environment": {
+     "Variables": {
+      "table_name": "nih-ws-table"
+     }
+    },
+    "KmsKeyArn": {
+     "ref": "LambdaKMSKey",
+     "attr": "Arn"
+    },
+    "__resource__": {
+     "DependsOn": [
+      "WSLambdaExecutionRole",
+      "lambdanihgrantsdynamodbpolicy",
+      "LambdaKMSKey",
+      "LambdaKMSPolicy"
+     ]
+    }
+   },
+   "refs": [
+    "LambdaKMSKey",
+    "WSLambdaExecutionRole"
+   ]
+  },
+  {
+   "id": "nihGrantsApiWS",
+   "cfg": "nihGrantsApiWS",
+   "type": "AWS::ApiGatewayV2::Api",
+   "values": {
+    "Name": "nihGrantsApiWS",
+    "ProtocolType": "WEBSOCKET",
+    "RouteSelectionExpression": "$request.body.action"
+   },
+   "refs": []
+  },
+  {
+   "id": "ConnectRoute",
+   "cfg": "ConnectRoute",
+   "type": "AWS::ApiGatewayV2::Route",
+   "values": {
+    "ApiId": {
+     "ref": "nihGrantsApiWS"
+    },
+    "RouteKey": "$connect",
+    "AuthorizationType": "AWS_IAM",
+    "OperationName": "ConnectRoute",
+    "Target": {
+     "Fn::Join": [
+      "/",
+      [
+       "integrations",
+       {
+        "ref": "ConnectInteg"
+       }
+      ]
+     ]
+    }
+   },
+   "refs": [
+    "ConnectInteg",
+    "nihGrantsApiWS"
+   ]
+  },
+  {
+   "id": "DefaultRoute",
+   "cfg": "DefaultRoute",
+   "type": "AWS::ApiGatewayV2::Route",
+   "values": {
+    "ApiId": {
+     "ref": "nihGrantsApiWS"
+    },
+    "RouteKey": "$default",
+    "AuthorizationType": "NONE",
+    "OperationName": "ConnectRoute",
+    "Target": {
+     "Fn::Join": [
+      "/",
+      [
+       "integrations",
+       {
+        "ref": "ConnectInteg"
+       }
+      ]
+     ]
+    }
+   },
+   "refs": [
+    "ConnectInteg",
+    "nihGrantsApiWS"
+   ]
+  },
+  {
+   "id": "ConnectInteg",
+   "cfg": "ConnectInteg",
+   "type": "AWS::ApiGatewayV2::Integration",
+   "values": {
+    "ApiId": {
+     "ref": "nihGrantsApiWS"
+    },
+    "Description": "Connect Integration",
+    "IntegrationType": "AWS_PROXY",
+    "IntegrationUri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/${NIHWSFunction.Arn}/invocations",
+    "__resource__": {
+     "DependsOn": [
+      "NIHWSFunction"
+     ]
+    }
+   },
+   "refs": [
+    "NIHWSFunction",
+    "nihGrantsApiWS"
+   ]
+  },
+  {
+   "id": "DisconnectRoute",
+   "cfg": "DisconnectRoute",
+   "type": "AWS::ApiGatewayV2::Route",
+   "values": {
+    "ApiId": {
+     "ref": "nihGrantsApiWS"
+    },
+    "RouteKey": "$disconnect",
+    "AuthorizationType": "NONE",
+    "OperationName": "DisconnectRoute",
+    "Target": {
+     "Fn::Join": [
+      "/",
+      [
+       "integrations",
+       {
+        "ref": "DisconnectInteg"
+       }
+      ]
+     ]
+    },
+    "__resource__": {
+     "DependsOn": [
+      "NIHWSFunction"
+     ]
+    }
+   },
+   "refs": [
+    "DisconnectInteg",
+    "nihGrantsApiWS"
+   ]
+  },
+  {
+   "id": "DisconnectInteg",
+   "cfg": "DisconnectInteg",
+   "type": "AWS::ApiGatewayV2::Integration",
+   "values": {
+    "ApiId": {
+     "ref": "nihGrantsApiWS"
+    },
+    "Description": "Disconnect Integration",
+    "IntegrationType": "AWS_PROXY",
+    "IntegrationUri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/${NIHWSFunction.Arn}/invocations",
+    "__resource__": {
+     "DependsOn": [
+      "NIHWSFunction"
+     ]
+    }
+   },
+   "refs": [
+    "NIHWSFunction",
+    "nihGrantsApiWS"
+   ]
+  },
+  {
+   "id": "OnMessageRoute",
+   "cfg": "OnMessageRoute",
+   "type": "AWS::ApiGatewayV2::Route",
+   "values": {
+    "ApiId": {
+     "ref": "nihGrantsApiWS"
+    },
+    "RouteKey": "onMessage",
+    "AuthorizationType": "NONE",
+    "OperationName": "SendRoute",
+    "Target": {
+     "Fn::Join": [
+      "/",
+      [
+       "integrations",
+       {
+        "ref": "SendInteg"
+       }
+      ]
+     ]
+    }
+   },
+   "refs": [
+    "SendInteg",
+    "nihGrantsApiWS"
+   ]
+  },
+  {
+   "id": "SendInteg",
+   "cfg": "SendInteg",
+   "type": "AWS::ApiGatewayV2::Integration",
+   "values": {
+    "ApiId": {
+     "ref": "nihGrantsApiWS"
+    },
+    "Description": "Send Integration",
+    "IntegrationType": "AWS_PROXY",
+    "IntegrationUri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/${NIHWSFunction.Arn}/invocations"
+   },
+   "refs": [
+    "NIHWSFunction",
+    "nihGrantsApiWS"
+   ]
+  },
+  {
+   "id": "WebSocketLambdaPermission",
+   "cfg": "WebSocketLambdaPermission",
+   "type": "AWS::Lambda::Permission",
+   "values": {
+    "Action": "lambda:InvokeFunction",
+    "FunctionName": {
+     "ref": "NIHWSFunction"
+    },
+    "Principal": "apigateway.amazonaws.com",
+    "SourceArn": "arn:aws:execute-api:us-east-1:123456789012:${nihGrantsApiWS}/*",
+    "__resource__": {
+     "DependsOn": [
+      "NIHWSFunction"
+     ]
+    }
+   },
+   "refs": [
+    "NIHWSFunction",
+    "nihGrantsApiWS"
+   ]
+  },
+  {
+   "id": "ApiGatewayLogsKMSKey",
+   "cfg": "ApiGatewayLogsKMSKey",
+   "type": "AWS::KMS::Key",
+   "values": {
+    "Description": "KMS key for encrypting API Gateway CloudWatch Logs",
+    "EnableKeyRotation": true,
+    "KeyPolicy": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Sid": "Enable IAM User Permissions",
+       "Effect": "Allow",
+       "Principal": {
+        "AWS": [
+         "arn:aws:iam::123456789012:root"
+        ]
+       },
+       "Action": [
+        "kms:Create*",
+        "kms:Describe*",
+        "kms:Enable*",
+        "kms:List*",
+        "kms:Put*",
+        "kms:Update*",
+        "kms:Revoke*",
+        "kms:Disable*",
+        "kms:Get*",
+        "kms:Delete*",
+        "kms:Decrypt",
+        "kms:ScheduleKeyDeletion",
+        "kms:CancelKeyDeletion"
+       ],
+       "Resource": [
+        "arn:aws:kms:us-east-1:123456789012:key/*"
+       ]
+      },
+      {
+       "Sid": "Allow CloudWatch Logs",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "logs.us-east-1.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "kms:Encrypt*",
+        "kms:Decrypt*",
+        "kms:ReEncrypt*",
+        "kms:GenerateDataKey*",
+        "kms:Describe*"
+       ],
+       "Resource": [
+        "arn:aws:kms:us-east-1:123456789012:key/*"
+       ],
+       "Condition": {
+        "ArnLike": {
+         "kms:EncryptionContext:aws:logs:arn": "arn:aws:logs:us-east-1:123456789012:*"
+        }
+       }
+      }
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "ApiGatewayLogsKMSKeyAlias",
+   "cfg": "ApiGatewayLogsKMSKeyAlias",
+   "type": "AWS::KMS::Alias",
+   "values": {
+    "AliasName": "alias/nih-grants-apigateway-ws-logs-key",
+    "TargetKeyId": {
+     "ref": "ApiGatewayLogsKMSKey"
+    }
+   },
+   "refs": [
+    "ApiGatewayLogsKMSKey"
+   ]
+  },
+  {
+   "id": "ApiGatewayCloudWatchLogsRole",
+   "cfg": "ApiGatewayCloudWatchLogsRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "apigateway.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs"
+    ],
+    "Path": "/"
+   },
+   "refs": []
+  },
+  {
+   "id": "ApiGatewayAccount",
+   "cfg": "ApiGatewayAccount",
+   "type": "AWS::ApiGateway::Account",
+   "values": {
+    "CloudWatchRoleArn": {
+     "ref": "ApiGatewayCloudWatchLogsRole",
+     "attr": "Arn"
+    }
+   },
+   "refs": [
+    "ApiGatewayCloudWatchLogsRole"
+   ]
+  },
+  {
+   "id": "Deployment",
+   "cfg": "Deployment",
+   "type": "AWS::ApiGatewayV2::Deployment",
+   "values": {
+    "ApiId": {
+     "ref": "nihGrantsApiWS"
+    },
+    "__resource__": {
+     "DependsOn": [
+      "ConnectRoute",
+      "OnMessageRoute",
+      "DisconnectRoute",
+      "DefaultRoute"
+     ]
+    }
+   },
+   "refs": [
+    "nihGrantsApiWS"
+   ]
+  },
+  {
+   "id": "Stage",
+   "cfg": "Stage",
+   "type": "AWS::ApiGatewayV2::Stage",
+   "values": {
+    "StageName": "Dev",
+    "Description": "Dev Stage",
+    "DeploymentId": {
+     "ref": "Deployment"
+    },
+    "ApiId": {
+     "ref": "nihGrantsApiWS"
+    }
+   },
+   "refs": [
+    "Deployment",
+    "nihGrantsApiWS"
+   ]
+  },
+  {
+   "id": "OnConnectPermission",
+   "cfg": "OnConnectPermission",
+   "type": "AWS::Lambda::Permission",
+   "values": {
+    "Action": "lambda:InvokeFunction",
+    "FunctionName": {
+     "ref": "NIHWSFunction"
+    },
+    "Principal": "apigateway.amazonaws.com",
+    "SourceArn": "arn:aws:execute-api:us-east-1:123456789012:${nihGrantsApiWS}/*",
+    "__resource__": {
+     "DependsOn": [
+      "nihGrantsApiWS"
+     ]
+    }
+   },
+   "refs": [
+    "NIHWSFunction",
+    "nihGrantsApiWS"
+   ]
+  },
+  {
+   "id": "OnDisconnectPermission",
+   "cfg": "OnDisconnectPermission",
+   "type": "AWS::Lambda::Permission",
+   "values": {
+    "Action": "lambda:InvokeFunction",
+    "FunctionName": {
+     "ref": "NIHWSFunction"
+    },
+    "Principal": "apigateway.amazonaws.com",
+    "SourceArn": "arn:aws:execute-api:us-east-1:123456789012:${nihGrantsApiWS}/*",
+    "__resource__": {
+     "DependsOn": [
+      "nihGrantsApiWS"
+     ]
+    }
+   },
+   "refs": [
+    "NIHWSFunction",
+    "nihGrantsApiWS"
+   ]
+  },
+  {
+   "id": "SendMessagePermission",
+   "cfg": "SendMessagePermission",
+   "type": "AWS::Lambda::Permission",
+   "values": {
+    "Action": "lambda:InvokeFunction",
+    "FunctionName": {
+     "ref": "NIHWSFunction"
+    },
+    "Principal": "apigateway.amazonaws.com",
+    "SourceArn": "arn:aws:execute-api:us-east-1:123456789012:${nihGrantsApiWS}/*",
+    "__resource__": {
+     "DependsOn": [
+      "nihGrantsApiWS"
+     ]
+    }
+   },
+   "refs": [
+    "NIHWSFunction",
+    "nihGrantsApiWS"
+   ]
+  },
+  {
+   "id": "__parameter__.TableName",
+   "cfg": "__parameter__.TableName",
+   "type": "__parameter__",
+   "values": {
+    "name": "TableName",
+    "type": "String",
+    "default": "XXXXXX",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.NIHCFBUCKET",
+   "cfg": "__parameter__.NIHCFBUCKET",
+   "type": "__parameter__",
+   "values": {
+    "name": "NIHCFBUCKET",
+    "type": "String",
+    "default": "scott-the-researcher-cloudformation-bucket-us-west-2",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.COGUPID",
+   "cfg": "__parameter__.COGUPID",
+   "type": "__parameter__",
+   "values": {
+    "name": "COGUPID",
+    "type": "String",
+    "default": "XXXXXXX",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.ConnectionsTableArn",
+   "cfg": "__output__.ConnectionsTableArn",
+   "type": "__output__",
+   "values": {
+    "name": "ConnectionsTableArn",
+    "value": {
+     "ref": "NIHWSFunction",
+     "attr": "Arn"
+    },
+    "description": "Connections table ARN",
+    "export": null
+   },
+   "refs": [
+    "NIHWSFunction"
+   ]
+  },
+  {
+   "id": "__output__.OnConnectFunctionArn",
+   "cfg": "__output__.OnConnectFunctionArn",
+   "type": "__output__",
+   "values": {
+    "name": "OnConnectFunctionArn",
+    "value": {
+     "ref": "NIHWSFunction",
+     "attr": "Arn"
+    },
+    "description": "OnConnect function ARN",
+    "export": null
+   },
+   "refs": [
+    "NIHWSFunction"
+   ]
+  },
+  {
+   "id": "__output__.OnDisconnectFunctionArn",
+   "cfg": "__output__.OnDisconnectFunctionArn",
+   "type": "__output__",
+   "values": {
+    "name": "OnDisconnectFunctionArn",
+    "value": {
+     "ref": "NIHWSFunction",
+     "attr": "Arn"
+    },
+    "description": "OnDisconnect function ARN",
+    "export": null
+   },
+   "refs": [
+    "NIHWSFunction"
+   ]
+  },
+  {
+   "id": "__output__.SendMessageFunctionArn",
+   "cfg": "__output__.SendMessageFunctionArn",
+   "type": "__output__",
+   "values": {
+    "name": "SendMessageFunctionArn",
+    "value": {
+     "ref": "NIHWSFunction",
+     "attr": "Arn"
+    },
+    "description": "SendMessage function ARN",
+    "export": null
+   },
+   "refs": [
+    "NIHWSFunction"
+   ]
+  },
+  {
+   "id": "__output__.StageURL",
+   "cfg": "__output__.StageURL",
+   "type": "__output__",
+   "values": {
+    "name": "StageURL",
+    "value": {
+     "Fn::Join": [
+      "",
+      [
+       "https://",
+       {
+        "ref": "nihGrantsApiWS"
+       },
+       ".execute-api.",
+       "us-east-1",
+       ".amazonaws.com/",
+       {
+        "ref": "Stage"
+       }
+      ]
+     ]
+    },
+    "description": "The URL to connect to the stage",
+    "export": null
+   },
+   "refs": [
+    "Stage",
+    "nihGrantsApiWS"
+   ]
+  },
+  {
+   "id": "__output__.WebSocketURI",
+   "cfg": "__output__.WebSocketURI",
+   "type": "__output__",
+   "values": {
+    "name": "WebSocketURI",
+    "value": {
+     "Fn::Join": [
+      "",
+      [
+       "wss://",
+       {
+        "ref": "nihGrantsApiWS"
+       },
+       ".execute-api.",
+       "us-east-1",
+       ".amazonaws.com/",
+       {
+        "ref": "Stage"
+       },
+       "/"
+      ]
+     ]
+    },
+    "description": "The WSS Protocol URI to connect to",
+    "export": null
+   },
+   "refs": [
+    "Stage",
+    "nihGrantsApiWS"
+   ]
+  },
+  {
+   "id": "__output__.WebSocketApiArn",
+   "cfg": "__output__.WebSocketApiArn",
+   "type": "__output__",
+   "values": {
+    "name": "WebSocketApiArn",
+    "value": "arn:aws:execute-api:us-east-1:123456789012:${nihGrantsApiWS}",
+    "description": "ARN of the WebSocket API",
+    "export": null
+   },
+   "refs": [
+    "nihGrantsApiWS"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.WSLambdaExecutionRole",
+   "cfg": "WSLambdaExecutionRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "WSLambdaExecutionRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "nih-grants-lambda-ws-execution-role",
+     "AssumeRolePolicyDocument": {
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        }
+       }
+      ],
+      "Version": "2012-10-17"
+     },
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+     ],
+     "Path": "/"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Policy.lambdanihgrantsdynamodbpolicy",
+   "cfg": "lambdanihgrantsdynamodbpolicy",
+   "type": "__declared__",
+   "refs": [
+    "WSLambdaExecutionRole"
+   ],
+   "values": {
+    "type": "AWS::IAM::Policy",
+    "name": "lambdanihgrantsdynamodbpolicy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "PolicyName": "lambda-nih-grants-dynamodb-policy",
+     "Roles": [
+      {
+       "ref": "WSLambdaExecutionRole"
+      }
+     ],
+     "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Action": [
+         "dynamodb:BatchGetItem",
+         "dynamodb:BatchWriteItem",
+         "dynamodb:PutItem",
+         "dynamodb:GetItem",
+         "dynamodb:Scan",
+         "dynamodb:DeleteItem",
+         "dynamodb:Query",
+         "dynamodb:UpdateItem",
+         "dynamodb:GetRecords"
+        ],
+        "Resource": [
+         "arn:aws:dynamodb:us-east-1:123456789012:table/nih-ws-table"
+        ]
+       },
+       {
+        "Effect": "Allow",
+        "Action": [
+         "kms:Decrypt"
+        ],
+        "Resource": [
+         "arn:aws:kms:us-east-1:123456789012:key/*"
+        ]
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::KMS::Key.LambdaKMSKey",
+   "cfg": "LambdaKMSKey",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::KMS::Key",
+    "name": "LambdaKMSKey",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Description": "KMS key for Lambda environment variables",
+     "EnableKeyRotation": true,
+     "KeyPolicy": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Sid": "Enable IAM User Permissions",
+        "Effect": "Allow",
+        "Principal": {
+         "AWS": [
+          "arn:aws:iam::123456789012:root"
+         ]
+        },
+        "Action": [
+         "kms:*"
+        ],
+        "Resource": [
+         "*"
+        ]
+       },
+       {
+        "Sid": "Allow Lambda service to use the key",
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "kms:Decrypt",
+         "kms:GenerateDataKey",
+         "kms:CreateGrant",
+         "kms:DescribeKey"
+        ],
+        "Resource": [
+         "*"
+        ],
+        "Condition": {
+         "ArnLike": {
+          "aws:SourceArn": [
+           "arn:aws:lambda:us-east-1:123456789012:function:NIHGrantListS3Artifacts",
+           "arn:aws:lambda:us-east-1:123456789012:function:NIHGrantCheckTemplateStatus",
+           "arn:aws:lambda:us-east-1:123456789012:function:ContextHTMLScraper",
+           "arn:aws:lambda:us-east-1:123456789012:function:TextTractPDF2TextAsync",
+           "arn:aws:lambda:us-east-1:123456789012:function:NIHGrantLoader",
+           "arn:aws:lambda:us-east-1:123456789012:function:NIHWSFunction",
+           "arn:aws:lambda:us-east-1:123456789012:function:NIHQueryGrants",
+           "arn:aws:lambda:us-east-1:123456789012:function:NIHModelPrompts"
+          ]
+         }
+        }
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Policy.LambdaKMSPolicy",
+   "cfg": "LambdaKMSPolicy",
+   "type": "__declared__",
+   "refs": [
+    "LambdaKMSKey",
+    "WSLambdaExecutionRole"
+   ],
+   "values": {
+    "type": "AWS::IAM::Policy",
+    "name": "LambdaKMSPolicy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "PolicyName": "lambda-kms-policy",
+     "Roles": [
+      {
+       "ref": "WSLambdaExecutionRole"
+      }
+     ],
+     "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Action": [
+         "kms:Decrypt",
+         "kms:GenerateDataKey"
+        ],
+        "Resource": {
+         "ref": "LambdaKMSKey",
+         "attr": "Arn"
+        }
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Function.NIHWSFunction",
+   "cfg": "NIHWSFunction",
+   "type": "__declared__",
+   "refs": [
+    "LambdaKMSKey",
+    "WSLambdaExecutionRole"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Function",
+    "name": "NIHWSFunction",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "FunctionName": "NIHWSFunction",
+     "Description": "Lambda NIHWSFunction",
+     "Handler": "index.lambda_handler",
+     "Runtime": "python3.12",
+     "Role": {
+      "ref": "WSLambdaExecutionRole",
+      "attr": "Arn"
+     },
+     "Timeout": 900,
+     "MemorySize": 3008,
+     "Code": {
+      "ZipFile": "def lambda_handler(event, context):\n    return {\"statusCode\": 200}\n"
+     },
+     "Environment": {
+      "Variables": {
+       "table_name": "nih-ws-table"
+      }
+     },
+     "KmsKeyArn": {
+      "ref": "LambdaKMSKey",
+      "attr": "Arn"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGatewayV2::Api.nihGrantsApiWS",
+   "cfg": "nihGrantsApiWS",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::ApiGatewayV2::Api",
+    "name": "nihGrantsApiWS",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "nihGrantsApiWS",
+     "ProtocolType": "WEBSOCKET",
+     "RouteSelectionExpression": "$request.body.action"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGatewayV2::Route.ConnectRoute",
+   "cfg": "ConnectRoute",
+   "type": "__declared__",
+   "refs": [
+    "ConnectInteg",
+    "nihGrantsApiWS"
+   ],
+   "values": {
+    "type": "AWS::ApiGatewayV2::Route",
+    "name": "ConnectRoute",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "nihGrantsApiWS"
+     },
+     "RouteKey": "$connect",
+     "AuthorizationType": "AWS_IAM",
+     "OperationName": "ConnectRoute",
+     "Target": {
+      "Fn::Join": [
+       "/",
+       [
+        "integrations",
+        {
+         "ref": "ConnectInteg"
+        }
+       ]
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGatewayV2::Route.DefaultRoute",
+   "cfg": "DefaultRoute",
+   "type": "__declared__",
+   "refs": [
+    "ConnectInteg",
+    "nihGrantsApiWS"
+   ],
+   "values": {
+    "type": "AWS::ApiGatewayV2::Route",
+    "name": "DefaultRoute",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "nihGrantsApiWS"
+     },
+     "RouteKey": "$default",
+     "AuthorizationType": "NONE",
+     "OperationName": "ConnectRoute",
+     "Target": {
+      "Fn::Join": [
+       "/",
+       [
+        "integrations",
+        {
+         "ref": "ConnectInteg"
+        }
+       ]
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGatewayV2::Integration.ConnectInteg",
+   "cfg": "ConnectInteg",
+   "type": "__declared__",
+   "refs": [
+    "NIHWSFunction",
+    "nihGrantsApiWS"
+   ],
+   "values": {
+    "type": "AWS::ApiGatewayV2::Integration",
+    "name": "ConnectInteg",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "nihGrantsApiWS"
+     },
+     "Description": "Connect Integration",
+     "IntegrationType": "AWS_PROXY",
+     "IntegrationUri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/${NIHWSFunction.Arn}/invocations"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGatewayV2::Route.DisconnectRoute",
+   "cfg": "DisconnectRoute",
+   "type": "__declared__",
+   "refs": [
+    "DisconnectInteg",
+    "nihGrantsApiWS"
+   ],
+   "values": {
+    "type": "AWS::ApiGatewayV2::Route",
+    "name": "DisconnectRoute",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "nihGrantsApiWS"
+     },
+     "RouteKey": "$disconnect",
+     "AuthorizationType": "NONE",
+     "OperationName": "DisconnectRoute",
+     "Target": {
+      "Fn::Join": [
+       "/",
+       [
+        "integrations",
+        {
+         "ref": "DisconnectInteg"
+        }
+       ]
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGatewayV2::Integration.DisconnectInteg",
+   "cfg": "DisconnectInteg",
+   "type": "__declared__",
+   "refs": [
+    "NIHWSFunction",
+    "nihGrantsApiWS"
+   ],
+   "values": {
+    "type": "AWS::ApiGatewayV2::Integration",
+    "name": "DisconnectInteg",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "nihGrantsApiWS"
+     },
+     "Description": "Disconnect Integration",
+     "IntegrationType": "AWS_PROXY",
+     "IntegrationUri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/${NIHWSFunction.Arn}/invocations"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGatewayV2::Route.OnMessageRoute",
+   "cfg": "OnMessageRoute",
+   "type": "__declared__",
+   "refs": [
+    "SendInteg",
+    "nihGrantsApiWS"
+   ],
+   "values": {
+    "type": "AWS::ApiGatewayV2::Route",
+    "name": "OnMessageRoute",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "nihGrantsApiWS"
+     },
+     "RouteKey": "onMessage",
+     "AuthorizationType": "NONE",
+     "OperationName": "SendRoute",
+     "Target": {
+      "Fn::Join": [
+       "/",
+       [
+        "integrations",
+        {
+         "ref": "SendInteg"
+        }
+       ]
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGatewayV2::Integration.SendInteg",
+   "cfg": "SendInteg",
+   "type": "__declared__",
+   "refs": [
+    "NIHWSFunction",
+    "nihGrantsApiWS"
+   ],
+   "values": {
+    "type": "AWS::ApiGatewayV2::Integration",
+    "name": "SendInteg",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "nihGrantsApiWS"
+     },
+     "Description": "Send Integration",
+     "IntegrationType": "AWS_PROXY",
+     "IntegrationUri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/${NIHWSFunction.Arn}/invocations"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Permission.WebSocketLambdaPermission",
+   "cfg": "WebSocketLambdaPermission",
+   "type": "__declared__",
+   "refs": [
+    "NIHWSFunction",
+    "nihGrantsApiWS"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Permission",
+    "name": "WebSocketLambdaPermission",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Action": "lambda:InvokeFunction",
+     "FunctionName": {
+      "ref": "NIHWSFunction"
+     },
+     "Principal": "apigateway.amazonaws.com",
+     "SourceArn": "arn:aws:execute-api:us-east-1:123456789012:${nihGrantsApiWS}/*"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::KMS::Key.ApiGatewayLogsKMSKey",
+   "cfg": "ApiGatewayLogsKMSKey",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::KMS::Key",
+    "name": "ApiGatewayLogsKMSKey",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Description": "KMS key for encrypting API Gateway CloudWatch Logs",
+     "EnableKeyRotation": true,
+     "KeyPolicy": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Sid": "Enable IAM User Permissions",
+        "Effect": "Allow",
+        "Principal": {
+         "AWS": [
+          "arn:aws:iam::123456789012:root"
+         ]
+        },
+        "Action": [
+         "kms:Create*",
+         "kms:Describe*",
+         "kms:Enable*",
+         "kms:List*",
+         "kms:Put*",
+         "kms:Update*",
+         "kms:Revoke*",
+         "kms:Disable*",
+         "kms:Get*",
+         "kms:Delete*",
+         "kms:Decrypt",
+         "kms:ScheduleKeyDeletion",
+         "kms:CancelKeyDeletion"
+        ],
+        "Resource": [
+         "arn:aws:kms:us-east-1:123456789012:key/*"
+        ]
+       },
+       {
+        "Sid": "Allow CloudWatch Logs",
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "logs.us-east-1.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "kms:Encrypt*",
+         "kms:Decrypt*",
+         "kms:ReEncrypt*",
+         "kms:GenerateDataKey*",
+         "kms:Describe*"
+        ],
+        "Resource": [
+         "arn:aws:kms:us-east-1:123456789012:key/*"
+        ],
+        "Condition": {
+         "ArnLike": {
+          "kms:EncryptionContext:aws:logs:arn": "arn:aws:logs:us-east-1:123456789012:*"
+         }
+        }
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::KMS::Alias.ApiGatewayLogsKMSKeyAlias",
+   "cfg": "ApiGatewayLogsKMSKeyAlias",
+   "type": "__declared__",
+   "refs": [
+    "ApiGatewayLogsKMSKey"
+   ],
+   "values": {
+    "type": "AWS::KMS::Alias",
+    "name": "ApiGatewayLogsKMSKeyAlias",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AliasName": "alias/nih-grants-apigateway-ws-logs-key",
+     "TargetKeyId": {
+      "ref": "ApiGatewayLogsKMSKey"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.ApiGatewayCloudWatchLogsRole",
+   "cfg": "ApiGatewayCloudWatchLogsRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "ApiGatewayCloudWatchLogsRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "apigateway.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs"
+     ],
+     "Path": "/"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::Account.ApiGatewayAccount",
+   "cfg": "ApiGatewayAccount",
+   "type": "__declared__",
+   "refs": [
+    "ApiGatewayCloudWatchLogsRole"
+   ],
+   "values": {
+    "type": "AWS::ApiGateway::Account",
+    "name": "ApiGatewayAccount",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "CloudWatchRoleArn": {
+      "ref": "ApiGatewayCloudWatchLogsRole",
+      "attr": "Arn"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGatewayV2::Deployment.Deployment",
+   "cfg": "Deployment",
+   "type": "__declared__",
+   "refs": [
+    "nihGrantsApiWS"
+   ],
+   "values": {
+    "type": "AWS::ApiGatewayV2::Deployment",
+    "name": "Deployment",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiId": {
+      "ref": "nihGrantsApiWS"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGatewayV2::Stage.Stage",
+   "cfg": "Stage",
+   "type": "__declared__",
+   "refs": [
+    "Deployment",
+    "nihGrantsApiWS"
+   ],
+   "values": {
+    "type": "AWS::ApiGatewayV2::Stage",
+    "name": "Stage",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "StageName": "Dev",
+     "Description": "Dev Stage",
+     "DeploymentId": {
+      "ref": "Deployment"
+     },
+     "ApiId": {
+      "ref": "nihGrantsApiWS"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Permission.OnConnectPermission",
+   "cfg": "OnConnectPermission",
+   "type": "__declared__",
+   "refs": [
+    "NIHWSFunction",
+    "nihGrantsApiWS"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Permission",
+    "name": "OnConnectPermission",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Action": "lambda:InvokeFunction",
+     "FunctionName": {
+      "ref": "NIHWSFunction"
+     },
+     "Principal": "apigateway.amazonaws.com",
+     "SourceArn": "arn:aws:execute-api:us-east-1:123456789012:${nihGrantsApiWS}/*"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Permission.OnDisconnectPermission",
+   "cfg": "OnDisconnectPermission",
+   "type": "__declared__",
+   "refs": [
+    "NIHWSFunction",
+    "nihGrantsApiWS"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Permission",
+    "name": "OnDisconnectPermission",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Action": "lambda:InvokeFunction",
+     "FunctionName": {
+      "ref": "NIHWSFunction"
+     },
+     "Principal": "apigateway.amazonaws.com",
+     "SourceArn": "arn:aws:execute-api:us-east-1:123456789012:${nihGrantsApiWS}/*"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Permission.SendMessagePermission",
+   "cfg": "SendMessagePermission",
+   "type": "__declared__",
+   "refs": [
+    "NIHWSFunction",
+    "nihGrantsApiWS"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Permission",
+    "name": "SendMessagePermission",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Action": "lambda:InvokeFunction",
+     "FunctionName": {
+      "ref": "NIHWSFunction"
+     },
+     "Principal": "apigateway.amazonaws.com",
+     "SourceArn": "arn:aws:execute-api:us-east-1:123456789012:${nihGrantsApiWS}/*"
+    }
+   }
+  }
+ ]
+}

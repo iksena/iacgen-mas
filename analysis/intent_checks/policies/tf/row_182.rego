@@ -1,0 +1,1190 @@
+package intent.tf.row_182
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {
+  "ec2cd": {
+   "types": [
+    "aws_iam_role"
+   ],
+   "where": [
+    {
+     "path": [
+      "name"
+     ],
+     "op": "regex",
+     "value": "(?i)_ec2_codedeploy_role$"
+    }
+   ]
+  },
+  "codebuild": {
+   "types": [
+    "aws_iam_role"
+   ],
+   "where": [
+    {
+     "path": [
+      "name"
+     ],
+     "op": "eq",
+     "value": "CodeBuildRole"
+    }
+   ]
+  },
+  "pipeline": {
+   "types": [
+    "aws_iam_role"
+   ],
+   "where": [
+    {
+     "path": [
+      "name"
+     ],
+     "op": "eq",
+     "value": "CodePipelineRole"
+    }
+   ]
+  },
+  "roles": {
+   "types": [
+    "aws_iam_role"
+   ],
+   "where": []
+  },
+  "profiles": {
+   "types": [
+    "aws_iam_instance_profile"
+   ],
+   "where": []
+  },
+  "cdrole": {
+   "types": [
+    "aws_iam_role"
+   ],
+   "where": [
+    {
+     "path": [
+      "assume_role_policy"
+     ],
+     "op": "contains",
+     "value": "codedeploy.amazonaws.com"
+    },
+    {
+     "path": [
+      "name"
+     ],
+     "op": "none_eq",
+     "value": "CodePipelineRole"
+    }
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "ec2cd_role_named",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "named using the project prefix appended with \"_ec2_codedeploy_role\"",
+   "select": "ec2cd",
+   "cond": {
+    "path": [
+     "name"
+    ],
+    "op": "eq",
+    "value": "Cv-React-App_ec2_codedeploy_role"
+   }
+  },
+  {
+   "id": "project_var",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "a default project variable of \"Cv-React-App\"",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "eq",
+        "value": "project"
+       },
+       {
+        "path": [
+         "default"
+        ],
+        "op": "eq",
+        "value": "Cv-React-App"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": [
+         "default"
+        ],
+        "op": "eq",
+        "value": "Cv-React-App"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "ec2cd_codedeploy_ec2_policy",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "Amazon EC2 Role for AWS CodeDeploy",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_role_policy_attachment"
+      ],
+      "where": [
+       {
+        "path": [
+         "policy_arn"
+        ],
+        "op": "regex",
+        "value": "AmazonEC2RoleforAWSCodeDeploy"
+       }
+      ]
+     },
+     "to": "ec2cd"
+    },
+    {
+     "kind": "attr",
+     "select": "ec2cd",
+     "cond": {
+      "path": [
+       "managed_policy_arns",
+       "*"
+      ],
+      "op": "regex",
+      "value": "AmazonEC2RoleforAWSCodeDeploy"
+     }
+    }
+   ]
+  },
+  {
+   "id": "ec2cd_ec2_full",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "Amazon EC2 Full Access",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_role_policy_attachment"
+      ],
+      "where": [
+       {
+        "path": [
+         "policy_arn"
+        ],
+        "op": "regex",
+        "value": "AmazonEC2FullAccess"
+       }
+      ]
+     },
+     "to": "ec2cd"
+    },
+    {
+     "kind": "attr",
+     "select": "ec2cd",
+     "cond": {
+      "path": [
+       "managed_policy_arns",
+       "*"
+      ],
+      "op": "regex",
+      "value": "AmazonEC2FullAccess"
+     }
+    }
+   ]
+  },
+  {
+   "id": "ec2cd_s3_full",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "Amazon S3 Full Access",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_role_policy_attachment"
+      ],
+      "where": [
+       {
+        "path": [
+         "policy_arn"
+        ],
+        "op": "regex",
+        "value": "AmazonS3FullAccess"
+       }
+      ]
+     },
+     "to": "ec2cd"
+    },
+    {
+     "kind": "attr",
+     "select": "ec2cd",
+     "cond": {
+      "path": [
+       "managed_policy_arns",
+       "*"
+      ],
+      "op": "regex",
+      "value": "AmazonS3FullAccess"
+     }
+    }
+   ]
+  },
+  {
+   "id": "ec2cd_profile",
+   "kind": "ref",
+   "tier": "core",
+   "quote": "along with its associated instance profile",
+   "from": {
+    "types": [
+     "aws_iam_instance_profile"
+    ],
+    "where": []
+   },
+   "to": "ec2cd"
+  },
+  {
+   "id": "codedeploy_service_trust",
+   "tier": "core",
+   "quote": "a dedicated CodeDeploy service role with an assume role trust policy for the CodeDeploy service",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": "cdrole"
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_iam_role"
+       },
+       {
+        "path": [
+         "properties",
+         "assume_role_policy"
+        ],
+        "op": "regex",
+        "value": "codedeploy\\.amazonaws\\.com"
+       },
+       {
+        "path": [
+         "properties",
+         "name"
+        ],
+        "op": "none_eq",
+        "value": "CodePipelineRole"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "codedeploy_role_policy",
+   "tier": "core",
+   "quote": "attached to AWS CodeDeploy Role",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_role_policy_attachment"
+      ],
+      "where": [
+       {
+        "path": [
+         "policy_arn"
+        ],
+        "op": "regex",
+        "value": "AWSCodeDeployRole"
+       }
+      ]
+     },
+     "to": "cdrole"
+    },
+    {
+     "kind": "attr",
+     "select": "cdrole",
+     "cond": {
+      "path": [
+       "managed_policy_arns",
+       "*"
+      ],
+      "op": "regex",
+      "value": "AWSCodeDeployRole"
+     }
+    }
+   ]
+  },
+  {
+   "id": "s3_full_for_other_roles",
+   "tier": "detail",
+   "quote": "attached to AWS CodeDeploy Role and Amazon S3 Full Access managed policies",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_role_policy_attachment"
+      ],
+      "where": [
+       {
+        "path": [
+         "policy_arn"
+        ],
+        "op": "regex",
+        "value": "AmazonS3FullAccess"
+       }
+      ]
+     },
+     "to": "cdrole"
+    },
+    {
+     "kind": "attr",
+     "select": "cdrole",
+     "cond": {
+      "path": [
+       "managed_policy_arns",
+       "*"
+      ],
+      "op": "regex",
+      "value": "AmazonS3FullAccess"
+     }
+    }
+   ]
+  },
+  {
+   "id": "cw_agent_policy",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "an EC2 CloudWatch Agent service role attached to CloudWatch Agent Server Policy",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_iam_role_policy_attachment"
+      ],
+      "where": [
+       {
+        "path": [
+         "policy_arn"
+        ],
+        "op": "regex",
+        "value": "CloudWatchAgentServerPolicy"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_iam_role"
+      ],
+      "where": [
+       {
+        "path": [
+         "managed_policy_arns",
+         "*"
+        ],
+        "op": "regex",
+        "value": "CloudWatchAgentServerPolicy"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "cw_role_s3_full",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "attached to CloudWatch Agent Server Policy and Amazon S3 Full Access",
+   "checks": [
+    {
+     "kind": "join",
+     "from": {
+      "types": [
+       "aws_iam_role_policy_attachment"
+      ],
+      "where": [
+       {
+        "path": [
+         "policy_arn"
+        ],
+        "op": "regex",
+        "value": "CloudWatchAgentServerPolicy"
+       }
+      ]
+     },
+     "from_path": [
+      "role"
+     ],
+     "to": {
+      "types": [
+       "aws_iam_role_policy_attachment"
+      ],
+      "where": [
+       {
+        "path": [
+         "policy_arn"
+        ],
+        "op": "regex",
+        "value": "AmazonS3FullAccess"
+       }
+      ]
+     },
+     "to_path": [
+      "role"
+     ]
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_iam_role"
+      ],
+      "where": [
+       {
+        "path": [
+         "managed_policy_arns",
+         "*"
+        ],
+        "op": "regex",
+        "value": "CloudWatchAgentServerPolicy"
+       },
+       {
+        "path": [
+         "managed_policy_arns",
+         "*"
+        ],
+        "op": "regex",
+        "value": "AmazonS3FullAccess"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "ec2_roles_two",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "an EC2 CloudWatch Agent service role",
+   "justify": "EC2 roles for the CodeDeploy host and the CloudWatch agent",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_iam_role"
+      ],
+      "where": [
+       {
+        "path": [
+         "assume_role_policy"
+        ],
+        "op": "contains",
+        "value": "ec2.amazonaws.com"
+       }
+      ]
+     },
+     "min": 2
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_iam_role"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "regex",
+        "value": "ec2\\.amazonaws\\.com"
+       }
+      ]
+     },
+     "min": 2
+    }
+   ]
+  },
+  {
+   "id": "instance_profiles",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "with its corresponding instance profile",
+   "justify": "the EC2 CodeDeploy role and the CloudWatch Agent role each have one",
+   "select": "profiles",
+   "min": 2
+  },
+  {
+   "id": "profiles_distinct_roles",
+   "kind": "exists",
+   "tier": "detail",
+   "quote": "with its corresponding instance profile",
+   "justify": "each profile for a different role",
+   "select": "profiles",
+   "min": 2,
+   "distinct_path": [
+    "role"
+   ]
+  },
+  {
+   "id": "codebuild_role",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "a CodeBuild role named \"CodeBuildRole\"",
+   "select": "codebuild"
+  },
+  {
+   "id": "codebuild_s3_full",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "attached to Amazon S3 Full Access",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_role_policy_attachment"
+      ],
+      "where": [
+       {
+        "path": [
+         "policy_arn"
+        ],
+        "op": "regex",
+        "value": "AmazonS3FullAccess"
+       }
+      ]
+     },
+     "to": "codebuild"
+    },
+    {
+     "kind": "attr",
+     "select": "codebuild",
+     "cond": {
+      "path": [
+       "managed_policy_arns",
+       "*"
+      ],
+      "op": "regex",
+      "value": "AmazonS3FullAccess"
+     }
+    }
+   ]
+  },
+  {
+   "id": "codebuild_logging",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "an inline policy granting logging permissions",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "in",
+        "value": [
+         "aws_iam_role",
+         "aws_iam_role_policy",
+         "aws_iam_policy",
+         "data.aws_iam_policy_document"
+        ]
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "regex",
+        "value": "(?i)logs:(CreateLogGroup|CreateLogStream|PutLogEvents|\\*)"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "codebuild_artifact_bucket",
+   "tier": "core",
+   "quote": "specific CodePipeline S3 bucket artifact access in us-east-1",
+   "justify": "CodePipeline artifact buckets in us-east-1 are named codepipeline-us-east-1-*; a pipeline artifact bucket the template creates (in its us-east-1 provider) also counts",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "in",
+        "value": [
+         "aws_iam_role",
+         "aws_iam_role_policy",
+         "aws_iam_policy",
+         "data.aws_iam_policy_document"
+        ]
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "regex",
+        "value": "(?i)codepipeline-([^'\\\"\\s]*us-east-1|\\$\\{[^}]*region)"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "in",
+        "value": [
+         "aws_iam_role",
+         "aws_iam_role_policy",
+         "aws_iam_policy",
+         "data.aws_iam_policy_document"
+        ]
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "regex",
+        "value": "(?i)us-east-1[^'\\\"\\s]*codepipeline"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "in",
+        "value": [
+         "aws_iam_role",
+         "aws_iam_role_policy",
+         "aws_iam_policy",
+         "data.aws_iam_policy_document"
+        ]
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "regex",
+        "value": "(?i)s3:(GetObject|PutObject|\\*)"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_s3_bucket"
+       },
+       {
+        "path": [
+         "properties",
+         "bucket"
+        ],
+        "op": "regex",
+        "value": "(?i)codepipeline"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "codebuild_reports",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "CodeBuild report creation capabilities",
+   "justify": "report creation actions are CreateReport and CreateReportGroup",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "in",
+        "value": [
+         "aws_iam_role",
+         "aws_iam_role_policy",
+         "aws_iam_policy",
+         "data.aws_iam_policy_document"
+        ]
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "regex",
+        "value": "(?i)codebuild:(Create(Report|ReportGroup)|\\*)"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "pipeline_role",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "a CodePipeline role named \"CodePipelineRole\"",
+   "select": "pipeline"
+  },
+  {
+   "id": "pipeline_multi_service_trust",
+   "tier": "core",
+   "quote": "a trust policy permitting assumption by multiple AWS service principals",
+   "justify": "multiple means at least two service principals",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "pipeline",
+     "cond": {
+      "path": [
+       "assume_role_policy"
+      ],
+      "op": "regex",
+      "value": "(?s)amazonaws\\.com.*amazonaws\\.com"
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_iam_role"
+       },
+       {
+        "path": [
+         "properties",
+         "name"
+        ],
+        "op": "eq",
+        "value": "CodePipelineRole"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "regex",
+        "value": "(?s)amazonaws\\.com.*amazonaws\\.com"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "pipeline_root_trust",
+   "tier": "core",
+   "quote": "and account root",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "pipeline",
+     "cond": {
+      "path": [
+       "assume_role_policy"
+      ],
+      "op": "contains",
+      "value": ":root"
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_iam_role"
+       },
+       {
+        "path": [
+         "properties",
+         "name"
+        ],
+        "op": "eq",
+        "value": "CodePipelineRole"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "regex",
+        "value": ":root"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "pipeline_inline_services",
+   "kind": "all_of",
+   "tier": "core",
+   "quote": "an inline policy allowing full pipeline actions across CodeStar Connections, S3, CodeCommit, CodeDeploy, Lambda, CodeBuild, CloudFormation",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "in",
+        "value": [
+         "aws_iam_role",
+         "aws_iam_role_policy",
+         "aws_iam_policy",
+         "data.aws_iam_policy_document"
+        ]
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "regex",
+        "value": "(?i)codestar-connections:"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "in",
+        "value": [
+         "aws_iam_role",
+         "aws_iam_role_policy",
+         "aws_iam_policy",
+         "data.aws_iam_policy_document"
+        ]
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "regex",
+        "value": "(?i)s3:"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "in",
+        "value": [
+         "aws_iam_role",
+         "aws_iam_role_policy",
+         "aws_iam_policy",
+         "data.aws_iam_policy_document"
+        ]
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "regex",
+        "value": "(?i)codecommit:"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "in",
+        "value": [
+         "aws_iam_role",
+         "aws_iam_role_policy",
+         "aws_iam_policy",
+         "data.aws_iam_policy_document"
+        ]
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "regex",
+        "value": "(?i)codedeploy:"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "in",
+        "value": [
+         "aws_iam_role",
+         "aws_iam_role_policy",
+         "aws_iam_policy",
+         "data.aws_iam_policy_document"
+        ]
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "regex",
+        "value": "(?i)lambda:"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "in",
+        "value": [
+         "aws_iam_role",
+         "aws_iam_role_policy",
+         "aws_iam_policy",
+         "data.aws_iam_policy_document"
+        ]
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "regex",
+        "value": "(?i)codebuild:"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "in",
+        "value": [
+         "aws_iam_role",
+         "aws_iam_role_policy",
+         "aws_iam_policy",
+         "data.aws_iam_policy_document"
+        ]
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "regex",
+        "value": "(?i)cloudformation:"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "pipeline_inline_exists",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "paired with an inline policy",
+   "justify": "inline policy on CodePipelineRole",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_role_policy"
+      ],
+      "where": []
+     },
+     "to": "pipeline"
+    },
+    {
+     "kind": "attr",
+     "select": "pipeline",
+     "cond": {
+      "path": [
+       "inline_policy"
+      ],
+      "op": "present"
+     }
+    }
+   ]
+  },
+  {
+   "id": "x_cb_ec2_trust",
+   "kind": "attr",
+   "tier": "extra",
+   "select": "codebuild",
+   "cond": {
+    "path": [
+     "assume_role_policy"
+    ],
+    "op": "contains",
+    "value": "codebuild.amazonaws.com"
+   }
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

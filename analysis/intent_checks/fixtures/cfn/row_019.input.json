@@ -1,0 +1,195 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "ae44f3cfc101d83b69ef0f4cdc1efcf07511e9694d315f72b4f79eb02a4e9730",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "BasicParameter",
+   "cfg": "BasicParameter",
+   "type": "AWS::SSM::Parameter",
+   "values": {
+    "Name": "dbUsername",
+    "Type": "String",
+    "Value": "alice",
+    "Description": "SSM Parameter for database username."
+   },
+   "refs": []
+  },
+  {
+   "id": "DemoRole",
+   "cfg": "DemoRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Path": "/",
+    "Policies": [
+     {
+      "PolicyName": "ssm-least-privilege",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "ssm:GetParameter"
+         ],
+         "Resource": [
+          "arn:aws:ssm:us-east-1:123456789012:parameter/${BasicParameter}"
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": [
+    "BasicParameter"
+   ]
+  },
+  {
+   "id": "DemoLambdaFunction",
+   "cfg": "DemoLambdaFunction",
+   "type": "AWS::Lambda::Function",
+   "values": {
+    "Handler": "index.lambda_handler",
+    "Role": {
+     "ref": "DemoRole",
+     "attr": "Arn"
+    },
+    "Runtime": "python3.8",
+    "Code": {
+     "ZipFile": "import boto3\nclient = boto3.client('ssm')\n\ndef lambda_handler(event, context):\n    response = client.get_parameter(Name='dbUsername')\n    print(f'SSM dbUsername parameter value: {response[\"Parameter\"][\"Value\"]}')"
+    }
+   },
+   "refs": [
+    "DemoRole"
+   ]
+  },
+  {
+   "id": "__parameter__.DatabaseUsername",
+   "cfg": "__parameter__.DatabaseUsername",
+   "type": "__parameter__",
+   "values": {
+    "name": "DatabaseUsername",
+    "type": "String",
+    "default": "alice",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__declared__.AWS::SSM::Parameter.BasicParameter",
+   "cfg": "BasicParameter",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::SSM::Parameter",
+    "name": "BasicParameter",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "dbUsername",
+     "Type": "String",
+     "Value": "alice",
+     "Description": "SSM Parameter for database username."
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.DemoRole",
+   "cfg": "DemoRole",
+   "type": "__declared__",
+   "refs": [
+    "BasicParameter"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "DemoRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Path": "/",
+     "Policies": [
+      {
+       "PolicyName": "ssm-least-privilege",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "ssm:GetParameter"
+          ],
+          "Resource": [
+           "arn:aws:ssm:us-east-1:123456789012:parameter/${BasicParameter}"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Function.DemoLambdaFunction",
+   "cfg": "DemoLambdaFunction",
+   "type": "__declared__",
+   "refs": [
+    "DemoRole"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Function",
+    "name": "DemoLambdaFunction",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Handler": "index.lambda_handler",
+     "Role": {
+      "ref": "DemoRole",
+      "attr": "Arn"
+     },
+     "Runtime": "python3.8",
+     "Code": {
+      "ZipFile": "import boto3\nclient = boto3.client('ssm')\n\ndef lambda_handler(event, context):\n    response = client.get_parameter(Name='dbUsername')\n    print(f'SSM dbUsername parameter value: {response[\"Parameter\"][\"Value\"]}')"
+     }
+    }
+   }
+  }
+ ]
+}

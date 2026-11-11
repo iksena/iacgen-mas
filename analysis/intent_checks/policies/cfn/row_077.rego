@@ -193,7 +193,10 @@ spec := {
      "select": "svc",
      "cond": {
       "path": [
-       "SourceConfiguration"
+       "SourceConfiguration",
+       "ImageRepository",
+       "ImageConfiguration",
+       "RuntimeEnvironmentVariables"
       ],
       "op": "contains",
       "value": "us-east-1"
@@ -204,7 +207,10 @@ spec := {
      "select": "svc",
      "cond": {
       "path": [
-       "SourceConfiguration"
+       "SourceConfiguration",
+       "ImageRepository",
+       "ImageConfiguration",
+       "RuntimeEnvironmentVariables"
       ],
       "op": "contains",
       "value": "123456789012"
@@ -223,7 +229,10 @@ spec := {
      "select": "svc",
      "cond": {
       "path": [
-       "SourceConfiguration"
+       "SourceConfiguration",
+       "ImageRepository",
+       "ImageConfiguration",
+       "RuntimeEnvironmentVariables"
       ],
       "op": "regex",
       "value": "(?i)e-?mail"
@@ -234,7 +243,10 @@ spec := {
      "select": "svc",
      "cond": {
       "path": [
-       "SourceConfiguration"
+       "SourceConfiguration",
+       "ImageRepository",
+       "ImageConfiguration",
+       "RuntimeEnvironmentVariables"
       ],
       "op": "regex",
       "value": "(?i)admin"
@@ -253,7 +265,10 @@ spec := {
      "select": "svc",
      "cond": {
       "path": [
-       "SourceConfiguration"
+       "SourceConfiguration",
+       "ImageRepository",
+       "ImageConfiguration",
+       "RuntimeEnvironmentVariables"
       ],
       "op": "regex",
       "value": "(?i)template"
@@ -264,7 +279,10 @@ spec := {
      "select": "svc",
      "cond": {
       "path": [
-       "SourceConfiguration"
+       "SourceConfiguration",
+       "ImageRepository",
+       "ImageConfiguration",
+       "RuntimeEnvironmentVariables"
       ],
       "op": "regex",
       "value": "(?i)data_?set"
@@ -275,7 +293,10 @@ spec := {
      "select": "svc",
      "cond": {
       "path": [
-       "SourceConfiguration"
+       "SourceConfiguration",
+       "ImageRepository",
+       "ImageConfiguration",
+       "RuntimeEnvironmentVariables"
       ],
       "op": "regex",
       "value": "(?i)data_?source"
@@ -286,7 +307,10 @@ spec := {
      "select": "svc",
      "cond": {
       "path": [
-       "SourceConfiguration"
+       "SourceConfiguration",
+       "ImageRepository",
+       "ImageConfiguration",
+       "RuntimeEnvironmentVariables"
       ],
       "op": "regex",
       "value": "(?i)database"
@@ -297,7 +321,10 @@ spec := {
      "select": "svc",
      "cond": {
       "path": [
-       "SourceConfiguration"
+       "SourceConfiguration",
+       "ImageRepository",
+       "ImageConfiguration",
+       "RuntimeEnvironmentVariables"
       ],
       "op": "regex",
       "value": "(?i)table"
@@ -308,7 +335,10 @@ spec := {
      "select": "svc",
      "cond": {
       "path": [
-       "SourceConfiguration"
+       "SourceConfiguration",
+       "ImageRepository",
+       "ImageConfiguration",
+       "RuntimeEnvironmentVariables"
       ],
       "op": "regex",
       "value": "(?i)filter"

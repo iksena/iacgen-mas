@@ -1,0 +1,2067 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "fe4bcad6ba7b0085a3d3a9e22d6b300c119f23309f658798b9987c896443cf7b",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "CopyZipsRole",
+   "cfg": "CopyZipsRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "eks-quickstart-CopyZips",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+    ],
+    "Policies": [
+     {
+      "PolicyName": "lambda-zips-s3-read",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "s3:GetObject"
+         ],
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "ResourceReaderRole",
+   "cfg": "ResourceReaderRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "eks-quickstart-ResourceReader",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+     "arn:aws:iam::aws:policy/ReadOnlyAccess"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "CreateVpcRoleRole",
+   "cfg": "CreateVpcRoleRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "eks-quickstart-CreateVpcRole",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+    ],
+    "Policies": [
+     {
+      "PolicyName": "create-role",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "iam:CreateRole"
+         ],
+         "Resource": [
+          "arn:aws:iam::123456789012:role/CloudFormation-Kubernetes-VPC"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "iam:AttachRolePolicy"
+         ],
+         "Resource": [
+          "arn:aws:iam::123456789012:role/CloudFormation-Kubernetes-VPC"
+         ],
+         "Condition": {
+          "ArnEquals": {
+           "iam:PolicyARN": [
+            "arn:aws:iam::aws:policy/service-role/AWSLambdaENIManagementAccess",
+            "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+           ]
+          }
+         }
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "DeleteBucketContentsRole",
+   "cfg": "DeleteBucketContentsRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "eks-quickstart-DeleteBucketContents",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "ControlPlaneRole",
+   "cfg": "ControlPlaneRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "eks-quickstart-ControlPlane",
+    "Policies": [
+     {
+      "PolicyName": "ec2-describe-policy",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "ec2:DescribeAccountAttributes",
+          "ec2:DescribeAddresses",
+          "ec2:DescribeInternetGateways"
+         ],
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     }
+    ],
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "eks.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy",
+     "arn:aws:iam::aws:policy/AmazonEKSServicePolicy"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "CleanupLoadBalancersRole",
+   "cfg": "CleanupLoadBalancersRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "eks-quickstart-CleanupLoadBalancers",
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "Path": "/",
+    "Policies": [
+     {
+      "PolicyName": "LambdaRole",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Action": [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+         ],
+         "Effect": "Allow",
+         "Resource": [
+          "arn:aws:logs:*:*:*"
+         ]
+        },
+        {
+         "Action": [
+          "elasticloadbalancing:DescribeLoadBalancers",
+          "elasticloadbalancing:DescribeTags",
+          "elasticloadbalancing:DeleteLoadBalancer",
+          "ec2:DescribeTags",
+          "ec2:DeleteSecurityGroup",
+          "ec2:DescribeNetworkInterfaces",
+          "ec2:DeleteNetworkInterface",
+          "ec2:DetachNetworkInterface",
+          "ec2:DescribeSecurityGroups",
+          "ec2:RevokeSecurityGroupEgress",
+          "ec2:RevokeSecurityGroupIngress"
+         ],
+         "Effect": "Allow",
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "CleanupSecurityGroupDependenciesRole",
+   "cfg": "CleanupSecurityGroupDependenciesRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "eks-quickstart-CleanupSecurityGroupDependencies",
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "Path": "/",
+    "Policies": [
+     {
+      "PolicyName": "LambdaRole",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Action": [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+         ],
+         "Effect": "Allow",
+         "Resource": [
+          "arn:aws:logs:*:*:*"
+         ]
+        },
+        {
+         "Action": [
+          "ec2:DescribeNetworkInterfaces",
+          "ec2:DescribeSecurityGroups",
+          "ec2:RevokeSecurityGroupEgress",
+          "ec2:RevokeSecurityGroupIngress",
+          "ec2:DeleteNetworkInterface",
+          "ec2:DetachNetworkInterface"
+         ],
+         "Effect": "Allow",
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "CleanupLambdasRole",
+   "cfg": "CleanupLambdasRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "eks-quickstart-CleanupLambdas",
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "Path": "/",
+    "Policies": [
+     {
+      "PolicyName": "LambdaRole",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Action": [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+         ],
+         "Effect": "Allow",
+         "Resource": [
+          "arn:aws:logs:*:*:*"
+         ]
+        },
+        {
+         "Action": [
+          "lambda:ListFunctions",
+          "lambda:UpdateFunctionConfiguration",
+          "lambda:DeleteFunction"
+         ],
+         "Effect": "Allow",
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "GetCallerArnRole",
+   "cfg": "GetCallerArnRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "eks-quickstart-GetCallerArn",
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "Path": "/",
+    "Policies": [
+     {
+      "PolicyName": "LambdaRole",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Action": [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+         ],
+         "Effect": "Allow",
+         "Resource": [
+          "arn:aws:logs:*:*:*"
+         ]
+        },
+        {
+         "Action": [
+          "cloudformation:DescribeStacks",
+          "cloudtrail:LookupEvents"
+         ],
+         "Effect": "Allow",
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "RegisterTypeRole",
+   "cfg": "RegisterTypeRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "eks-quickstart-RegisterType",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Path": "/",
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+    ],
+    "Policies": [
+     {
+      "PolicyName": "ResourceTypePolicy",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "cloudformation:*",
+          "iam:PassRole",
+          "iam:CreateRole",
+          "iam:CreatePolicy",
+          "iam:ListPolicyVersions",
+          "iam:DeletePolicyVersion",
+          "iam:CreatePolicyVersion",
+          "iam:AttachRolePolicy",
+          "ssm:GetParameter",
+          "ssm:PutParameter",
+          "sts:GetCallerIdentity",
+          "s3:GetObject"
+         ],
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "RegisterCustomResourceRole",
+   "cfg": "RegisterCustomResourceRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "eks-quickstart-RegisterCustomResource",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Path": "/",
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+    ],
+    "Policies": [
+     {
+      "PolicyName": "ResourceTypePolicy",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "lambda:*",
+          "iam:PassRole",
+          "iam:CreateRole",
+          "iam:CreatePolicy",
+          "iam:ListPolicyVersions",
+          "iam:DeletePolicyVersion",
+          "iam:CreatePolicyVersion",
+          "iam:AttachRolePolicy",
+          "ssm:GetParameter",
+          "ssm:PutParameter",
+          "sts:GetCallerIdentity"
+         ],
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "NodeSGRole",
+   "cfg": "NodeSGRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "eks-quickstart-NodeSG",
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+    ],
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Policies": [
+     {
+      "PolicyName": "lambda-copier",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "eks:DescribeNodeGroup"
+         ],
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "FargateExecutionRole",
+   "cfg": "FargateExecutionRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "eks-quickstart-FargateExecution",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "eks-fargate-pods.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Path": "/",
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/AmazonEKSFargatePodExecutionRolePolicy"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "FargateProfileRole",
+   "cfg": "FargateProfileRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "eks-quickstart-FargateProfile",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Path": "/",
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+    ],
+    "Policies": [
+     {
+      "PolicyName": "ResourceTypePolicy",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "eks:*",
+          "iam:PassRole",
+          "iam:GetRole",
+          "iam:CreateServiceLinkedRole",
+          "ec2:DescribeSubnets"
+         ],
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "ParameterResolverRole",
+   "cfg": "ParameterResolverRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "eks-quickstart-ParameterResolver",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Path": "/",
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+    ],
+    "Policies": [
+     {
+      "PolicyName": "param-resolver",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "ssm:GetParametersByPath",
+          "ssm:GetParameters",
+          "ssm:GetParameterHistory",
+          "ssm:GetParameter"
+         ],
+         "Resource": [
+          "arn:aws:ssm:*:123456789012:parameter/quickstart/amazon-eks/*"
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "UnmanagedNodeInstanceProfile",
+   "cfg": "UnmanagedNodeInstanceProfile",
+   "type": "AWS::IAM::InstanceProfile",
+   "values": {
+    "InstanceProfileName": {
+     "ref": "UnmanagedNodeInstanceRole"
+    },
+    "Path": "/",
+    "Roles": [
+     {
+      "ref": "UnmanagedNodeInstanceRole"
+     }
+    ]
+   },
+   "refs": [
+    "UnmanagedNodeInstanceRole"
+   ]
+  },
+  {
+   "id": "ManagedNodeInstanceProfile",
+   "cfg": "ManagedNodeInstanceProfile",
+   "type": "AWS::IAM::InstanceProfile",
+   "values": {
+    "InstanceProfileName": {
+     "ref": "ManagedNodeInstanceRole"
+    },
+    "Path": "/",
+    "Roles": [
+     {
+      "ref": "ManagedNodeInstanceRole"
+     }
+    ]
+   },
+   "refs": [
+    "ManagedNodeInstanceRole"
+   ]
+  },
+  {
+   "id": "UnmanagedNodeInstanceRole",
+   "cfg": "UnmanagedNodeInstanceRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "eks-quickstart-UnmanagedNodeInstance",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "ec2.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Path": "/",
+    "Policies": [
+     {
+      "PolicyName": "cfn-signal",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "cloudformation:SignalResource"
+         ],
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     }
+    ],
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy",
+     "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy",
+     "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly",
+     "arn:aws:iam::aws:policy/AmazonElasticFileSystemReadOnlyAccess"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "ManagedNodeInstanceRole",
+   "cfg": "ManagedNodeInstanceRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "eks-quickstart-ManagedNodeInstance",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "ec2.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Path": "/",
+    "Policies": [
+     {
+      "PolicyName": "cfn-signal",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "cloudformation:SignalResource"
+         ],
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     }
+    ],
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy",
+     "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy",
+     "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly",
+     "arn:aws:iam::aws:policy/AmazonElasticFileSystemReadOnlyAccess"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "CloudformationVPCRoleCreationRole",
+   "cfg": "CloudformationVPCRoleCreationRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "eks-quickstart-CloudformationVPCRoleCreation",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+    ],
+    "Policies": [
+     {
+      "PolicyName": "create-role",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "iam:CreateRole"
+         ],
+         "Resource": [
+          "arn:aws:iam::123456789012:role/CloudFormation-Kubernetes-VPC"
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "PolicyName": "attach-role-policy",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "iam:AttachRolePolicy"
+         ],
+         "Resource": [
+          "arn:aws:iam::123456789012:role/CloudFormation-Kubernetes-VPC"
+         ],
+         "Condition": {
+          "ArnEquals": {
+           "iam:PolicyARN": [
+            "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+            "arn:aws:iam::aws:policy/service-role/AWSLambdaENIManagementAccess"
+           ]
+          }
+         }
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.CopyZipsRole",
+   "cfg": "CopyZipsRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "CopyZipsRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "eks-quickstart-CopyZips",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+     ],
+     "Policies": [
+      {
+       "PolicyName": "lambda-zips-s3-read",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "s3:GetObject"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.ResourceReaderRole",
+   "cfg": "ResourceReaderRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "ResourceReaderRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "eks-quickstart-ResourceReader",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+      "arn:aws:iam::aws:policy/ReadOnlyAccess"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.CreateVpcRoleRole",
+   "cfg": "CreateVpcRoleRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "CreateVpcRoleRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "eks-quickstart-CreateVpcRole",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+     ],
+     "Policies": [
+      {
+       "PolicyName": "create-role",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "iam:CreateRole"
+          ],
+          "Resource": [
+           "arn:aws:iam::123456789012:role/CloudFormation-Kubernetes-VPC"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "iam:AttachRolePolicy"
+          ],
+          "Resource": [
+           "arn:aws:iam::123456789012:role/CloudFormation-Kubernetes-VPC"
+          ],
+          "Condition": {
+           "ArnEquals": {
+            "iam:PolicyARN": [
+             "arn:aws:iam::aws:policy/service-role/AWSLambdaENIManagementAccess",
+             "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+            ]
+           }
+          }
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.DeleteBucketContentsRole",
+   "cfg": "DeleteBucketContentsRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "DeleteBucketContentsRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "eks-quickstart-DeleteBucketContents",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.ControlPlaneRole",
+   "cfg": "ControlPlaneRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "ControlPlaneRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "eks-quickstart-ControlPlane",
+     "Policies": [
+      {
+       "PolicyName": "ec2-describe-policy",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "ec2:DescribeAccountAttributes",
+           "ec2:DescribeAddresses",
+           "ec2:DescribeInternetGateways"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      }
+     ],
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "eks.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy",
+      "arn:aws:iam::aws:policy/AmazonEKSServicePolicy"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.CleanupLoadBalancersRole",
+   "cfg": "CleanupLoadBalancersRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "CleanupLoadBalancersRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "eks-quickstart-CleanupLoadBalancers",
+     "AssumeRolePolicyDocument": {
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        }
+       }
+      ],
+      "Version": "2012-10-17"
+     },
+     "Path": "/",
+     "Policies": [
+      {
+       "PolicyName": "LambdaRole",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Action": [
+           "logs:CreateLogGroup",
+           "logs:CreateLogStream",
+           "logs:PutLogEvents"
+          ],
+          "Effect": "Allow",
+          "Resource": [
+           "arn:aws:logs:*:*:*"
+          ]
+         },
+         {
+          "Action": [
+           "elasticloadbalancing:DescribeLoadBalancers",
+           "elasticloadbalancing:DescribeTags",
+           "elasticloadbalancing:DeleteLoadBalancer",
+           "ec2:DescribeTags",
+           "ec2:DeleteSecurityGroup",
+           "ec2:DescribeNetworkInterfaces",
+           "ec2:DeleteNetworkInterface",
+           "ec2:DetachNetworkInterface",
+           "ec2:DescribeSecurityGroups",
+           "ec2:RevokeSecurityGroupEgress",
+           "ec2:RevokeSecurityGroupIngress"
+          ],
+          "Effect": "Allow",
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.CleanupSecurityGroupDependenciesRole",
+   "cfg": "CleanupSecurityGroupDependenciesRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "CleanupSecurityGroupDependenciesRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "eks-quickstart-CleanupSecurityGroupDependencies",
+     "AssumeRolePolicyDocument": {
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        }
+       }
+      ],
+      "Version": "2012-10-17"
+     },
+     "Path": "/",
+     "Policies": [
+      {
+       "PolicyName": "LambdaRole",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Action": [
+           "logs:CreateLogGroup",
+           "logs:CreateLogStream",
+           "logs:PutLogEvents"
+          ],
+          "Effect": "Allow",
+          "Resource": [
+           "arn:aws:logs:*:*:*"
+          ]
+         },
+         {
+          "Action": [
+           "ec2:DescribeNetworkInterfaces",
+           "ec2:DescribeSecurityGroups",
+           "ec2:RevokeSecurityGroupEgress",
+           "ec2:RevokeSecurityGroupIngress",
+           "ec2:DeleteNetworkInterface",
+           "ec2:DetachNetworkInterface"
+          ],
+          "Effect": "Allow",
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.CleanupLambdasRole",
+   "cfg": "CleanupLambdasRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "CleanupLambdasRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "eks-quickstart-CleanupLambdas",
+     "AssumeRolePolicyDocument": {
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        }
+       }
+      ],
+      "Version": "2012-10-17"
+     },
+     "Path": "/",
+     "Policies": [
+      {
+       "PolicyName": "LambdaRole",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Action": [
+           "logs:CreateLogGroup",
+           "logs:CreateLogStream",
+           "logs:PutLogEvents"
+          ],
+          "Effect": "Allow",
+          "Resource": [
+           "arn:aws:logs:*:*:*"
+          ]
+         },
+         {
+          "Action": [
+           "lambda:ListFunctions",
+           "lambda:UpdateFunctionConfiguration",
+           "lambda:DeleteFunction"
+          ],
+          "Effect": "Allow",
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.GetCallerArnRole",
+   "cfg": "GetCallerArnRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "GetCallerArnRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "eks-quickstart-GetCallerArn",
+     "AssumeRolePolicyDocument": {
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        }
+       }
+      ],
+      "Version": "2012-10-17"
+     },
+     "Path": "/",
+     "Policies": [
+      {
+       "PolicyName": "LambdaRole",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Action": [
+           "logs:CreateLogGroup",
+           "logs:CreateLogStream",
+           "logs:PutLogEvents"
+          ],
+          "Effect": "Allow",
+          "Resource": [
+           "arn:aws:logs:*:*:*"
+          ]
+         },
+         {
+          "Action": [
+           "cloudformation:DescribeStacks",
+           "cloudtrail:LookupEvents"
+          ],
+          "Effect": "Allow",
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.RegisterTypeRole",
+   "cfg": "RegisterTypeRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "RegisterTypeRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "eks-quickstart-RegisterType",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Path": "/",
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+     ],
+     "Policies": [
+      {
+       "PolicyName": "ResourceTypePolicy",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "cloudformation:*",
+           "iam:PassRole",
+           "iam:CreateRole",
+           "iam:CreatePolicy",
+           "iam:ListPolicyVersions",
+           "iam:DeletePolicyVersion",
+           "iam:CreatePolicyVersion",
+           "iam:AttachRolePolicy",
+           "ssm:GetParameter",
+           "ssm:PutParameter",
+           "sts:GetCallerIdentity",
+           "s3:GetObject"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.RegisterCustomResourceRole",
+   "cfg": "RegisterCustomResourceRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "RegisterCustomResourceRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "eks-quickstart-RegisterCustomResource",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Path": "/",
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+     ],
+     "Policies": [
+      {
+       "PolicyName": "ResourceTypePolicy",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "lambda:*",
+           "iam:PassRole",
+           "iam:CreateRole",
+           "iam:CreatePolicy",
+           "iam:ListPolicyVersions",
+           "iam:DeletePolicyVersion",
+           "iam:CreatePolicyVersion",
+           "iam:AttachRolePolicy",
+           "ssm:GetParameter",
+           "ssm:PutParameter",
+           "sts:GetCallerIdentity"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.NodeSGRole",
+   "cfg": "NodeSGRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "NodeSGRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "eks-quickstart-NodeSG",
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+     ],
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Policies": [
+      {
+       "PolicyName": "lambda-copier",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "eks:DescribeNodeGroup"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.FargateExecutionRole",
+   "cfg": "FargateExecutionRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "FargateExecutionRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "eks-quickstart-FargateExecution",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "eks-fargate-pods.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Path": "/",
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/AmazonEKSFargatePodExecutionRolePolicy"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.FargateProfileRole",
+   "cfg": "FargateProfileRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "FargateProfileRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "eks-quickstart-FargateProfile",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Path": "/",
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+     ],
+     "Policies": [
+      {
+       "PolicyName": "ResourceTypePolicy",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "eks:*",
+           "iam:PassRole",
+           "iam:GetRole",
+           "iam:CreateServiceLinkedRole",
+           "ec2:DescribeSubnets"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.ParameterResolverRole",
+   "cfg": "ParameterResolverRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "ParameterResolverRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "eks-quickstart-ParameterResolver",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Path": "/",
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+     ],
+     "Policies": [
+      {
+       "PolicyName": "param-resolver",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "ssm:GetParametersByPath",
+           "ssm:GetParameters",
+           "ssm:GetParameterHistory",
+           "ssm:GetParameter"
+          ],
+          "Resource": [
+           "arn:aws:ssm:*:123456789012:parameter/quickstart/amazon-eks/*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::InstanceProfile.UnmanagedNodeInstanceProfile",
+   "cfg": "UnmanagedNodeInstanceProfile",
+   "type": "__declared__",
+   "refs": [
+    "UnmanagedNodeInstanceRole"
+   ],
+   "values": {
+    "type": "AWS::IAM::InstanceProfile",
+    "name": "UnmanagedNodeInstanceProfile",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "InstanceProfileName": {
+      "ref": "UnmanagedNodeInstanceRole"
+     },
+     "Path": "/",
+     "Roles": [
+      {
+       "ref": "UnmanagedNodeInstanceRole"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::InstanceProfile.ManagedNodeInstanceProfile",
+   "cfg": "ManagedNodeInstanceProfile",
+   "type": "__declared__",
+   "refs": [
+    "ManagedNodeInstanceRole"
+   ],
+   "values": {
+    "type": "AWS::IAM::InstanceProfile",
+    "name": "ManagedNodeInstanceProfile",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "InstanceProfileName": {
+      "ref": "ManagedNodeInstanceRole"
+     },
+     "Path": "/",
+     "Roles": [
+      {
+       "ref": "ManagedNodeInstanceRole"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.UnmanagedNodeInstanceRole",
+   "cfg": "UnmanagedNodeInstanceRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "UnmanagedNodeInstanceRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "eks-quickstart-UnmanagedNodeInstance",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "ec2.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Path": "/",
+     "Policies": [
+      {
+       "PolicyName": "cfn-signal",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "cloudformation:SignalResource"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      }
+     ],
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy",
+      "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy",
+      "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly",
+      "arn:aws:iam::aws:policy/AmazonElasticFileSystemReadOnlyAccess"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.ManagedNodeInstanceRole",
+   "cfg": "ManagedNodeInstanceRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "ManagedNodeInstanceRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "eks-quickstart-ManagedNodeInstance",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "ec2.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Path": "/",
+     "Policies": [
+      {
+       "PolicyName": "cfn-signal",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "cloudformation:SignalResource"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      }
+     ],
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy",
+      "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy",
+      "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly",
+      "arn:aws:iam::aws:policy/AmazonElasticFileSystemReadOnlyAccess"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.CloudformationVPCRoleCreationRole",
+   "cfg": "CloudformationVPCRoleCreationRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "CloudformationVPCRoleCreationRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "eks-quickstart-CloudformationVPCRoleCreation",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+     ],
+     "Policies": [
+      {
+       "PolicyName": "create-role",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "iam:CreateRole"
+          ],
+          "Resource": [
+           "arn:aws:iam::123456789012:role/CloudFormation-Kubernetes-VPC"
+          ]
+         }
+        ]
+       }
+      },
+      {
+       "PolicyName": "attach-role-policy",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "iam:AttachRolePolicy"
+          ],
+          "Resource": [
+           "arn:aws:iam::123456789012:role/CloudFormation-Kubernetes-VPC"
+          ],
+          "Condition": {
+           "ArnEquals": {
+            "iam:PolicyARN": [
+             "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+             "arn:aws:iam::aws:policy/service-role/AWSLambdaENIManagementAccess"
+            ]
+           }
+          }
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  }
+ ]
+}

@@ -1,0 +1,2117 @@
+package intent.tf.row_130
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {},
+ "checks": [
+  {
+   "id": "pw_policy",
+   "tier": "core",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_iam_account_password_policy"
+    ],
+    "where": []
+   },
+   "quote": "configure an account password policy"
+  },
+  {
+   "id": "pw_min_length",
+   "tier": "core",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_iam_account_password_policy"
+    ],
+    "where": []
+   },
+   "cond": {
+    "path": [
+     "minimum_password_length"
+    ],
+    "op": "eq",
+    "value": 14
+   },
+   "quote": "minimum password length of 14 characters"
+  },
+  {
+   "id": "pw_max_age",
+   "tier": "core",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_iam_account_password_policy"
+    ],
+    "where": []
+   },
+   "cond": {
+    "path": [
+     "max_password_age"
+    ],
+    "op": "eq",
+    "value": 90
+   },
+   "quote": "maximum password age of 90 days"
+  },
+  {
+   "id": "pw_reuse",
+   "tier": "core",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_iam_account_password_policy"
+    ],
+    "where": []
+   },
+   "cond": {
+    "path": [
+     "password_reuse_prevention"
+    ],
+    "op": "eq",
+    "value": 24
+   },
+   "quote": "password reuse prevention history of 24"
+  },
+  {
+   "id": "pw_allow_change",
+   "tier": "detail",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_iam_account_password_policy"
+    ],
+    "where": []
+   },
+   "cond": {
+    "path": [
+     "allow_users_to_change_password"
+    ],
+    "op": "truthy"
+   },
+   "quote": "allowing user password changes (true)"
+  },
+  {
+   "id": "pw_hard_expiry_off",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_iam_account_password_policy"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "hard_expiry"
+      ],
+      "op": "falsy"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_iam_account_password_policy"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "hard_expiry"
+      ],
+      "op": "absent"
+     }
+    }
+   ],
+   "quote": "non-hard expiry (false)"
+  },
+  {
+   "id": "pw_require_lower",
+   "tier": "detail",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_iam_account_password_policy"
+    ],
+    "where": []
+   },
+   "cond": {
+    "path": [
+     "require_lowercase_characters"
+    ],
+    "op": "truthy"
+   },
+   "quote": "required lowercase, uppercase, number, and symbol characters (all true)"
+  },
+  {
+   "id": "pw_require_upper",
+   "tier": "detail",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_iam_account_password_policy"
+    ],
+    "where": []
+   },
+   "cond": {
+    "path": [
+     "require_uppercase_characters"
+    ],
+    "op": "truthy"
+   },
+   "quote": "required lowercase, uppercase, number, and symbol characters (all true)"
+  },
+  {
+   "id": "pw_require_number",
+   "tier": "detail",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_iam_account_password_policy"
+    ],
+    "where": []
+   },
+   "cond": {
+    "path": [
+     "require_numbers"
+    ],
+    "op": "truthy"
+   },
+   "quote": "required lowercase, uppercase, number, and symbol characters (all true)"
+  },
+  {
+   "id": "pw_require_symbol",
+   "tier": "detail",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_iam_account_password_policy"
+    ],
+    "where": []
+   },
+   "cond": {
+    "path": [
+     "require_symbols"
+    ],
+    "op": "truthy"
+   },
+   "quote": "required lowercase, uppercase, number, and symbol characters (all true)"
+  },
+  {
+   "id": "group_administrators",
+   "tier": "core",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_iam_group"
+    ],
+    "where": [
+     {
+      "path": [
+       "name"
+      ],
+      "op": "eq",
+      "value": "administrators"
+     }
+    ]
+   },
+   "quote": "three IAM groups named \"administrators\", \"developpers\", and \"prod_users\""
+  },
+  {
+   "id": "group_developpers",
+   "tier": "core",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_iam_group"
+    ],
+    "where": [
+     {
+      "path": [
+       "name"
+      ],
+      "op": "eq",
+      "value": "developpers"
+     }
+    ]
+   },
+   "quote": "three IAM groups named \"administrators\", \"developpers\", and \"prod_users\""
+  },
+  {
+   "id": "group_prod_users",
+   "tier": "core",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_iam_group"
+    ],
+    "where": [
+     {
+      "path": [
+       "name"
+      ],
+      "op": "eq",
+      "value": "prod_users"
+     }
+    ]
+   },
+   "quote": "three IAM groups named \"administrators\", \"developpers\", and \"prod_users\""
+  },
+  {
+   "id": "dev_policy_content",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_iam_policy",
+       "aws_iam_group_policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "contains",
+        "value": "ec2:*"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "contains",
+        "value": "rds:*"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?is)resourcetag/env.{0,100}\\bdev\\b"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?i)string(equals|like)"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "in",
+        "value": [
+         "aws_iam_policy",
+         "aws_iam_group_policy",
+         "data.aws_iam_policy_document"
+        ]
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "contains",
+        "value": "ec2:*"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "contains",
+        "value": "rds:*"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "regex",
+        "value": "(?is)resourcetag/env.{0,100}\\bdev\\b"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "regex",
+        "value": "(?i)string(equals|like)"
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "must allow full EC2 (\"ec2:*\") and RDS (\"rds:*\") actions on all resources conditioned on matching the resource tag \"env\" equal to \"dev\""
+  },
+  {
+   "id": "dev_policy_attached",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_group_policy_attachment"
+      ],
+      "where": [
+       {
+        "path": [
+         "group"
+        ],
+        "op": "eq",
+        "value": "developpers"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_iam_policy",
+       "aws_iam_group_policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "contains",
+        "value": "ec2:*"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "contains",
+        "value": "rds:*"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?is)resourcetag/env.{0,100}\\bdev\\b"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?i)string(equals|like)"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_group_policy_attachment"
+      ],
+      "where": [
+       {
+        "path": [
+         "group"
+        ],
+        "op": "eq",
+        "value": "developpers"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "in",
+        "value": [
+         "aws_iam_policy",
+         "aws_iam_group_policy",
+         "data.aws_iam_policy_document"
+        ]
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "contains",
+        "value": "ec2:*"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "contains",
+        "value": "rds:*"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "regex",
+        "value": "(?is)resourcetag/env.{0,100}\\bdev\\b"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "regex",
+        "value": "(?i)string(equals|like)"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_policy_attachment"
+      ],
+      "where": [
+       {
+        "path": [
+         "groups",
+         "*"
+        ],
+        "op": "eq",
+        "value": "developpers"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_iam_policy",
+       "aws_iam_group_policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "contains",
+        "value": "ec2:*"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "contains",
+        "value": "rds:*"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?is)resourcetag/env.{0,100}\\bdev\\b"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?i)string(equals|like)"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_policy_attachment"
+      ],
+      "where": [
+       {
+        "path": [
+         "groups",
+         "*"
+        ],
+        "op": "eq",
+        "value": "developpers"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "in",
+        "value": [
+         "aws_iam_policy",
+         "aws_iam_group_policy",
+         "data.aws_iam_policy_document"
+        ]
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "contains",
+        "value": "ec2:*"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "contains",
+        "value": "rds:*"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "regex",
+        "value": "(?is)resourcetag/env.{0,100}\\bdev\\b"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "regex",
+        "value": "(?i)string(equals|like)"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_iam_policy",
+       "aws_iam_group_policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "group"
+        ],
+        "op": "eq",
+        "value": "developpers"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "contains",
+        "value": "ec2:*"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "contains",
+        "value": "rds:*"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?is)resourcetag/env.{0,100}\\bdev\\b"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?i)string(equals|like)"
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "The \"developpers_policy\" attached to \"developpers\""
+  },
+  {
+   "id": "prod_policy_content",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_iam_policy",
+       "aws_iam_group_policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "contains",
+        "value": "ec2:*"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "contains",
+        "value": "rds:*"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?is)resourcetag/env.{0,100}\\bpreprod\\b"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?is)resourcetag/env.{0,120}\\bprod\\b"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?i)string(equals|like)"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "in",
+        "value": [
+         "aws_iam_policy",
+         "aws_iam_group_policy",
+         "data.aws_iam_policy_document"
+        ]
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "contains",
+        "value": "ec2:*"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "contains",
+        "value": "rds:*"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "regex",
+        "value": "(?is)resourcetag/env.{0,100}\\bpreprod\\b"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "regex",
+        "value": "(?is)resourcetag/env.{0,120}\\bprod\\b"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "regex",
+        "value": "(?i)string(equals|like)"
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "must allow full EC2 and RDS actions on all resources conditioned on matching the resource tag \"env\" equal to \"preprod\" or \"prod\"",
+   "justify": "full EC2 and RDS actions means ec2:* and rds:*, as the previous sentence states"
+  },
+  {
+   "id": "prod_policy_attached",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_group_policy_attachment"
+      ],
+      "where": [
+       {
+        "path": [
+         "group"
+        ],
+        "op": "eq",
+        "value": "prod_users"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_iam_policy",
+       "aws_iam_group_policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "contains",
+        "value": "ec2:*"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "contains",
+        "value": "rds:*"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?is)resourcetag/env.{0,100}\\bpreprod\\b"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?is)resourcetag/env.{0,120}\\bprod\\b"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?i)string(equals|like)"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_group_policy_attachment"
+      ],
+      "where": [
+       {
+        "path": [
+         "group"
+        ],
+        "op": "eq",
+        "value": "prod_users"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "in",
+        "value": [
+         "aws_iam_policy",
+         "aws_iam_group_policy",
+         "data.aws_iam_policy_document"
+        ]
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "contains",
+        "value": "ec2:*"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "contains",
+        "value": "rds:*"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "regex",
+        "value": "(?is)resourcetag/env.{0,100}\\bpreprod\\b"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "regex",
+        "value": "(?is)resourcetag/env.{0,120}\\bprod\\b"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "regex",
+        "value": "(?i)string(equals|like)"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_policy_attachment"
+      ],
+      "where": [
+       {
+        "path": [
+         "groups",
+         "*"
+        ],
+        "op": "eq",
+        "value": "prod_users"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_iam_policy",
+       "aws_iam_group_policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "contains",
+        "value": "ec2:*"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "contains",
+        "value": "rds:*"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?is)resourcetag/env.{0,100}\\bpreprod\\b"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?is)resourcetag/env.{0,120}\\bprod\\b"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?i)string(equals|like)"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_policy_attachment"
+      ],
+      "where": [
+       {
+        "path": [
+         "groups",
+         "*"
+        ],
+        "op": "eq",
+        "value": "prod_users"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "in",
+        "value": [
+         "aws_iam_policy",
+         "aws_iam_group_policy",
+         "data.aws_iam_policy_document"
+        ]
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "contains",
+        "value": "ec2:*"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "contains",
+        "value": "rds:*"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "regex",
+        "value": "(?is)resourcetag/env.{0,100}\\bpreprod\\b"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "regex",
+        "value": "(?is)resourcetag/env.{0,120}\\bprod\\b"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "regex",
+        "value": "(?i)string(equals|like)"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_iam_policy",
+       "aws_iam_group_policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "group"
+        ],
+        "op": "eq",
+        "value": "prod_users"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "contains",
+        "value": "ec2:*"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "contains",
+        "value": "rds:*"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?is)resourcetag/env.{0,100}\\bpreprod\\b"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?is)resourcetag/env.{0,120}\\bprod\\b"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?i)string(equals|like)"
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "The \"prod_users_policy\" attached to \"prod_users\""
+  },
+  {
+   "id": "admin_policy_notaction",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_iam_policy",
+       "aws_iam_group_policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?i)not_?actions?"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "contains",
+        "value": "iam:*"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "contains",
+        "value": "organizations:*"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "contains",
+        "value": "account:*"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?is)stringnotequals.{0,150}resourcetag/security.{0,80}\\bhigh\\b"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "in",
+        "value": [
+         "aws_iam_policy",
+         "aws_iam_group_policy",
+         "data.aws_iam_policy_document"
+        ]
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "regex",
+        "value": "(?i)not_?actions?"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "contains",
+        "value": "iam:*"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "contains",
+        "value": "organizations:*"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "contains",
+        "value": "account:*"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "regex",
+        "value": "(?is)stringnotequals.{0,150}resourcetag/security.{0,80}\\bhigh\\b"
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "using a NotAction block that excludes \"iam:*\", \"organizations:*\", and \"account:*\" conditioned on the resource tag \"security\" not equaling \"high\""
+  },
+  {
+   "id": "admin_policy_explicit_allow",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_group_policy_attachment"
+      ],
+      "where": [
+       {
+        "path": [
+         "group"
+        ],
+        "op": "eq",
+        "value": "administrators"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_iam_policy",
+       "aws_iam_group_policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "contains",
+        "value": "iam:CreateServiceLinkedRole"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "contains",
+        "value": "iam:DeleteServiceLinkedRole"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "contains",
+        "value": "iam:ListRoles"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "contains",
+        "value": "organizations:DescribeOrganization"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "contains",
+        "value": "account:ListRegions"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_group_policy_attachment"
+      ],
+      "where": [
+       {
+        "path": [
+         "group"
+        ],
+        "op": "eq",
+        "value": "administrators"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "in",
+        "value": [
+         "aws_iam_policy",
+         "aws_iam_group_policy",
+         "data.aws_iam_policy_document"
+        ]
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "contains",
+        "value": "iam:CreateServiceLinkedRole"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "contains",
+        "value": "iam:DeleteServiceLinkedRole"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "contains",
+        "value": "iam:ListRoles"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "contains",
+        "value": "organizations:DescribeOrganization"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "contains",
+        "value": "account:ListRegions"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_policy_attachment"
+      ],
+      "where": [
+       {
+        "path": [
+         "groups",
+         "*"
+        ],
+        "op": "eq",
+        "value": "administrators"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_iam_policy",
+       "aws_iam_group_policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "contains",
+        "value": "iam:CreateServiceLinkedRole"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "contains",
+        "value": "iam:DeleteServiceLinkedRole"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "contains",
+        "value": "iam:ListRoles"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "contains",
+        "value": "organizations:DescribeOrganization"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "contains",
+        "value": "account:ListRegions"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_policy_attachment"
+      ],
+      "where": [
+       {
+        "path": [
+         "groups",
+         "*"
+        ],
+        "op": "eq",
+        "value": "administrators"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "in",
+        "value": [
+         "aws_iam_policy",
+         "aws_iam_group_policy",
+         "data.aws_iam_policy_document"
+        ]
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "contains",
+        "value": "iam:CreateServiceLinkedRole"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "contains",
+        "value": "iam:DeleteServiceLinkedRole"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "contains",
+        "value": "iam:ListRoles"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "contains",
+        "value": "organizations:DescribeOrganization"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "contains",
+        "value": "account:ListRegions"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_iam_policy",
+       "aws_iam_group_policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "group"
+        ],
+        "op": "eq",
+        "value": "administrators"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "contains",
+        "value": "iam:CreateServiceLinkedRole"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "contains",
+        "value": "iam:DeleteServiceLinkedRole"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "contains",
+        "value": "iam:ListRoles"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "contains",
+        "value": "organizations:DescribeOrganization"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "contains",
+        "value": "account:ListRegions"
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "explicitly permitting \"iam:CreateServiceLinkedRole\", \"iam:DeleteServiceLinkedRole\", \"iam:ListRoles\", \"organizations:DescribeOrganization\", and \"account:ListRegions\" across all resources"
+  },
+  {
+   "id": "admin_policy_attached",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_group_policy_attachment"
+      ],
+      "where": [
+       {
+        "path": [
+         "group"
+        ],
+        "op": "eq",
+        "value": "administrators"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_iam_policy",
+       "aws_iam_group_policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?i)not_?actions?"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "contains",
+        "value": "iam:*"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "contains",
+        "value": "organizations:*"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "contains",
+        "value": "account:*"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?is)stringnotequals.{0,150}resourcetag/security.{0,80}\\bhigh\\b"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_group_policy_attachment"
+      ],
+      "where": [
+       {
+        "path": [
+         "group"
+        ],
+        "op": "eq",
+        "value": "administrators"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "in",
+        "value": [
+         "aws_iam_policy",
+         "aws_iam_group_policy",
+         "data.aws_iam_policy_document"
+        ]
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "regex",
+        "value": "(?i)not_?actions?"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "contains",
+        "value": "iam:*"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "contains",
+        "value": "organizations:*"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "contains",
+        "value": "account:*"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "regex",
+        "value": "(?is)stringnotequals.{0,150}resourcetag/security.{0,80}\\bhigh\\b"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_policy_attachment"
+      ],
+      "where": [
+       {
+        "path": [
+         "groups",
+         "*"
+        ],
+        "op": "eq",
+        "value": "administrators"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_iam_policy",
+       "aws_iam_group_policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?i)not_?actions?"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "contains",
+        "value": "iam:*"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "contains",
+        "value": "organizations:*"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "contains",
+        "value": "account:*"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?is)stringnotequals.{0,150}resourcetag/security.{0,80}\\bhigh\\b"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_policy_attachment"
+      ],
+      "where": [
+       {
+        "path": [
+         "groups",
+         "*"
+        ],
+        "op": "eq",
+        "value": "administrators"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "in",
+        "value": [
+         "aws_iam_policy",
+         "aws_iam_group_policy",
+         "data.aws_iam_policy_document"
+        ]
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "regex",
+        "value": "(?i)not_?actions?"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "contains",
+        "value": "iam:*"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "contains",
+        "value": "organizations:*"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "contains",
+        "value": "account:*"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "regex",
+        "value": "(?is)stringnotequals.{0,150}resourcetag/security.{0,80}\\bhigh\\b"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_iam_policy",
+       "aws_iam_group_policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "group"
+        ],
+        "op": "eq",
+        "value": "administrators"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?i)not_?actions?"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "contains",
+        "value": "iam:*"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "contains",
+        "value": "organizations:*"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "contains",
+        "value": "account:*"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?is)stringnotequals.{0,150}resourcetag/security.{0,80}\\bhigh\\b"
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "The \"administrators_policy\" attached to \"administrators\""
+  },
+  {
+   "id": "env_policies_all_resources",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_iam_policy",
+       "aws_iam_group_policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "contains",
+        "value": "ec2:*"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "contains",
+        "value": "rds:*"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "policy"
+      ],
+      "op": "regex",
+      "value": "(?is)resources?\\W{1,8}\\*"
+     },
+     "quantifier": "all"
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "in",
+        "value": [
+         "aws_iam_policy",
+         "aws_iam_group_policy",
+         "data.aws_iam_policy_document"
+        ]
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "contains",
+        "value": "ec2:*"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "contains",
+        "value": "rds:*"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties"
+      ],
+      "op": "regex",
+      "value": "(?is)resources?\\W{1,8}\\*"
+     },
+     "quantifier": "all"
+    }
+   ],
+   "quote": "on all resources"
+  },
+  {
+   "id": "admin_policy_all_resources",
+   "tier": "detail",
+   "kind": "any_of",
+   "quote": "must grant broad access on all resources",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_iam_policy",
+       "aws_iam_group_policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?i)not_?actions?"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "contains",
+        "value": "iam:*"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "contains",
+        "value": "organizations:*"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "contains",
+        "value": "account:*"
+       },
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?is)stringnotequals.{0,150}resourcetag/security.{0,80}\\bhigh\\b"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "policy"
+      ],
+      "op": "regex",
+      "value": "(?is)resources?\\W{1,8}\\*"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "in",
+        "value": [
+         "aws_iam_policy",
+         "aws_iam_group_policy",
+         "data.aws_iam_policy_document"
+        ]
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "regex",
+        "value": "(?i)not_?actions?"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "contains",
+        "value": "iam:*"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "contains",
+        "value": "organizations:*"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "contains",
+        "value": "account:*"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "regex",
+        "value": "(?is)stringnotequals.{0,150}resourcetag/security.{0,80}\\bhigh\\b"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties"
+      ],
+      "op": "regex",
+      "value": "(?is)resources?\\W{1,8}\\*"
+     }
+    }
+   ]
+  },
+  {
+   "id": "name_developpers_policy",
+   "tier": "detail",
+   "kind": "exists",
+   "quote": "The \"developpers_policy\" attached to \"developpers\"",
+   "select": {
+    "types": [
+     "aws_iam_policy",
+     "aws_iam_group_policy"
+    ],
+    "where": [
+     {
+      "path": [
+       "name"
+      ],
+      "op": "eq",
+      "value": "developpers_policy"
+     }
+    ]
+   }
+  },
+  {
+   "id": "name_prod_users_policy",
+   "tier": "detail",
+   "kind": "exists",
+   "quote": "The \"prod_users_policy\" attached to \"prod_users\"",
+   "select": {
+    "types": [
+     "aws_iam_policy",
+     "aws_iam_group_policy"
+    ],
+    "where": [
+     {
+      "path": [
+       "name"
+      ],
+      "op": "eq",
+      "value": "prod_users_policy"
+     }
+    ]
+   }
+  },
+  {
+   "id": "name_administrators_policy",
+   "tier": "detail",
+   "kind": "exists",
+   "quote": "The \"administrators_policy\" attached to \"administrators\"",
+   "select": {
+    "types": [
+     "aws_iam_policy",
+     "aws_iam_group_policy"
+    ],
+    "where": [
+     {
+      "path": [
+       "name"
+      ],
+      "op": "eq",
+      "value": "administrators_policy"
+     }
+    ]
+   }
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

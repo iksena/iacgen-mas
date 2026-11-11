@@ -1,0 +1,887 @@
+package intent.tf.row_364
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {
+  "pool": {
+   "types": [
+    "aws_cognito_user_pool"
+   ],
+   "where": []
+  },
+  "client": {
+   "types": [
+    "aws_cognito_user_pool_client"
+   ],
+   "where": []
+  },
+  "ssm": {
+   "types": [
+    "aws_ssm_parameter"
+   ],
+   "where": [
+    {
+     "path": [
+      "name"
+     ],
+     "op": "eq",
+     "value": "/unity/cs/security/shared-services-cognito-user-pool/user-pool-id"
+    }
+   ]
+  },
+  "c_uds": {
+   "types": [
+    "aws_cognito_user_pool_client"
+   ],
+   "where": [
+    {
+     "path": [
+      "name"
+     ],
+     "op": "eq",
+     "value": "unity-uds-distribution-user-pool-client"
+    }
+   ]
+  },
+  "c_jh": {
+   "types": [
+    "aws_cognito_user_pool_client"
+   ],
+   "where": [
+    {
+     "path": [
+      "name"
+     ],
+     "op": "eq",
+     "value": "localhost-jupyterhub-user-pool-client"
+    }
+   ]
+  },
+  "c_a2a": {
+   "types": [
+    "aws_cognito_user_pool_client"
+   ],
+   "where": [
+    {
+     "path": [
+      "name"
+     ],
+     "op": "eq",
+     "value": "unity-app-to-app-client-user-pool-client"
+    }
+   ]
+  },
+  "c_dev": {
+   "types": [
+    "aws_cognito_user_pool_client"
+   ],
+   "where": [
+    {
+     "path": [
+      "name"
+     ],
+     "op": "eq",
+     "value": "uads-jupyter-development-client-user-pool-client"
+    }
+   ]
+  },
+  "c_hy": {
+   "types": [
+    "aws_cognito_user_pool_client"
+   ],
+   "where": [
+    {
+     "path": [
+      "name"
+     ],
+     "op": "eq",
+     "value": "hysds-ui-client-user-pool-client"
+    }
+   ]
+  },
+  "c_lhy": {
+   "types": [
+    "aws_cognito_user_pool_client"
+   ],
+   "where": [
+    {
+     "path": [
+      "name"
+     ],
+     "op": "eq",
+     "value": "localhost-hysds-ui-client-user-pool-client"
+    }
+   ]
+  },
+  "g_admin": {
+   "types": [
+    "aws_cognito_user_group"
+   ],
+   "where": [
+    {
+     "path": [
+      "name"
+     ],
+     "op": "eq",
+     "value": "Unity_Admin"
+    }
+   ]
+  },
+  "g_viewer": {
+   "types": [
+    "aws_cognito_user_group"
+   ],
+   "where": [
+    {
+     "path": [
+      "name"
+     ],
+     "op": "eq",
+     "value": "Unity_Viewer"
+    }
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "pool",
+   "kind": "exists",
+   "tier": "core",
+   "select": {
+    "types": [
+     "aws_cognito_user_pool"
+    ],
+    "where": [
+     {
+      "path": [
+       "name"
+      ],
+      "op": "eq",
+      "value": "unity-shared-services-user-pool"
+     }
+    ]
+   },
+   "quote": "a shared-services Amazon Cognito user pool named \"unity-shared-services-user-pool\""
+  },
+  {
+   "id": "admin_only",
+   "kind": "attr",
+   "tier": "core",
+   "select": "pool",
+   "cond": {
+    "path": [
+     "admin_create_user_config",
+     "*",
+     "allow_admin_create_user_only"
+    ],
+    "op": "truthy"
+   },
+   "quote": "only administrators can create users"
+  },
+  {
+   "id": "recovery",
+   "kind": "attr",
+   "tier": "core",
+   "select": "pool",
+   "cond": {
+    "path": [
+     "account_recovery_setting",
+     "*",
+     "recovery_mechanism",
+     "*",
+     "name"
+    ],
+    "op": "eq",
+    "value": "verified_email"
+   },
+   "quote": "account recovery uses verified email",
+   "justify": "verified email is the verified_email recovery mechanism"
+  },
+  {
+   "id": "invite_email",
+   "kind": "all_of",
+   "tier": "detail",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "pool",
+     "cond": {
+      "path": [
+       "admin_create_user_config",
+       "*",
+       "invite_message_template",
+       "*",
+       "email_message"
+      ],
+      "op": "contains",
+      "value": "{username}"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "pool",
+     "cond": {
+      "path": [
+       "admin_create_user_config",
+       "*",
+       "invite_message_template",
+       "*",
+       "email_message"
+      ],
+      "op": "contains",
+      "value": "{####}"
+     }
+    }
+   ],
+   "quote": "the invitation email and SMS messages are customized to deliver the username and temporary password",
+   "justify": "Cognito placeholders {username} and {####} deliver the username and temporary password"
+  },
+  {
+   "id": "invite_sms",
+   "kind": "all_of",
+   "tier": "detail",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "pool",
+     "cond": {
+      "path": [
+       "admin_create_user_config",
+       "*",
+       "invite_message_template",
+       "*",
+       "sms_message"
+      ],
+      "op": "contains",
+      "value": "{username}"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "pool",
+     "cond": {
+      "path": [
+       "admin_create_user_config",
+       "*",
+       "invite_message_template",
+       "*",
+       "sms_message"
+      ],
+      "op": "contains",
+      "value": "{####}"
+     }
+    }
+   ],
+   "quote": "the invitation email and SMS messages are customized to deliver the username and temporary password",
+   "justify": "Cognito placeholders {username} and {####} deliver the username and temporary password"
+  },
+  {
+   "id": "ssm",
+   "kind": "exists",
+   "tier": "core",
+   "select": "ssm",
+   "quote": "The pool's ID should be published to a String SSM parameter named \"/unity/cs/security/shared-services-cognito-user-pool/user-pool-id\""
+  },
+  {
+   "id": "ssm_string",
+   "kind": "attr",
+   "tier": "detail",
+   "select": "ssm",
+   "cond": {
+    "path": [
+     "type"
+    ],
+    "op": "eq",
+    "value": "String"
+   },
+   "quote": "a String SSM parameter"
+  },
+  {
+   "id": "ssm_pool",
+   "kind": "ref",
+   "tier": "core",
+   "from": "ssm",
+   "to": "pool",
+   "quote": "The pool's ID should be published to a String SSM parameter"
+  },
+  {
+   "id": "domain",
+   "kind": "exists",
+   "tier": "core",
+   "select": {
+    "types": [
+     "aws_cognito_user_pool_domain"
+    ],
+    "where": [
+     {
+      "path": [
+       "domain"
+      ],
+      "op": "eq",
+      "value": "unity-shared-services-test"
+     }
+    ]
+   },
+   "quote": "a hosted UI domain with the prefix \"unity-shared-services-test\""
+  },
+  {
+   "id": "domain_pool",
+   "kind": "ref",
+   "tier": "detail",
+   "from": {
+    "types": [
+     "aws_cognito_user_pool_domain"
+    ],
+    "where": []
+   },
+   "to": "pool",
+   "quote": "the pool should get a hosted UI domain"
+  },
+  {
+   "id": "clients_six",
+   "kind": "exists",
+   "tier": "core",
+   "select": {
+    "types": [
+     "aws_cognito_user_pool_client"
+    ],
+    "where": []
+   },
+   "min": 6,
+   "quote": "Register six app clients against the pool"
+  },
+  {
+   "id": "client_uds",
+   "kind": "exists",
+   "tier": "core",
+   "select": "c_uds",
+   "quote": "\"unity-uds-distribution-user-pool-client\""
+  },
+  {
+   "id": "client_jh",
+   "kind": "exists",
+   "tier": "core",
+   "select": "c_jh",
+   "quote": "\"localhost-jupyterhub-user-pool-client\""
+  },
+  {
+   "id": "client_a2a",
+   "kind": "exists",
+   "tier": "core",
+   "select": "c_a2a",
+   "quote": "\"unity-app-to-app-client-user-pool-client\""
+  },
+  {
+   "id": "client_dev",
+   "kind": "exists",
+   "tier": "core",
+   "select": "c_dev",
+   "quote": "\"uads-jupyter-development-client-user-pool-client\""
+  },
+  {
+   "id": "client_hy",
+   "kind": "exists",
+   "tier": "core",
+   "select": "c_hy",
+   "quote": "\"hysds-ui-client-user-pool-client\""
+  },
+  {
+   "id": "client_lhy",
+   "kind": "exists",
+   "tier": "core",
+   "select": "c_lhy",
+   "quote": "\"localhost-hysds-ui-client-user-pool-client\""
+  },
+  {
+   "id": "clients_pool",
+   "kind": "any_of",
+   "tier": "detail",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "client",
+     "to": "pool"
+    },
+    {
+     "kind": "ref",
+     "from": "client",
+     "to": "ssm"
+    }
+   ],
+   "quote": "against the pool"
+  },
+  {
+   "id": "flow_code",
+   "kind": "attr",
+   "tier": "core",
+   "select": "client",
+   "cond": {
+    "path": [
+     "allowed_oauth_flows",
+     "*"
+    ],
+    "op": "eq",
+    "value": "code"
+   },
+   "quantifier": "all",
+   "quote": "each using the authorization code OAuth flow with the email and openid scopes and the Cognito identity provider",
+   "justify": "the authorization code OAuth flow is the code flow"
+  },
+  {
+   "id": "flow_enabled",
+   "kind": "attr",
+   "tier": "detail",
+   "select": "client",
+   "cond": {
+    "path": [
+     "allowed_oauth_flows_user_pool_client"
+    ],
+    "op": "truthy"
+   },
+   "quantifier": "all",
+   "quote": "each using the authorization code OAuth flow with the email and openid scopes and the Cognito identity provider",
+   "justify": "using an OAuth flow requires enabling OAuth flows for the client"
+  },
+  {
+   "id": "scope_email",
+   "kind": "attr",
+   "tier": "core",
+   "select": "client",
+   "cond": {
+    "path": [
+     "allowed_oauth_scopes",
+     "*"
+    ],
+    "op": "eq",
+    "value": "email"
+   },
+   "quantifier": "all",
+   "quote": "each using the authorization code OAuth flow with the email and openid scopes and the Cognito identity provider"
+  },
+  {
+   "id": "scope_openid",
+   "kind": "attr",
+   "tier": "core",
+   "select": "client",
+   "cond": {
+    "path": [
+     "allowed_oauth_scopes",
+     "*"
+    ],
+    "op": "eq",
+    "value": "openid"
+   },
+   "quantifier": "all",
+   "quote": "each using the authorization code OAuth flow with the email and openid scopes and the Cognito identity provider"
+  },
+  {
+   "id": "idp_cognito",
+   "kind": "attr",
+   "tier": "core",
+   "select": "client",
+   "cond": {
+    "path": [
+     "supported_identity_providers",
+     "*"
+    ],
+    "op": "eq",
+    "value": "COGNITO"
+   },
+   "quantifier": "all",
+   "quote": "each using the authorization code OAuth flow with the email and openid scopes and the Cognito identity provider",
+   "justify": "the Cognito identity provider is COGNITO"
+  },
+  {
+   "id": "callback_urls",
+   "kind": "attr",
+   "tier": "detail",
+   "select": "client",
+   "cond": {
+    "path": [
+     "callback_urls"
+    ],
+    "op": "present"
+   },
+   "quantifier": "all",
+   "quote": "with callback and logout URLs supplied as variables that default to sample API endpoints or local development addresses"
+  },
+  {
+   "id": "logout_urls",
+   "kind": "attr",
+   "tier": "detail",
+   "select": "client",
+   "cond": {
+    "path": [
+     "logout_urls"
+    ],
+    "op": "present"
+   },
+   "quote": "with callback and logout URLs supplied as variables that default to sample API endpoints or local development addresses"
+  },
+  {
+   "id": "url_variables",
+   "kind": "exists",
+   "tier": "detail",
+   "quote": "with callback and logout URLs supplied as variables that default to sample API endpoints or local development addresses",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": [
+       "default"
+      ],
+      "op": "regex",
+      "value": "(?i)(localhost|https?://)"
+     }
+    ]
+   },
+   "justify": "sample API endpoints and local development addresses are http(s)/localhost URLs held as variable defaults"
+  },
+  {
+   "id": "secret_uds",
+   "kind": "attr",
+   "tier": "core",
+   "select": "c_uds",
+   "cond": {
+    "path": [
+     "generate_secret"
+    ],
+    "op": "truthy"
+   },
+   "quote": "The first four clients should generate a client secret"
+  },
+  {
+   "id": "secret_jh",
+   "kind": "attr",
+   "tier": "core",
+   "select": "c_jh",
+   "cond": {
+    "path": [
+     "generate_secret"
+    ],
+    "op": "truthy"
+   },
+   "quote": "The first four clients should generate a client secret"
+  },
+  {
+   "id": "secret_a2a",
+   "kind": "attr",
+   "tier": "core",
+   "select": "c_a2a",
+   "cond": {
+    "path": [
+     "generate_secret"
+    ],
+    "op": "truthy"
+   },
+   "quote": "The first four clients should generate a client secret"
+  },
+  {
+   "id": "secret_dev",
+   "kind": "attr",
+   "tier": "core",
+   "select": "c_dev",
+   "cond": {
+    "path": [
+     "generate_secret"
+    ],
+    "op": "truthy"
+   },
+   "quote": "The first four clients should generate a client secret"
+  },
+  {
+   "id": "nosecret_hy",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "c_hy",
+     "cond": {
+      "path": [
+       "generate_secret"
+      ],
+      "op": "falsy"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "c_hy",
+     "cond": {
+      "path": [
+       "generate_secret"
+      ],
+      "op": "absent"
+     }
+    }
+   ],
+   "quote": "while the two HySDS UI clients should not"
+  },
+  {
+   "id": "nosecret_lhy",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "c_lhy",
+     "cond": {
+      "path": [
+       "generate_secret"
+      ],
+      "op": "falsy"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "c_lhy",
+     "cond": {
+      "path": [
+       "generate_secret"
+      ],
+      "op": "absent"
+     }
+    }
+   ],
+   "quote": "while the two HySDS UI clients should not"
+  },
+  {
+   "id": "nopass_a2a",
+   "kind": "all_of",
+   "tier": "core",
+   "quote": "the app-to-app and development Jupyter clients should not allow username/password authentication",
+   "justify": "username/password authentication is the (ALLOW_)USER_PASSWORD_AUTH and admin password flows; omitting explicit_auth_flows does not enable them",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "c_a2a",
+     "cond": {
+      "path": [
+       "explicit_auth_flows",
+       "*"
+      ],
+      "op": "none_eq",
+      "value": "ALLOW_USER_PASSWORD_AUTH"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "c_a2a",
+     "cond": {
+      "path": [
+       "explicit_auth_flows",
+       "*"
+      ],
+      "op": "none_eq",
+      "value": "USER_PASSWORD_AUTH"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "c_a2a",
+     "cond": {
+      "path": [
+       "explicit_auth_flows",
+       "*"
+      ],
+      "op": "none_eq",
+      "value": "ALLOW_ADMIN_USER_PASSWORD_AUTH"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "c_a2a",
+     "cond": {
+      "path": [
+       "explicit_auth_flows",
+       "*"
+      ],
+      "op": "none_eq",
+      "value": "ADMIN_NO_SRP_AUTH"
+     }
+    }
+   ]
+  },
+  {
+   "id": "nopass_dev",
+   "kind": "all_of",
+   "tier": "core",
+   "quote": "the app-to-app and development Jupyter clients should not allow username/password authentication",
+   "justify": "username/password authentication is the (ALLOW_)USER_PASSWORD_AUTH and admin password flows; omitting explicit_auth_flows does not enable them",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "c_dev",
+     "cond": {
+      "path": [
+       "explicit_auth_flows",
+       "*"
+      ],
+      "op": "none_eq",
+      "value": "ALLOW_USER_PASSWORD_AUTH"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "c_dev",
+     "cond": {
+      "path": [
+       "explicit_auth_flows",
+       "*"
+      ],
+      "op": "none_eq",
+      "value": "USER_PASSWORD_AUTH"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "c_dev",
+     "cond": {
+      "path": [
+       "explicit_auth_flows",
+       "*"
+      ],
+      "op": "none_eq",
+      "value": "ALLOW_ADMIN_USER_PASSWORD_AUTH"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "c_dev",
+     "cond": {
+      "path": [
+       "explicit_auth_flows",
+       "*"
+      ],
+      "op": "none_eq",
+      "value": "ADMIN_NO_SRP_AUTH"
+     }
+    }
+   ]
+  },
+  {
+   "id": "group_admin",
+   "kind": "exists",
+   "tier": "core",
+   "select": "g_admin",
+   "quote": "create two user groups in the pool, \"Unity_Admin\" and \"Unity_Viewer\""
+  },
+  {
+   "id": "group_pool_admin",
+   "kind": "any_of",
+   "tier": "detail",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "g_admin",
+     "to": "pool"
+    },
+    {
+     "kind": "ref",
+     "from": "g_admin",
+     "to": "ssm"
+    }
+   ],
+   "quote": "create two user groups in the pool"
+  },
+  {
+   "id": "group_viewer",
+   "kind": "exists",
+   "tier": "core",
+   "select": "g_viewer",
+   "quote": "create two user groups in the pool, \"Unity_Admin\" and \"Unity_Viewer\""
+  },
+  {
+   "id": "group_pool_viewer",
+   "kind": "any_of",
+   "tier": "detail",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "g_viewer",
+     "to": "pool"
+    },
+    {
+     "kind": "ref",
+     "from": "g_viewer",
+     "to": "ssm"
+    }
+   ],
+   "quote": "create two user groups in the pool"
+  },
+  {
+   "id": "x_srp",
+   "kind": "attr",
+   "tier": "extra",
+   "select": {
+    "types": [
+     "aws_cognito_user_pool_client"
+    ],
+    "where": []
+   },
+   "cond": {
+    "path": [
+     "explicit_auth_flows",
+     "*"
+    ],
+    "op": "eq",
+    "value": "ALLOW_USER_SRP_AUTH"
+   },
+   "quantifier": "all"
+  },
+  {
+   "id": "x_refresh",
+   "kind": "attr",
+   "tier": "extra",
+   "select": {
+    "types": [
+     "aws_cognito_user_pool_client"
+    ],
+    "where": []
+   },
+   "cond": {
+    "path": [
+     "explicit_auth_flows",
+     "*"
+    ],
+    "op": "eq",
+    "value": "ALLOW_REFRESH_TOKEN_AUTH"
+   },
+   "quantifier": "all"
+  },
+  {
+   "id": "x_ssm_overwrite",
+   "kind": "attr",
+   "tier": "extra",
+   "select": {
+    "types": [
+     "aws_ssm_parameter"
+    ],
+    "where": [
+     {
+      "path": [
+       "name"
+      ],
+      "op": "eq",
+      "value": "/unity/cs/security/shared-services-cognito-user-pool/user-pool-id"
+     }
+    ]
+   },
+   "cond": {
+    "path": [
+     "overwrite"
+    ],
+    "op": "truthy"
+   }
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

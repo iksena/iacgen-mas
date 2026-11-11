@@ -1,0 +1,1682 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "0cf04395cbd7098f6aae3c5aba4dee10bb2ebb57aba9b43352695162738f2e3c",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "VPC",
+   "cfg": "VPC",
+   "type": "AWS::EC2::VPC",
+   "values": {
+    "EnableDnsSupport": true,
+    "EnableDnsHostnames": true,
+    "CidrBlock": "10.0.0.0/16",
+    "Tags": [
+     {
+      "Key": "Application",
+      "Value": "stack"
+     },
+     {
+      "Key": "Network",
+      "Value": "Public"
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "FlowLogRole",
+   "cfg": "FlowLogRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "vpc-flow-logs.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Policies": [
+     {
+      "PolicyName": "flowlog-policy",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "logs:DescribeLogGroups",
+          "logs:DescribeLogStreams",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+         ],
+         "Resource": {
+          "ref": "FlowLogGroup",
+          "attr": "Arn"
+         }
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": [
+    "FlowLogGroup"
+   ]
+  },
+  {
+   "id": "FlowLogGroup",
+   "cfg": "FlowLogGroup",
+   "type": "AWS::Logs::LogGroup",
+   "values": {
+    "RetentionInDays": 14
+   },
+   "refs": []
+  },
+  {
+   "id": "FlowLog",
+   "cfg": "FlowLog",
+   "type": "AWS::EC2::FlowLog",
+   "values": {
+    "DeliverLogsPermissionArn": {
+     "ref": "FlowLogRole",
+     "attr": "Arn"
+    },
+    "LogGroupName": {
+     "ref": "FlowLogGroup"
+    },
+    "ResourceId": {
+     "ref": "VPC"
+    },
+    "ResourceType": "VPC",
+    "TrafficType": "ALL"
+   },
+   "refs": [
+    "FlowLogGroup",
+    "FlowLogRole",
+    "VPC"
+   ]
+  },
+  {
+   "id": "PublicSubnet0",
+   "cfg": "PublicSubnet0",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "AvailabilityZone": "us-east-1a",
+    "CidrBlock": "10.0.1.0/24",
+    "Tags": [
+     {
+      "Key": "Application",
+      "Value": "stack"
+     },
+     {
+      "Key": "Network",
+      "Value": "Public"
+     },
+     {
+      "Key": "Name",
+      "Value": {
+       "Fn::Join": [
+        "",
+        [
+         {
+          "ref": "VPC"
+         },
+         "-public-",
+         "a"
+        ]
+       ]
+      }
+     }
+    ]
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "PublicSubnet1",
+   "cfg": "PublicSubnet1",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "AvailabilityZone": "us-east-1b",
+    "CidrBlock": "10.0.2.0/24",
+    "Tags": [
+     {
+      "Key": "Application",
+      "Value": "stack"
+     },
+     {
+      "Key": "Network",
+      "Value": "Public"
+     },
+     {
+      "Key": "Name",
+      "Value": {
+       "Fn::Join": [
+        "",
+        [
+         {
+          "ref": "VPC"
+         },
+         "-public-",
+         "b"
+        ]
+       ]
+      }
+     }
+    ]
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "PrivateSubnet0",
+   "cfg": "PrivateSubnet0",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "AvailabilityZone": "us-east-1a",
+    "CidrBlock": "10.0.11.0/24",
+    "Tags": [
+     {
+      "Key": "Application",
+      "Value": "stack"
+     },
+     {
+      "Key": "Network",
+      "Value": "Private"
+     },
+     {
+      "Key": "Name",
+      "Value": {
+       "Fn::Join": [
+        "",
+        [
+         {
+          "ref": "VPC"
+         },
+         "-private-",
+         "a"
+        ]
+       ]
+      }
+     }
+    ]
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "PrivateSubnet1",
+   "cfg": "PrivateSubnet1",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "AvailabilityZone": "us-east-1b",
+    "CidrBlock": "10.0.12.0/24",
+    "Tags": [
+     {
+      "Key": "Application",
+      "Value": "stack"
+     },
+     {
+      "Key": "Network",
+      "Value": "Private"
+     },
+     {
+      "Key": "Name",
+      "Value": {
+       "Fn::Join": [
+        "",
+        [
+         {
+          "ref": "VPC"
+         },
+         "-private-",
+         "b"
+        ]
+       ]
+      }
+     }
+    ]
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "InternetGateway",
+   "cfg": "InternetGateway",
+   "type": "AWS::EC2::InternetGateway",
+   "values": {
+    "Tags": [
+     {
+      "Key": "Application",
+      "Value": "stack"
+     },
+     {
+      "Key": "Network",
+      "Value": "Public"
+     },
+     {
+      "Key": "Name",
+      "Value": "${VPC}-IGW"
+     }
+    ]
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "GatewayToInternet",
+   "cfg": "GatewayToInternet",
+   "type": "AWS::EC2::VPCGatewayAttachment",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "InternetGatewayId": {
+     "ref": "InternetGateway"
+    }
+   },
+   "refs": [
+    "InternetGateway",
+    "VPC"
+   ]
+  },
+  {
+   "id": "PublicRouteTable",
+   "cfg": "PublicRouteTable",
+   "type": "AWS::EC2::RouteTable",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "Tags": [
+     {
+      "Key": "Application",
+      "Value": "stack"
+     },
+     {
+      "Key": "Network",
+      "Value": "Public"
+     },
+     {
+      "Key": "Name",
+      "Value": "${VPC}-public-route-table"
+     }
+    ]
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "PublicRoute",
+   "cfg": "PublicRoute",
+   "type": "AWS::EC2::Route",
+   "values": {
+    "RouteTableId": {
+     "ref": "PublicRouteTable"
+    },
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "GatewayId": {
+     "ref": "InternetGateway"
+    },
+    "__resource__": {
+     "DependsOn": [
+      "GatewayToInternet"
+     ]
+    }
+   },
+   "refs": [
+    "InternetGateway",
+    "PublicRouteTable"
+   ]
+  },
+  {
+   "id": "PublicSubnetRouteTableAssociation0",
+   "cfg": "PublicSubnetRouteTableAssociation0",
+   "type": "AWS::EC2::SubnetRouteTableAssociation",
+   "values": {
+    "SubnetId": {
+     "ref": "PublicSubnet0"
+    },
+    "RouteTableId": {
+     "ref": "PublicRouteTable"
+    }
+   },
+   "refs": [
+    "PublicRouteTable",
+    "PublicSubnet0"
+   ]
+  },
+  {
+   "id": "PublicSubnetRouteTableAssociation1",
+   "cfg": "PublicSubnetRouteTableAssociation1",
+   "type": "AWS::EC2::SubnetRouteTableAssociation",
+   "values": {
+    "SubnetId": {
+     "ref": "PublicSubnet1"
+    },
+    "RouteTableId": {
+     "ref": "PublicRouteTable"
+    }
+   },
+   "refs": [
+    "PublicRouteTable",
+    "PublicSubnet1"
+   ]
+  },
+  {
+   "id": "ElasticIP0",
+   "cfg": "ElasticIP0",
+   "type": "AWS::EC2::EIP",
+   "values": {
+    "Domain": "vpc"
+   },
+   "refs": []
+  },
+  {
+   "id": "ElasticIP1",
+   "cfg": "ElasticIP1",
+   "type": "AWS::EC2::EIP",
+   "values": {
+    "Domain": "vpc"
+   },
+   "refs": []
+  },
+  {
+   "id": "NATGateway0",
+   "cfg": "NATGateway0",
+   "type": "AWS::EC2::NatGateway",
+   "values": {
+    "AllocationId": {
+     "ref": "ElasticIP0",
+     "attr": "AllocationId"
+    },
+    "SubnetId": {
+     "ref": "PublicSubnet0"
+    }
+   },
+   "refs": [
+    "ElasticIP0",
+    "PublicSubnet0"
+   ]
+  },
+  {
+   "id": "NATGateway1",
+   "cfg": "NATGateway1",
+   "type": "AWS::EC2::NatGateway",
+   "values": {
+    "AllocationId": {
+     "ref": "ElasticIP1",
+     "attr": "AllocationId"
+    },
+    "SubnetId": {
+     "ref": "PublicSubnet1"
+    }
+   },
+   "refs": [
+    "ElasticIP1",
+    "PublicSubnet1"
+   ]
+  },
+  {
+   "id": "PrivateRouteTable0",
+   "cfg": "PrivateRouteTable0",
+   "type": "AWS::EC2::RouteTable",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "${VPC}-private-route-table-0"
+     }
+    ]
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "PrivateRouteTable1",
+   "cfg": "PrivateRouteTable1",
+   "type": "AWS::EC2::RouteTable",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "${VPC}-private-route-table-1"
+     }
+    ]
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "PrivateRouteToInternet0",
+   "cfg": "PrivateRouteToInternet0",
+   "type": "AWS::EC2::Route",
+   "values": {
+    "RouteTableId": {
+     "ref": "PrivateRouteTable0"
+    },
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "NatGatewayId": {
+     "ref": "NATGateway0"
+    }
+   },
+   "refs": [
+    "NATGateway0",
+    "PrivateRouteTable0"
+   ]
+  },
+  {
+   "id": "PrivateRouteToInternet1",
+   "cfg": "PrivateRouteToInternet1",
+   "type": "AWS::EC2::Route",
+   "values": {
+    "RouteTableId": {
+     "ref": "PrivateRouteTable1"
+    },
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "NatGatewayId": {
+     "ref": "NATGateway1"
+    }
+   },
+   "refs": [
+    "NATGateway1",
+    "PrivateRouteTable1"
+   ]
+  },
+  {
+   "id": "PrivateSubnetRouteTableAssociation0",
+   "cfg": "PrivateSubnetRouteTableAssociation0",
+   "type": "AWS::EC2::SubnetRouteTableAssociation",
+   "values": {
+    "SubnetId": {
+     "ref": "PrivateSubnet0"
+    },
+    "RouteTableId": {
+     "ref": "PrivateRouteTable0"
+    }
+   },
+   "refs": [
+    "PrivateRouteTable0",
+    "PrivateSubnet0"
+   ]
+  },
+  {
+   "id": "PrivateSubnetRouteTableAssociation1",
+   "cfg": "PrivateSubnetRouteTableAssociation1",
+   "type": "AWS::EC2::SubnetRouteTableAssociation",
+   "values": {
+    "SubnetId": {
+     "ref": "PrivateSubnet1"
+    },
+    "RouteTableId": {
+     "ref": "PrivateRouteTable1"
+    }
+   },
+   "refs": [
+    "PrivateRouteTable1",
+    "PrivateSubnet1"
+   ]
+  },
+  {
+   "id": "S3Endpoint",
+   "cfg": "S3Endpoint",
+   "type": "AWS::EC2::VPCEndpoint",
+   "values": {
+    "RouteTableIds": [
+     {
+      "ref": "PublicRouteTable"
+     },
+     {
+      "ref": "PrivateRouteTable0"
+     },
+     {
+      "ref": "PrivateRouteTable1"
+     }
+    ],
+    "ServiceName": "com.amazonaws.us-east-1.s3",
+    "VpcId": {
+     "ref": "VPC"
+    }
+   },
+   "refs": [
+    "PrivateRouteTable0",
+    "PrivateRouteTable1",
+    "PublicRouteTable",
+    "VPC"
+   ]
+  },
+  {
+   "id": "VpcEndpointsSg",
+   "cfg": "VpcEndpointsSg",
+   "type": "AWS::EC2::SecurityGroup",
+   "values": {
+    "GroupDescription": "Security group for Gremlin lambda",
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "SecurityGroupEgress": [
+     {
+      "Description": "Explicit egress group locking down outbound access for HTTPS",
+      "CidrIp": "10.0.0.0/16",
+      "IpProtocol": "tcp",
+      "ToPort": 443,
+      "FromPort": 443
+     }
+    ]
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "EcrApiEndpoint",
+   "cfg": "EcrApiEndpoint",
+   "type": "AWS::EC2::VPCEndpoint",
+   "values": {
+    "SubnetIds": [
+     {
+      "ref": "PrivateSubnet0"
+     },
+     {
+      "ref": "PrivateSubnet1"
+     }
+    ],
+    "ServiceName": "com.amazonaws.us-east-1.ecr.api",
+    "PrivateDnsEnabled": true,
+    "VpcEndpointType": "Interface",
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "SecurityGroupIds": [
+     {
+      "ref": "VpcEndpointsSg"
+     }
+    ]
+   },
+   "refs": [
+    "PrivateSubnet0",
+    "PrivateSubnet1",
+    "VPC",
+    "VpcEndpointsSg"
+   ]
+  },
+  {
+   "id": "EcrDkrEndpoint",
+   "cfg": "EcrDkrEndpoint",
+   "type": "AWS::EC2::VPCEndpoint",
+   "values": {
+    "SubnetIds": [
+     {
+      "ref": "PrivateSubnet0"
+     },
+     {
+      "ref": "PrivateSubnet1"
+     }
+    ],
+    "ServiceName": "com.amazonaws.us-east-1.ecr.dkr",
+    "PrivateDnsEnabled": true,
+    "VpcEndpointType": "Interface",
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "SecurityGroupIds": [
+     {
+      "ref": "VpcEndpointsSg"
+     }
+    ]
+   },
+   "refs": [
+    "PrivateSubnet0",
+    "PrivateSubnet1",
+    "VPC",
+    "VpcEndpointsSg"
+   ]
+  },
+  {
+   "id": "__parameter__.RetentionInDays",
+   "cfg": "__parameter__.RetentionInDays",
+   "type": "__parameter__",
+   "values": {
+    "name": "RetentionInDays",
+    "type": "Number",
+    "default": 14,
+    "allowed_values": [
+     1,
+     3,
+     5,
+     7,
+     14,
+     30,
+     60,
+     90,
+     120,
+     150,
+     180,
+     365
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.TrafficType",
+   "cfg": "__parameter__.TrafficType",
+   "type": "__parameter__",
+   "values": {
+    "name": "TrafficType",
+    "type": "String",
+    "default": "ALL",
+    "allowed_values": [
+     "ACCEPT",
+     "REJECT",
+     "ALL"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.VPCId",
+   "cfg": "__output__.VPCId",
+   "type": "__output__",
+   "values": {
+    "name": "VPCId",
+    "value": {
+     "ref": "VPC"
+    },
+    "description": "VPCId of VPC",
+    "export": "us-east-1-stack-VPC"
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "__output__.AvailabilityZone0",
+   "cfg": "__output__.AvailabilityZone0",
+   "type": "__output__",
+   "values": {
+    "name": "AvailabilityZone0",
+    "value": "us-east-1a",
+    "description": null,
+    "export": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.AvailabilityZone1",
+   "cfg": "__output__.AvailabilityZone1",
+   "type": "__output__",
+   "values": {
+    "name": "AvailabilityZone1",
+    "value": "us-east-1b",
+    "description": null,
+    "export": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.PublicSubnet0",
+   "cfg": "__output__.PublicSubnet0",
+   "type": "__output__",
+   "values": {
+    "name": "PublicSubnet0",
+    "value": {
+     "ref": "PublicSubnet0"
+    },
+    "description": "SubnetId of public subnet 0",
+    "export": "us-east-1-stack-PublicSubnet0"
+   },
+   "refs": [
+    "PublicSubnet0"
+   ]
+  },
+  {
+   "id": "__output__.PublicSubnet1",
+   "cfg": "__output__.PublicSubnet1",
+   "type": "__output__",
+   "values": {
+    "name": "PublicSubnet1",
+    "value": {
+     "ref": "PublicSubnet1"
+    },
+    "description": "SubnetId of public subnet 1",
+    "export": "us-east-1-stack-PublicSubnet1"
+   },
+   "refs": [
+    "PublicSubnet1"
+   ]
+  },
+  {
+   "id": "__output__.PrivateSubnet0",
+   "cfg": "__output__.PrivateSubnet0",
+   "type": "__output__",
+   "values": {
+    "name": "PrivateSubnet0",
+    "value": {
+     "ref": "PrivateSubnet0"
+    },
+    "description": "SubnetId of private subnet 0",
+    "export": "us-east-1-stack-PrivateSubnet0"
+   },
+   "refs": [
+    "PrivateSubnet0"
+   ]
+  },
+  {
+   "id": "__output__.PrivateSubnet1",
+   "cfg": "__output__.PrivateSubnet1",
+   "type": "__output__",
+   "values": {
+    "name": "PrivateSubnet1",
+    "value": {
+     "ref": "PrivateSubnet1"
+    },
+    "description": "SubnetId of private subnet 1",
+    "export": "us-east-1-stack-PrivateSubnet1"
+   },
+   "refs": [
+    "PrivateSubnet1"
+   ]
+  },
+  {
+   "id": "__output__.VpcEndpointsSg",
+   "cfg": "__output__.VpcEndpointsSg",
+   "type": "__output__",
+   "values": {
+    "name": "VpcEndpointsSg",
+    "value": {
+     "ref": "VpcEndpointsSg"
+    },
+    "description": "Security group for all VPC Endpoints",
+    "export": null
+   },
+   "refs": [
+    "VpcEndpointsSg"
+   ]
+  },
+  {
+   "id": "__output__.VpcCidr",
+   "cfg": "__output__.VpcCidr",
+   "type": "__output__",
+   "values": {
+    "name": "VpcCidr",
+    "value": {
+     "ref": "VPC",
+     "attr": "CidrBlock"
+    },
+    "description": "VPC CIDR",
+    "export": null
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPC.VPC",
+   "cfg": "VPC",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::VPC",
+    "name": "VPC",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "EnableDnsSupport": true,
+     "EnableDnsHostnames": true,
+     "CidrBlock": "10.0.0.0/16",
+     "Tags": [
+      {
+       "Key": "Application",
+       "Value": "stack"
+      },
+      {
+       "Key": "Network",
+       "Value": "Public"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.FlowLogRole",
+   "cfg": "FlowLogRole",
+   "type": "__declared__",
+   "refs": [
+    "FlowLogGroup"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "FlowLogRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "vpc-flow-logs.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Policies": [
+      {
+       "PolicyName": "flowlog-policy",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "logs:DescribeLogGroups",
+           "logs:DescribeLogStreams",
+           "logs:CreateLogStream",
+           "logs:PutLogEvents"
+          ],
+          "Resource": {
+           "ref": "FlowLogGroup",
+           "attr": "Arn"
+          }
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::LogGroup.FlowLogGroup",
+   "cfg": "FlowLogGroup",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Logs::LogGroup",
+    "name": "FlowLogGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RetentionInDays": 14
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::FlowLog.FlowLog",
+   "cfg": "FlowLog",
+   "type": "__declared__",
+   "refs": [
+    "FlowLogGroup",
+    "FlowLogRole",
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::FlowLog",
+    "name": "FlowLog",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "DeliverLogsPermissionArn": {
+      "ref": "FlowLogRole",
+      "attr": "Arn"
+     },
+     "LogGroupName": {
+      "ref": "FlowLogGroup"
+     },
+     "ResourceId": {
+      "ref": "VPC"
+     },
+     "ResourceType": "VPC",
+     "TrafficType": "ALL"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.PublicSubnet0",
+   "cfg": "PublicSubnet0",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "PublicSubnet0",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "AvailabilityZone": "us-east-1a",
+     "CidrBlock": "10.0.1.0/24",
+     "Tags": [
+      {
+       "Key": "Application",
+       "Value": "stack"
+      },
+      {
+       "Key": "Network",
+       "Value": "Public"
+      },
+      {
+       "Key": "Name",
+       "Value": {
+        "Fn::Join": [
+         "",
+         [
+          {
+           "ref": "VPC"
+          },
+          "-public-",
+          "a"
+         ]
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.PublicSubnet1",
+   "cfg": "PublicSubnet1",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "PublicSubnet1",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "AvailabilityZone": "us-east-1b",
+     "CidrBlock": "10.0.2.0/24",
+     "Tags": [
+      {
+       "Key": "Application",
+       "Value": "stack"
+      },
+      {
+       "Key": "Network",
+       "Value": "Public"
+      },
+      {
+       "Key": "Name",
+       "Value": {
+        "Fn::Join": [
+         "",
+         [
+          {
+           "ref": "VPC"
+          },
+          "-public-",
+          "b"
+         ]
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.PrivateSubnet0",
+   "cfg": "PrivateSubnet0",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "PrivateSubnet0",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "AvailabilityZone": "us-east-1a",
+     "CidrBlock": "10.0.11.0/24",
+     "Tags": [
+      {
+       "Key": "Application",
+       "Value": "stack"
+      },
+      {
+       "Key": "Network",
+       "Value": "Private"
+      },
+      {
+       "Key": "Name",
+       "Value": {
+        "Fn::Join": [
+         "",
+         [
+          {
+           "ref": "VPC"
+          },
+          "-private-",
+          "a"
+         ]
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.PrivateSubnet1",
+   "cfg": "PrivateSubnet1",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "PrivateSubnet1",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "AvailabilityZone": "us-east-1b",
+     "CidrBlock": "10.0.12.0/24",
+     "Tags": [
+      {
+       "Key": "Application",
+       "Value": "stack"
+      },
+      {
+       "Key": "Network",
+       "Value": "Private"
+      },
+      {
+       "Key": "Name",
+       "Value": {
+        "Fn::Join": [
+         "",
+         [
+          {
+           "ref": "VPC"
+          },
+          "-private-",
+          "b"
+         ]
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::InternetGateway.InternetGateway",
+   "cfg": "InternetGateway",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::InternetGateway",
+    "name": "InternetGateway",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Tags": [
+      {
+       "Key": "Application",
+       "Value": "stack"
+      },
+      {
+       "Key": "Network",
+       "Value": "Public"
+      },
+      {
+       "Key": "Name",
+       "Value": "${VPC}-IGW"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCGatewayAttachment.GatewayToInternet",
+   "cfg": "GatewayToInternet",
+   "type": "__declared__",
+   "refs": [
+    "InternetGateway",
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::VPCGatewayAttachment",
+    "name": "GatewayToInternet",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "InternetGatewayId": {
+      "ref": "InternetGateway"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::RouteTable.PublicRouteTable",
+   "cfg": "PublicRouteTable",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::RouteTable",
+    "name": "PublicRouteTable",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "Tags": [
+      {
+       "Key": "Application",
+       "Value": "stack"
+      },
+      {
+       "Key": "Network",
+       "Value": "Public"
+      },
+      {
+       "Key": "Name",
+       "Value": "${VPC}-public-route-table"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Route.PublicRoute",
+   "cfg": "PublicRoute",
+   "type": "__declared__",
+   "refs": [
+    "InternetGateway",
+    "PublicRouteTable"
+   ],
+   "values": {
+    "type": "AWS::EC2::Route",
+    "name": "PublicRoute",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RouteTableId": {
+      "ref": "PublicRouteTable"
+     },
+     "DestinationCidrBlock": "0.0.0.0/0",
+     "GatewayId": {
+      "ref": "InternetGateway"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetRouteTableAssociation.PublicSubnetRouteTableAssociation0",
+   "cfg": "PublicSubnetRouteTableAssociation0",
+   "type": "__declared__",
+   "refs": [
+    "PublicRouteTable",
+    "PublicSubnet0"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetRouteTableAssociation",
+    "name": "PublicSubnetRouteTableAssociation0",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "SubnetId": {
+      "ref": "PublicSubnet0"
+     },
+     "RouteTableId": {
+      "ref": "PublicRouteTable"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetRouteTableAssociation.PublicSubnetRouteTableAssociation1",
+   "cfg": "PublicSubnetRouteTableAssociation1",
+   "type": "__declared__",
+   "refs": [
+    "PublicRouteTable",
+    "PublicSubnet1"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetRouteTableAssociation",
+    "name": "PublicSubnetRouteTableAssociation1",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "SubnetId": {
+      "ref": "PublicSubnet1"
+     },
+     "RouteTableId": {
+      "ref": "PublicRouteTable"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::EIP.ElasticIP0",
+   "cfg": "ElasticIP0",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::EIP",
+    "name": "ElasticIP0",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Domain": "vpc"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::EIP.ElasticIP1",
+   "cfg": "ElasticIP1",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::EIP",
+    "name": "ElasticIP1",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Domain": "vpc"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::NatGateway.NATGateway0",
+   "cfg": "NATGateway0",
+   "type": "__declared__",
+   "refs": [
+    "ElasticIP0",
+    "PublicSubnet0"
+   ],
+   "values": {
+    "type": "AWS::EC2::NatGateway",
+    "name": "NATGateway0",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AllocationId": {
+      "ref": "ElasticIP0",
+      "attr": "AllocationId"
+     },
+     "SubnetId": {
+      "ref": "PublicSubnet0"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::NatGateway.NATGateway1",
+   "cfg": "NATGateway1",
+   "type": "__declared__",
+   "refs": [
+    "ElasticIP1",
+    "PublicSubnet1"
+   ],
+   "values": {
+    "type": "AWS::EC2::NatGateway",
+    "name": "NATGateway1",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AllocationId": {
+      "ref": "ElasticIP1",
+      "attr": "AllocationId"
+     },
+     "SubnetId": {
+      "ref": "PublicSubnet1"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::RouteTable.PrivateRouteTable0",
+   "cfg": "PrivateRouteTable0",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::RouteTable",
+    "name": "PrivateRouteTable0",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "${VPC}-private-route-table-0"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::RouteTable.PrivateRouteTable1",
+   "cfg": "PrivateRouteTable1",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::RouteTable",
+    "name": "PrivateRouteTable1",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "${VPC}-private-route-table-1"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Route.PrivateRouteToInternet0",
+   "cfg": "PrivateRouteToInternet0",
+   "type": "__declared__",
+   "refs": [
+    "NATGateway0",
+    "PrivateRouteTable0"
+   ],
+   "values": {
+    "type": "AWS::EC2::Route",
+    "name": "PrivateRouteToInternet0",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RouteTableId": {
+      "ref": "PrivateRouteTable0"
+     },
+     "DestinationCidrBlock": "0.0.0.0/0",
+     "NatGatewayId": {
+      "ref": "NATGateway0"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Route.PrivateRouteToInternet1",
+   "cfg": "PrivateRouteToInternet1",
+   "type": "__declared__",
+   "refs": [
+    "NATGateway1",
+    "PrivateRouteTable1"
+   ],
+   "values": {
+    "type": "AWS::EC2::Route",
+    "name": "PrivateRouteToInternet1",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RouteTableId": {
+      "ref": "PrivateRouteTable1"
+     },
+     "DestinationCidrBlock": "0.0.0.0/0",
+     "NatGatewayId": {
+      "ref": "NATGateway1"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetRouteTableAssociation.PrivateSubnetRouteTableAssociation0",
+   "cfg": "PrivateSubnetRouteTableAssociation0",
+   "type": "__declared__",
+   "refs": [
+    "PrivateRouteTable0",
+    "PrivateSubnet0"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetRouteTableAssociation",
+    "name": "PrivateSubnetRouteTableAssociation0",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "SubnetId": {
+      "ref": "PrivateSubnet0"
+     },
+     "RouteTableId": {
+      "ref": "PrivateRouteTable0"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetRouteTableAssociation.PrivateSubnetRouteTableAssociation1",
+   "cfg": "PrivateSubnetRouteTableAssociation1",
+   "type": "__declared__",
+   "refs": [
+    "PrivateRouteTable1",
+    "PrivateSubnet1"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetRouteTableAssociation",
+    "name": "PrivateSubnetRouteTableAssociation1",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "SubnetId": {
+      "ref": "PrivateSubnet1"
+     },
+     "RouteTableId": {
+      "ref": "PrivateRouteTable1"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCEndpoint.S3Endpoint",
+   "cfg": "S3Endpoint",
+   "type": "__declared__",
+   "refs": [
+    "PrivateRouteTable0",
+    "PrivateRouteTable1",
+    "PublicRouteTable",
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::VPCEndpoint",
+    "name": "S3Endpoint",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RouteTableIds": [
+      {
+       "ref": "PublicRouteTable"
+      },
+      {
+       "ref": "PrivateRouteTable0"
+      },
+      {
+       "ref": "PrivateRouteTable1"
+      }
+     ],
+     "ServiceName": "com.amazonaws.us-east-1.s3",
+     "VpcId": {
+      "ref": "VPC"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SecurityGroup.VpcEndpointsSg",
+   "cfg": "VpcEndpointsSg",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::SecurityGroup",
+    "name": "VpcEndpointsSg",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "GroupDescription": "Security group for Gremlin lambda",
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "SecurityGroupEgress": [
+      {
+       "Description": "Explicit egress group locking down outbound access for HTTPS",
+       "CidrIp": "10.0.0.0/16",
+       "IpProtocol": "tcp",
+       "ToPort": 443,
+       "FromPort": 443
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCEndpoint.EcrApiEndpoint",
+   "cfg": "EcrApiEndpoint",
+   "type": "__declared__",
+   "refs": [
+    "PrivateSubnet0",
+    "PrivateSubnet1",
+    "VPC",
+    "VpcEndpointsSg"
+   ],
+   "values": {
+    "type": "AWS::EC2::VPCEndpoint",
+    "name": "EcrApiEndpoint",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "SubnetIds": [
+      {
+       "ref": "PrivateSubnet0"
+      },
+      {
+       "ref": "PrivateSubnet1"
+      }
+     ],
+     "ServiceName": "com.amazonaws.us-east-1.ecr.api",
+     "PrivateDnsEnabled": true,
+     "VpcEndpointType": "Interface",
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "SecurityGroupIds": [
+      {
+       "ref": "VpcEndpointsSg"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCEndpoint.EcrDkrEndpoint",
+   "cfg": "EcrDkrEndpoint",
+   "type": "__declared__",
+   "refs": [
+    "PrivateSubnet0",
+    "PrivateSubnet1",
+    "VPC",
+    "VpcEndpointsSg"
+   ],
+   "values": {
+    "type": "AWS::EC2::VPCEndpoint",
+    "name": "EcrDkrEndpoint",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "SubnetIds": [
+      {
+       "ref": "PrivateSubnet0"
+      },
+      {
+       "ref": "PrivateSubnet1"
+      }
+     ],
+     "ServiceName": "com.amazonaws.us-east-1.ecr.dkr",
+     "PrivateDnsEnabled": true,
+     "VpcEndpointType": "Interface",
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "SecurityGroupIds": [
+      {
+       "ref": "VpcEndpointsSg"
+      }
+     ]
+    }
+   }
+  }
+ ]
+}

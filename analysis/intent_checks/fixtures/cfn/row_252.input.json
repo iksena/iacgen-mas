@@ -1,0 +1,1334 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [
+   "ReadThrottleEventsAlarm excluded: condition HasAlertTopic false under defaults",
+   "WriteThrottleEventsAlarm excluded: condition HasAlertTopic false under defaults",
+   "ThrottledRequestsEventsAlarm excluded: condition HasAlertTopic false under defaults",
+   "UserErrorsAlarm excluded: condition HasAlertTopic false under defaults",
+   "SystemErrorsAlarm excluded: condition HasAlertTopic false under defaults"
+  ],
+  "gt_hash": "6a2d4132d8645e42f6c4915a397c6d6402a9618d652f77074a8d82a0cf296bd8",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "Table",
+   "cfg": "Table",
+   "type": "AWS::DynamoDB::Table",
+   "values": {
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "<param:PartitionKeyName>",
+      "AttributeType": "S"
+     }
+    ],
+    "GlobalSecondaryIndexes": [],
+    "BillingMode": "PROVISIONED",
+    "KeySchema": [
+     {
+      "AttributeName": "<param:PartitionKeyName>",
+      "KeyType": "HASH"
+     }
+    ],
+    "PointInTimeRecoverySpecification": {
+     "PointInTimeRecoveryEnabled": true
+    },
+    "ProvisionedThroughput": {
+     "ReadCapacityUnits": 1,
+     "WriteCapacityUnits": 1
+    },
+    "SSESpecification": {
+     "SSEEnabled": false
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "RoleScaling",
+   "cfg": "RoleScaling",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "application-autoscaling.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Policies": [
+     {
+      "PolicyName": "scaling",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "dynamodb:DescribeTable",
+          "dynamodb:UpdateTable",
+          "cloudwatch:PutMetricAlarm",
+          "cloudwatch:DescribeAlarms",
+          "cloudwatch:GetMetricStatistics",
+          "cloudwatch:SetAlarmState",
+          "cloudwatch:DeleteAlarms"
+         ],
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     }
+    ],
+    "__resource__": {
+     "Condition": "HasBillingAndScalingModeProvisioned"
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "WriteScalableTarget",
+   "cfg": "WriteScalableTarget",
+   "type": "AWS::ApplicationAutoScaling::ScalableTarget",
+   "values": {
+    "MaxCapacity": 1,
+    "MinCapacity": 1,
+    "ResourceId": "table/${Table}",
+    "RoleARN": {
+     "ref": "RoleScaling",
+     "attr": "Arn"
+    },
+    "ScalableDimension": "dynamodb:table:WriteCapacityUnits",
+    "ServiceNamespace": "dynamodb",
+    "__resource__": {
+     "Condition": "HasBillingAndScalingModeProvisioned"
+    }
+   },
+   "refs": [
+    "RoleScaling",
+    "Table"
+   ]
+  },
+  {
+   "id": "ReadScalableTarget",
+   "cfg": "ReadScalableTarget",
+   "type": "AWS::ApplicationAutoScaling::ScalableTarget",
+   "values": {
+    "MaxCapacity": 1,
+    "MinCapacity": 1,
+    "ResourceId": "table/${Table}",
+    "RoleARN": {
+     "ref": "RoleScaling",
+     "attr": "Arn"
+    },
+    "ScalableDimension": "dynamodb:table:ReadCapacityUnits",
+    "ServiceNamespace": "dynamodb",
+    "__resource__": {
+     "Condition": "HasBillingAndScalingModeProvisioned"
+    }
+   },
+   "refs": [
+    "RoleScaling",
+    "Table"
+   ]
+  },
+  {
+   "id": "WriteScalingPolicy",
+   "cfg": "WriteScalingPolicy",
+   "type": "AWS::ApplicationAutoScaling::ScalingPolicy",
+   "values": {
+    "PolicyName": "${Table}-WriteScalingPolicy",
+    "PolicyType": "TargetTrackingScaling",
+    "ScalingTargetId": {
+     "ref": "WriteScalableTarget"
+    },
+    "TargetTrackingScalingPolicyConfiguration": {
+     "TargetValue": 80,
+     "ScaleInCooldown": 600,
+     "ScaleOutCooldown": 60,
+     "PredefinedMetricSpecification": {
+      "PredefinedMetricType": "DynamoDBWriteCapacityUtilization"
+     }
+    },
+    "__resource__": {
+     "Condition": "HasBillingAndScalingModeProvisioned"
+    }
+   },
+   "refs": [
+    "Table",
+    "WriteScalableTarget"
+   ]
+  },
+  {
+   "id": "ReadScalingPolicy",
+   "cfg": "ReadScalingPolicy",
+   "type": "AWS::ApplicationAutoScaling::ScalingPolicy",
+   "values": {
+    "PolicyName": "${Table}-ReadScalingPolicy",
+    "PolicyType": "TargetTrackingScaling",
+    "ScalingTargetId": {
+     "ref": "ReadScalableTarget"
+    },
+    "TargetTrackingScalingPolicyConfiguration": {
+     "TargetValue": 80,
+     "ScaleInCooldown": 600,
+     "ScaleOutCooldown": 60,
+     "PredefinedMetricSpecification": {
+      "PredefinedMetricType": "DynamoDBReadCapacityUtilization"
+     }
+    },
+    "__resource__": {
+     "Condition": "HasBillingAndScalingModeProvisioned"
+    }
+   },
+   "refs": [
+    "ReadScalableTarget",
+    "Table"
+   ]
+  },
+  {
+   "id": "BackupVault",
+   "cfg": "BackupVault",
+   "type": "AWS::Backup::BackupVault",
+   "values": {
+    "BackupVaultName": "stack",
+    "__resource__": {
+     "Condition": "HasBackupRetentionPeriod"
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "BackupPlan",
+   "cfg": "BackupPlan",
+   "type": "AWS::Backup::BackupPlan",
+   "values": {
+    "BackupPlan": {
+     "BackupPlanName": "stack",
+     "BackupPlanRule": [
+      {
+       "CompletionWindowMinutes": 1440,
+       "Lifecycle": {
+        "DeleteAfterDays": 30
+       },
+       "RuleName": "stack",
+       "ScheduleExpression": "cron(0 5 ? * * *)",
+       "StartWindowMinutes": 60,
+       "TargetBackupVault": {
+        "ref": "BackupVault"
+       }
+      }
+     ]
+    },
+    "__resource__": {
+     "Condition": "HasBackupRetentionPeriod"
+    }
+   },
+   "refs": [
+    "BackupVault"
+   ]
+  },
+  {
+   "id": "BackupRole",
+   "cfg": "BackupRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "backup.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Policies": [
+     {
+      "PolicyName": "backup",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "dynamodb:DescribeTable",
+          "dynamodb:CreateBackup"
+         ],
+         "Resource": {
+          "ref": "Table",
+          "attr": "Arn"
+         }
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "dynamodb:DescribeBackup",
+          "dynamodb:DeleteBackup"
+         ],
+         "Resource": [
+          "${Table.Arn}/backup/*"
+         ]
+        }
+       ]
+      }
+     }
+    ],
+    "__resource__": {
+     "Condition": "HasBackupRetentionPeriod"
+    }
+   },
+   "refs": [
+    "Table"
+   ]
+  },
+  {
+   "id": "BackupSelection",
+   "cfg": "BackupSelection",
+   "type": "AWS::Backup::BackupSelection",
+   "values": {
+    "BackupPlanId": {
+     "ref": "BackupPlan"
+    },
+    "BackupSelection": {
+     "IamRoleArn": {
+      "ref": "BackupRole",
+      "attr": "Arn"
+     },
+     "Resources": [
+      {
+       "ref": "Table",
+       "attr": "Arn"
+      }
+     ],
+     "SelectionName": "stack"
+    },
+    "__resource__": {
+     "Condition": "HasBackupRetentionPeriod"
+    }
+   },
+   "refs": [
+    "BackupPlan",
+    "BackupRole",
+    "Table"
+   ]
+  },
+  {
+   "id": "__parameter__.ParentAlertStack",
+   "cfg": "__parameter__.ParentAlertStack",
+   "type": "__parameter__",
+   "values": {
+    "name": "ParentAlertStack",
+    "type": "String",
+    "default": "",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.TableName",
+   "cfg": "__parameter__.TableName",
+   "type": "__parameter__",
+   "values": {
+    "name": "TableName",
+    "type": "String",
+    "default": "",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.PartitionKeyName",
+   "cfg": "__parameter__.PartitionKeyName",
+   "type": "__parameter__",
+   "values": {
+    "name": "PartitionKeyName",
+    "type": "String",
+    "default": null,
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.PartitionKeyType",
+   "cfg": "__parameter__.PartitionKeyType",
+   "type": "__parameter__",
+   "values": {
+    "name": "PartitionKeyType",
+    "type": "String",
+    "default": "S",
+    "allowed_values": [
+     "S",
+     "N",
+     "B"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.SortKeyName",
+   "cfg": "__parameter__.SortKeyName",
+   "type": "__parameter__",
+   "values": {
+    "name": "SortKeyName",
+    "type": "String",
+    "default": "",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.SortKeyType",
+   "cfg": "__parameter__.SortKeyType",
+   "type": "__parameter__",
+   "values": {
+    "name": "SortKeyType",
+    "type": "String",
+    "default": "N",
+    "allowed_values": [
+     "S",
+     "N",
+     "B"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.Index1PartitionKeyName",
+   "cfg": "__parameter__.Index1PartitionKeyName",
+   "type": "__parameter__",
+   "values": {
+    "name": "Index1PartitionKeyName",
+    "type": "String",
+    "default": "",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.Index1SortKeyName",
+   "cfg": "__parameter__.Index1SortKeyName",
+   "type": "__parameter__",
+   "values": {
+    "name": "Index1SortKeyName",
+    "type": "String",
+    "default": "",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.Index2PartitionKeyName",
+   "cfg": "__parameter__.Index2PartitionKeyName",
+   "type": "__parameter__",
+   "values": {
+    "name": "Index2PartitionKeyName",
+    "type": "String",
+    "default": "",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.Index2SortKeyName",
+   "cfg": "__parameter__.Index2SortKeyName",
+   "type": "__parameter__",
+   "values": {
+    "name": "Index2SortKeyName",
+    "type": "String",
+    "default": "",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.Attribute1Name",
+   "cfg": "__parameter__.Attribute1Name",
+   "type": "__parameter__",
+   "values": {
+    "name": "Attribute1Name",
+    "type": "String",
+    "default": "",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.Attribute1Type",
+   "cfg": "__parameter__.Attribute1Type",
+   "type": "__parameter__",
+   "values": {
+    "name": "Attribute1Type",
+    "type": "String",
+    "default": "S",
+    "allowed_values": [
+     "S",
+     "N",
+     "B"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.Attribute2Name",
+   "cfg": "__parameter__.Attribute2Name",
+   "type": "__parameter__",
+   "values": {
+    "name": "Attribute2Name",
+    "type": "String",
+    "default": "",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.Attribute2Type",
+   "cfg": "__parameter__.Attribute2Type",
+   "type": "__parameter__",
+   "values": {
+    "name": "Attribute2Type",
+    "type": "String",
+    "default": "S",
+    "allowed_values": [
+     "S",
+     "N",
+     "B"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.Attribute3Name",
+   "cfg": "__parameter__.Attribute3Name",
+   "type": "__parameter__",
+   "values": {
+    "name": "Attribute3Name",
+    "type": "String",
+    "default": "",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.Attribute3Type",
+   "cfg": "__parameter__.Attribute3Type",
+   "type": "__parameter__",
+   "values": {
+    "name": "Attribute3Type",
+    "type": "String",
+    "default": "S",
+    "allowed_values": [
+     "S",
+     "N",
+     "B"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.BillingAndScalingMode",
+   "cfg": "__parameter__.BillingAndScalingMode",
+   "type": "__parameter__",
+   "values": {
+    "name": "BillingAndScalingMode",
+    "type": "String",
+    "default": "PROVISIONED",
+    "allowed_values": [
+     "PROVISIONED",
+     "ONDEMAND"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.MaxWriteCapacityUnits",
+   "cfg": "__parameter__.MaxWriteCapacityUnits",
+   "type": "__parameter__",
+   "values": {
+    "name": "MaxWriteCapacityUnits",
+    "type": "Number",
+    "default": 1,
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.MinWriteCapacityUnits",
+   "cfg": "__parameter__.MinWriteCapacityUnits",
+   "type": "__parameter__",
+   "values": {
+    "name": "MinWriteCapacityUnits",
+    "type": "Number",
+    "default": 1,
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.WriteCapacityUnitsUtilizationTarget",
+   "cfg": "__parameter__.WriteCapacityUnitsUtilizationTarget",
+   "type": "__parameter__",
+   "values": {
+    "name": "WriteCapacityUnitsUtilizationTarget",
+    "type": "Number",
+    "default": 80,
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.MaxReadCapacityUnits",
+   "cfg": "__parameter__.MaxReadCapacityUnits",
+   "type": "__parameter__",
+   "values": {
+    "name": "MaxReadCapacityUnits",
+    "type": "Number",
+    "default": 1,
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.MinReadCapacityUnits",
+   "cfg": "__parameter__.MinReadCapacityUnits",
+   "type": "__parameter__",
+   "values": {
+    "name": "MinReadCapacityUnits",
+    "type": "Number",
+    "default": 1,
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.ReadCapacityUnitsUtilizationTarget",
+   "cfg": "__parameter__.ReadCapacityUnitsUtilizationTarget",
+   "type": "__parameter__",
+   "values": {
+    "name": "ReadCapacityUnitsUtilizationTarget",
+    "type": "Number",
+    "default": 80,
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.Encryption",
+   "cfg": "__parameter__.Encryption",
+   "type": "__parameter__",
+   "values": {
+    "name": "Encryption",
+    "type": "String",
+    "default": false,
+    "allowed_values": [
+     "aws",
+     false
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.TimeToLiveAttributeName",
+   "cfg": "__parameter__.TimeToLiveAttributeName",
+   "type": "__parameter__",
+   "values": {
+    "name": "TimeToLiveAttributeName",
+    "type": "String",
+    "default": "",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.StreamViewType",
+   "cfg": "__parameter__.StreamViewType",
+   "type": "__parameter__",
+   "values": {
+    "name": "StreamViewType",
+    "type": "String",
+    "default": "DISABLED",
+    "allowed_values": [
+     "DISABLED",
+     "KEYS_ONLY",
+     "NEW_IMAGE",
+     "OLD_IMAGE",
+     "NEW_AND_OLD_IMAGES"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.BackupRetentionPeriod",
+   "cfg": "__parameter__.BackupRetentionPeriod",
+   "type": "__parameter__",
+   "values": {
+    "name": "BackupRetentionPeriod",
+    "type": "Number",
+    "default": 30,
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.BackupScheduleExpression",
+   "cfg": "__parameter__.BackupScheduleExpression",
+   "type": "__parameter__",
+   "values": {
+    "name": "BackupScheduleExpression",
+    "type": "String",
+    "default": "cron(0 5 ? * * *)",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.PointInTimeRecoveryEnabled",
+   "cfg": "__parameter__.PointInTimeRecoveryEnabled",
+   "type": "__parameter__",
+   "values": {
+    "name": "PointInTimeRecoveryEnabled",
+    "type": "String",
+    "default": true,
+    "allowed_values": [
+     true,
+     false
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.TemplateID",
+   "cfg": "__output__.TemplateID",
+   "type": "__output__",
+   "values": {
+    "name": "TemplateID",
+    "value": "state/dynamodb",
+    "description": "cloudonaut.io template id.",
+    "export": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.TemplateVersion",
+   "cfg": "__output__.TemplateVersion",
+   "type": "__output__",
+   "values": {
+    "name": "TemplateVersion",
+    "value": "__VERSION__",
+    "description": "cloudonaut.io template version.",
+    "export": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.StackName",
+   "cfg": "__output__.StackName",
+   "type": "__output__",
+   "values": {
+    "name": "StackName",
+    "value": "stack",
+    "description": "Stack name.",
+    "export": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.TableName",
+   "cfg": "__output__.TableName",
+   "type": "__output__",
+   "values": {
+    "name": "TableName",
+    "value": {
+     "ref": "Table"
+    },
+    "description": "Name of the table",
+    "export": "stack-TableName"
+   },
+   "refs": [
+    "Table"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::DynamoDB::Table.Table",
+   "cfg": "Table",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::DynamoDB::Table",
+    "name": "Table",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AttributeDefinitions": [
+      {
+       "AttributeName": "<param:PartitionKeyName>",
+       "AttributeType": "S"
+      }
+     ],
+     "GlobalSecondaryIndexes": [],
+     "BillingMode": "PROVISIONED",
+     "KeySchema": [
+      {
+       "AttributeName": "<param:PartitionKeyName>",
+       "KeyType": "HASH"
+      }
+     ],
+     "PointInTimeRecoverySpecification": {
+      "PointInTimeRecoveryEnabled": true
+     },
+     "ProvisionedThroughput": {
+      "ReadCapacityUnits": 1,
+      "WriteCapacityUnits": 1
+     },
+     "SSESpecification": {
+      "SSEEnabled": false
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.RoleScaling",
+   "cfg": "RoleScaling",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "RoleScaling",
+    "gated": true,
+    "gate": "HasBillingAndScalingModeProvisioned",
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "application-autoscaling.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Policies": [
+      {
+       "PolicyName": "scaling",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "dynamodb:DescribeTable",
+           "dynamodb:UpdateTable",
+           "cloudwatch:PutMetricAlarm",
+           "cloudwatch:DescribeAlarms",
+           "cloudwatch:GetMetricStatistics",
+           "cloudwatch:SetAlarmState",
+           "cloudwatch:DeleteAlarms"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApplicationAutoScaling::ScalableTarget.WriteScalableTarget",
+   "cfg": "WriteScalableTarget",
+   "type": "__declared__",
+   "refs": [
+    "RoleScaling",
+    "Table"
+   ],
+   "values": {
+    "type": "AWS::ApplicationAutoScaling::ScalableTarget",
+    "name": "WriteScalableTarget",
+    "gated": true,
+    "gate": "HasBillingAndScalingModeProvisioned",
+    "properties": {
+     "MaxCapacity": 1,
+     "MinCapacity": 1,
+     "ResourceId": "table/${Table}",
+     "RoleARN": {
+      "ref": "RoleScaling",
+      "attr": "Arn"
+     },
+     "ScalableDimension": "dynamodb:table:WriteCapacityUnits",
+     "ServiceNamespace": "dynamodb"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApplicationAutoScaling::ScalableTarget.ReadScalableTarget",
+   "cfg": "ReadScalableTarget",
+   "type": "__declared__",
+   "refs": [
+    "RoleScaling",
+    "Table"
+   ],
+   "values": {
+    "type": "AWS::ApplicationAutoScaling::ScalableTarget",
+    "name": "ReadScalableTarget",
+    "gated": true,
+    "gate": "HasBillingAndScalingModeProvisioned",
+    "properties": {
+     "MaxCapacity": 1,
+     "MinCapacity": 1,
+     "ResourceId": "table/${Table}",
+     "RoleARN": {
+      "ref": "RoleScaling",
+      "attr": "Arn"
+     },
+     "ScalableDimension": "dynamodb:table:ReadCapacityUnits",
+     "ServiceNamespace": "dynamodb"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApplicationAutoScaling::ScalingPolicy.WriteScalingPolicy",
+   "cfg": "WriteScalingPolicy",
+   "type": "__declared__",
+   "refs": [
+    "Table",
+    "WriteScalableTarget"
+   ],
+   "values": {
+    "type": "AWS::ApplicationAutoScaling::ScalingPolicy",
+    "name": "WriteScalingPolicy",
+    "gated": true,
+    "gate": "HasBillingAndScalingModeProvisioned",
+    "properties": {
+     "PolicyName": "${Table}-WriteScalingPolicy",
+     "PolicyType": "TargetTrackingScaling",
+     "ScalingTargetId": {
+      "ref": "WriteScalableTarget"
+     },
+     "TargetTrackingScalingPolicyConfiguration": {
+      "TargetValue": 80,
+      "ScaleInCooldown": 600,
+      "ScaleOutCooldown": 60,
+      "PredefinedMetricSpecification": {
+       "PredefinedMetricType": "DynamoDBWriteCapacityUtilization"
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApplicationAutoScaling::ScalingPolicy.ReadScalingPolicy",
+   "cfg": "ReadScalingPolicy",
+   "type": "__declared__",
+   "refs": [
+    "ReadScalableTarget",
+    "Table"
+   ],
+   "values": {
+    "type": "AWS::ApplicationAutoScaling::ScalingPolicy",
+    "name": "ReadScalingPolicy",
+    "gated": true,
+    "gate": "HasBillingAndScalingModeProvisioned",
+    "properties": {
+     "PolicyName": "${Table}-ReadScalingPolicy",
+     "PolicyType": "TargetTrackingScaling",
+     "ScalingTargetId": {
+      "ref": "ReadScalableTarget"
+     },
+     "TargetTrackingScalingPolicyConfiguration": {
+      "TargetValue": 80,
+      "ScaleInCooldown": 600,
+      "ScaleOutCooldown": 60,
+      "PredefinedMetricSpecification": {
+       "PredefinedMetricType": "DynamoDBReadCapacityUtilization"
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::CloudWatch::Alarm.ReadThrottleEventsAlarm",
+   "cfg": "ReadThrottleEventsAlarm",
+   "type": "__declared__",
+   "refs": [
+    "Table"
+   ],
+   "values": {
+    "type": "AWS::CloudWatch::Alarm",
+    "name": "ReadThrottleEventsAlarm",
+    "gated": true,
+    "gate": "HasAlertTopic",
+    "properties": {
+     "AlarmDescription": "Reads are throttled. Lower ReadCapacityUnitsUtilizationTarget or increase MaxReadCapacityUnits.",
+     "Namespace": "AWS/DynamoDB",
+     "MetricName": "ReadThrottleEvents",
+     "Dimensions": [
+      {
+       "Name": "TableName",
+       "Value": {
+        "ref": "Table"
+       }
+      }
+     ],
+     "Statistic": "Sum",
+     "Period": 60,
+     "EvaluationPeriods": 1,
+     "Threshold": 1,
+     "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+     "AlarmActions": [
+      {
+       "import": "-TopicARN"
+      }
+     ],
+     "OKActions": [
+      {
+       "import": "-TopicARN"
+      }
+     ],
+     "TreatMissingData": "notBreaching"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::CloudWatch::Alarm.WriteThrottleEventsAlarm",
+   "cfg": "WriteThrottleEventsAlarm",
+   "type": "__declared__",
+   "refs": [
+    "Table"
+   ],
+   "values": {
+    "type": "AWS::CloudWatch::Alarm",
+    "name": "WriteThrottleEventsAlarm",
+    "gated": true,
+    "gate": "HasAlertTopic",
+    "properties": {
+     "AlarmDescription": "Writes are throttled. Lower WriteCapacityUnitsUtilizationTarget or increase MaxWriteCapacityUnits.",
+     "Namespace": "AWS/DynamoDB",
+     "MetricName": "WriteThrottleEvents",
+     "Dimensions": [
+      {
+       "Name": "TableName",
+       "Value": {
+        "ref": "Table"
+       }
+      }
+     ],
+     "Statistic": "Sum",
+     "Period": 60,
+     "EvaluationPeriods": 1,
+     "Threshold": 1,
+     "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+     "AlarmActions": [
+      {
+       "import": "-TopicARN"
+      }
+     ],
+     "OKActions": [
+      {
+       "import": "-TopicARN"
+      }
+     ],
+     "TreatMissingData": "notBreaching"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::CloudWatch::Alarm.ThrottledRequestsEventsAlarm",
+   "cfg": "ThrottledRequestsEventsAlarm",
+   "type": "__declared__",
+   "refs": [
+    "Table"
+   ],
+   "values": {
+    "type": "AWS::CloudWatch::Alarm",
+    "name": "ThrottledRequestsEventsAlarm",
+    "gated": true,
+    "gate": "HasAlertTopic",
+    "properties": {
+     "AlarmDescription": "Batch requests are throttled. Lower {Read/Write}CapacityUnitsUtilizationTarget or increase Max{Read/Write}CapacityUnits.",
+     "Namespace": "AWS/DynamoDB",
+     "MetricName": "ThrottledRequests",
+     "Dimensions": [
+      {
+       "Name": "TableName",
+       "Value": {
+        "ref": "Table"
+       }
+      }
+     ],
+     "Statistic": "Sum",
+     "Period": 60,
+     "EvaluationPeriods": 1,
+     "Threshold": 1,
+     "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+     "AlarmActions": [
+      {
+       "import": "-TopicARN"
+      }
+     ],
+     "OKActions": [
+      {
+       "import": "-TopicARN"
+      }
+     ],
+     "TreatMissingData": "notBreaching"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::CloudWatch::Alarm.UserErrorsAlarm",
+   "cfg": "UserErrorsAlarm",
+   "type": "__declared__",
+   "refs": [
+    "Table"
+   ],
+   "values": {
+    "type": "AWS::CloudWatch::Alarm",
+    "name": "UserErrorsAlarm",
+    "gated": true,
+    "gate": "HasAlertTopic",
+    "properties": {
+     "AlarmDescription": "User errors",
+     "Namespace": "AWS/DynamoDB",
+     "MetricName": "UserErrors",
+     "Dimensions": [
+      {
+       "Name": "TableName",
+       "Value": {
+        "ref": "Table"
+       }
+      }
+     ],
+     "Statistic": "Sum",
+     "Period": 60,
+     "EvaluationPeriods": 1,
+     "Threshold": 1,
+     "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+     "AlarmActions": [
+      {
+       "import": "-TopicARN"
+      }
+     ],
+     "OKActions": [
+      {
+       "import": "-TopicARN"
+      }
+     ],
+     "TreatMissingData": "notBreaching"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::CloudWatch::Alarm.SystemErrorsAlarm",
+   "cfg": "SystemErrorsAlarm",
+   "type": "__declared__",
+   "refs": [
+    "Table"
+   ],
+   "values": {
+    "type": "AWS::CloudWatch::Alarm",
+    "name": "SystemErrorsAlarm",
+    "gated": true,
+    "gate": "HasAlertTopic",
+    "properties": {
+     "AlarmDescription": "System errors",
+     "Namespace": "AWS/DynamoDB",
+     "MetricName": "SystemErrors",
+     "Dimensions": [
+      {
+       "Name": "TableName",
+       "Value": {
+        "ref": "Table"
+       }
+      }
+     ],
+     "Statistic": "Sum",
+     "Period": 60,
+     "EvaluationPeriods": 1,
+     "Threshold": 1,
+     "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+     "AlarmActions": [
+      {
+       "import": "-TopicARN"
+      }
+     ],
+     "OKActions": [
+      {
+       "import": "-TopicARN"
+      }
+     ],
+     "TreatMissingData": "notBreaching"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Backup::BackupVault.BackupVault",
+   "cfg": "BackupVault",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Backup::BackupVault",
+    "name": "BackupVault",
+    "gated": true,
+    "gate": "HasBackupRetentionPeriod",
+    "properties": {
+     "BackupVaultName": "stack"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Backup::BackupPlan.BackupPlan",
+   "cfg": "BackupPlan",
+   "type": "__declared__",
+   "refs": [
+    "BackupVault"
+   ],
+   "values": {
+    "type": "AWS::Backup::BackupPlan",
+    "name": "BackupPlan",
+    "gated": true,
+    "gate": "HasBackupRetentionPeriod",
+    "properties": {
+     "BackupPlan": {
+      "BackupPlanName": "stack",
+      "BackupPlanRule": [
+       {
+        "CompletionWindowMinutes": 1440,
+        "Lifecycle": {
+         "DeleteAfterDays": 30
+        },
+        "RuleName": "stack",
+        "ScheduleExpression": "cron(0 5 ? * * *)",
+        "StartWindowMinutes": 60,
+        "TargetBackupVault": {
+         "ref": "BackupVault"
+        }
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.BackupRole",
+   "cfg": "BackupRole",
+   "type": "__declared__",
+   "refs": [
+    "Table"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "BackupRole",
+    "gated": true,
+    "gate": "HasBackupRetentionPeriod",
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "backup.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Policies": [
+      {
+       "PolicyName": "backup",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "dynamodb:DescribeTable",
+           "dynamodb:CreateBackup"
+          ],
+          "Resource": {
+           "ref": "Table",
+           "attr": "Arn"
+          }
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "dynamodb:DescribeBackup",
+           "dynamodb:DeleteBackup"
+          ],
+          "Resource": [
+           "${Table.Arn}/backup/*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Backup::BackupSelection.BackupSelection",
+   "cfg": "BackupSelection",
+   "type": "__declared__",
+   "refs": [
+    "BackupPlan",
+    "BackupRole",
+    "Table"
+   ],
+   "values": {
+    "type": "AWS::Backup::BackupSelection",
+    "name": "BackupSelection",
+    "gated": true,
+    "gate": "HasBackupRetentionPeriod",
+    "properties": {
+     "BackupPlanId": {
+      "ref": "BackupPlan"
+     },
+     "BackupSelection": {
+      "IamRoleArn": {
+       "ref": "BackupRole",
+       "attr": "Arn"
+      },
+      "Resources": [
+       {
+        "ref": "Table",
+        "attr": "Arn"
+       }
+      ],
+      "SelectionName": "stack"
+     }
+    }
+   }
+  }
+ ]
+}

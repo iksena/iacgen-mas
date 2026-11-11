@@ -1,0 +1,1086 @@
+{
+ "lang": "cfn",
+ "row_number": 252,
+ "source_hash": {
+  "gt": "6a2d4132d8645e42f6c4915a397c6d6402a9618d652f77074a8d82a0cf296bd8",
+  "prompt": "13925a667d9679a9f3c5347fc503d79fa297d1d18cc73a5f2632b930774ee2b9"
+ },
+ "selectors": {
+  "table": {
+   "types": [
+    "AWS::DynamoDB::Table"
+   ]
+  },
+  "rtarget": {
+   "types": [
+    "AWS::ApplicationAutoScaling::ScalableTarget"
+   ],
+   "where": [
+    {
+     "path": "ScalableDimension",
+     "op": "eq",
+     "value": "dynamodb:table:ReadCapacityUnits"
+    }
+   ]
+  },
+  "wtarget": {
+   "types": [
+    "AWS::ApplicationAutoScaling::ScalableTarget"
+   ],
+   "where": [
+    {
+     "path": "ScalableDimension",
+     "op": "eq",
+     "value": "dynamodb:table:WriteCapacityUnits"
+    }
+   ]
+  },
+  "scaling_role": {
+   "types": [
+    "AWS::IAM::Role"
+   ],
+   "where": [
+    {
+     "path": "AssumeRolePolicyDocument.Statement.*.Principal.Service.*",
+     "op": "eq",
+     "value": "application-autoscaling.amazonaws.com"
+    }
+   ]
+  },
+  "backup_role": {
+   "types": [
+    "AWS::IAM::Role"
+   ],
+   "where": [
+    {
+     "path": "AssumeRolePolicyDocument.Statement.*.Principal.Service.*",
+     "op": "eq",
+     "value": "backup.amazonaws.com"
+    }
+   ]
+  },
+  "vault": {
+   "types": [
+    "AWS::Backup::BackupVault"
+   ]
+  },
+  "plan": {
+   "types": [
+    "AWS::Backup::BackupPlan"
+   ]
+  },
+  "alarms": {
+   "types": [
+    "__declared__"
+   ],
+   "where": [
+    {
+     "path": "type",
+     "op": "eq",
+     "value": "AWS::CloudWatch::Alarm"
+    }
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "table",
+   "tier": "core",
+   "quote": "creates a reusable DynamoDB table stack",
+   "kind": "exists",
+   "select": "table"
+  },
+  {
+   "id": "pk_param",
+   "tier": "core",
+   "quote": "the partition key name is a required parameter",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": "name",
+      "op": "regex",
+      "value": "(?i)(partition|hash|pk)"
+     }
+    ]
+   }
+  },
+  {
+   "id": "pk_param_required",
+   "tier": "detail",
+   "quote": "partition key name is a required parameter",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": "name",
+      "op": "regex",
+      "value": "(?i)(partition|hash|pk)"
+     },
+     {
+      "path": "default",
+      "op": "absent"
+     }
+    ]
+   }
+  },
+  {
+   "id": "pk_type_string",
+   "tier": "core",
+   "quote": "the partition key type defaults to string",
+   "kind": "any_of",
+   "justify": "string = S, as a partition-key-type parameter default or the table's key attribute type",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "regex",
+        "value": "(?i)(partition|hash|pk).*type"
+       },
+       {
+        "path": "default",
+        "op": "eq",
+        "value": "S"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "table",
+     "cond": {
+      "path": "AttributeDefinitions.*.AttributeType",
+      "op": "eq",
+      "value": "S"
+     }
+    }
+   ]
+  },
+  {
+   "id": "tablename_param",
+   "tier": "detail",
+   "quote": "optional parameters for the table name",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": "name",
+      "op": "regex",
+      "value": "(?i)table.?name"
+     }
+    ]
+   }
+  },
+  {
+   "id": "sortkey_numeric_default",
+   "tier": "core",
+   "quote": "a sort key (numeric by default)",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": "name",
+      "op": "regex",
+      "value": "(?i)(sort|range)"
+     },
+     {
+      "path": "default",
+      "op": "eq",
+      "value": "N"
+     }
+    ]
+   },
+   "justify": "numeric = N"
+  },
+  {
+   "id": "extra_attributes_params",
+   "tier": "detail",
+   "quote": "up to three extra attribute definitions",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": "name",
+      "op": "regex",
+      "value": "(?i)(attr[a-z]*[1-3]|[1-3][a-z]*attr)"
+     }
+    ]
+   },
+   "min": 3,
+   "justify": "three numbered extra-attribute parameters (name, optionally type)"
+  },
+  {
+   "id": "gsi_two",
+   "tier": "detail",
+   "quote": "two global secondary indexes projecting all attributes",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "regex",
+        "value": "(?i)(index|gsi)\\D*2"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "table",
+     "cond": {
+      "path": "GlobalSecondaryIndexes",
+      "op": "len_gte",
+      "value": 2
+     }
+    }
+   ],
+   "justify": "two indexes: a second-index parameter, or two GSIs on the table"
+  },
+  {
+   "id": "ttl_attribute",
+   "tier": "detail",
+   "quote": "a Time to Live attribute",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "regex",
+        "value": "(?i)(ttl|time.?to.?live)"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "table",
+     "cond": {
+      "path": "TimeToLiveSpecification.AttributeName",
+      "op": "present"
+     }
+    }
+   ]
+  },
+  {
+   "id": "stream_disabled_default",
+   "tier": "core",
+   "quote": "a stream view type that is disabled by default",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "regex",
+        "value": "(?i)stream"
+       },
+       {
+        "path": "default",
+        "op": "eq",
+        "value": "DISABLED"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "table",
+     "cond": {
+      "path": "StreamSpecification.StreamViewType",
+      "op": "absent"
+     }
+    }
+   ]
+  },
+  {
+   "id": "stream_param",
+   "tier": "detail",
+   "quote": "optional parameters for",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": "name",
+      "op": "regex",
+      "value": "(?i)stream"
+     }
+    ]
+   }
+  },
+  {
+   "id": "provisioned_default",
+   "tier": "core",
+   "quote": "By default the table should use provisioned capacity",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "table",
+     "cond": {
+      "path": "BillingMode",
+      "op": "eq",
+      "value": "PROVISIONED"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "table",
+     "cond": {
+      "path": "ProvisionedThroughput.ReadCapacityUnits",
+      "op": "present"
+     }
+    }
+   ]
+  },
+  {
+   "id": "read_scaling_target",
+   "tier": "core",
+   "quote": "auto scaling for both reads and writes between a minimum and maximum of 1 capacity unit",
+   "kind": "attr",
+   "select": "rtarget",
+   "cond": {
+    "path": "MaxCapacity",
+    "op": "eq",
+    "value": 1
+   },
+   "justify": "max of 1 capacity unit"
+  },
+  {
+   "id": "read_scaling_min",
+   "tier": "core",
+   "quote": "between a minimum and maximum of 1 capacity unit",
+   "kind": "attr",
+   "select": "rtarget",
+   "cond": {
+    "path": "MinCapacity",
+    "op": "eq",
+    "value": 1
+   },
+   "justify": "min of 1 capacity unit"
+  },
+  {
+   "id": "write_scaling_target",
+   "tier": "core",
+   "quote": "auto scaling for both reads and writes between a minimum and maximum of 1 capacity unit",
+   "kind": "attr",
+   "select": "wtarget",
+   "cond": {
+    "path": "MaxCapacity",
+    "op": "eq",
+    "value": 1
+   },
+   "justify": "max of 1 capacity unit"
+  },
+  {
+   "id": "write_scaling_min",
+   "tier": "core",
+   "quote": "between a minimum and maximum of 1 capacity unit",
+   "kind": "attr",
+   "select": "wtarget",
+   "cond": {
+    "path": "MinCapacity",
+    "op": "eq",
+    "value": 1
+   },
+   "justify": "min of 1 capacity unit"
+  },
+  {
+   "id": "read_policy_80",
+   "tier": "core",
+   "quote": "targeting 80 percent utilization",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "AWS::ApplicationAutoScaling::ScalingPolicy"
+    ],
+    "where": [
+     {
+      "path": "PolicyType",
+      "op": "eq",
+      "value": "TargetTrackingScaling"
+     },
+     {
+      "path": "TargetTrackingScalingPolicyConfiguration.PredefinedMetricSpecification.PredefinedMetricType",
+      "op": "eq",
+      "value": "DynamoDBReadCapacityUtilization"
+     },
+     {
+      "path": "TargetTrackingScalingPolicyConfiguration.TargetValue",
+      "op": "eq",
+      "value": 80
+     }
+    ]
+   },
+   "justify": "80 percent"
+  },
+  {
+   "id": "write_policy_80",
+   "tier": "core",
+   "quote": "targeting 80 percent utilization",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "AWS::ApplicationAutoScaling::ScalingPolicy"
+    ],
+    "where": [
+     {
+      "path": "PolicyType",
+      "op": "eq",
+      "value": "TargetTrackingScaling"
+     },
+     {
+      "path": "TargetTrackingScalingPolicyConfiguration.PredefinedMetricSpecification.PredefinedMetricType",
+      "op": "eq",
+      "value": "DynamoDBWriteCapacityUtilization"
+     },
+     {
+      "path": "TargetTrackingScalingPolicyConfiguration.TargetValue",
+      "op": "eq",
+      "value": 80
+     }
+    ]
+   },
+   "justify": "80 percent"
+  },
+  {
+   "id": "scaling_dedicated_role",
+   "tier": "detail",
+   "quote": "managed through a dedicated scaling role",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "rtarget",
+     "to": "scaling_role"
+    },
+    {
+     "kind": "ref",
+     "from": "wtarget",
+     "to": "scaling_role"
+    }
+   ]
+  },
+  {
+   "id": "ondemand_option",
+   "tier": "core",
+   "quote": "an alternative on-demand billing mode must skip all provisioned capacity and scaling resources",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": "allowed_values",
+        "op": "regex",
+        "value": "(?i)(on.?demand|pay.?per.?request)"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "regex",
+        "value": "(?i)(billing|capacity).*mode"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "scaling_gated",
+   "tier": "detail",
+   "quote": "must skip all provisioned capacity and scaling resources",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": "type",
+      "op": "regex",
+      "value": "^AWS::ApplicationAutoScaling::(ScalableTarget|ScalingPolicy)$"
+     }
+    ]
+   },
+   "cond": {
+    "path": "gated",
+    "op": "truthy"
+   },
+   "quantifier": "all"
+  },
+  {
+   "id": "pitr_default",
+   "tier": "core",
+   "quote": "Point-in-time recovery should be enabled by default",
+   "kind": "attr",
+   "select": "table",
+   "cond": {
+    "path": "PointInTimeRecoverySpecification.PointInTimeRecoveryEnabled",
+    "op": "truthy"
+   }
+  },
+  {
+   "id": "sse_option",
+   "tier": "detail",
+   "quote": "server-side encryption with the AWS managed KMS key should be an option",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": "name",
+      "op": "regex",
+      "value": "(?i)(encrypt|sse|kms)"
+     }
+    ]
+   }
+  },
+  {
+   "id": "sse_off_default",
+   "tier": "core",
+   "quote": "an option that is off by default",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "table",
+     "cond": {
+      "path": "SSESpecification.SSEEnabled",
+      "op": "falsy"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "table",
+     "cond": {
+      "path": "SSESpecification",
+      "op": "absent"
+     }
+    }
+   ]
+  },
+  {
+   "id": "backup_vault",
+   "tier": "core",
+   "quote": "creating a backup vault",
+   "kind": "exists",
+   "select": "vault"
+  },
+  {
+   "id": "backup_plan",
+   "tier": "core",
+   "quote": "a backup plan named after the stack",
+   "kind": "exists",
+   "select": "plan"
+  },
+  {
+   "id": "plan_named_stack",
+   "tier": "detail",
+   "quote": "a backup plan named after the stack",
+   "kind": "attr",
+   "select": "plan",
+   "cond": {
+    "path": "BackupPlan.BackupPlanName",
+    "op": "regex",
+    "value": "(?i)stack"
+   }
+  },
+  {
+   "id": "vault_named_stack",
+   "tier": "detail",
+   "quote": "creating a backup vault and a backup plan named after the stack",
+   "kind": "attr",
+   "select": "vault",
+   "cond": {
+    "path": "BackupVaultName",
+    "op": "regex",
+    "value": "(?i)stack"
+   }
+  },
+  {
+   "id": "backup_schedule",
+   "tier": "core",
+   "quote": "a daily schedule at 05:00 UTC",
+   "kind": "attr",
+   "select": "plan",
+   "cond": {
+    "path": "BackupPlan.BackupPlanRule.*.ScheduleExpression",
+    "op": "regex",
+    "value": "cron\\(0 5 [?*] \\* [?*] \\*\\)"
+   },
+   "justify": "05:00 UTC daily = cron(0 5 * * ? *)"
+  },
+  {
+   "id": "backup_start_window",
+   "tier": "detail",
+   "quote": "a 60-minute start window",
+   "kind": "attr",
+   "select": "plan",
+   "cond": {
+    "path": "BackupPlan.BackupPlanRule.*.StartWindowMinutes",
+    "op": "eq",
+    "value": 60
+   }
+  },
+  {
+   "id": "backup_completion_window",
+   "tier": "detail",
+   "quote": "a 24-hour completion window",
+   "kind": "attr",
+   "select": "plan",
+   "cond": {
+    "path": "BackupPlan.BackupPlanRule.*.CompletionWindowMinutes",
+    "op": "eq",
+    "value": 1440
+   },
+   "justify": "24 hours = 1440 minutes"
+  },
+  {
+   "id": "backup_retention",
+   "tier": "core",
+   "quote": "30-day retention",
+   "kind": "attr",
+   "select": "plan",
+   "cond": {
+    "path": "BackupPlan.BackupPlanRule.*.Lifecycle.DeleteAfterDays",
+    "op": "eq",
+    "value": 30
+   }
+  },
+  {
+   "id": "backup_role_trust",
+   "tier": "core",
+   "quote": "a backup role",
+   "kind": "exists",
+   "select": "backup_role"
+  },
+  {
+   "id": "backup_role_describe",
+   "tier": "detail",
+   "quote": "permission to describe and back up the table",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "backup_role",
+     "cond": {
+      "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+      "op": "glob_covers",
+      "value": "dynamodb:DescribeTable"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "backup_role",
+     "cond": {
+      "path": "ManagedPolicyArns.*",
+      "op": "regex",
+      "value": "(?i)AWSBackupServiceRolePolicyForBackup"
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy"
+      ],
+      "where": [
+       {
+        "path": "PolicyDocument.Statement.*.Action.*",
+        "op": "glob_covers",
+        "value": "dynamodb:DescribeTable"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "backup_role_backup",
+   "tier": "detail",
+   "quote": "permission to describe and back up the table",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "backup_role",
+     "cond": {
+      "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+      "op": "glob_covers",
+      "value": "dynamodb:CreateBackup"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "backup_role",
+     "cond": {
+      "path": "ManagedPolicyArns.*",
+      "op": "regex",
+      "value": "(?i)AWSBackupServiceRolePolicyForBackup"
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy"
+      ],
+      "where": [
+       {
+        "path": "PolicyDocument.Statement.*.Action.*",
+        "op": "glob_covers",
+        "value": "dynamodb:CreateBackup"
+       }
+      ]
+     }
+    }
+   ],
+   "justify": "back up = CreateBackup"
+  },
+  {
+   "id": "backup_selection_table",
+   "tier": "core",
+   "quote": "protect the table with AWS Backup by default",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::Backup::BackupSelection"
+      ]
+     },
+     "to": "table"
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "AWS::Backup::BackupSelection"
+      ],
+      "where": [
+       {
+        "path": "BackupSelection.ListOfTags",
+        "op": "present"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "backup_disabled_by_retention_zero",
+   "tier": "detail",
+   "quote": "setting the retention to 0 must disable backups entirely",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": "type",
+      "op": "regex",
+      "value": "^AWS::Backup::(BackupVault|BackupPlan|BackupSelection)$"
+     }
+    ]
+   },
+   "cond": {
+    "path": "gated",
+    "op": "truthy"
+   },
+   "quantifier": "all"
+  },
+  {
+   "id": "alarm_read",
+   "tier": "detail",
+   "quote": "Optional CloudWatch alarms for read throttles, write throttles, throttled requests, user errors, and system errors",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": "type",
+      "op": "eq",
+      "value": "AWS::CloudWatch::Alarm"
+     },
+     {
+      "path": "properties.MetricName",
+      "op": "regex",
+      "value": "(?i)^ReadThrottle"
+     }
+    ]
+   },
+   "justify": "CloudWatch metric name for read throttles"
+  },
+  {
+   "id": "alarm_write",
+   "tier": "detail",
+   "quote": "Optional CloudWatch alarms for read throttles, write throttles, throttled requests, user errors, and system errors",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": "type",
+      "op": "eq",
+      "value": "AWS::CloudWatch::Alarm"
+     },
+     {
+      "path": "properties.MetricName",
+      "op": "regex",
+      "value": "(?i)^WriteThrottle"
+     }
+    ]
+   },
+   "justify": "CloudWatch metric name for write throttles"
+  },
+  {
+   "id": "alarm_throttled",
+   "tier": "detail",
+   "quote": "Optional CloudWatch alarms for read throttles, write throttles, throttled requests, user errors, and system errors",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": "type",
+      "op": "eq",
+      "value": "AWS::CloudWatch::Alarm"
+     },
+     {
+      "path": "properties.MetricName",
+      "op": "regex",
+      "value": "(?i)^ThrottledRequests"
+     }
+    ]
+   },
+   "justify": "CloudWatch metric name for throttled requests"
+  },
+  {
+   "id": "alarm_user",
+   "tier": "detail",
+   "quote": "Optional CloudWatch alarms for read throttles, write throttles, throttled requests, user errors, and system errors",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": "type",
+      "op": "eq",
+      "value": "AWS::CloudWatch::Alarm"
+     },
+     {
+      "path": "properties.MetricName",
+      "op": "regex",
+      "value": "(?i)^UserErrors"
+     }
+    ]
+   },
+   "justify": "CloudWatch metric name for user errors"
+  },
+  {
+   "id": "alarm_system",
+   "tier": "detail",
+   "quote": "Optional CloudWatch alarms for read throttles, write throttles, throttled requests, user errors, and system errors",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": "type",
+      "op": "eq",
+      "value": "AWS::CloudWatch::Alarm"
+     },
+     {
+      "path": "properties.MetricName",
+      "op": "regex",
+      "value": "(?i)^SystemErrors"
+     }
+    ]
+   },
+   "justify": "CloudWatch metric name for system errors"
+  },
+  {
+   "id": "alarm_period",
+   "tier": "detail",
+   "quote": "one-minute period",
+   "kind": "attr",
+   "select": "alarms",
+   "cond": {
+    "path": "properties.Period",
+    "op": "eq",
+    "value": 60
+   },
+   "quantifier": "all",
+   "justify": "one minute = 60 seconds"
+  },
+  {
+   "id": "alarm_threshold",
+   "tier": "detail",
+   "quote": "threshold of one",
+   "kind": "attr",
+   "select": "alarms",
+   "cond": {
+    "path": "properties.Threshold",
+    "op": "eq",
+    "value": 1
+   },
+   "quantifier": "all"
+  },
+  {
+   "id": "alarm_missing",
+   "tier": "detail",
+   "quote": "missing data not breaching",
+   "kind": "attr",
+   "select": "alarms",
+   "cond": {
+    "path": "properties.TreatMissingData",
+    "op": "eq",
+    "value": "notBreaching"
+   },
+   "quantifier": "all"
+  },
+  {
+   "id": "alarms_gated",
+   "tier": "core",
+   "quote": "should only be created when an alert notification topic integration is configured, which is off by default",
+   "kind": "attr",
+   "select": "alarms",
+   "cond": {
+    "path": "gated",
+    "op": "truthy"
+   },
+   "quantifier": "all"
+  },
+  {
+   "id": "output_table_name",
+   "tier": "detail",
+   "quote": "Output the table name",
+   "kind": "ref",
+   "from": {
+    "types": [
+     "__output__"
+    ],
+    "where": [
+     {
+      "path": "value.ref",
+      "op": "present"
+     },
+     {
+      "path": "value.attr",
+      "op": "absent"
+     }
+    ]
+   },
+   "to": "table"
+  },
+  {
+   "id": "x_scaling_cooldowns",
+   "kind": "attr",
+   "tier": "extra",
+   "select": {
+    "types": [
+     "AWS::ApplicationAutoScaling::ScalingPolicy"
+    ]
+   },
+   "cond": {
+    "path": "TargetTrackingScalingPolicyConfiguration.ScaleOutCooldown",
+    "op": "eq",
+    "value": 60
+   },
+   "quantifier": "all"
+  },
+  {
+   "id": "x_backup_vault_ref",
+   "kind": "ref",
+   "tier": "extra",
+   "from": "plan",
+   "to": "vault"
+  },
+  {
+   "id": "x_scaling_policy_ref",
+   "kind": "ref",
+   "tier": "extra",
+   "from": {
+    "types": [
+     "AWS::ApplicationAutoScaling::ScalingPolicy"
+    ]
+   },
+   "to": {
+    "types": [
+     "AWS::ApplicationAutoScaling::ScalableTarget"
+    ]
+   }
+  }
+ ],
+ "notes": "Not observable under defaults (Fn::If/Condition resolve them away in both the planned and __declared__ views, and outputs have no __declared__ form): backup vault notifications, the conditional stream-ARN output, GSI 'projecting all attributes' (GlobalSecondaryIndexes is [] by default) and SSE using the AWS managed KMS key (SSESpecification resolves to SSEEnabled false). Parameter-driven settings are matched by parameter name because Ref to a parameter resolves to its default. The retention-0 switch is checked as the backup resources being gated; which parameter the condition reads is not observable."
+}

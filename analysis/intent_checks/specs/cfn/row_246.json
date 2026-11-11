@@ -1,0 +1,789 @@
+{
+  "lang": "cfn",
+  "row_number": 246,
+  "source_hash": {
+    "gt": "7b8feef26dcd4b4e45ed648608bece69af1755cbe1d8ead95be1ed65b16f3610",
+    "prompt": "a33e3c7ae33d98f7edd2021bcd00b2da3ed338c04edc2e26cfc5d8f242f9e2ec"
+  },
+  "selectors": {
+    "alarm": {
+      "types": [
+        "AWS::Events::Rule"
+      ],
+      "where": [
+        {
+          "path": "Targets.*.Id",
+          "op": "eq",
+          "value": "org-sink-alarm-state-change"
+        }
+      ]
+    },
+    "cfn": {
+      "types": [
+        "AWS::Events::Rule"
+      ],
+      "where": [
+        {
+          "path": "Targets.*.Id",
+          "op": "eq",
+          "value": "org-sink-cfn-state-change"
+        }
+      ]
+    },
+    "trail": {
+      "types": [
+        "AWS::Events::Rule"
+      ],
+      "where": [
+        {
+          "path": "Targets.*.Id",
+          "op": "eq",
+          "value": "org-sink-trail-root-activity"
+        }
+      ]
+    },
+    "slack": {
+      "types": [
+        "AWS::Events::Rule"
+      ],
+      "where": [
+        {
+          "path": "Targets.*.Id",
+          "op": "eq",
+          "value": "org-sink-slack-message-payload"
+        }
+      ]
+    },
+    "asg": {
+      "types": [
+        "AWS::Events::Rule"
+      ],
+      "where": [
+        {
+          "path": "Targets.*.Id",
+          "op": "eq",
+          "value": "org-autoscaling-events"
+        }
+      ]
+    },
+    "all": {
+      "types": [
+        "AWS::Events::Rule"
+      ]
+    },
+    "cfn_src": {
+      "types": [
+        "AWS::Events::Rule"
+      ],
+      "where": [
+        {
+          "path": "Targets.*.Id",
+          "op": "eq",
+          "value": "org-sink-cfn-state-change"
+        },
+        {
+          "path": "EventPattern.source.*",
+          "op": "eq",
+          "value": "aws.cloudformation"
+        }
+      ]
+    },
+    "asg_src": {
+      "types": [
+        "AWS::Events::Rule"
+      ],
+      "where": [
+        {
+          "path": "Targets.*.Id",
+          "op": "eq",
+          "value": "org-autoscaling-events"
+        },
+        {
+          "path": "EventPattern.source.*",
+          "op": "eq",
+          "value": "aws.autoscaling"
+        }
+      ]
+    },
+    "trail_root": {
+      "types": [
+        "AWS::Events::Rule"
+      ],
+      "where": [
+        {
+          "path": "Targets.*.Id",
+          "op": "eq",
+          "value": "org-sink-trail-root-activity"
+        },
+        {
+          "path": "EventPattern.detail.userIdentity.type.*",
+          "op": "eq",
+          "value": "Root"
+        }
+      ]
+    }
+  },
+  "checks": [
+    {
+      "id": "alarm",
+      "kind": "exists",
+      "tier": "core",
+      "select": "alarm",
+      "quote": "targeting an organizational CloudWatch event bus ARN using the target ID \"org-sink-alarm-state-change\""
+    },
+    {
+      "id": "cfn",
+      "kind": "exists",
+      "tier": "core",
+      "select": "cfn",
+      "quote": "target ID \"org-sink-cfn-state-change\""
+    },
+    {
+      "id": "trail",
+      "kind": "exists",
+      "tier": "core",
+      "select": "trail",
+      "quote": "target ID \"org-sink-trail-root-activity\""
+    },
+    {
+      "id": "slack",
+      "kind": "exists",
+      "tier": "core",
+      "select": "slack",
+      "quote": "target ID \"org-sink-slack-message-payload\""
+    },
+    {
+      "id": "asg",
+      "kind": "exists",
+      "tier": "core",
+      "select": "asg",
+      "quote": "target ID \"org-autoscaling-events\""
+    },
+    {
+      "id": "five",
+      "kind": "exists",
+      "tier": "core",
+      "select": "all",
+      "min": 5,
+      "quote": "creates five EventBridge rules"
+    },
+    {
+      "id": "enabled",
+      "kind": "attr",
+      "tier": "detail",
+      "select": "all",
+      "cond": {
+        "path": "State",
+        "op": "none_eq",
+        "value": "DISABLED"
+      },
+      "quantifier": "all",
+      "quote": "an enabled rule for CloudWatch alarm state changes",
+      "justify": "enabled means State is not DISABLED"
+    },
+    {
+      "id": "bus_arn",
+      "tier": "detail",
+      "quote": "targeting an organizational CloudWatch event bus ARN",
+      "kind": "attr",
+      "select": "all",
+      "cond": {
+        "path": "Targets.*.Arn",
+        "op": "regex",
+        "value": "(?i)bus"
+      },
+      "quantifier": "all",
+      "justify": "an event bus ARN or a parameter holding one names a bus"
+    },
+    {
+      "id": "bus_distinct",
+      "kind": "exists",
+      "tier": "detail",
+      "select": "all",
+      "distinct_path": "Targets.*.Arn",
+      "min": 5,
+      "quote": "cross-account organizational event buses",
+      "justify": "the prompt names a separate bus for each of the five rules"
+    },
+    {
+      "id": "role_alarm",
+      "kind": "any_of",
+      "tier": "core",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "alarm",
+          "cond": {
+            "path": "Targets.*.RoleArn",
+            "op": "regex",
+            "value": "role/PRX-CloudWatchOrgSinkRole$"
+          }
+        },
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "AWS::Events::Rule"
+            ],
+            "where": [
+              {
+                "path": "Targets.*.Id",
+                "op": "eq",
+                "value": "org-sink-alarm-state-change"
+              }
+            ]
+          },
+          "to": {
+            "types": [
+              "AWS::IAM::Role"
+            ],
+            "where": [
+              {
+                "path": "RoleName",
+                "op": "eq",
+                "value": "PRX-CloudWatchOrgSinkRole"
+              }
+            ]
+          }
+        }
+      ],
+      "quote": "assuming the \"PRX-CloudWatchOrgSinkRole\" IAM role"
+    },
+    {
+      "id": "role_alarm_local",
+      "kind": "any_of",
+      "tier": "detail",
+      "quote": "IAM role in the local account",
+      "justify": "123456789012 stands in for this stack's account, which the prompt asks for",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "alarm",
+          "cond": {
+            "path": "Targets.*.RoleArn",
+            "op": "regex",
+            "value": ":123456789012:role/"
+          }
+        },
+        {
+          "kind": "ref",
+          "from": "alarm",
+          "to": {
+            "types": [
+              "AWS::IAM::Role"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "role_cfn",
+      "kind": "any_of",
+      "tier": "core",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "cfn",
+          "cond": {
+            "path": "Targets.*.RoleArn",
+            "op": "regex",
+            "value": "role/PRX-CloudFormationOrgSinkRole$"
+          }
+        },
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "AWS::Events::Rule"
+            ],
+            "where": [
+              {
+                "path": "Targets.*.Id",
+                "op": "eq",
+                "value": "org-sink-cfn-state-change"
+              }
+            ]
+          },
+          "to": {
+            "types": [
+              "AWS::IAM::Role"
+            ],
+            "where": [
+              {
+                "path": "RoleName",
+                "op": "eq",
+                "value": "PRX-CloudFormationOrgSinkRole"
+              }
+            ]
+          }
+        }
+      ],
+      "quote": "using \"PRX-CloudFormationOrgSinkRole\""
+    },
+    {
+      "id": "role_trail",
+      "kind": "any_of",
+      "tier": "core",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "trail",
+          "cond": {
+            "path": "Targets.*.RoleArn",
+            "op": "regex",
+            "value": "role/PRX-CloudTrailOrgSinkRole$"
+          }
+        },
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "AWS::Events::Rule"
+            ],
+            "where": [
+              {
+                "path": "Targets.*.Id",
+                "op": "eq",
+                "value": "org-sink-trail-root-activity"
+              }
+            ]
+          },
+          "to": {
+            "types": [
+              "AWS::IAM::Role"
+            ],
+            "where": [
+              {
+                "path": "RoleName",
+                "op": "eq",
+                "value": "PRX-CloudTrailOrgSinkRole"
+              }
+            ]
+          }
+        }
+      ],
+      "quote": "using \"PRX-CloudTrailOrgSinkRole\""
+    },
+    {
+      "id": "role_slack",
+      "kind": "any_of",
+      "tier": "core",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "slack",
+          "cond": {
+            "path": "Targets.*.RoleArn",
+            "op": "regex",
+            "value": "role/PRX-SlackOrgSinkRole$"
+          }
+        },
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "AWS::Events::Rule"
+            ],
+            "where": [
+              {
+                "path": "Targets.*.Id",
+                "op": "eq",
+                "value": "org-sink-slack-message-payload"
+              }
+            ]
+          },
+          "to": {
+            "types": [
+              "AWS::IAM::Role"
+            ],
+            "where": [
+              {
+                "path": "RoleName",
+                "op": "eq",
+                "value": "PRX-SlackOrgSinkRole"
+              }
+            ]
+          }
+        }
+      ],
+      "quote": "using \"PRX-SlackOrgSinkRole\""
+    },
+    {
+      "id": "role_asg",
+      "kind": "any_of",
+      "tier": "core",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "asg",
+          "cond": {
+            "path": "Targets.*.RoleArn",
+            "op": "regex",
+            "value": "role/PRX-AutoScalingOrgSinkRole$"
+          }
+        },
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "AWS::Events::Rule"
+            ],
+            "where": [
+              {
+                "path": "Targets.*.Id",
+                "op": "eq",
+                "value": "org-autoscaling-events"
+              }
+            ]
+          },
+          "to": {
+            "types": [
+              "AWS::IAM::Role"
+            ],
+            "where": [
+              {
+                "path": "RoleName",
+                "op": "eq",
+                "value": "PRX-AutoScalingOrgSinkRole"
+              }
+            ]
+          }
+        }
+      ],
+      "quote": "using \"PRX-AutoScalingOrgSinkRole\""
+    },
+    {
+      "id": "pat_alarm",
+      "tier": "core",
+      "quote": "an enabled rule for CloudWatch alarm state changes",
+      "kind": "attr",
+      "select": "alarm",
+      "cond": {
+        "path": "EventPattern.detail-type.*",
+        "op": "eq",
+        "value": "CloudWatch Alarm State Change"
+      }
+    },
+    {
+      "id": "pat_cfn",
+      "kind": "any_of",
+      "tier": "core",
+      "quote": "CloudFormation status changes",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "cfn",
+          "cond": {
+            "path": "EventPattern.source.*",
+            "op": "eq",
+            "value": "aws.cloudformation"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "cfn",
+          "cond": {
+            "path": "EventPattern.detail-type.*",
+            "op": "regex",
+            "value": "(?i)^CloudFormation .*Status Change$"
+          }
+        }
+      ]
+    },
+    {
+      "id": "pat_cfn_resource",
+      "kind": "any_of",
+      "tier": "detail",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "cfn",
+          "cond": {
+            "path": "EventPattern.detail-type.*",
+            "op": "regex",
+            "value": "(?i)^CloudFormation Resource Status Change$"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "cfn_src",
+          "cond": {
+            "path": "EventPattern.detail-type",
+            "op": "absent"
+          }
+        }
+      ],
+      "quote": "covering resource status, stack status, stack set status, and stack set operation status changes",
+      "justify": "a rule without a detail-type filter matches every status change"
+    },
+    {
+      "id": "pat_cfn_stack",
+      "kind": "any_of",
+      "tier": "detail",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "cfn",
+          "cond": {
+            "path": "EventPattern.detail-type.*",
+            "op": "regex",
+            "value": "(?i)^CloudFormation Stack Status Change$"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "cfn_src",
+          "cond": {
+            "path": "EventPattern.detail-type",
+            "op": "absent"
+          }
+        }
+      ],
+      "quote": "covering resource status, stack status, stack set status, and stack set operation status changes",
+      "justify": "a rule without a detail-type filter matches every status change"
+    },
+    {
+      "id": "pat_cfn_stackset",
+      "kind": "any_of",
+      "tier": "detail",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "cfn",
+          "cond": {
+            "path": "EventPattern.detail-type.*",
+            "op": "regex",
+            "value": "(?i)^CloudFormation Stack ?Set Status Change$"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "cfn_src",
+          "cond": {
+            "path": "EventPattern.detail-type",
+            "op": "absent"
+          }
+        }
+      ],
+      "quote": "covering resource status, stack status, stack set status, and stack set operation status changes",
+      "justify": "a rule without a detail-type filter matches every status change"
+    },
+    {
+      "id": "pat_cfn_stackset_op",
+      "kind": "any_of",
+      "tier": "detail",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "cfn",
+          "cond": {
+            "path": "EventPattern.detail-type.*",
+            "op": "regex",
+            "value": "(?i)^CloudFormation Stack ?Set Operation Status Change$"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "cfn_src",
+          "cond": {
+            "path": "EventPattern.detail-type",
+            "op": "absent"
+          }
+        }
+      ],
+      "quote": "covering resource status, stack status, stack set status, and stack set operation status changes",
+      "justify": "a rule without a detail-type filter matches every status change"
+    },
+    {
+      "id": "pat_root",
+      "kind": "attr",
+      "tier": "core",
+      "select": "trail",
+      "cond": {
+        "path": "EventPattern.detail.userIdentity.type.*",
+        "op": "eq",
+        "value": "Root"
+      },
+      "quote": "CloudTrail root user API calls and console sign-ins",
+      "justify": "root user activity means userIdentity type Root"
+    },
+    {
+      "id": "pat_trail_api",
+      "kind": "any_of",
+      "tier": "detail",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "trail",
+          "cond": {
+            "path": "EventPattern.detail-type.*",
+            "op": "regex",
+            "value": "(?i)API Call"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "trail_root",
+          "cond": {
+            "path": "EventPattern.detail-type",
+            "op": "absent"
+          }
+        }
+      ],
+      "quote": "CloudTrail root user API calls and console sign-ins"
+    },
+    {
+      "id": "pat_trail_signin",
+      "kind": "any_of",
+      "tier": "detail",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "trail",
+          "cond": {
+            "path": "EventPattern.detail-type.*",
+            "op": "regex",
+            "value": "(?i)Sign In"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "trail_root",
+          "cond": {
+            "path": "EventPattern.detail-type",
+            "op": "absent"
+          }
+        }
+      ],
+      "quote": "CloudTrail root user API calls and console sign-ins"
+    },
+    {
+      "id": "pat_slack",
+      "kind": "any_of",
+      "tier": "core",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "slack",
+          "cond": {
+            "path": "EventPattern.detail-type.*",
+            "op": "regex",
+            "value": "(?i)slack"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "slack",
+          "cond": {
+            "path": "EventPattern.source.*",
+            "op": "regex",
+            "value": "(?i)slack"
+          }
+        }
+      ],
+      "quote": "custom Slack message relay payload events"
+    },
+    {
+      "id": "pat_asg",
+      "kind": "any_of",
+      "tier": "core",
+      "quote": "EC2 Auto Scaling instance launches",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "asg",
+          "cond": {
+            "path": "EventPattern.source.*",
+            "op": "eq",
+            "value": "aws.autoscaling"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "asg",
+          "cond": {
+            "path": "EventPattern.detail-type.*",
+            "op": "regex",
+            "value": "(?i)(auto ?scaling|EC2 Instance.*(launch|terminate))"
+          }
+        }
+      ]
+    },
+    {
+      "id": "pat_asg_launch",
+      "kind": "any_of",
+      "tier": "detail",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "asg",
+          "cond": {
+            "path": "EventPattern.detail-type.*",
+            "op": "regex",
+            "value": "(?i)launch"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "asg_src",
+          "cond": {
+            "path": "EventPattern.detail-type",
+            "op": "absent"
+          }
+        }
+      ],
+      "quote": "EC2 Auto Scaling instance launches, terminations, and instance refresh lifecycle events"
+    },
+    {
+      "id": "pat_asg_term",
+      "kind": "any_of",
+      "tier": "detail",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "asg",
+          "cond": {
+            "path": "EventPattern.detail-type.*",
+            "op": "regex",
+            "value": "(?i)terminat"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "asg_src",
+          "cond": {
+            "path": "EventPattern.detail-type",
+            "op": "absent"
+          }
+        }
+      ],
+      "quote": "EC2 Auto Scaling instance launches, terminations, and instance refresh lifecycle events"
+    },
+    {
+      "id": "pat_asg_refresh",
+      "kind": "any_of",
+      "tier": "detail",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "asg",
+          "cond": {
+            "path": "EventPattern.detail-type.*",
+            "op": "regex",
+            "value": "(?i)instance refresh"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "asg_src",
+          "cond": {
+            "path": "EventPattern.detail-type",
+            "op": "absent"
+          }
+        }
+      ],
+      "quote": "EC2 Auto Scaling instance launches, terminations, and instance refresh lifecycle events"
+    }
+  ],
+  "notes": "The bus ARNs are not given, so each is tested as naming a bus and as different across the five rules. 'Cross-account' can't be tested: the prompt gives no target account."
+}

@@ -1,0 +1,1082 @@
+package intent.tf.row_368
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {
+  "vpc": {
+   "types": [
+    "aws_vpc"
+   ],
+   "where": []
+  },
+  "subnet": {
+   "types": [
+    "aws_subnet"
+   ],
+   "where": []
+  },
+  "igw": {
+   "types": [
+    "aws_internet_gateway"
+   ],
+   "where": []
+  },
+  "rt": {
+   "types": [
+    "aws_route_table"
+   ],
+   "where": []
+  },
+  "instance": {
+   "types": [
+    "aws_instance"
+   ],
+   "where": []
+  },
+  "keypair": {
+   "types": [
+    "aws_key_pair"
+   ],
+   "where": []
+  },
+  "eip": {
+   "types": [
+    "aws_eip"
+   ],
+   "where": []
+  },
+  "role": {
+   "types": [
+    "aws_iam_role"
+   ],
+   "where": []
+  },
+  "profile": {
+   "types": [
+    "aws_iam_instance_profile"
+   ],
+   "where": []
+  },
+  "sg": {
+   "types": [
+    "aws_security_group"
+   ],
+   "where": []
+  },
+  "alarm": {
+   "types": [
+    "aws_cloudwatch_metric_alarm"
+   ],
+   "where": []
+  },
+  "ami_src": {
+   "types": [
+    "__declared__"
+   ],
+   "where": [
+    {
+     "path": [
+      "type"
+     ],
+     "op": "in",
+     "value": [
+      "data.aws_ami",
+      "data.aws_ssm_parameter"
+     ]
+    }
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "vpc_cidr",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "a VPC with the CIDR block 10.70.0.0/16",
+   "select": "vpc",
+   "cond": {
+    "path": [
+     "cidr_block"
+    ],
+    "op": "eq",
+    "value": "10.70.0.0/16"
+   }
+  },
+  {
+   "id": "vpc_dns",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "DNS support and hostnames enabled",
+   "select": "vpc",
+   "cond": {
+    "path": [],
+    "op": "match",
+    "value": [
+     {
+      "path": [
+       "enable_dns_support"
+      ],
+      "op": "eq",
+      "value": true
+     },
+     {
+      "path": [
+       "enable_dns_hostnames"
+      ],
+      "op": "eq",
+      "value": true
+     }
+    ]
+   }
+  },
+  {
+   "id": "subnet_cidr",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "one subnet 10.70.0.0/24",
+   "select": "subnet",
+   "cond": {
+    "path": [
+     "cidr_block"
+    ],
+    "op": "eq",
+    "value": "10.70.0.0/24"
+   }
+  },
+  {
+   "id": "subnet_no_auto_public_ip",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "does not auto-assign public IPs",
+   "select": "subnet",
+   "cond": {
+    "path": [
+     "map_public_ip_on_launch"
+    ],
+    "op": "none_eq",
+    "value": true
+   }
+  },
+  {
+   "id": "subnet_in_vpc",
+   "kind": "ref",
+   "tier": "detail",
+   "quote": "one subnet 10.70.0.0/24",
+   "from": "subnet",
+   "to": "vpc"
+  },
+  {
+   "id": "igw_exists",
+   "kind": "ref",
+   "tier": "core",
+   "quote": "an internet gateway",
+   "from": "igw",
+   "to": "vpc"
+  },
+  {
+   "id": "default_route_to_igw",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "a route table sending default traffic to it",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route_table"
+      ],
+      "where": [
+       {
+        "path": [
+         "route",
+         "*",
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     },
+     "to": "igw"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route"
+      ],
+      "where": [
+       {
+        "path": [
+         "destination_cidr_block"
+        ],
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     },
+     "to": "igw"
+    }
+   ],
+   "justify": "default traffic is 0.0.0.0/0"
+  },
+  {
+   "id": "instance_type",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "t2.micro instance",
+   "select": "instance",
+   "cond": {
+    "path": [
+     "instance_type"
+    ],
+    "op": "eq",
+    "value": "t2.micro"
+   }
+  },
+  {
+   "id": "instance_name",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "named \"benchmark-instance\"",
+   "select": "instance",
+   "cond": {
+    "path": [
+     "tags",
+     "Name"
+    ],
+    "op": "eq",
+    "value": "benchmark-instance"
+   }
+  },
+  {
+   "id": "ami_ubuntu",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "latest Ubuntu 22.04 AMI",
+   "select": "ami_src",
+   "cond": {
+    "path": [
+     "properties"
+    ],
+    "op": "regex",
+    "value": "(?i)ubuntu"
+   },
+   "justify": "Ubuntu AMI lookup (22.04 version not guaranteed by the ground truth, see notes)"
+  },
+  {
+   "id": "instance_in_subnet",
+   "kind": "ref",
+   "tier": "core",
+   "quote": "in that subnet",
+   "from": "instance",
+   "to": "subnet"
+  },
+  {
+   "id": "instance_monitoring",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "detailed monitoring enabled",
+   "select": "instance",
+   "cond": {
+    "path": [
+     "monitoring"
+    ],
+    "op": "eq",
+    "value": true
+   }
+  },
+  {
+   "id": "instance_public_ip",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "a public IP address",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "instance",
+     "cond": {
+      "path": [
+       "associate_public_ip_address"
+      ],
+      "op": "eq",
+      "value": true
+     }
+    },
+    {
+     "kind": "exists",
+     "select": "eip"
+    }
+   ]
+  },
+  {
+   "id": "root_volume_encrypted_10_gp2",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "an encrypted 10 GiB gp2 root volume",
+   "select": "instance",
+   "cond": {
+    "path": [
+     "root_block_device",
+     "*"
+    ],
+    "op": "match",
+    "value": [
+     {
+      "path": [
+       "encrypted"
+      ],
+      "op": "eq",
+      "value": true
+     },
+     {
+      "path": [
+       "volume_size"
+      ],
+      "op": "eq",
+      "value": 10
+     },
+     {
+      "path": [
+       "volume_type"
+      ],
+      "op": "eq",
+      "value": "gp2"
+     }
+    ]
+   }
+  },
+  {
+   "id": "imdsv2_required",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "IMDSv2 required",
+   "select": "instance",
+   "cond": {
+    "path": [
+     "metadata_options",
+     "*",
+     "http_tokens"
+    ],
+    "op": "eq",
+    "value": "required"
+   }
+  },
+  {
+   "id": "key_pair_named",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "an SSH key pair named \"benchmark-d8bc612be4e0-key\"",
+   "select": "keypair",
+   "cond": {
+    "path": [
+     "key_name"
+    ],
+    "op": "eq",
+    "value": "benchmark-d8bc612be4e0-key"
+   }
+  },
+  {
+   "id": "key_pair_from_supplied_public_key",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "creates from a supplied public key",
+   "select": "keypair",
+   "cond": {
+    "path": [
+     "public_key"
+    ],
+    "op": "present"
+   }
+  },
+  {
+   "id": "instance_uses_key_pair",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "an SSH key pair named \"benchmark-d8bc612be4e0-key\"",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "instance",
+     "to": "keypair"
+    },
+    {
+     "kind": "attr",
+     "select": "instance",
+     "cond": {
+      "path": [
+       "key_name"
+      ],
+      "op": "eq",
+      "value": "benchmark-d8bc612be4e0-key"
+     }
+    }
+   ]
+  },
+  {
+   "id": "eip_attached",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "attach an Elastic IP to it",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "eip",
+     "to": "instance"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_eip_association"
+      ],
+      "where": []
+     },
+     "to": "instance"
+    }
+   ]
+  },
+  {
+   "id": "iam_role_ec2_assumable",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "an IAM role and instance profile that EC2 can assume",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "role",
+     "cond": {
+      "path": [
+       "assume_role_policy"
+      ],
+      "op": "contains",
+      "value": "ec2.amazonaws.com"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "in",
+        "value": [
+         "aws_iam_role",
+         "data.aws_iam_policy_document"
+        ]
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties"
+      ],
+      "op": "contains",
+      "value": "ec2.amazonaws.com"
+     }
+    }
+   ]
+  },
+  {
+   "id": "instance_profile_for_role",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "instance profile that EC2 can assume",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "profile",
+     "to": "role"
+    },
+    {
+     "kind": "attr",
+     "select": "profile",
+     "cond": {
+      "path": [
+       "role"
+      ],
+      "op": "present"
+     }
+    }
+   ]
+  },
+  {
+   "id": "instance_uses_profile",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "Give the instance an IAM role and instance profile",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "instance",
+     "to": "profile"
+    },
+    {
+     "kind": "attr",
+     "select": "instance",
+     "cond": {
+      "path": [
+       "iam_instance_profile"
+      ],
+      "op": "present"
+     }
+    }
+   ]
+  },
+  {
+   "id": "sg_exists_for_instance",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "a dedicated security group",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "instance",
+     "to": "sg"
+    },
+    {
+     "kind": "attr",
+     "select": "instance",
+     "cond": {
+      "path": [
+       "vpc_security_group_ids"
+      ],
+      "op": "present"
+     }
+    }
+   ]
+  },
+  {
+   "id": "sg_egress_to_vpc_cidr",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "whose only rule allows egress to the VPC's own CIDR block",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_security_group_rule"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "egress"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_vpc",
+       "data.aws_vpc"
+      ],
+      "where": []
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_vpc_security_group_egress_rule"
+      ],
+      "where": []
+     },
+     "to": {
+      "types": [
+       "aws_vpc",
+       "data.aws_vpc"
+      ],
+      "where": []
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "sg",
+     "cond": {
+      "path": [
+       "egress",
+       "*",
+       "cidr_blocks",
+       "*"
+      ],
+      "op": "eq",
+      "value": "10.70.0.0/16"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_security_group_rule"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "egress"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "cidr_blocks",
+       "*"
+      ],
+      "op": "eq",
+      "value": "10.70.0.0/16"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_vpc_security_group_egress_rule"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "cidr_ipv4"
+      ],
+      "op": "eq",
+      "value": "10.70.0.0/16"
+     }
+    }
+   ]
+  },
+  {
+   "id": "sg_egress_only_vpc",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "whose only rule allows egress to the VPC's own CIDR block",
+   "justify": "egress limited to the VPC CIDR excludes the any-IP destination 0.0.0.0/0",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_security_group_rule"
+       },
+       {
+        "path": [
+         "properties",
+         "type"
+        ],
+        "op": "eq",
+        "value": "egress"
+       }
+      ]
+     },
+     "quantifier": "all",
+     "cond": {
+      "path": [
+       "properties",
+       "cidr_blocks",
+       "*"
+      ],
+      "op": "none_eq",
+      "value": "0.0.0.0/0"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_security_group"
+       },
+       {
+        "path": [
+         "properties",
+         "egress"
+        ],
+        "op": "present"
+       }
+      ]
+     },
+     "quantifier": "all",
+     "cond": {
+      "path": [
+       "properties",
+       "egress",
+       "*",
+       "cidr_blocks",
+       "*"
+      ],
+      "op": "none_eq",
+      "value": "0.0.0.0/0"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_vpc_security_group_egress_rule"
+       }
+      ]
+     },
+     "quantifier": "all",
+     "cond": {
+      "path": [
+       "properties",
+       "cidr_ipv4"
+      ],
+      "op": "none_eq",
+      "value": "0.0.0.0/0"
+     }
+    }
+   ]
+  },
+  {
+   "id": "sg_no_ingress",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "with no ingress ports opened by default",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "sg",
+     "quantifier": "all",
+     "cond": {
+      "path": [
+       "ingress"
+      ],
+      "op": "absent"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "sg",
+     "quantifier": "all",
+     "cond": {
+      "path": [
+       "ingress"
+      ],
+      "op": "len_eq",
+      "value": 0
+     }
+    }
+   ]
+  },
+  {
+   "id": "alarm_metric",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "a CloudWatch alarm on the instance's StatusCheckFailed_Instance metric",
+   "select": "alarm",
+   "cond": {
+    "path": [
+     "metric_name"
+    ],
+    "op": "eq",
+    "value": "StatusCheckFailed_Instance"
+   }
+  },
+  {
+   "id": "alarm_maximum_60s",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "maximum over 60-second periods",
+   "select": "alarm",
+   "cond": {
+    "path": [],
+    "op": "match",
+    "value": [
+     {
+      "path": [
+       "statistic"
+      ],
+      "op": "eq",
+      "value": "Maximum"
+     },
+     {
+      "path": [
+       "period"
+      ],
+      "op": "eq",
+      "value": 60
+     }
+    ]
+   }
+  },
+  {
+   "id": "alarm_threshold_periods",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "alarming when it is at least 1 for 5 consecutive periods",
+   "select": "alarm",
+   "cond": {
+    "path": [],
+    "op": "match",
+    "value": [
+     {
+      "path": [
+       "comparison_operator"
+      ],
+      "op": "eq",
+      "value": "GreaterThanOrEqualToThreshold"
+     },
+     {
+      "path": [
+       "threshold"
+      ],
+      "op": "eq",
+      "value": 1
+     },
+     {
+      "path": [
+       "evaluation_periods"
+      ],
+      "op": "eq",
+      "value": 5
+     }
+    ]
+   },
+   "justify": "\"at least 1\" is GreaterThanOrEqualToThreshold"
+  },
+  {
+   "id": "alarm_reboots_instance",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "whose action automatically reboots the instance",
+   "select": "alarm",
+   "cond": {
+    "path": [
+     "alarm_actions",
+     "*"
+    ],
+    "op": "regex",
+    "value": "(?i)reboot"
+   }
+  },
+  {
+   "id": "alarm_on_instance",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "on the instance's StatusCheckFailed_Instance metric",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "alarm",
+     "to": "instance"
+    },
+    {
+     "kind": "attr",
+     "select": "alarm",
+     "cond": {
+      "path": [
+       "dimensions",
+       "InstanceId"
+      ],
+      "op": "present"
+     }
+    }
+   ]
+  },
+  {
+   "id": "optional_ebs_volumes_declared",
+   "kind": "exists",
+   "tier": "detail",
+   "quote": "Optional extra EBS volumes",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": [
+       "type"
+      ],
+      "op": "eq",
+      "value": "aws_ebs_volume"
+     },
+     {
+      "path": [
+       "gated"
+      ],
+      "op": "truthy"
+     }
+    ]
+   }
+  },
+  {
+   "id": "optional_enis_with_eips_declared",
+   "kind": "all_of",
+   "tier": "detail",
+   "quote": "additional network interfaces with Elastic IPs should be supported but not created by default",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_network_interface"
+       },
+       {
+        "path": [
+         "gated"
+        ],
+        "op": "truthy"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_eip"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_network_interface"
+       }
+      ]
+     },
+     "bidirectional": true
+    }
+   ]
+  },
+  {
+   "id": "x_subnet_associated_with_route_table",
+   "kind": "ref",
+   "tier": "extra",
+   "from": {
+    "types": [
+     "aws_route_table_association"
+    ],
+    "where": []
+   },
+   "to": "rt"
+  },
+  {
+   "id": "x_eip_domain_vpc",
+   "kind": "attr",
+   "tier": "extra",
+   "select": "eip",
+   "cond": {
+    "path": [
+     "domain"
+    ],
+    "op": "eq",
+    "value": "vpc"
+   }
+  },
+  {
+   "id": "x_instance_source_dest_check",
+   "kind": "attr",
+   "tier": "extra",
+   "select": "instance",
+   "cond": {
+    "path": [
+     "source_dest_check"
+    ],
+    "op": "eq",
+    "value": true
+   }
+  },
+  {
+   "id": "extra_type_aws_network_interface_attachment",
+   "kind": "exists",
+   "tier": "extra",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": [
+       "type"
+      ],
+      "op": "eq",
+      "value": "aws_network_interface_attachment"
+     }
+    ]
+   }
+  },
+  {
+   "id": "extra_type_aws_volume_attachment",
+   "kind": "exists",
+   "tier": "extra",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": [
+       "type"
+      ],
+      "op": "eq",
+      "value": "aws_volume_attachment"
+     }
+    ]
+   }
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

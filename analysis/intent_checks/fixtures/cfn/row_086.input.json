@@ -1,0 +1,458 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "38aad2a4d28d2cbeb7bb1b6c9e1ad8fa0cd774c07d41fdd7a0d9a842354ff091",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "CognitoUserPool",
+   "cfg": "CognitoUserPool",
+   "type": "AWS::Cognito::UserPool",
+   "values": {
+    "AutoVerifiedAttributes": [
+     "email"
+    ],
+    "EmailConfiguration": {
+     "EmailSendingAccount": "COGNITO_DEFAULT"
+    },
+    "EmailVerificationMessage": "Welcome to StudyBuddy! Your code is {####}",
+    "EmailVerificationSubject": "Welcome to StudyBuddy",
+    "LambdaConfig": {
+     "PostAuthentication": "arn:aws:lambda:us-east-1:123456789012:function:auth_hook",
+     "PostConfirmation": "arn:aws:lambda:us-east-1:123456789012:function:auth_hook",
+     "PreSignUp": "arn:aws:lambda:us-east-1:123456789012:function:signup_hook"
+    },
+    "Schema": [
+     {
+      "Name": "email",
+      "AttributeDataType": "String",
+      "Mutable": true,
+      "Required": true
+     },
+     {
+      "Name": "given_name",
+      "AttributeDataType": "String",
+      "Mutable": true,
+      "Required": true
+     },
+     {
+      "Name": "family_name",
+      "AttributeDataType": "String",
+      "Mutable": true,
+      "Required": true
+     }
+    ],
+    "UserPoolName": "StudyBuddyUserPool",
+    "UsernameAttributes": [
+     "email"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "CognitoUserPoolClient",
+   "cfg": "CognitoUserPoolClient",
+   "type": "AWS::Cognito::UserPoolClient",
+   "values": {
+    "AllowedOAuthFlows": [
+     "code",
+     "implicit"
+    ],
+    "AllowedOAuthFlowsUserPoolClient": true,
+    "AllowedOAuthScopes": [
+     "email",
+     "openid",
+     "profile"
+    ],
+    "CallbackURLs": [
+     "https://www.somethingcode.com/callback"
+    ],
+    "ClientName": "StudyBuddyFrontend",
+    "DefaultRedirectURI": "https://www.somethingcode.com/callback",
+    "GenerateSecret": true,
+    "LogoutURLs": [
+     "https://www.somethingcode.com/logout"
+    ],
+    "RefreshTokenValidity": 30,
+    "SupportedIdentityProviders": [
+     "COGNITO",
+     "Google"
+    ],
+    "UserPoolId": {
+     "ref": "CognitoUserPool"
+    },
+    "__resource__": {
+     "DependsOn": [
+      "CognitoIdentityProviderGoogle"
+     ]
+    }
+   },
+   "refs": [
+    "CognitoUserPool"
+   ]
+  },
+  {
+   "id": "CognitoUserPoolDomainName",
+   "cfg": "CognitoUserPoolDomainName",
+   "type": "AWS::Cognito::UserPoolDomain",
+   "values": {
+    "Domain": "studybuddy-authapp",
+    "UserPoolId": {
+     "ref": "CognitoUserPool"
+    }
+   },
+   "refs": [
+    "CognitoUserPool"
+   ]
+  },
+  {
+   "id": "IdpGoogleClientCredentials",
+   "cfg": "IdpGoogleClientCredentials",
+   "type": "AWS::SecretsManager::Secret",
+   "values": {
+    "Name": "idp-google-client-credentials",
+    "SecretString": "{\"client-id\":\"placeholder-client-id\",\"client-secret\":\"placeholder-client-secret\"}"
+   },
+   "refs": []
+  },
+  {
+   "id": "CognitoIdentityProviderGoogle",
+   "cfg": "CognitoIdentityProviderGoogle",
+   "type": "AWS::Cognito::UserPoolIdentityProvider",
+   "values": {
+    "AttributeMapping": {
+     "email": "email",
+     "given_name": "given_name",
+     "family_name": "family_name"
+    },
+    "ProviderDetails": {
+     "client_id": "{{resolve:secretsmanager:idp-google-client-credentials:SecretString:client-id}}",
+     "client_secret": "{{resolve:secretsmanager:idp-google-client-credentials:SecretString:client-secret}}",
+     "authorize_scopes": "profile email openid"
+    },
+    "ProviderName": "Google",
+    "ProviderType": "Google",
+    "UserPoolId": {
+     "ref": "CognitoUserPool"
+    },
+    "__resource__": {
+     "DependsOn": [
+      "IdpGoogleClientCredentials"
+     ]
+    }
+   },
+   "refs": [
+    "CognitoUserPool"
+   ]
+  },
+  {
+   "id": "__parameter__.EmailVerificationMessage",
+   "cfg": "__parameter__.EmailVerificationMessage",
+   "type": "__parameter__",
+   "values": {
+    "name": "EmailVerificationMessage",
+    "type": "String",
+    "default": "Welcome to StudyBuddy! Your code is {####}",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.EmailVerificationSubject",
+   "cfg": "__parameter__.EmailVerificationSubject",
+   "type": "__parameter__",
+   "values": {
+    "name": "EmailVerificationSubject",
+    "type": "String",
+    "default": "Welcome to StudyBuddy",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.URLFrontend",
+   "cfg": "__parameter__.URLFrontend",
+   "type": "__parameter__",
+   "values": {
+    "name": "URLFrontend",
+    "type": "String",
+    "default": "www.somethingcode.com",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.HostedUserPoolDomainName",
+   "cfg": "__parameter__.HostedUserPoolDomainName",
+   "type": "__parameter__",
+   "values": {
+    "name": "HostedUserPoolDomainName",
+    "type": "String",
+    "default": "studybuddy-authapp",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.IdentityProviderGoogleClientId",
+   "cfg": "__parameter__.IdentityProviderGoogleClientId",
+   "type": "__parameter__",
+   "values": {
+    "name": "IdentityProviderGoogleClientId",
+    "type": "String",
+    "default": "idp-google-client-credentials:SecretString:client-id",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.IdentityProviderGoogleClientSecret",
+   "cfg": "__parameter__.IdentityProviderGoogleClientSecret",
+   "type": "__parameter__",
+   "values": {
+    "name": "IdentityProviderGoogleClientSecret",
+    "type": "String",
+    "default": "idp-google-client-credentials:SecretString:client-secret",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.CognitoHostedSigninUrl",
+   "cfg": "__output__.CognitoHostedSigninUrl",
+   "type": "__output__",
+   "values": {
+    "name": "CognitoHostedSigninUrl",
+    "value": "https://studybuddy-authapp.auth.us-east-1.amazoncognito.com",
+    "description": null,
+    "export": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.CognitoUserPoolArn",
+   "cfg": "__output__.CognitoUserPoolArn",
+   "type": "__output__",
+   "values": {
+    "name": "CognitoUserPoolArn",
+    "value": {
+     "ref": "CognitoUserPool",
+     "attr": "Arn"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "CognitoUserPool"
+   ]
+  },
+  {
+   "id": "__output__.CognitoUserPoolId",
+   "cfg": "__output__.CognitoUserPoolId",
+   "type": "__output__",
+   "values": {
+    "name": "CognitoUserPoolId",
+    "value": {
+     "ref": "CognitoUserPool"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "CognitoUserPool"
+   ]
+  },
+  {
+   "id": "__output__.CognitoClientId",
+   "cfg": "__output__.CognitoClientId",
+   "type": "__output__",
+   "values": {
+    "name": "CognitoClientId",
+    "value": {
+     "ref": "CognitoUserPoolClient"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "CognitoUserPoolClient"
+   ]
+  },
+  {
+   "id": "__output__.CognitoCallbackUrl",
+   "cfg": "__output__.CognitoCallbackUrl",
+   "type": "__output__",
+   "values": {
+    "name": "CognitoCallbackUrl",
+    "value": "https://www.somethingcode.com/callback",
+    "description": null,
+    "export": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPool.CognitoUserPool",
+   "cfg": "CognitoUserPool",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Cognito::UserPool",
+    "name": "CognitoUserPool",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AutoVerifiedAttributes": [
+      "email"
+     ],
+     "EmailConfiguration": {
+      "EmailSendingAccount": "COGNITO_DEFAULT"
+     },
+     "EmailVerificationMessage": "Welcome to StudyBuddy! Your code is {####}",
+     "EmailVerificationSubject": "Welcome to StudyBuddy",
+     "LambdaConfig": {
+      "PostAuthentication": "arn:aws:lambda:us-east-1:123456789012:function:auth_hook",
+      "PostConfirmation": "arn:aws:lambda:us-east-1:123456789012:function:auth_hook",
+      "PreSignUp": "arn:aws:lambda:us-east-1:123456789012:function:signup_hook"
+     },
+     "Schema": [
+      {
+       "Name": "email",
+       "AttributeDataType": "String",
+       "Mutable": true,
+       "Required": true
+      },
+      {
+       "Name": "given_name",
+       "AttributeDataType": "String",
+       "Mutable": true,
+       "Required": true
+      },
+      {
+       "Name": "family_name",
+       "AttributeDataType": "String",
+       "Mutable": true,
+       "Required": true
+      }
+     ],
+     "UserPoolName": "StudyBuddyUserPool",
+     "UsernameAttributes": [
+      "email"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolClient.CognitoUserPoolClient",
+   "cfg": "CognitoUserPoolClient",
+   "type": "__declared__",
+   "refs": [
+    "CognitoUserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolClient",
+    "name": "CognitoUserPoolClient",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AllowedOAuthFlows": [
+      "code",
+      "implicit"
+     ],
+     "AllowedOAuthFlowsUserPoolClient": true,
+     "AllowedOAuthScopes": [
+      "email",
+      "openid",
+      "profile"
+     ],
+     "CallbackURLs": [
+      "https://www.somethingcode.com/callback"
+     ],
+     "ClientName": "StudyBuddyFrontend",
+     "DefaultRedirectURI": "https://www.somethingcode.com/callback",
+     "GenerateSecret": true,
+     "LogoutURLs": [
+      "https://www.somethingcode.com/logout"
+     ],
+     "RefreshTokenValidity": 30,
+     "SupportedIdentityProviders": [
+      "COGNITO",
+      "Google"
+     ],
+     "UserPoolId": {
+      "ref": "CognitoUserPool"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolDomain.CognitoUserPoolDomainName",
+   "cfg": "CognitoUserPoolDomainName",
+   "type": "__declared__",
+   "refs": [
+    "CognitoUserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolDomain",
+    "name": "CognitoUserPoolDomainName",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Domain": "studybuddy-authapp",
+     "UserPoolId": {
+      "ref": "CognitoUserPool"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SecretsManager::Secret.IdpGoogleClientCredentials",
+   "cfg": "IdpGoogleClientCredentials",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::SecretsManager::Secret",
+    "name": "IdpGoogleClientCredentials",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "idp-google-client-credentials",
+     "SecretString": "{\"client-id\":\"placeholder-client-id\",\"client-secret\":\"placeholder-client-secret\"}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolIdentityProvider.CognitoIdentityProviderGoogle",
+   "cfg": "CognitoIdentityProviderGoogle",
+   "type": "__declared__",
+   "refs": [
+    "CognitoUserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolIdentityProvider",
+    "name": "CognitoIdentityProviderGoogle",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AttributeMapping": {
+      "email": "email",
+      "given_name": "given_name",
+      "family_name": "family_name"
+     },
+     "ProviderDetails": {
+      "client_id": "{{resolve:secretsmanager:idp-google-client-credentials:SecretString:client-id}}",
+      "client_secret": "{{resolve:secretsmanager:idp-google-client-credentials:SecretString:client-secret}}",
+      "authorize_scopes": "profile email openid"
+     },
+     "ProviderName": "Google",
+     "ProviderType": "Google",
+     "UserPoolId": {
+      "ref": "CognitoUserPool"
+     }
+    }
+   }
+  }
+ ]
+}

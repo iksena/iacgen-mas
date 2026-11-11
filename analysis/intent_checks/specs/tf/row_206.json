@@ -1,0 +1,227 @@
+{
+ "lang": "tf",
+ "row_number": 206,
+ "source_hash": {
+  "gt": "2093750d4e4b54d1506ed570c333aee08cbcfcc3a9214b23aa4b7e06bcb99b0c",
+  "prompt": "8d5e9e607968274d6875a8061fe5374c47ab894e2f0845a6a5d4e66fda1b564f"
+ },
+ "selectors": {
+  "efs": {
+   "types": [
+    "aws_efs_file_system"
+   ]
+  },
+  "key": {
+   "types": [
+    "aws_kms_key"
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "efs_exists",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "creates an encrypted Amazon EFS file system",
+   "select": "efs"
+  },
+  {
+   "id": "efs_encrypted",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "encrypted Amazon EFS file system",
+   "select": "efs",
+   "cond": {
+    "path": "encrypted",
+    "op": "truthy"
+   }
+  },
+  {
+   "id": "efs_creation_token",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "a creation token defaulting to \"test-efs\"",
+   "select": "efs",
+   "cond": {
+    "path": "creation_token",
+    "op": "eq",
+    "value": "test-efs"
+   }
+  },
+  {
+   "id": "efs_performance_mode",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "performance mode defaulting to \"generalPurpose\"",
+   "select": "efs",
+   "cond": {
+    "path": "performance_mode",
+    "op": "eq",
+    "value": "generalPurpose"
+   }
+  },
+  {
+   "id": "efs_throughput_mode",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "throughput mode defaulting to \"bursting\"",
+   "select": "efs",
+   "cond": {
+    "path": "throughput_mode",
+    "op": "eq",
+    "value": "bursting"
+   }
+  },
+  {
+   "id": "efs_lifecycle_ia_30",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "an automatic lifecycle policy that transitions files to infrequent access after 30 days",
+   "select": "efs",
+   "cond": {
+    "path": "lifecycle_policy.*.transition_to_ia",
+    "op": "eq",
+    "value": "AFTER_30_DAYS"
+   },
+   "justify": "30 days to infrequent access is AFTER_30_DAYS"
+  },
+  {
+   "id": "kms_key",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "encrypted using a dedicated AWS KMS key",
+   "select": "key"
+  },
+  {
+   "id": "efs_uses_key",
+   "kind": "ref",
+   "tier": "core",
+   "quote": "encrypted using a dedicated AWS KMS key",
+   "from": "efs",
+   "to": "key"
+  },
+  {
+   "id": "key_rotation",
+   "kind": "ref",
+   "tier": "core",
+   "quote": "with key rotation enabled",
+   "from": "efs",
+   "to": {
+    "types": [
+     "aws_kms_key"
+    ],
+    "where": [
+     {
+      "path": "enable_key_rotation",
+      "op": "truthy"
+     }
+    ]
+   }
+  },
+  {
+   "id": "mount_targets_declared",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "mount targets should be dynamically provisioned",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": "type",
+      "op": "eq",
+      "value": "aws_efs_mount_target"
+     }
+    ]
+   }
+  },
+  {
+   "id": "mount_targets_dynamic",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "dynamically provisioned across a list of provided subnet IDs",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": "type",
+      "op": "eq",
+      "value": "aws_efs_mount_target"
+     }
+    ]
+   },
+   "cond": {
+    "path": "gated",
+    "op": "truthy"
+   }
+  },
+  {
+   "id": "mount_target_subnet",
+   "kind": "exists",
+   "tier": "detail",
+   "quote": "across a list of provided subnet IDs",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": "type",
+      "op": "eq",
+      "value": "aws_efs_mount_target"
+     },
+     {
+      "path": "properties.subnet_id",
+      "op": "present"
+     }
+    ]
+   }
+  },
+  {
+   "id": "mount_target_security_groups",
+   "kind": "exists",
+   "tier": "detail",
+   "quote": "attached to any specified security groups",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": "type",
+      "op": "eq",
+      "value": "aws_efs_mount_target"
+     },
+     {
+      "path": "properties",
+      "op": "contains",
+      "value": "security_groups"
+     }
+    ]
+   }
+  },
+  {
+   "id": "mount_target_efs",
+   "kind": "ref",
+   "tier": "detail",
+   "quote": "mount targets should be dynamically provisioned",
+   "from": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": "type",
+      "op": "eq",
+      "value": "aws_efs_mount_target"
+     }
+    ]
+   },
+   "to": "efs"
+  }
+ ],
+ "notes": "key_rotation is bound to the KMS key the file system references, not any key in the template."
+}

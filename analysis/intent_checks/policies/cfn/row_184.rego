@@ -1,0 +1,1425 @@
+package intent.cfn.row_184
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {
+  "tbl": {
+   "types": [
+    "AWS::DynamoDB::Table"
+   ],
+   "where": []
+  },
+  "api": {
+   "types": [
+    "AWS::ApiGateway::RestApi"
+   ],
+   "where": []
+  },
+  "v2": {
+   "types": [
+    "AWS::ApiGatewayV2::Api"
+   ],
+   "where": []
+  },
+  "kres": {
+   "types": [
+    "AWS::ApiGateway::Resource"
+   ],
+   "where": [
+    {
+     "path": [
+      "PathPart"
+     ],
+     "op": "eq",
+     "value": "kitten"
+    }
+   ]
+  },
+  "ires": {
+   "types": [
+    "AWS::ApiGateway::Resource"
+   ],
+   "where": [
+    {
+     "path": [
+      "PathPart"
+     ],
+     "op": "regex",
+     "value": "(?i)^\\{.*id.*\\}$"
+    }
+   ]
+  },
+  "opts": {
+   "types": [
+    "AWS::ApiGateway::Method"
+   ],
+   "where": [
+    {
+     "path": [
+      "HttpMethod"
+     ],
+     "op": "eq",
+     "value": "OPTIONS"
+    }
+   ]
+  },
+  "lam": {
+   "types": [
+    "AWS::Lambda::Function"
+   ],
+   "where": []
+  }
+ },
+ "checks": [
+  {
+   "id": "table",
+   "kind": "exists",
+   "select": "tbl",
+   "tier": "core",
+   "quote": "a DynamoDB table named \"Kitten\""
+  },
+  {
+   "id": "table_name",
+   "kind": "attr",
+   "select": "tbl",
+   "cond": {
+    "path": [
+     "TableName"
+    ],
+    "op": "eq",
+    "value": "Kitten"
+   },
+   "tier": "core",
+   "quote": "a DynamoDB table named \"Kitten\""
+  },
+  {
+   "id": "partition_key",
+   "kind": "attr",
+   "select": "tbl",
+   "cond": {
+    "path": [
+     "KeySchema",
+     "*"
+    ],
+    "op": "match",
+    "value": [
+     {
+      "path": [
+       "AttributeName"
+      ],
+      "op": "eq",
+      "value": "KittenId"
+     },
+     {
+      "path": [
+       "KeyType"
+      ],
+      "op": "eq",
+      "value": "HASH"
+     }
+    ]
+   },
+   "tier": "core",
+   "quote": "a partition key named \"KittenId\" of type string",
+   "justify": "partition key means KeyType HASH"
+  },
+  {
+   "id": "key_type_string",
+   "kind": "attr",
+   "select": "tbl",
+   "cond": {
+    "path": [
+     "AttributeDefinitions",
+     "*"
+    ],
+    "op": "match",
+    "value": [
+     {
+      "path": [
+       "AttributeName"
+      ],
+      "op": "eq",
+      "value": "KittenId"
+     },
+     {
+      "path": [
+       "AttributeType"
+      ],
+      "op": "eq",
+      "value": "S"
+     }
+    ]
+   },
+   "tier": "core",
+   "quote": "a partition key named \"KittenId\" of type string"
+  },
+  {
+   "id": "on_demand",
+   "kind": "attr",
+   "select": "tbl",
+   "cond": {
+    "path": [
+     "BillingMode"
+    ],
+    "op": "eq",
+    "value": "PAY_PER_REQUEST"
+   },
+   "tier": "core",
+   "quote": "is configured for on-demand billing",
+   "justify": "on-demand billing is PAY_PER_REQUEST"
+  },
+  {
+   "id": "api",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": "api"
+    },
+    {
+     "kind": "exists",
+     "select": "v2"
+    }
+   ],
+   "tier": "core",
+   "quote": "using Amazon API Gateway"
+  },
+  {
+   "id": "kitten_resource",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": "kres"
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "AWS::ApiGatewayV2::Route"
+      ],
+      "where": [
+       {
+        "path": [
+         "RouteKey"
+        ],
+        "op": "regex",
+        "value": "/kitten"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "api",
+     "cond": {
+      "path": [
+       "Body"
+      ],
+      "op": "regex",
+      "value": "/kitten"
+     }
+    }
+   ],
+   "tier": "core",
+   "quote": "a POST to the `/kitten` resource that auto-generates the KittenId from the request context"
+  },
+  {
+   "id": "id_resource",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "ires",
+     "to": "kres"
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "AWS::ApiGatewayV2::Route"
+      ],
+      "where": [
+       {
+        "path": [
+         "RouteKey"
+        ],
+        "op": "regex",
+        "value": "/kitten/\\{"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "api",
+     "cond": {
+      "path": [
+       "Body"
+      ],
+      "op": "regex",
+      "value": "/kitten/\\{"
+     }
+    }
+   ],
+   "tier": "core",
+   "quote": "a GET on `/kitten/{id}` that retrieves a single item by its KittenId"
+  },
+  {
+   "id": "post_kitten",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::ApiGateway::Method"
+      ],
+      "where": [
+       {
+        "path": [
+         "HttpMethod"
+        ],
+        "op": "eq",
+        "value": "POST"
+       }
+      ]
+     },
+     "to": "kres"
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "AWS::ApiGatewayV2::Route"
+      ],
+      "where": [
+       {
+        "path": [
+         "RouteKey"
+        ],
+        "op": "regex",
+        "value": "(?i)^POST\\s+/kitten/?\\s*$"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "api",
+     "cond": {
+      "path": [
+       "Body"
+      ],
+      "op": "regex",
+      "value": "(?is)/kitten.*\"post\"\\s*:"
+     }
+    }
+   ],
+   "tier": "core",
+   "quote": "a POST to the `/kitten` resource that auto-generates the KittenId from the request context"
+  },
+  {
+   "id": "get_all_kittens",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::ApiGateway::Method"
+      ],
+      "where": [
+       {
+        "path": [
+         "HttpMethod"
+        ],
+        "op": "eq",
+        "value": "GET"
+       }
+      ]
+     },
+     "to": "kres"
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "AWS::ApiGatewayV2::Route"
+      ],
+      "where": [
+       {
+        "path": [
+         "RouteKey"
+        ],
+        "op": "regex",
+        "value": "(?i)^GET\\s+/kitten\\s*$"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "api",
+     "cond": {
+      "path": [
+       "Body"
+      ],
+      "op": "regex",
+      "value": "(?is)/kitten.*\"get\"\\s*:"
+     }
+    }
+   ],
+   "tier": "core",
+   "quote": "a GET on `/kitten` that scans all items"
+  },
+  {
+   "id": "get_one_kitten",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::ApiGateway::Method"
+      ],
+      "where": [
+       {
+        "path": [
+         "HttpMethod"
+        ],
+        "op": "eq",
+        "value": "GET"
+       }
+      ]
+     },
+     "to": "ires"
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "AWS::ApiGatewayV2::Route"
+      ],
+      "where": [
+       {
+        "path": [
+         "RouteKey"
+        ],
+        "op": "regex",
+        "value": "(?i)^GET\\s+/kitten/\\{"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "api",
+     "cond": {
+      "path": [
+       "Body"
+      ],
+      "op": "regex",
+      "value": "(?is)/kitten/\\{.*\"get\"\\s*:"
+     }
+    }
+   ],
+   "tier": "core",
+   "quote": "a GET on `/kitten/{id}` that retrieves a single item by its KittenId"
+  },
+  {
+   "id": "put_kitten",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::ApiGateway::Method"
+      ],
+      "where": [
+       {
+        "path": [
+         "HttpMethod"
+        ],
+        "op": "eq",
+        "value": "PUT"
+       }
+      ]
+     },
+     "to": "ires"
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "AWS::ApiGatewayV2::Route"
+      ],
+      "where": [
+       {
+        "path": [
+         "RouteKey"
+        ],
+        "op": "regex",
+        "value": "(?i)^PUT\\s+/kitten/\\{"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "api",
+     "cond": {
+      "path": [
+       "Body"
+      ],
+      "op": "regex",
+      "value": "(?is)/kitten/\\{.*\"put\"\\s*:"
+     }
+    }
+   ],
+   "tier": "core",
+   "quote": "a PUT on `/kitten/{id}` that expects name and color fields in the body to replace the item"
+  },
+  {
+   "id": "delete_kitten",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::ApiGateway::Method"
+      ],
+      "where": [
+       {
+        "path": [
+         "HttpMethod"
+        ],
+        "op": "eq",
+        "value": "DELETE"
+       }
+      ]
+     },
+     "to": "ires"
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "AWS::ApiGatewayV2::Route"
+      ],
+      "where": [
+       {
+        "path": [
+         "RouteKey"
+        ],
+        "op": "regex",
+        "value": "(?i)^DELETE\\s+/kitten/\\{"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "api",
+     "cond": {
+      "path": [
+       "Body"
+      ],
+      "op": "regex",
+      "value": "(?is)/kitten/\\{.*\"delete\"\\s*:"
+     }
+    }
+   ],
+   "tier": "core",
+   "quote": "and a DELETE on `/kitten/{id}` that removes the item"
+  },
+  {
+   "id": "options_every_resource",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "including an OPTIONS method on every resource",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "opts",
+     "to": "kres"
+    },
+    {
+     "kind": "attr",
+     "select": "v2",
+     "cond": {
+      "path": [
+       "CorsConfiguration"
+      ],
+      "op": "present"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "api",
+     "cond": {
+      "path": [
+       "Body"
+      ],
+      "op": "regex",
+      "value": "(?is)/kitten.*\"options\"\\s*:"
+     }
+    }
+   ]
+  },
+  {
+   "id": "options_id_resource",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "including an OPTIONS method on every resource",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "opts",
+     "to": "ires"
+    },
+    {
+     "kind": "attr",
+     "select": "v2",
+     "cond": {
+      "path": [
+       "CorsConfiguration"
+      ],
+      "op": "present"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "api",
+     "cond": {
+      "path": [
+       "Body"
+      ],
+      "op": "regex",
+      "value": "(?is)/kitten/\\{.*\"options\"\\s*:"
+     }
+    }
+   ]
+  },
+  {
+   "id": "cors_all_origins",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "opts",
+     "cond": {
+      "path": [
+       "Integration",
+       "IntegrationResponses",
+       "*",
+       "ResponseParameters"
+      ],
+      "op": "regex",
+      "value": "(?i)allow-origin[\\\"']?\\s*[:=]?\\s*[\\\"']*\\*"
+     },
+     "quantifier": "all"
+    },
+    {
+     "kind": "attr",
+     "select": "v2",
+     "cond": {
+      "path": [
+       "CorsConfiguration",
+       "AllowOrigins",
+       "*"
+      ],
+      "op": "eq",
+      "value": "*"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "api",
+     "cond": {
+      "path": [
+       "Body"
+      ],
+      "op": "regex",
+      "value": "(?is)allow-origin[\\\"']?\\s*[:=]?\\s*[\\\"']*\\*"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "lam",
+     "cond": {
+      "path": [
+       "Code"
+      ],
+      "op": "regex",
+      "value": "(?is)access-control-allow-origin.{0,60}\\*"
+     }
+    }
+   ],
+   "tier": "core",
+   "quote": "that allows all origins",
+   "justify": "all origins means a wildcard *"
+  },
+  {
+   "id": "cors_standard_headers",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "opts",
+     "cond": {
+      "path": [
+       "Integration",
+       "IntegrationResponses",
+       "*",
+       "ResponseParameters"
+      ],
+      "op": "regex",
+      "value": "(?i)allow-headers.*content-type"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "v2",
+     "cond": {
+      "path": [
+       "CorsConfiguration",
+       "AllowHeaders",
+       "*"
+      ],
+      "op": "regex",
+      "value": "(?i)content-type|^\\*$"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "api",
+     "cond": {
+      "path": [
+       "Body"
+      ],
+      "op": "regex",
+      "value": "(?is)allow-headers.*content-type"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "lam",
+     "cond": {
+      "path": [
+       "Code"
+      ],
+      "op": "regex",
+      "value": "(?is)allow-headers.*content-type"
+     }
+    }
+   ],
+   "tier": "detail",
+   "quote": "and standard headers",
+   "justify": "Content-Type is the standard header"
+  },
+  {
+   "id": "success_2xx",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "each method should return appropriate HTTP status codes for success, bad input, and internal server errors",
+   "justify": "success is an HTTP 2xx status; each of the five operations returns it",
+   "checks": [
+    {
+     "kind": "exists",
+     "min": 5,
+     "select": {
+      "types": [
+       "AWS::ApiGateway::Method"
+      ],
+      "where": [
+       {
+        "path": [
+         "HttpMethod"
+        ],
+        "op": "in",
+        "value": [
+         "GET",
+         "POST",
+         "PUT",
+         "DELETE"
+        ]
+       },
+       {
+        "path": [
+         "MethodResponses",
+         "*",
+         "StatusCode"
+        ],
+        "op": "regex",
+        "value": "^2[0-9][0-9]$"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "min": 5,
+     "select": {
+      "types": [
+       "AWS::ApiGateway::Method"
+      ],
+      "where": [
+       {
+        "path": [
+         "HttpMethod"
+        ],
+        "op": "in",
+        "value": [
+         "GET",
+         "POST",
+         "PUT",
+         "DELETE"
+        ]
+       },
+       {
+        "path": [
+         "Integration",
+         "IntegrationResponses",
+         "*",
+         "StatusCode"
+        ],
+        "op": "regex",
+        "value": "^2[0-9][0-9]$"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "api",
+     "cond": {
+      "path": [
+       "Body"
+      ],
+      "op": "regex",
+      "value": "\"20[0-9]\""
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "lam",
+     "cond": {
+      "path": [
+       "Code"
+      ],
+      "op": "regex",
+      "value": "\\b20[0-9]\\b"
+     }
+    }
+   ]
+  },
+  {
+   "id": "bad_input_400",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "AWS::ApiGateway::Method"
+      ],
+      "where": [
+       {
+        "path": [
+         "MethodResponses",
+         "*",
+         "StatusCode"
+        ],
+        "op": "eq",
+        "value": 400
+       }
+      ]
+     },
+     "min": 5
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "AWS::ApiGateway::Method"
+      ],
+      "where": [
+       {
+        "path": [
+         "Integration",
+         "IntegrationResponses",
+         "*",
+         "StatusCode"
+        ],
+        "op": "eq",
+        "value": 400
+       }
+      ]
+     },
+     "min": 5
+    },
+    {
+     "kind": "attr",
+     "select": "api",
+     "cond": {
+      "path": [
+       "Body"
+      ],
+      "op": "regex",
+      "value": "\\b400\\b"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "lam",
+     "cond": {
+      "path": [
+       "Code"
+      ],
+      "op": "regex",
+      "value": "\\b400\\b"
+     }
+    }
+   ],
+   "tier": "detail",
+   "quote": "each method should return appropriate HTTP status codes for success, bad input, and internal server errors",
+   "justify": "bad input is HTTP 400; each of the five operations returns it"
+  },
+  {
+   "id": "server_error_500",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "AWS::ApiGateway::Method"
+      ],
+      "where": [
+       {
+        "path": [
+         "MethodResponses",
+         "*",
+         "StatusCode"
+        ],
+        "op": "eq",
+        "value": 500
+       }
+      ]
+     },
+     "min": 5
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "AWS::ApiGateway::Method"
+      ],
+      "where": [
+       {
+        "path": [
+         "Integration",
+         "IntegrationResponses",
+         "*",
+         "StatusCode"
+        ],
+        "op": "eq",
+        "value": 500
+       }
+      ]
+     },
+     "min": 5
+    },
+    {
+     "kind": "attr",
+     "select": "api",
+     "cond": {
+      "path": [
+       "Body"
+      ],
+      "op": "regex",
+      "value": "\\b500\\b"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "lam",
+     "cond": {
+      "path": [
+       "Code"
+      ],
+      "op": "regex",
+      "value": "\\b500\\b"
+     }
+    }
+   ],
+   "tier": "detail",
+   "quote": "each method should return appropriate HTTP status codes for success, bad input, and internal server errors",
+   "justify": "internal server error is HTTP 500; each of the five operations returns it"
+  },
+  {
+   "id": "scan_all",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::ApiGateway::Method"
+      ],
+      "where": [
+       {
+        "path": [
+         "HttpMethod"
+        ],
+        "op": "eq",
+        "value": "GET"
+       },
+       {
+        "path": [
+         "Integration",
+         "Uri"
+        ],
+        "op": "regex",
+        "value": "(?i)action/scan"
+       }
+      ]
+     },
+     "to": "kres"
+    },
+    {
+     "kind": "attr",
+     "select": "api",
+     "cond": {
+      "path": [
+       "Body"
+      ],
+      "op": "regex",
+      "value": "(?i)action/scan"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "lam",
+     "cond": {
+      "path": [
+       "Code"
+      ],
+      "op": "regex",
+      "value": "(?i)scan"
+     }
+    }
+   ],
+   "tier": "detail",
+   "quote": "a GET on `/kitten` that scans all items"
+  },
+  {
+   "id": "get_item",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::ApiGateway::Method"
+      ],
+      "where": [
+       {
+        "path": [
+         "HttpMethod"
+        ],
+        "op": "eq",
+        "value": "GET"
+       },
+       {
+        "path": [
+         "Integration",
+         "Uri"
+        ],
+        "op": "regex",
+        "value": "(?i)action/getitem"
+       }
+      ]
+     },
+     "to": "ires"
+    },
+    {
+     "kind": "attr",
+     "select": "api",
+     "cond": {
+      "path": [
+       "Body"
+      ],
+      "op": "regex",
+      "value": "(?i)action/getitem"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "lam",
+     "cond": {
+      "path": [
+       "Code"
+      ],
+      "op": "regex",
+      "value": "(?i)get_?item|getcommand|\\.get\\(\\s*\\{"
+     }
+    }
+   ],
+   "tier": "detail",
+   "quote": "retrieves a single item by its KittenId",
+   "justify": "retrieving a single item is the DynamoDB GetItem action"
+  },
+  {
+   "id": "put_item",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::ApiGateway::Method"
+      ],
+      "where": [
+       {
+        "path": [
+         "HttpMethod"
+        ],
+        "op": "eq",
+        "value": "PUT"
+       },
+       {
+        "path": [
+         "Integration",
+         "Uri"
+        ],
+        "op": "regex",
+        "value": "(?i)action/putitem"
+       }
+      ]
+     },
+     "to": "ires"
+    },
+    {
+     "kind": "attr",
+     "select": "api",
+     "cond": {
+      "path": [
+       "Body"
+      ],
+      "op": "regex",
+      "value": "(?i)action/putitem"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "lam",
+     "cond": {
+      "path": [
+       "Code"
+      ],
+      "op": "regex",
+      "value": "(?i)put_?item|putcommand|\\.put\\(\\s*\\{"
+     }
+    }
+   ],
+   "tier": "detail",
+   "quote": "to replace the item",
+   "justify": "replacing an item is the DynamoDB PutItem action"
+  },
+  {
+   "id": "delete_item",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::ApiGateway::Method"
+      ],
+      "where": [
+       {
+        "path": [
+         "HttpMethod"
+        ],
+        "op": "eq",
+        "value": "DELETE"
+       },
+       {
+        "path": [
+         "Integration",
+         "Uri"
+        ],
+        "op": "regex",
+        "value": "(?i)action/deleteitem"
+       }
+      ]
+     },
+     "to": "ires"
+    },
+    {
+     "kind": "attr",
+     "select": "api",
+     "cond": {
+      "path": [
+       "Body"
+      ],
+      "op": "regex",
+      "value": "(?i)action/deleteitem"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "lam",
+     "cond": {
+      "path": [
+       "Code"
+      ],
+      "op": "regex",
+      "value": "(?i)delete_?item|deletecommand|\\.delete\\(\\s*\\{"
+     }
+    }
+   ],
+   "tier": "detail",
+   "quote": "removes the item",
+   "justify": "removing an item is the DynamoDB DeleteItem action"
+  },
+  {
+   "id": "generated_id",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::ApiGateway::Method"
+      ],
+      "where": [
+       {
+        "path": [
+         "HttpMethod"
+        ],
+        "op": "eq",
+        "value": "POST"
+       },
+       {
+        "path": [
+         "Integration",
+         "RequestTemplates"
+        ],
+        "op": "regex",
+        "value": "\\$context\\."
+       }
+      ]
+     },
+     "to": "kres"
+    },
+    {
+     "kind": "attr",
+     "select": "api",
+     "cond": {
+      "path": [
+       "Body"
+      ],
+      "op": "regex",
+      "value": "\\$context\\."
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "lam",
+     "cond": {
+      "path": [
+       "Code"
+      ],
+      "op": "regex",
+      "value": "(?i)(requestcontext.{0,40}request_?id|context\\.aws_?request_?id)"
+     }
+    }
+   ],
+   "tier": "detail",
+   "quote": "auto-generates the KittenId from the request context"
+  },
+  {
+   "id": "name_color_body",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "min": 2,
+     "select": {
+      "types": [
+       "AWS::ApiGateway::Method"
+      ],
+      "where": [
+       {
+        "path": [
+         "HttpMethod"
+        ],
+        "op": "in",
+        "value": [
+         "POST",
+         "PUT"
+        ]
+       },
+       {
+        "path": [
+         "Integration",
+         "RequestTemplates"
+        ],
+        "op": "regex",
+        "value": "(?is)(\\bname\\b.*\\bcolor\\b|\\bcolor\\b.*\\bname\\b)"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "api",
+     "cond": {
+      "path": [
+       "Body"
+      ],
+      "op": "regex",
+      "value": "(?is)(\\bname\\b.*\\bcolor\\b|\\bcolor\\b.*\\bname\\b)"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "lam",
+     "cond": {
+      "path": [
+       "Code"
+      ],
+      "op": "regex",
+      "value": "(?is)(\\bname\\b.*\\bcolor\\b|\\bcolor\\b.*\\bname\\b)"
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "AWS::ApiGateway::Model"
+      ],
+      "where": [
+       {
+        "path": [
+         "Schema"
+        ],
+        "op": "regex",
+        "value": "(?is)(\\bname\\b.*\\bcolor\\b|\\bcolor\\b.*\\bname\\b)"
+       }
+      ]
+     }
+    }
+   ],
+   "tier": "detail",
+   "quote": "expects name and color fields in the request body",
+   "justify": "both POST and PUT expect these fields"
+  },
+  {
+   "id": "x_dynamodb_delete_perm",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "AWS::IAM::Policy"
+    ],
+    "where": []
+   },
+   "cond": {
+    "path": [
+     "PolicyDocument",
+     "Statement",
+     "*",
+     "Action",
+     "*"
+    ],
+    "op": "glob_covers",
+    "value": "dynamodb:DeleteItem"
+   },
+   "tier": "extra"
+  },
+  {
+   "id": "x_integration_type_aws",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "AWS::ApiGateway::Method"
+    ],
+    "where": [
+     {
+      "path": [
+       "HttpMethod"
+      ],
+      "op": "neq",
+      "value": "OPTIONS"
+     }
+    ]
+   },
+   "cond": {
+    "path": [
+     "Integration",
+     "Type"
+    ],
+    "op": "eq",
+    "value": "AWS"
+   },
+   "tier": "extra",
+   "quantifier": "all"
+  },
+  {
+   "id": "extra_type_aws_apigateway_account",
+   "kind": "exists",
+   "tier": "extra",
+   "select": {
+    "types": [
+     "AWS::ApiGateway::Account"
+    ],
+    "where": []
+   }
+  },
+  {
+   "id": "extra_type_aws_apigateway_deployment",
+   "kind": "exists",
+   "tier": "extra",
+   "select": {
+    "types": [
+     "AWS::ApiGateway::Deployment"
+    ],
+    "where": []
+   }
+  },
+  {
+   "id": "extra_type_aws_apigateway_stage",
+   "kind": "exists",
+   "tier": "extra",
+   "select": {
+    "types": [
+     "AWS::ApiGateway::Stage"
+    ],
+    "where": []
+   }
+  },
+  {
+   "id": "extra_type_aws_iam_role",
+   "kind": "exists",
+   "tier": "extra",
+   "select": {
+    "types": [
+     "AWS::IAM::Role"
+    ],
+    "where": []
+   }
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

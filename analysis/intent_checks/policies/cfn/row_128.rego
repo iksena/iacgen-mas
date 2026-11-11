@@ -1,0 +1,1703 @@
+package intent.cfn.row_128
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {},
+ "checks": [
+  {
+   "id": "lpg_db_name",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "using default names of \"graph-database\" and \"graph-database-rdf\"",
+   "select": {
+    "types": [
+     "AWS::Glue::Database"
+    ],
+    "where": [
+     {
+      "path": [
+       "DatabaseInput",
+       "Name"
+      ],
+      "op": "eq",
+      "value": "graph-database"
+     }
+    ]
+   }
+  },
+  {
+   "id": "rdf_db_name",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "using default names of \"graph-database\" and \"graph-database-rdf\"",
+   "select": {
+    "types": [
+     "AWS::Glue::Database"
+    ],
+    "where": [
+     {
+      "path": [
+       "DatabaseInput",
+       "Name"
+      ],
+      "op": "eq",
+      "value": "graph-database-rdf"
+     }
+    ]
+   }
+  },
+  {
+   "id": "table_airport",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "including for the LPG database tables named airport, country, continent, route, and customairport",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "AWS::Glue::Table"
+      ],
+      "where": [
+       {
+        "path": [
+         "TableInput",
+         "Name"
+        ],
+        "op": "eq",
+        "value": "airport"
+       },
+       {
+        "path": [
+         "DatabaseName"
+        ],
+        "op": "eq",
+        "value": "graph-database"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::Glue::Table"
+      ],
+      "where": [
+       {
+        "path": [
+         "TableInput",
+         "Name"
+        ],
+        "op": "eq",
+        "value": "airport"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "AWS::Glue::Database"
+      ],
+      "where": [
+       {
+        "path": [
+         "DatabaseInput",
+         "Name"
+        ],
+        "op": "eq",
+        "value": "graph-database"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "table_country",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "including for the LPG database tables named airport, country, continent, route, and customairport",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "AWS::Glue::Table"
+      ],
+      "where": [
+       {
+        "path": [
+         "TableInput",
+         "Name"
+        ],
+        "op": "eq",
+        "value": "country"
+       },
+       {
+        "path": [
+         "DatabaseName"
+        ],
+        "op": "eq",
+        "value": "graph-database"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::Glue::Table"
+      ],
+      "where": [
+       {
+        "path": [
+         "TableInput",
+         "Name"
+        ],
+        "op": "eq",
+        "value": "country"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "AWS::Glue::Database"
+      ],
+      "where": [
+       {
+        "path": [
+         "DatabaseInput",
+         "Name"
+        ],
+        "op": "eq",
+        "value": "graph-database"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "table_continent",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "including for the LPG database tables named airport, country, continent, route, and customairport",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "AWS::Glue::Table"
+      ],
+      "where": [
+       {
+        "path": [
+         "TableInput",
+         "Name"
+        ],
+        "op": "eq",
+        "value": "continent"
+       },
+       {
+        "path": [
+         "DatabaseName"
+        ],
+        "op": "eq",
+        "value": "graph-database"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::Glue::Table"
+      ],
+      "where": [
+       {
+        "path": [
+         "TableInput",
+         "Name"
+        ],
+        "op": "eq",
+        "value": "continent"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "AWS::Glue::Database"
+      ],
+      "where": [
+       {
+        "path": [
+         "DatabaseInput",
+         "Name"
+        ],
+        "op": "eq",
+        "value": "graph-database"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "table_route",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "including for the LPG database tables named airport, country, continent, route, and customairport",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "AWS::Glue::Table"
+      ],
+      "where": [
+       {
+        "path": [
+         "TableInput",
+         "Name"
+        ],
+        "op": "eq",
+        "value": "route"
+       },
+       {
+        "path": [
+         "DatabaseName"
+        ],
+        "op": "eq",
+        "value": "graph-database"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::Glue::Table"
+      ],
+      "where": [
+       {
+        "path": [
+         "TableInput",
+         "Name"
+        ],
+        "op": "eq",
+        "value": "route"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "AWS::Glue::Database"
+      ],
+      "where": [
+       {
+        "path": [
+         "DatabaseInput",
+         "Name"
+        ],
+        "op": "eq",
+        "value": "graph-database"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "table_customairport",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "including for the LPG database tables named airport, country, continent, route, and customairport",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "AWS::Glue::Table"
+      ],
+      "where": [
+       {
+        "path": [
+         "TableInput",
+         "Name"
+        ],
+        "op": "eq",
+        "value": "customairport"
+       },
+       {
+        "path": [
+         "DatabaseName"
+        ],
+        "op": "eq",
+        "value": "graph-database"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::Glue::Table"
+      ],
+      "where": [
+       {
+        "path": [
+         "TableInput",
+         "Name"
+        ],
+        "op": "eq",
+        "value": "customairport"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "AWS::Glue::Database"
+      ],
+      "where": [
+       {
+        "path": [
+         "DatabaseInput",
+         "Name"
+        ],
+        "op": "eq",
+        "value": "graph-database"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "table_airport_rdf",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "for the RDF database tables named airport_rdf",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "AWS::Glue::Table"
+      ],
+      "where": [
+       {
+        "path": [
+         "TableInput",
+         "Name"
+        ],
+        "op": "eq",
+        "value": "airport_rdf"
+       },
+       {
+        "path": [
+         "DatabaseName"
+        ],
+        "op": "eq",
+        "value": "graph-database-rdf"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::Glue::Table"
+      ],
+      "where": [
+       {
+        "path": [
+         "TableInput",
+         "Name"
+        ],
+        "op": "eq",
+        "value": "airport_rdf"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "AWS::Glue::Database"
+      ],
+      "where": [
+       {
+        "path": [
+         "DatabaseInput",
+         "Name"
+        ],
+        "op": "eq",
+        "value": "graph-database-rdf"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "table_route_rdf",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "and route_rdf and route_rdf_nopfx tables",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "AWS::Glue::Table"
+      ],
+      "where": [
+       {
+        "path": [
+         "TableInput",
+         "Name"
+        ],
+        "op": "eq",
+        "value": "route_rdf"
+       },
+       {
+        "path": [
+         "DatabaseName"
+        ],
+        "op": "eq",
+        "value": "graph-database-rdf"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::Glue::Table"
+      ],
+      "where": [
+       {
+        "path": [
+         "TableInput",
+         "Name"
+        ],
+        "op": "eq",
+        "value": "route_rdf"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "AWS::Glue::Database"
+      ],
+      "where": [
+       {
+        "path": [
+         "DatabaseInput",
+         "Name"
+        ],
+        "op": "eq",
+        "value": "graph-database-rdf"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "table_route_rdf_nopfx",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "and route_rdf and route_rdf_nopfx tables",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "AWS::Glue::Table"
+      ],
+      "where": [
+       {
+        "path": [
+         "TableInput",
+         "Name"
+        ],
+        "op": "eq",
+        "value": "route_rdf_nopfx"
+       },
+       {
+        "path": [
+         "DatabaseName"
+        ],
+        "op": "eq",
+        "value": "graph-database-rdf"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::Glue::Table"
+      ],
+      "where": [
+       {
+        "path": [
+         "TableInput",
+         "Name"
+        ],
+        "op": "eq",
+        "value": "route_rdf_nopfx"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "AWS::Glue::Database"
+      ],
+      "where": [
+       {
+        "path": [
+         "DatabaseInput",
+         "Name"
+        ],
+        "op": "eq",
+        "value": "graph-database-rdf"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "comma_separator",
+   "tier": "core",
+   "quote": "with a comma as the field separator",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "AWS::Glue::Table"
+    ],
+    "where": []
+   },
+   "cond": {
+    "path": [
+     "TableInput"
+    ],
+    "op": "regex",
+    "value": "(?i)(separator|delim)[a-z.]*\": \",\""
+   },
+   "quantifier": "all",
+   "justify": "a comma field separator is written as separatorChar, separator or field.delim"
+  },
+  {
+   "id": "columns_airport",
+   "kind": "all_of",
+   "tier": "detail",
+   "quote": "with appropriate string, integer, and double columns",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "AWS::Glue::Table"
+      ],
+      "where": [
+       {
+        "path": [
+         "TableInput",
+         "Name"
+        ],
+        "op": "eq",
+        "value": "airport"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "TableInput",
+       "StorageDescriptor",
+       "Columns",
+       "*",
+       "Type"
+      ],
+      "op": "in",
+      "value": [
+       "string"
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "AWS::Glue::Table"
+      ],
+      "where": [
+       {
+        "path": [
+         "TableInput",
+         "Name"
+        ],
+        "op": "eq",
+        "value": "airport"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "TableInput",
+       "StorageDescriptor",
+       "Columns",
+       "*",
+       "Type"
+      ],
+      "op": "in",
+      "value": [
+       "int",
+       "integer",
+       "bigint"
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "AWS::Glue::Table"
+      ],
+      "where": [
+       {
+        "path": [
+         "TableInput",
+         "Name"
+        ],
+        "op": "eq",
+        "value": "airport"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "TableInput",
+       "StorageDescriptor",
+       "Columns",
+       "*",
+       "Type"
+      ],
+      "op": "in",
+      "value": [
+       "double"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "columns_airport_rdf",
+   "kind": "all_of",
+   "tier": "detail",
+   "quote": "the same columns as the LPG airport table",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "AWS::Glue::Table"
+      ],
+      "where": [
+       {
+        "path": [
+         "TableInput",
+         "Name"
+        ],
+        "op": "eq",
+        "value": "airport_rdf"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "TableInput",
+       "StorageDescriptor",
+       "Columns",
+       "*",
+       "Type"
+      ],
+      "op": "in",
+      "value": [
+       "string"
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "AWS::Glue::Table"
+      ],
+      "where": [
+       {
+        "path": [
+         "TableInput",
+         "Name"
+        ],
+        "op": "eq",
+        "value": "airport_rdf"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "TableInput",
+       "StorageDescriptor",
+       "Columns",
+       "*",
+       "Type"
+      ],
+      "op": "in",
+      "value": [
+       "int",
+       "integer",
+       "bigint"
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "AWS::Glue::Table"
+      ],
+      "where": [
+       {
+        "path": [
+         "TableInput",
+         "Name"
+        ],
+        "op": "eq",
+        "value": "airport_rdf"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "TableInput",
+       "StorageDescriptor",
+       "Columns",
+       "*",
+       "Type"
+      ],
+      "op": "in",
+      "value": [
+       "double"
+      ]
+     }
+    },
+    {
+     "kind": "join",
+     "from": {
+      "types": [
+       "AWS::Glue::Table"
+      ],
+      "where": [
+       {
+        "path": [
+         "TableInput",
+         "Name"
+        ],
+        "op": "eq",
+        "value": "airport_rdf"
+       }
+      ]
+     },
+     "from_path": [
+      "TableInput",
+      "StorageDescriptor",
+      "Columns",
+      "*",
+      "Name"
+     ],
+     "to": {
+      "types": [
+       "AWS::Glue::Table"
+      ],
+      "where": [
+       {
+        "path": [
+         "TableInput",
+         "Name"
+        ],
+        "op": "eq",
+        "value": "airport"
+       }
+      ]
+     },
+     "to_path": [
+      "TableInput",
+      "StorageDescriptor",
+      "Columns",
+      "*",
+      "Name"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "label_vertex",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "vertex for airport, country, continent",
+   "select": {
+    "types": [
+     "AWS::Glue::Table"
+    ],
+    "where": [
+     {
+      "path": [
+       "TableInput",
+       "Name"
+      ],
+      "op": "in",
+      "value": [
+       "airport",
+       "country",
+       "continent"
+      ]
+     }
+    ]
+   },
+   "cond": {
+    "path": [
+     "TableInput",
+     "Parameters"
+    ],
+    "op": "regex",
+    "value": "(?i)vertex"
+   },
+   "quantifier": "all"
+  },
+  {
+   "id": "label_edge",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "edge for route",
+   "select": {
+    "types": [
+     "AWS::Glue::Table"
+    ],
+    "where": [
+     {
+      "path": [
+       "TableInput",
+       "Name"
+      ],
+      "op": "in",
+      "value": [
+       "route"
+      ]
+     }
+    ]
+   },
+   "cond": {
+    "path": [
+     "TableInput",
+     "Parameters"
+    ],
+    "op": "regex",
+    "value": "(?i)edge"
+   },
+   "quantifier": "all"
+  },
+  {
+   "id": "label_view",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "view for customairport",
+   "select": {
+    "types": [
+     "AWS::Glue::Table"
+    ],
+    "where": [
+     {
+      "path": [
+       "TableInput",
+       "Name"
+      ],
+      "op": "in",
+      "value": [
+       "customairport"
+      ]
+     }
+    ]
+   },
+   "cond": {
+    "path": [
+     "TableInput",
+     "Parameters"
+    ],
+    "op": "regex",
+    "value": "(?i)view"
+   },
+   "quantifier": "all"
+  },
+  {
+   "id": "view_query_gremlin",
+   "tier": "core",
+   "quote": "using an exact Gremlin traversal query to select source and destination airport codes for up to 10 routes",
+   "justify": "up to 10 routes means limit(10) or range(0,10); a traversal starts at g.V() or g.E()",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "AWS::Glue::Table"
+    ],
+    "where": [
+     {
+      "path": [
+       "TableInput",
+       "Name"
+      ],
+      "op": "in",
+      "value": [
+       "airport",
+       "country",
+       "continent",
+       "route",
+       "customairport"
+      ]
+     }
+    ]
+   },
+   "cond": {
+    "path": [
+     "TableInput",
+     "Parameters"
+    ],
+    "op": "regex",
+    "value": "(?s)g\\.[VE]\\(.{0,800}(limit\\(10L?\\)|range\\(0L?, ?10L?\\))"
+   }
+  },
+  {
+   "id": "view_query_content",
+   "tier": "detail",
+   "quote": "select source and destination airport codes for up to 10 routes",
+   "kind": "all_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "AWS::Glue::Table"
+      ],
+      "where": [
+       {
+        "path": [
+         "TableInput",
+         "Name"
+        ],
+        "op": "in",
+        "value": [
+         "airport",
+         "country",
+         "continent",
+         "route",
+         "customairport"
+        ]
+       },
+       {
+        "path": [
+         "TableInput",
+         "Parameters"
+        ],
+        "op": "regex",
+        "value": "g\\.[VE]\\("
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "TableInput",
+       "Parameters"
+      ],
+      "op": "regex",
+      "value": "(?i)route"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "AWS::Glue::Table"
+      ],
+      "where": [
+       {
+        "path": [
+         "TableInput",
+         "Name"
+        ],
+        "op": "in",
+        "value": [
+         "airport",
+         "country",
+         "continent",
+         "route",
+         "customairport"
+        ]
+       },
+       {
+        "path": [
+         "TableInput",
+         "Parameters"
+        ],
+        "op": "regex",
+        "value": "g\\.[VE]\\("
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "TableInput",
+       "Parameters"
+      ],
+      "op": "regex",
+      "value": "(?i)code"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "AWS::Glue::Table"
+      ],
+      "where": [
+       {
+        "path": [
+         "TableInput",
+         "Name"
+        ],
+        "op": "in",
+        "value": [
+         "airport",
+         "country",
+         "continent",
+         "route",
+         "customairport"
+        ]
+       },
+       {
+        "path": [
+         "TableInput",
+         "Parameters"
+        ],
+        "op": "regex",
+        "value": "g\\.[VE]\\("
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "TableInput",
+       "Parameters"
+      ],
+      "op": "regex",
+      "value": "(?i)(source|src|from|outV|origin)"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "AWS::Glue::Table"
+      ],
+      "where": [
+       {
+        "path": [
+         "TableInput",
+         "Name"
+        ],
+        "op": "in",
+        "value": [
+         "airport",
+         "country",
+         "continent",
+         "route",
+         "customairport"
+        ]
+       },
+       {
+        "path": [
+         "TableInput",
+         "Parameters"
+        ],
+        "op": "regex",
+        "value": "g\\.[VE]\\("
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "TableInput",
+       "Parameters"
+      ],
+      "op": "regex",
+      "value": "(?i)(destination|dest|dst|\\bto\\b|inV|target)"
+     }
+    }
+   ]
+  },
+  {
+   "id": "rdf_componenttype",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "all marked as rdf-type",
+   "select": {
+    "types": [
+     "AWS::Glue::Table"
+    ],
+    "where": [
+     {
+      "path": [
+       "TableInput",
+       "Name"
+      ],
+      "op": "in",
+      "value": [
+       "airport_rdf",
+       "route_rdf",
+       "route_rdf_nopfx"
+      ]
+     }
+    ]
+   },
+   "cond": {
+    "path": [
+     "TableInput",
+     "Parameters"
+    ],
+    "op": "regex",
+    "value": "(?i)(rdf[-_.]?type|[a-z_.-]*(type|classification|graph)[^a-z]{1,6}rdf)"
+   },
+   "quantifier": "all"
+  },
+  {
+   "id": "rdf_strip_uri",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "with stripping of URI prefixes enabled",
+   "select": {
+    "types": [
+     "AWS::Glue::Table"
+    ],
+    "where": [
+     {
+      "path": [
+       "TableInput",
+       "Name"
+      ],
+      "op": "in",
+      "value": [
+       "airport_rdf",
+       "route_rdf",
+       "route_rdf_nopfx"
+      ]
+     }
+    ]
+   },
+   "cond": {
+    "path": [
+     "TableInput",
+     "Parameters"
+    ],
+    "op": "regex",
+    "value": "(?i)(strip[a-z_.-]{0,15}|prefix[a-z_.-]{0,12}strip[a-z_.-]{0,8})[^a-z]{1,6}true"
+   },
+   "quantifier": "all",
+   "justify": "enabled means true"
+  },
+  {
+   "id": "airport_rdf_classuri",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "a classuri parameter set to \"class:Airport\"",
+   "select": {
+    "types": [
+     "AWS::Glue::Table"
+    ],
+    "where": [
+     {
+      "path": [
+       "TableInput",
+       "Name"
+      ],
+      "op": "eq",
+      "value": "airport_rdf"
+     }
+    ]
+   },
+   "cond": {
+    "path": [
+     "TableInput",
+     "Parameters"
+    ],
+    "op": "regex",
+    "value": "(?i)class.?uri[^a-z]{1,6}class:airport"
+   }
+  },
+  {
+   "id": "airport_rdf_querymode",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "a querymode of class",
+   "select": {
+    "types": [
+     "AWS::Glue::Table"
+    ],
+    "where": [
+     {
+      "path": [
+       "TableInput",
+       "Name"
+      ],
+      "op": "eq",
+      "value": "airport_rdf"
+     }
+    ]
+   },
+   "cond": {
+    "path": [
+     "TableInput",
+     "Parameters"
+    ],
+    "op": "regex",
+    "value": "(?i)query.?mode[^a-z]{1,6}class[^a-z]"
+   }
+  },
+  {
+   "id": "route_rdf_querymode",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "a querymode of sparql",
+   "select": {
+    "types": [
+     "AWS::Glue::Table"
+    ],
+    "where": [
+     {
+      "path": [
+       "TableInput",
+       "Name"
+      ],
+      "op": "in",
+      "value": [
+       "route_rdf",
+       "route_rdf_nopfx"
+      ]
+     }
+    ]
+   },
+   "cond": {
+    "path": [
+     "TableInput",
+     "Parameters"
+    ],
+    "op": "regex",
+    "value": "(?i)query.?mode[^a-z]{1,6}sparql"
+   },
+   "quantifier": "all"
+  },
+  {
+   "id": "route_rdf_columns",
+   "kind": "all_of",
+   "tier": "core",
+   "quote": "with incode, outcode (string) and dist (integer) columns",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "AWS::Glue::Table"
+      ],
+      "where": [
+       {
+        "path": [
+         "TableInput",
+         "Name"
+        ],
+        "op": "in",
+        "value": [
+         "route_rdf",
+         "route_rdf_nopfx"
+        ]
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "TableInput",
+       "StorageDescriptor",
+       "Columns",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "Name"
+        ],
+        "op": "eq",
+        "value": "incode"
+       },
+       {
+        "path": [
+         "Type"
+        ],
+        "op": "in",
+        "value": [
+         "string"
+        ]
+       }
+      ]
+     },
+     "quantifier": "all"
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "AWS::Glue::Table"
+      ],
+      "where": [
+       {
+        "path": [
+         "TableInput",
+         "Name"
+        ],
+        "op": "in",
+        "value": [
+         "route_rdf",
+         "route_rdf_nopfx"
+        ]
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "TableInput",
+       "StorageDescriptor",
+       "Columns",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "Name"
+        ],
+        "op": "eq",
+        "value": "outcode"
+       },
+       {
+        "path": [
+         "Type"
+        ],
+        "op": "in",
+        "value": [
+         "string"
+        ]
+       }
+      ]
+     },
+     "quantifier": "all"
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "AWS::Glue::Table"
+      ],
+      "where": [
+       {
+        "path": [
+         "TableInput",
+         "Name"
+        ],
+        "op": "in",
+        "value": [
+         "route_rdf",
+         "route_rdf_nopfx"
+        ]
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "TableInput",
+       "StorageDescriptor",
+       "Columns",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "Name"
+        ],
+        "op": "eq",
+        "value": "dist"
+       },
+       {
+        "path": [
+         "Type"
+        ],
+        "op": "in",
+        "value": [
+         "int",
+         "integer",
+         "bigint"
+        ]
+       }
+      ]
+     },
+     "quantifier": "all"
+    }
+   ]
+  },
+  {
+   "id": "route_rdf_sparql",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "the sparql queries",
+   "select": {
+    "types": [
+     "AWS::Glue::Table"
+    ],
+    "where": [
+     {
+      "path": [
+       "TableInput",
+       "Name"
+      ],
+      "op": "in",
+      "value": [
+       "route_rdf",
+       "route_rdf_nopfx"
+      ]
+     }
+    ]
+   },
+   "cond": {
+    "path": [
+     "TableInput",
+     "Parameters"
+    ],
+    "op": "regex",
+    "value": "(?i)select"
+   },
+   "quantifier": "all"
+  },
+  {
+   "id": "air_routes_uris",
+   "kind": "all_of",
+   "tier": "detail",
+   "quote": "using sample URIs from the air-routes ontology for the class, datatypeProperty, and objectProperty namespaces",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "AWS::Glue::Table"
+      ],
+      "where": [
+       {
+        "path": [
+         "TableInput",
+         "Name"
+        ],
+        "op": "in",
+        "value": [
+         "airport_rdf",
+         "route_rdf",
+         "route_rdf_nopfx"
+        ]
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "TableInput",
+       "Parameters"
+      ],
+      "op": "regex",
+      "value": "(?i)air-routes.{0,20}class"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "AWS::Glue::Table"
+      ],
+      "where": [
+       {
+        "path": [
+         "TableInput",
+         "Name"
+        ],
+        "op": "in",
+        "value": [
+         "airport_rdf",
+         "route_rdf",
+         "route_rdf_nopfx"
+        ]
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "TableInput",
+       "Parameters"
+      ],
+      "op": "regex",
+      "value": "(?i)air-routes.{0,20}datatypeProperty"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "AWS::Glue::Table"
+      ],
+      "where": [
+       {
+        "path": [
+         "TableInput",
+         "Name"
+        ],
+        "op": "in",
+        "value": [
+         "airport_rdf",
+         "route_rdf",
+         "route_rdf_nopfx"
+        ]
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "TableInput",
+       "Parameters"
+      ],
+      "op": "regex",
+      "value": "(?i)air-routes.{0,20}objectProperty"
+     }
+    }
+   ]
+  },
+  {
+   "id": "x_external",
+   "kind": "attr",
+   "tier": "extra",
+   "select": {
+    "types": [
+     "AWS::Glue::Table"
+    ],
+    "where": []
+   },
+   "cond": {
+    "path": [
+     "TableInput",
+     "TableType"
+    ],
+    "op": "eq",
+    "value": "EXTERNAL_TABLE"
+   },
+   "quantifier": "all"
+  },
+  {
+   "id": "x_subject",
+   "kind": "attr",
+   "tier": "extra",
+   "select": {
+    "types": [
+     "AWS::Glue::Table"
+    ],
+    "where": [
+     {
+      "path": [
+       "TableInput",
+       "Name"
+      ],
+      "op": "eq",
+      "value": "airport_rdf"
+     }
+    ]
+   },
+   "cond": {
+    "path": [
+     "TableInput",
+     "Parameters",
+     "subject"
+    ],
+    "op": "eq",
+    "value": "id"
+   }
+  },
+  {
+   "id": "x_route_edge_cols",
+   "kind": "attr",
+   "tier": "extra",
+   "select": {
+    "types": [
+     "AWS::Glue::Table"
+    ],
+    "where": [
+     {
+      "path": [
+       "TableInput",
+       "Name"
+      ],
+      "op": "eq",
+      "value": "route"
+     }
+    ]
+   },
+   "cond": {
+    "path": [
+     "TableInput",
+     "StorageDescriptor",
+     "Columns",
+     "*"
+    ],
+    "op": "match",
+    "value": [
+     {
+      "path": [
+       "Name"
+      ],
+      "op": "eq",
+      "value": "out"
+     },
+     {
+      "path": [
+       "Type"
+      ],
+      "op": "eq",
+      "value": "string"
+     }
+    ]
+   }
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

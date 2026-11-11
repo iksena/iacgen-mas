@@ -1,0 +1,480 @@
+{
+ "meta": {
+  "lang": "tf",
+  "mode": "plan",
+  "warnings": [],
+  "gt_hash": "25eb93d6a149c610a1c94e7df994d1c160f8dad2854649a77dde05ed14d80b50",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "aws_backup_plan.plan",
+   "cfg": "aws_backup_plan.plan",
+   "type": "aws_backup_plan",
+   "values": {
+    "advanced_backup_setting": [],
+    "region": "us-east-1",
+    "rule": [
+     {
+      "completion_window": 180,
+      "copy_action": [],
+      "enable_continuous_backup": false,
+      "lifecycle": [],
+      "scan_action": [],
+      "schedule": "cron(0 12 * * ? *)",
+      "schedule_expression_timezone": "Etc/UTC",
+      "start_window": 60,
+      "target_logically_air_gapped_backup_vault_arn": ""
+     }
+    ],
+    "scan_setting": []
+   },
+   "refs": [
+    "aws_backup_vault.vault",
+    "random_string.random"
+   ]
+  },
+  {
+   "id": "aws_backup_selection.selection",
+   "cfg": "aws_backup_selection.selection",
+   "type": "aws_backup_selection",
+   "values": {
+    "region": "us-east-1",
+    "resources": null,
+    "selection_tag": [
+     {
+      "key": "backup",
+      "type": "STRINGEQUALS",
+      "value": "true"
+     }
+    ]
+   },
+   "refs": [
+    "aws_backup_plan.plan",
+    "aws_iam_role.iam_role",
+    "random_string.random"
+   ]
+  },
+  {
+   "id": "aws_backup_vault.vault",
+   "cfg": "aws_backup_vault.vault",
+   "type": "aws_backup_vault",
+   "values": {
+    "force_destroy": false,
+    "region": "us-east-1",
+    "timeouts": null
+   },
+   "refs": [
+    "aws_kms_key.kms_key",
+    "random_string.random"
+   ]
+  },
+  {
+   "id": "aws_iam_role.iam_role",
+   "cfg": "aws_iam_role.iam_role",
+   "type": "aws_iam_role",
+   "values": {
+    "assume_role_policy": "{\"Statement\":[{\"Action\":[\"sts:AssumeRole\"],\"Effect\":\"allow\",\"Principal\":{\"Service\":[\"backup.amazonaws.com\"]}}],\"Version\":\"2012-10-17\"}",
+    "description": null,
+    "force_detach_policies": false,
+    "max_session_duration": 3600,
+    "path": "/",
+    "permissions_boundary": null,
+    "tags": null
+   },
+   "refs": [
+    "random_string.random"
+   ]
+  },
+  {
+   "id": "aws_iam_role_policy_attachment.iam_role_attachment",
+   "cfg": "aws_iam_role_policy_attachment.iam_role_attachment",
+   "type": "aws_iam_role_policy_attachment",
+   "values": {
+    "policy_arn": "arn:aws:iam::aws:policy/service-role/AWSBackupServiceRolePolicyForBackup"
+   },
+   "refs": [
+    "aws_iam_role.iam_role"
+   ]
+  },
+  {
+   "id": "aws_kms_key.kms_key[0]",
+   "cfg": "aws_kms_key.kms_key",
+   "type": "aws_kms_key",
+   "values": {
+    "bypass_policy_lockout_safety_check": false,
+    "custom_key_store_id": null,
+    "customer_master_key_spec": "SYMMETRIC_DEFAULT",
+    "deletion_window_in_days": null,
+    "description": "KMS key for Backup Encryption at rest",
+    "enable_key_rotation": true,
+    "is_enabled": true,
+    "key_usage": "ENCRYPT_DECRYPT",
+    "region": "us-east-1",
+    "timeouts": null,
+    "xks_key_id": null
+   },
+   "refs": [
+    "random_string.random"
+   ]
+  },
+  {
+   "id": "random_string.random",
+   "cfg": "random_string.random",
+   "type": "random_string",
+   "values": {
+    "keepers": null,
+    "length": 6,
+    "lower": true,
+    "min_lower": 0,
+    "min_numeric": 0,
+    "min_special": 0,
+    "min_upper": 0,
+    "number": true,
+    "numeric": true,
+    "override_special": null,
+    "special": false,
+    "upper": false
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.backup_schedule",
+   "cfg": "__parameter__.backup_schedule",
+   "type": "__parameter__",
+   "values": {
+    "name": "backup_schedule",
+    "default": "cron(0 12 * * ? *)"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.cold_storage_after",
+   "cfg": "__parameter__.cold_storage_after",
+   "type": "__parameter__",
+   "values": {
+    "name": "cold_storage_after",
+    "default": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.delete_after",
+   "cfg": "__parameter__.delete_after",
+   "type": "__parameter__",
+   "values": {
+    "name": "delete_after",
+    "default": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.kms_key_arn",
+   "cfg": "__parameter__.kms_key_arn",
+   "type": "__parameter__",
+   "values": {
+    "name": "kms_key_arn",
+    "default": ""
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.name",
+   "cfg": "__parameter__.name",
+   "type": "__parameter__",
+   "values": {
+    "name": "name",
+    "default": "sudo-backup"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.secondary_vault_arn",
+   "cfg": "__parameter__.secondary_vault_arn",
+   "type": "__parameter__",
+   "values": {
+    "name": "secondary_vault_arn",
+    "default": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.secondary_vault_cold_storage_after",
+   "cfg": "__parameter__.secondary_vault_cold_storage_after",
+   "type": "__parameter__",
+   "values": {
+    "name": "secondary_vault_cold_storage_after",
+    "default": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.secondary_vault_delete_after",
+   "cfg": "__parameter__.secondary_vault_delete_after",
+   "type": "__parameter__",
+   "values": {
+    "name": "secondary_vault_delete_after",
+    "default": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.selection_tags",
+   "cfg": "__parameter__.selection_tags",
+   "type": "__parameter__",
+   "values": {
+    "name": "selection_tags",
+    "default": [
+     {}
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.iam_role_arn",
+   "cfg": "__output__.iam_role_arn",
+   "type": "__output__",
+   "values": {
+    "name": "iam_role_arn",
+    "value": null,
+    "description": "ARN of the IAM role created for Backup"
+   },
+   "refs": [
+    "aws_iam_role.iam_role"
+   ]
+  },
+  {
+   "id": "__output__.kms_key_arn",
+   "cfg": "__output__.kms_key_arn",
+   "type": "__output__",
+   "values": {
+    "name": "kms_key_arn",
+    "value": null,
+    "description": "ARN of the KMS Key if created, otherwise null"
+   },
+   "refs": [
+    "aws_kms_key.kms_key"
+   ]
+  },
+  {
+   "id": "__output__.plan_arn",
+   "cfg": "__output__.plan_arn",
+   "type": "__output__",
+   "values": {
+    "name": "plan_arn",
+    "value": null,
+    "description": "ARN of the Backup Plan"
+   },
+   "refs": [
+    "aws_backup_plan.plan"
+   ]
+  },
+  {
+   "id": "__output__.vault_arn",
+   "cfg": "__output__.vault_arn",
+   "type": "__output__",
+   "values": {
+    "name": "vault_arn",
+    "value": null,
+    "description": "ARN of the backup vault."
+   },
+   "refs": [
+    "aws_backup_vault.vault"
+   ]
+  },
+  {
+   "id": "__declared__.random_string.random",
+   "cfg": "random_string.random",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "random_string",
+    "name": "random",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "length": 6,
+     "special": false,
+     "upper": false
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_kms_key.kms_key",
+   "cfg": "aws_kms_key.kms_key",
+   "type": "__declared__",
+   "refs": [
+    "random_string.random"
+   ],
+   "values": {
+    "type": "aws_kms_key",
+    "name": "kms_key",
+    "gated": true,
+    "gate": "local.create_kms_key ? 1 : 0",
+    "properties": {
+     "count": "${local.create_kms_key ? 1 : 0}",
+     "description": "KMS key for Backup Encryption at rest",
+     "enable_key_rotation": true,
+     "tags": {
+      "Name": "${local.name}-backup-encryption-key"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_backup_vault.vault",
+   "cfg": "aws_backup_vault.vault",
+   "type": "__declared__",
+   "refs": [
+    "aws_kms_key.kms_key",
+    "random_string.random"
+   ],
+   "values": {
+    "type": "aws_backup_vault",
+    "name": "vault",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "${local.name}-backup-vault",
+     "kms_key_arn": "${local.kms_key_arn}",
+     "tags": {
+      "Name": "${local.name}-backup-vault"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_backup_plan.plan",
+   "cfg": "aws_backup_plan.plan",
+   "type": "__declared__",
+   "refs": [
+    "aws_backup_vault.vault",
+    "random_string.random"
+   ],
+   "values": {
+    "type": "aws_backup_plan",
+    "name": "plan",
+    "gated": true,
+    "gate": "var.cold_storage_after != null || var.delete_after != null ? [1] : []",
+    "properties": {
+     "name": "${local.name}-backup-plan",
+     "tags": {
+      "Name": "${local.name}-backup-plan"
+     },
+     "rule": [
+      {
+       "rule_name": "${local.name}-backup-rule",
+       "target_vault_name": "${aws_backup_vault.vault.name}",
+       "schedule": "cron(0 12 * * ? *)",
+       "dynamic": {
+        "lifecycle": {
+         "for_each": "${var.cold_storage_after != None || var.delete_after != None ? [1] : []}",
+         "content": [
+          {
+           "cold_storage_after": "${var.cold_storage_after}",
+           "delete_after": "${var.delete_after}"
+          }
+         ]
+        },
+        "copy_action": {
+         "for_each": "${var.secondary_vault_arn != None ? [1] : []}",
+         "content": [
+          {
+           "destination_vault_arn": "${var.secondary_vault_arn}",
+           "dynamic": {
+            "lifecycle": {
+             "for_each": "${local.secondary_vault_cold_storage_after != None || local.secondary_vault_delete_after != None ? [1] : []}",
+             "content": [
+              {
+               "cold_storage_after": "${local.secondary_vault_cold_storage_after}",
+               "delete_after": "${local.secondary_vault_delete_after}"
+              }
+             ]
+            }
+           }
+          }
+         ]
+        }
+       },
+       "recovery_point_tags": {
+        "Name": "${local.name}-backup-recovery-point"
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role.iam_role",
+   "cfg": "aws_iam_role.iam_role",
+   "type": "__declared__",
+   "refs": [
+    "random_string.random"
+   ],
+   "values": {
+    "type": "aws_iam_role",
+    "name": "iam_role",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "${local.name}-backup-role",
+     "assume_role_policy": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Action\": [\"sts:AssumeRole\"],\n      \"Effect\": \"allow\",\n      \"Principal\": {\n        \"Service\": [\"backup.amazonaws.com\"]\n      }\n    }\n  ]\n}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role_policy_attachment.iam_role_attachment",
+   "cfg": "aws_iam_role_policy_attachment.iam_role_attachment",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_role.iam_role"
+   ],
+   "values": {
+    "type": "aws_iam_role_policy_attachment",
+    "name": "iam_role_attachment",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "policy_arn": "arn:aws:iam::aws:policy/service-role/AWSBackupServiceRolePolicyForBackup",
+     "role": "${aws_iam_role.iam_role.name}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_backup_selection.selection",
+   "cfg": "aws_backup_selection.selection",
+   "type": "__declared__",
+   "refs": [
+    "aws_backup_plan.plan",
+    "aws_iam_role.iam_role",
+    "random_string.random",
+    "selection_tag.value"
+   ],
+   "values": {
+    "type": "aws_backup_selection",
+    "name": "selection",
+    "gated": true,
+    "gate": "var.selection_tags",
+    "properties": {
+     "name": "${local.name}-backup-selection",
+     "iam_role_arn": "${aws_iam_role.iam_role.arn}",
+     "plan_id": "${aws_backup_plan.plan.id}",
+     "dynamic": {
+      "selection_tag": {
+       "for_each": [
+        {}
+       ],
+       "content": [
+        {
+         "type": "${lookup(selection_tag.value,\"type\",\"STRINGEQUALS\")}",
+         "key": "${lookup(selection_tag.value,\"key\",\"backup\")}",
+         "value": "${lookup(selection_tag.value,\"value\",\"true\")}"
+        }
+       ]
+      }
+     }
+    }
+   }
+  }
+ ]
+}

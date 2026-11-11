@@ -1,0 +1,416 @@
+{
+ "lang": "tf",
+ "row_number": 287,
+ "source_hash": {
+  "gt": "0429dc052ee76dd07620065b4b484f684cb92515878105c79681a3c00142d450",
+  "prompt": "d34704e8d6bf3db970ada325a63519e11bd1ae71eaedf670969d6db1e6395944"
+ },
+ "selectors": {
+  "v1": {
+   "types": [
+    "aws_vpc"
+   ],
+   "where": [
+    {
+     "path": "cidr_block",
+     "op": "eq",
+     "value": "10.0.0.0/16"
+    },
+    {
+     "path": "tags.Name",
+     "op": "eq",
+     "value": "XXXX-vpc-test"
+    }
+   ]
+  },
+  "v2": {
+   "types": [
+    "aws_vpc"
+   ],
+   "where": [
+    {
+     "path": "cidr_block",
+     "op": "eq",
+     "value": "172.31.0.0/16"
+    },
+    {
+     "path": "tags.Name",
+     "op": "eq",
+     "value": "Default"
+    }
+   ]
+  },
+  "v3": {
+   "types": [
+    "aws_vpc"
+   ],
+   "where": [
+    {
+     "path": "cidr_block",
+     "op": "eq",
+     "value": "192.168.0.0/16"
+    },
+    {
+     "path": "tags.Name",
+     "op": "eq",
+     "value": "eksctl-eks-cluster-px-cluster/VPC"
+    }
+   ]
+  },
+  "v4": {
+   "types": [
+    "aws_vpc"
+   ],
+   "where": [
+    {
+     "path": "cidr_block",
+     "op": "eq",
+     "value": "10.0.0.0/24"
+    },
+    {
+     "path": "tags.*",
+     "op": "absent"
+    }
+   ]
+  },
+  "v5": {
+   "types": [
+    "aws_vpc"
+   ],
+   "where": [
+    {
+     "path": "cidr_block",
+     "op": "eq",
+     "value": "10.0.0.0/16"
+    },
+    {
+     "path": "tags.Name",
+     "op": "eq",
+     "value": ""
+    }
+   ]
+  },
+  "all": {
+   "types": [
+    "aws_vpc"
+   ]
+  },
+  "p": {
+   "types": [
+    "__parameter__"
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "five_vpcs",
+   "kind": "exists",
+   "select": "all",
+   "min": 5,
+   "tier": "core",
+   "quote": "creates five standalone VPCs",
+   "max": 5
+  },
+  {
+   "id": "vpc_xxxx",
+   "kind": "exists",
+   "select": "v1",
+   "tier": "core",
+   "quote": "a VPC named \"XXXX-vpc-test\" with CIDR 10.0.0.0/16"
+  },
+  {
+   "id": "vpc_default",
+   "kind": "exists",
+   "select": "v2",
+   "tier": "core",
+   "quote": "a VPC named \"Default\" with CIDR 172.31.0.0/16"
+  },
+  {
+   "id": "vpc_default_hostnames",
+   "kind": "attr",
+   "select": "v2",
+   "tier": "core",
+   "quote": "a VPC named \"Default\" with CIDR 172.31.0.0/16 and DNS hostnames enabled",
+   "cond": {
+    "path": "enable_dns_hostnames",
+    "op": "truthy"
+   }
+  },
+  {
+   "id": "vpc_eksctl",
+   "kind": "exists",
+   "select": "v3",
+   "tier": "core",
+   "quote": "a VPC named \"eksctl-eks-cluster-px-cluster/VPC\" with CIDR 192.168.0.0/16"
+  },
+  {
+   "id": "vpc_eksctl_hostnames",
+   "kind": "attr",
+   "select": "v3",
+   "tier": "core",
+   "quote": "192.168.0.0/16 and DNS hostnames enabled",
+   "cond": {
+    "path": "enable_dns_hostnames",
+    "op": "truthy"
+   }
+  },
+  {
+   "id": "vpc_eksctl_cluster_tag",
+   "kind": "attr",
+   "select": "v3",
+   "tier": "detail",
+   "quote": "the cluster name \"eks-cluster-px\"",
+   "cond": {
+    "path": "tags.*",
+    "op": "eq",
+    "value": "eks-cluster-px"
+   }
+  },
+  {
+   "id": "vpc_eksctl_version_tag",
+   "kind": "attr",
+   "select": "v3",
+   "tier": "detail",
+   "quote": "eksctl version \"0.94.0\"",
+   "cond": {
+    "path": "tags.*",
+    "op": "eq",
+    "value": "0.94.0"
+   }
+  },
+  {
+   "id": "vpc_untagged",
+   "kind": "exists",
+   "select": "v4",
+   "tier": "core",
+   "quote": "an untagged VPC with CIDR 10.0.0.0/24"
+  },
+  {
+   "id": "vpc_empty_name",
+   "kind": "exists",
+   "select": "v5",
+   "tier": "core",
+   "quote": "a VPC with CIDR 10.0.0.0/16 and an empty Name tag"
+  },
+  {
+   "id": "tenancy_default",
+   "kind": "attr",
+   "select": "all",
+   "quantifier": "all",
+   "tier": "core",
+   "quote": "each with default instance tenancy",
+   "cond": {
+    "path": "instance_tenancy",
+    "op": "eq",
+    "value": "default"
+   }
+  },
+  {
+   "id": "dns_support",
+   "kind": "attr",
+   "select": "all",
+   "quantifier": "all",
+   "tier": "core",
+   "quote": "DNS support enabled",
+   "cond": {
+    "path": "enable_dns_support",
+    "op": "truthy"
+   }
+  },
+  {
+   "id": "cidr_vars",
+   "kind": "all_of",
+   "tier": "detail",
+   "quote": "with all CIDR, tag, and DNS values exposed as variables with these defaults",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": "default",
+        "op": "regex",
+        "value": "(^|[^0-9.])10\\.0\\.0\\.0/16([^0-9]|$)"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": "default",
+        "op": "regex",
+        "value": "(^|[^0-9.])172\\.31\\.0\\.0/16([^0-9]|$)"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": "default",
+        "op": "regex",
+        "value": "(^|[^0-9.])192\\.168\\.0\\.0/16([^0-9]|$)"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": "default",
+        "op": "regex",
+        "value": "(^|[^0-9.])10\\.0\\.0\\.0/24([^0-9]|$)"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "tag_vars",
+   "kind": "all_of",
+   "tier": "detail",
+   "quote": "with all CIDR, tag, and DNS values exposed as variables with these defaults",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": "default",
+        "op": "regex",
+        "value": "XXXX-vpc-test"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": "default",
+        "op": "regex",
+        "value": "(^|[^A-Za-z])Default([^A-Za-z]|$)"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": "default",
+        "op": "regex",
+        "value": "eksctl-eks-cluster-px-cluster/VPC"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": "default",
+        "op": "regex",
+        "value": "(^|[^-A-Za-z])eks-cluster-px([^-A-Za-z]|$)"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": "default",
+        "op": "regex",
+        "value": "0\\.94\\.0"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "dns_var",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "DNS values exposed as variables with these defaults",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "regex",
+        "value": "(?i)dns.*host|host.*dns"
+       },
+       {
+        "path": "default",
+        "op": "eq",
+        "value": true
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": "default",
+        "op": "regex",
+        "value": "(?i)dns_?hostnames[\"']?\\s*[:=]\\s*true"
+       }
+      ]
+     }
+    }
+   ]
+  }
+ ],
+ "notes": "Prompt asks for variables but does not name them, so only defaults are checked (scalar or inside a map/object default). 'Untagged' is checked as no planned tags on the 10.0.0.0/24 VPC. Exactly five VPCs ('creates five standalone VPCs'). Planned defaults for instance_tenancy/enable_dns_support count, since omitting them yields the stated default behaviour."
+}

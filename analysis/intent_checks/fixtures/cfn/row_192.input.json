@@ -1,0 +1,655 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "d1c527f2fa388cfe848c5fa022ce3dd2c0922917c08316693196e19a5e135b7f",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "TPMByUserQuery",
+   "cfg": "TPMByUserQuery",
+   "type": "AWS::Logs::QueryDefinition",
+   "values": {
+    "Name": "Claude Code - Real-Time TPM by User",
+    "LogGroupNames": [
+     "/aws/claude-code/metrics"
+    ],
+    "QueryString": "filter @message like /claude_code.token.usage/\n| parse @message /\"claude_code.token.usage\":(?<tokens>[0-9.]+)/\n| parse @message /\"user.email\":\"(?<user_email>[^\"]*)\"/\n| parse @message /\"user.id\":\"(?<user_id>[^\"]*)\"/\n| parse @message /\"model\":\"(?<model>[^\"]*)\"/\n| stats sum(tokens) as tokens_per_minute by bin(1m) as time, user_email, model\n| sort time desc, tokens_per_minute desc\n| display time, user_email, model, tokens_per_minute\n"
+   },
+   "refs": []
+  },
+  {
+   "id": "RPMByUserQuery",
+   "cfg": "RPMByUserQuery",
+   "type": "AWS::Logs::QueryDefinition",
+   "values": {
+    "Name": "Claude Code - Real-Time RPM by User",
+    "LogGroupNames": [
+     "/aws/claude-code/metrics"
+    ],
+    "QueryString": "filter @message like /claude_code.token.usage/\n| parse @message /\"user.email\":\"(?<user_email>[^\"]*)\"/\n| parse @message /\"model\":\"(?<model>[^\"]*)\"/\n| stats count() as requests_per_minute by bin(1m) as time, user_email, model\n| sort time desc, requests_per_minute desc\n| display time, user_email, model, requests_per_minute\n"
+   },
+   "refs": []
+  },
+  {
+   "id": "CurrentTPMRPMQuery",
+   "cfg": "CurrentTPMRPMQuery",
+   "type": "AWS::Logs::QueryDefinition",
+   "values": {
+    "Name": "Claude Code - Current TPM/RPM (5-min average)",
+    "LogGroupNames": [
+     "/aws/claude-code/metrics"
+    ],
+    "QueryString": "filter @message like /claude_code.token.usage/\n| parse @message /\"claude_code.token.usage\":(?<tokens>[0-9.]+)/\n| parse @message /\"user.email\":\"(?<user_email>[^\"]*)\"/\n| stats\n    sum(tokens) / 5 as avg_tpm,\n    count() / 5 as avg_rpm,\n    sum(tokens) as total_tokens_5min,\n    count() as total_requests_5min\nby bin(5m) as time_window, user_email\n| sort time_window desc\n| display time_window, user_email, avg_tpm, avg_rpm, total_tokens_5min, total_requests_5min\n"
+   },
+   "refs": []
+  },
+  {
+   "id": "RateLimitRiskQuery",
+   "cfg": "RateLimitRiskQuery",
+   "type": "AWS::Logs::QueryDefinition",
+   "values": {
+    "Name": "Claude Code - Rate Limit Risk Analysis",
+    "LogGroupNames": [
+     "/aws/claude-code/metrics"
+    ],
+    "QueryString": "filter @message like /claude_code.token.usage/\n| parse @message /\"claude_code.token.usage\":(?<tokens>[0-9.]+)/\n| parse @message /\"user.email\":\"(?<user_email>[^\"]*)\"/\n| parse @message /\"model\":\"(?<model>[^\"]*)\"/\n| stats\n    sum(tokens) as tpm,\n    count() as rpm\nby bin(1m) as minute, user_email, model\n| sort tpm desc, rpm desc\n| limit 100\n"
+   },
+   "refs": []
+  },
+  {
+   "id": "UserSessionAnalysisQuery",
+   "cfg": "UserSessionAnalysisQuery",
+   "type": "AWS::Logs::QueryDefinition",
+   "values": {
+    "Name": "Claude Code - User Session Analysis",
+    "LogGroupNames": [
+     "/aws/claude-code/metrics"
+    ],
+    "QueryString": "filter @message like /claude_code.token.usage/\n| parse @message /\"session.id\":\"(?<session_id>[^\"]*)\"/\n| parse @message /\"user.email\":\"(?<user_email>[^\"]*)\"/\n| parse @message /\"claude_code.token.usage\":(?<tokens>[0-9.]+)/\n| parse @message /\"model\":\"(?<model>[^\"]*)\"/\n| parse @message /\"organization\":\"(?<org>[^\"]*)\"/\n| stats\n    sum(tokens) as session_tokens,\n    count() as api_calls,\n    earliest(@timestamp) as session_start,\n    latest(@timestamp) as session_end,\n    count() as models_used\nby session_id, user_email, org\n| sort session_tokens desc\n| limit 50\n"
+   },
+   "refs": []
+  },
+  {
+   "id": "UserActivityTimelineQuery",
+   "cfg": "UserActivityTimelineQuery",
+   "type": "AWS::Logs::QueryDefinition",
+   "values": {
+    "Name": "Claude Code - User Activity Timeline (Hourly)",
+    "LogGroupNames": [
+     "/aws/claude-code/metrics"
+    ],
+    "QueryString": "filter @message like /claude_code.token.usage/\n| parse @message /\"user.email\":\"(?<user_email>[^\"]*)\"/\n| parse @message /\"claude_code.token.usage\":(?<tokens>[0-9.]+)/\n| parse @message /\"type\":\"(?<token_type>[^\"]*)\"/\n| parse @message /\"model\":\"(?<model>[^\"]*)\"/\n| stats\n    sum(tokens) as hourly_tokens,\n    count() as hourly_requests,\n    count() as unique_users\nby bin(1h) as hour, token_type, model\n| sort hour desc\n| display hour, token_type, model, hourly_tokens, hourly_requests, unique_users\n"
+   },
+   "refs": []
+  },
+  {
+   "id": "ErrorThrottlingEventsQuery",
+   "cfg": "ErrorThrottlingEventsQuery",
+   "type": "AWS::Logs::QueryDefinition",
+   "values": {
+    "Name": "Claude Code - Errors and Throttling Events",
+    "LogGroupNames": [
+     "/aws/claude-code/metrics"
+    ],
+    "QueryString": "filter @message like /error|throttle|429|rate.limit|exception|failed/i\n| parse @message /\"user.email\":\"(?<user_email>[^\"]*)\"/\n| parse @message /\"error\":\"(?<error_message>[^\"]*)\"/\n| parse @message /\"status\":(?<status_code>[0-9]+)/\n| parse @message /\"model\":\"(?<model>[^\"]*)\"/\n| fields @timestamp, user_email, error_message, status_code, model, @message\n| stats count() as error_count by user_email, error_message, status_code\n| sort error_count desc\n| display user_email, error_message, status_code, error_count\n"
+   },
+   "refs": []
+  },
+  {
+   "id": "CostByUserQuery",
+   "cfg": "CostByUserQuery",
+   "type": "AWS::Logs::QueryDefinition",
+   "values": {
+    "Name": "Claude Code - Cost Analysis by User",
+    "LogGroupNames": [
+     "/aws/claude-code/metrics"
+    ],
+    "QueryString": "filter @message like /claude_code.token.usage/\n| parse @message /\"user.email\":\"(?<user_email>[^\"]*)\"/\n| parse @message /\"claude_code.token.usage\":(?<tokens>[0-9.]+)/\n| parse @message /\"model\":\"(?<model>[^\"]*)\"/\n| parse @message /\"type\":\"(?<token_type>[^\"]*)\"/\n| stats\n    sum(tokens) as total_tokens\nby user_email\n| sort total_tokens desc\n| limit 50\n"
+   },
+   "refs": []
+  },
+  {
+   "id": "CostByModelQuery",
+   "cfg": "CostByModelQuery",
+   "type": "AWS::Logs::QueryDefinition",
+   "values": {
+    "Name": "Claude Code - Cost Analysis by Model",
+    "LogGroupNames": [
+     "/aws/claude-code/metrics"
+    ],
+    "QueryString": "filter @message like /claude_code.token.usage/\n| parse @message /\"claude_code.token.usage\":(?<tokens>[0-9.]+)/\n| parse @message /\"model\":\"(?<model>[^\"]*)\"/\n| parse @message /\"type\":\"(?<token_type>[^\"]*)\"/\n| stats\n    sum(tokens) as total_tokens,\n    count() as request_count\nby model, token_type\n| sort total_tokens desc\n"
+   },
+   "refs": []
+  },
+  {
+   "id": "OrganizationUsageQuery",
+   "cfg": "OrganizationUsageQuery",
+   "type": "AWS::Logs::QueryDefinition",
+   "values": {
+    "Name": "Claude Code - Organization Usage Analysis",
+    "LogGroupNames": [
+     "/aws/claude-code/metrics"
+    ],
+    "QueryString": "filter @message like /claude_code.token.usage/\n| parse @message /\"organization\":\"(?<org>[^\"]*)\"/\n| parse @message /\"user.email\":\"(?<user_email>[^\"]*)\"/\n| parse @message /\"claude_code.token.usage\":(?<tokens>[0-9.]+)/\n| parse @message /\"type\":\"(?<token_type>[^\"]*)\"/\n| stats\n    sum(tokens) as total_tokens,\n    count() as total_requests\nby org\n| sort total_tokens desc\n"
+   },
+   "refs": []
+  },
+  {
+   "id": "ModelEfficiencyQuery",
+   "cfg": "ModelEfficiencyQuery",
+   "type": "AWS::Logs::QueryDefinition",
+   "values": {
+    "Name": "Claude Code - Model Efficiency Analysis",
+    "LogGroupNames": [
+     "/aws/claude-code/metrics"
+    ],
+    "QueryString": "filter @message like /claude_code.token.usage/\n| parse @message /\"model\":\"(?<model>[^\"]*)\"/\n| parse @message /\"claude_code.token.usage\":(?<tokens>[0-9.]+)/\n| parse @message /\"type\":\"(?<token_type>[^\"]*)\"/\n| stats\n    sum(tokens) as total_tokens,\n    count() as request_count,\n    avg(tokens) as avg_tokens,\n    min(tokens) as min_tokens,\n    max(tokens) as max_tokens\nby model, token_type\n| sort total_tokens desc\n"
+   },
+   "refs": []
+  },
+  {
+   "id": "CacheHitRateQuery",
+   "cfg": "CacheHitRateQuery",
+   "type": "AWS::Logs::QueryDefinition",
+   "values": {
+    "Name": "Claude Code - Cache Hit Rate by User",
+    "LogGroupNames": [
+     "/aws/claude-code/metrics"
+    ],
+    "QueryString": "filter @message like /type\":\"cache/\n| parse @message /\"type\":\"(?<token_type>[^\"]*)\"/\n| parse @message /\"claude_code.token.usage\":(?<tokens>[0-9.]+)/\n| parse @message /\"user.email\":\"(?<user_email>[^\"]*)\"/\n| parse @message /\"model\":\"(?<model>[^\"]*)\"/\n| filter token_type in [\"cacheRead\", \"cacheCreation\"]\n| stats sum(tokens) as total_tokens by user_email, model, token_type\n| stats\n    sum(if(token_type=\"cacheRead\", total_tokens, 0)) as cache_hits,\n    sum(if(token_type=\"cacheCreation\", total_tokens, 0)) as cache_misses\nby user_email, model\n| fields\n    user_email,\n    model,\n    cache_hits,\n    cache_misses,\n    cache_hits + cache_misses as total_cache_tokens,\n    round(cache_hits * 100.0 / (cache_hits + cache_misses + 0.001), 2) as cache_hit_rate_pct\n| sort cache_hit_rate_pct desc\n"
+   },
+   "refs": []
+  },
+  {
+   "id": "CacheHitRateOverTimeQuery",
+   "cfg": "CacheHitRateOverTimeQuery",
+   "type": "AWS::Logs::QueryDefinition",
+   "values": {
+    "Name": "Claude Code - Cache Hit Rate Over Time",
+    "LogGroupNames": [
+     "/aws/claude-code/metrics"
+    ],
+    "QueryString": "filter @message like /type\":\"cache/\n| parse @message /\"type\":\"(?<token_type>[^\"]*)\"/\n| parse @message /\"claude_code.token.usage\":(?<tokens>[0-9.]+)/\n| filter token_type in [\"cacheRead\", \"cacheCreation\"]\n| stats sum(tokens) as total_tokens, count() as request_count by bin(1h) as time_window, token_type\n| stats\n    sum(if(token_type=\"cacheRead\", total_tokens, 0)) as cache_hits,\n    sum(if(token_type=\"cacheCreation\", total_tokens, 0)) as cache_misses,\n    sum(if(token_type=\"cacheRead\", request_count, 0)) as cache_hit_requests,\n    sum(if(token_type=\"cacheCreation\", request_count, 0)) as cache_miss_requests\nby time_window\n| fields\n    time_window,\n    cache_hits,\n    cache_misses,\n    cache_hits + cache_misses as total_cache_tokens,\n    round(cache_hits * 100.0 / (cache_hits + cache_misses + 0.001), 2) as cache_hit_rate_pct,\n    cache_hit_requests,\n    cache_miss_requests\n| sort time_window desc\n"
+   },
+   "refs": []
+  },
+  {
+   "id": "CacheHitsBySessionQuery",
+   "cfg": "CacheHitsBySessionQuery",
+   "type": "AWS::Logs::QueryDefinition",
+   "values": {
+    "Name": "Claude Code - Cache Hits by Session",
+    "LogGroupNames": [
+     "/aws/claude-code/metrics"
+    ],
+    "QueryString": "filter @message like /type\":\"cacheRead/\n| parse @message /\"claude_code.token.usage\":(?<tokens>[0-9.]+)/\n| parse @message /\"session.id\":\"(?<session_id>[^\"]*)\"/\n| parse @message /\"user.email\":\"(?<user_email>[^\"]*)\"/\n| stats\n    sum(tokens) as cache_hit_tokens,\n    count() as cache_hit_count,\n    earliest(@timestamp) as session_start,\n    latest(@timestamp) as session_end\nby session_id, user_email\n| sort cache_hit_tokens desc\n| limit 100\n"
+   },
+   "refs": []
+  },
+  {
+   "id": "CacheMissesBySessionQuery",
+   "cfg": "CacheMissesBySessionQuery",
+   "type": "AWS::Logs::QueryDefinition",
+   "values": {
+    "Name": "Claude Code - Cache Misses by Session",
+    "LogGroupNames": [
+     "/aws/claude-code/metrics"
+    ],
+    "QueryString": "filter @message like /type\":\"cacheCreation/\n| parse @message /\"claude_code.token.usage\":(?<tokens>[0-9.]+)/\n| parse @message /\"session.id\":\"(?<session_id>[^\"]*)\"/\n| parse @message /\"user.email\":\"(?<user_email>[^\"]*)\"/\n| stats\n    sum(tokens) as cache_miss_tokens,\n    count() as cache_miss_count,\n    earliest(@timestamp) as session_start,\n    latest(@timestamp) as session_end\nby session_id, user_email\n| sort cache_miss_tokens desc\n| limit 100\n"
+   },
+   "refs": []
+  },
+  {
+   "id": "PeakUsageWindowsQuery",
+   "cfg": "PeakUsageWindowsQuery",
+   "type": "AWS::Logs::QueryDefinition",
+   "values": {
+    "Name": "Claude Code - Peak Usage Windows",
+    "LogGroupNames": [
+     "/aws/claude-code/metrics"
+    ],
+    "QueryString": "filter @message like /claude_code.token.usage/\n| parse @message /\"claude_code.token.usage\":(?<tokens>[0-9.]+)/\n| parse @message /\"user.email\":\"(?<user_email>[^\"]*)\"/\n| stats\n    sum(tokens) as window_tokens,\n    count() as window_requests,\n    count_distinct(user_email) as active_users\nby bin(15m) as time_window\n| sort window_tokens desc\n| limit 50\n| display time_window, window_tokens, window_requests, active_users\n"
+   },
+   "refs": []
+  },
+  {
+   "id": "SessionDeepDiveQuery",
+   "cfg": "SessionDeepDiveQuery",
+   "type": "AWS::Logs::QueryDefinition",
+   "values": {
+    "Name": "Claude Code - Session Deep Dive",
+    "LogGroupNames": [
+     "/aws/claude-code/metrics"
+    ],
+    "QueryString": "# Replace SESSION_ID_HERE with actual session ID to analyze\nfilter @message like /SESSION_ID_HERE/\n| parse @message /\"session.id\":\"(?<session_id>[^\"]*)\"/\n| parse @message /\"user.email\":\"(?<user_email>[^\"]*)\"/\n| parse @message /\"claude_code.token.usage\":(?<tokens>[0-9.]+)/\n| parse @message /\"model\":\"(?<model>[^\"]*)\"/\n| parse @message /\"type\":\"(?<token_type>[^\"]*)\"/\n| fields\n    @timestamp,\n    session_id,\n    user_email,\n    model,\n    token_type,\n    tokens,\n    @message\n| sort @timestamp asc\n| display @timestamp, user_email, model, token_type, tokens\n"
+   },
+   "refs": []
+  },
+  {
+   "id": "MetricFieldExplorerQuery",
+   "cfg": "MetricFieldExplorerQuery",
+   "type": "AWS::Logs::QueryDefinition",
+   "values": {
+    "Name": "Claude Code - Metric Field Explorer",
+    "LogGroupNames": [
+     "/aws/claude-code/metrics"
+    ],
+    "QueryString": "# Explore all available fields in Claude Code metrics\nfilter @message like /claude_code.token.usage/\n| parse @message /\"user.email\":\"(?<user_email>[^\"]*)\"/\n| parse @message /\"user.id\":\"(?<user_id>[^\"]*)\"/\n| parse @message /\"session.id\":\"(?<session_id>[^\"]*)\"/\n| parse @message /\"organization\":\"(?<org>[^\"]*)\"/\n| parse @message /\"model\":\"(?<model>[^\"]*)\"/\n| parse @message /\"type\":\"(?<token_type>[^\"]*)\"/\n| parse @message /\"terminal.type\":\"(?<terminal_type>[^\"]*)\"/\n| parse @message /\"OTelLib\":\"(?<otel_lib>[^\"]*)\"/\n| parse @message /\"claude_code.token.usage\":(?<tokens>[0-9.]+)/\n| limit 10\n| display @timestamp, user_email, user_id, session_id, org, model, token_type, terminal_type, otel_lib, tokens\n"
+   },
+   "refs": []
+  },
+  {
+   "id": "DailyUsageSummaryQuery",
+   "cfg": "DailyUsageSummaryQuery",
+   "type": "AWS::Logs::QueryDefinition",
+   "values": {
+    "Name": "Claude Code - Daily Usage Summary",
+    "LogGroupNames": [
+     "/aws/claude-code/metrics"
+    ],
+    "QueryString": "filter @message like /claude_code.token.usage/\n| parse @message /\"claude_code.token.usage\":(?<tokens>[0-9.]+)/\n| parse @message /\"user.email\":\"(?<user_email>[^\"]*)\"/\n| parse @message /\"model\":\"(?<model>[^\"]*)\"/\n| stats\n    sum(tokens) as daily_tokens,\n    count() as daily_requests\nby bin(1d) as date\n| sort date desc\n| limit 30\n"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.MetricsLogGroup",
+   "cfg": "__parameter__.MetricsLogGroup",
+   "type": "__parameter__",
+   "values": {
+    "name": "MetricsLogGroup",
+    "type": "String",
+    "default": "/aws/claude-code/metrics",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.QueryListInfo",
+   "cfg": "__output__.QueryListInfo",
+   "type": "__output__",
+   "values": {
+    "name": "QueryListInfo",
+    "value": "The following queries have been saved to CloudWatch Logs Insights:\n\nReal-Time Monitoring:\n- Claude Code - Real-Time TPM by User\n- Claude Code - Real-Time RPM by User\n- Claude Code - Current TPM/RPM (5-min average)\n- Claude Code - Rate Limit Risk Analysis\n\nUser Analytics:\n- Claude Code - User Session Analysis\n- Claude Code - User Activity Timeline (Hourly)\n- Claude Code - Errors and Throttling Events\n\nCost & Attribution:\n- Claude Code - Cost Analysis by User\n- Claude Code - Cost Analysis by Model\n- Claude Code - Organization Usage Analysis\n\nDebugging & Analysis:\n- Claude Code - Model Efficiency Analysis\n- Claude Code - Cache Hit Rate Analysis\n- Claude Code - Peak Usage Windows\n- Claude Code - Session Deep Dive\n- Claude Code - Metric Field Explorer\n- Claude Code - Daily Usage Summary\n",
+    "description": "List of saved CloudWatch Logs Insights queries",
+    "export": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.LogsInsightsConsoleUrl",
+   "cfg": "__output__.LogsInsightsConsoleUrl",
+   "type": "__output__",
+   "values": {
+    "name": "LogsInsightsConsoleUrl",
+    "value": "https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#logsV2:logs-insights",
+    "description": "Direct link to CloudWatch Logs Insights",
+    "export": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__declared__.AWS::Logs::QueryDefinition.TPMByUserQuery",
+   "cfg": "TPMByUserQuery",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Logs::QueryDefinition",
+    "name": "TPMByUserQuery",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "Claude Code - Real-Time TPM by User",
+     "LogGroupNames": [
+      "/aws/claude-code/metrics"
+     ],
+     "QueryString": "filter @message like /claude_code.token.usage/\n| parse @message /\"claude_code.token.usage\":(?<tokens>[0-9.]+)/\n| parse @message /\"user.email\":\"(?<user_email>[^\"]*)\"/\n| parse @message /\"user.id\":\"(?<user_id>[^\"]*)\"/\n| parse @message /\"model\":\"(?<model>[^\"]*)\"/\n| stats sum(tokens) as tokens_per_minute by bin(1m) as time, user_email, model\n| sort time desc, tokens_per_minute desc\n| display time, user_email, model, tokens_per_minute\n"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::QueryDefinition.RPMByUserQuery",
+   "cfg": "RPMByUserQuery",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Logs::QueryDefinition",
+    "name": "RPMByUserQuery",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "Claude Code - Real-Time RPM by User",
+     "LogGroupNames": [
+      "/aws/claude-code/metrics"
+     ],
+     "QueryString": "filter @message like /claude_code.token.usage/\n| parse @message /\"user.email\":\"(?<user_email>[^\"]*)\"/\n| parse @message /\"model\":\"(?<model>[^\"]*)\"/\n| stats count() as requests_per_minute by bin(1m) as time, user_email, model\n| sort time desc, requests_per_minute desc\n| display time, user_email, model, requests_per_minute\n"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::QueryDefinition.CurrentTPMRPMQuery",
+   "cfg": "CurrentTPMRPMQuery",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Logs::QueryDefinition",
+    "name": "CurrentTPMRPMQuery",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "Claude Code - Current TPM/RPM (5-min average)",
+     "LogGroupNames": [
+      "/aws/claude-code/metrics"
+     ],
+     "QueryString": "filter @message like /claude_code.token.usage/\n| parse @message /\"claude_code.token.usage\":(?<tokens>[0-9.]+)/\n| parse @message /\"user.email\":\"(?<user_email>[^\"]*)\"/\n| stats\n    sum(tokens) / 5 as avg_tpm,\n    count() / 5 as avg_rpm,\n    sum(tokens) as total_tokens_5min,\n    count() as total_requests_5min\nby bin(5m) as time_window, user_email\n| sort time_window desc\n| display time_window, user_email, avg_tpm, avg_rpm, total_tokens_5min, total_requests_5min\n"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::QueryDefinition.RateLimitRiskQuery",
+   "cfg": "RateLimitRiskQuery",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Logs::QueryDefinition",
+    "name": "RateLimitRiskQuery",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "Claude Code - Rate Limit Risk Analysis",
+     "LogGroupNames": [
+      "/aws/claude-code/metrics"
+     ],
+     "QueryString": "filter @message like /claude_code.token.usage/\n| parse @message /\"claude_code.token.usage\":(?<tokens>[0-9.]+)/\n| parse @message /\"user.email\":\"(?<user_email>[^\"]*)\"/\n| parse @message /\"model\":\"(?<model>[^\"]*)\"/\n| stats\n    sum(tokens) as tpm,\n    count() as rpm\nby bin(1m) as minute, user_email, model\n| sort tpm desc, rpm desc\n| limit 100\n"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::QueryDefinition.UserSessionAnalysisQuery",
+   "cfg": "UserSessionAnalysisQuery",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Logs::QueryDefinition",
+    "name": "UserSessionAnalysisQuery",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "Claude Code - User Session Analysis",
+     "LogGroupNames": [
+      "/aws/claude-code/metrics"
+     ],
+     "QueryString": "filter @message like /claude_code.token.usage/\n| parse @message /\"session.id\":\"(?<session_id>[^\"]*)\"/\n| parse @message /\"user.email\":\"(?<user_email>[^\"]*)\"/\n| parse @message /\"claude_code.token.usage\":(?<tokens>[0-9.]+)/\n| parse @message /\"model\":\"(?<model>[^\"]*)\"/\n| parse @message /\"organization\":\"(?<org>[^\"]*)\"/\n| stats\n    sum(tokens) as session_tokens,\n    count() as api_calls,\n    earliest(@timestamp) as session_start,\n    latest(@timestamp) as session_end,\n    count() as models_used\nby session_id, user_email, org\n| sort session_tokens desc\n| limit 50\n"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::QueryDefinition.UserActivityTimelineQuery",
+   "cfg": "UserActivityTimelineQuery",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Logs::QueryDefinition",
+    "name": "UserActivityTimelineQuery",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "Claude Code - User Activity Timeline (Hourly)",
+     "LogGroupNames": [
+      "/aws/claude-code/metrics"
+     ],
+     "QueryString": "filter @message like /claude_code.token.usage/\n| parse @message /\"user.email\":\"(?<user_email>[^\"]*)\"/\n| parse @message /\"claude_code.token.usage\":(?<tokens>[0-9.]+)/\n| parse @message /\"type\":\"(?<token_type>[^\"]*)\"/\n| parse @message /\"model\":\"(?<model>[^\"]*)\"/\n| stats\n    sum(tokens) as hourly_tokens,\n    count() as hourly_requests,\n    count() as unique_users\nby bin(1h) as hour, token_type, model\n| sort hour desc\n| display hour, token_type, model, hourly_tokens, hourly_requests, unique_users\n"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::QueryDefinition.ErrorThrottlingEventsQuery",
+   "cfg": "ErrorThrottlingEventsQuery",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Logs::QueryDefinition",
+    "name": "ErrorThrottlingEventsQuery",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "Claude Code - Errors and Throttling Events",
+     "LogGroupNames": [
+      "/aws/claude-code/metrics"
+     ],
+     "QueryString": "filter @message like /error|throttle|429|rate.limit|exception|failed/i\n| parse @message /\"user.email\":\"(?<user_email>[^\"]*)\"/\n| parse @message /\"error\":\"(?<error_message>[^\"]*)\"/\n| parse @message /\"status\":(?<status_code>[0-9]+)/\n| parse @message /\"model\":\"(?<model>[^\"]*)\"/\n| fields @timestamp, user_email, error_message, status_code, model, @message\n| stats count() as error_count by user_email, error_message, status_code\n| sort error_count desc\n| display user_email, error_message, status_code, error_count\n"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::QueryDefinition.CostByUserQuery",
+   "cfg": "CostByUserQuery",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Logs::QueryDefinition",
+    "name": "CostByUserQuery",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "Claude Code - Cost Analysis by User",
+     "LogGroupNames": [
+      "/aws/claude-code/metrics"
+     ],
+     "QueryString": "filter @message like /claude_code.token.usage/\n| parse @message /\"user.email\":\"(?<user_email>[^\"]*)\"/\n| parse @message /\"claude_code.token.usage\":(?<tokens>[0-9.]+)/\n| parse @message /\"model\":\"(?<model>[^\"]*)\"/\n| parse @message /\"type\":\"(?<token_type>[^\"]*)\"/\n| stats\n    sum(tokens) as total_tokens\nby user_email\n| sort total_tokens desc\n| limit 50\n"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::QueryDefinition.CostByModelQuery",
+   "cfg": "CostByModelQuery",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Logs::QueryDefinition",
+    "name": "CostByModelQuery",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "Claude Code - Cost Analysis by Model",
+     "LogGroupNames": [
+      "/aws/claude-code/metrics"
+     ],
+     "QueryString": "filter @message like /claude_code.token.usage/\n| parse @message /\"claude_code.token.usage\":(?<tokens>[0-9.]+)/\n| parse @message /\"model\":\"(?<model>[^\"]*)\"/\n| parse @message /\"type\":\"(?<token_type>[^\"]*)\"/\n| stats\n    sum(tokens) as total_tokens,\n    count() as request_count\nby model, token_type\n| sort total_tokens desc\n"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::QueryDefinition.OrganizationUsageQuery",
+   "cfg": "OrganizationUsageQuery",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Logs::QueryDefinition",
+    "name": "OrganizationUsageQuery",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "Claude Code - Organization Usage Analysis",
+     "LogGroupNames": [
+      "/aws/claude-code/metrics"
+     ],
+     "QueryString": "filter @message like /claude_code.token.usage/\n| parse @message /\"organization\":\"(?<org>[^\"]*)\"/\n| parse @message /\"user.email\":\"(?<user_email>[^\"]*)\"/\n| parse @message /\"claude_code.token.usage\":(?<tokens>[0-9.]+)/\n| parse @message /\"type\":\"(?<token_type>[^\"]*)\"/\n| stats\n    sum(tokens) as total_tokens,\n    count() as total_requests\nby org\n| sort total_tokens desc\n"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::QueryDefinition.ModelEfficiencyQuery",
+   "cfg": "ModelEfficiencyQuery",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Logs::QueryDefinition",
+    "name": "ModelEfficiencyQuery",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "Claude Code - Model Efficiency Analysis",
+     "LogGroupNames": [
+      "/aws/claude-code/metrics"
+     ],
+     "QueryString": "filter @message like /claude_code.token.usage/\n| parse @message /\"model\":\"(?<model>[^\"]*)\"/\n| parse @message /\"claude_code.token.usage\":(?<tokens>[0-9.]+)/\n| parse @message /\"type\":\"(?<token_type>[^\"]*)\"/\n| stats\n    sum(tokens) as total_tokens,\n    count() as request_count,\n    avg(tokens) as avg_tokens,\n    min(tokens) as min_tokens,\n    max(tokens) as max_tokens\nby model, token_type\n| sort total_tokens desc\n"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::QueryDefinition.CacheHitRateQuery",
+   "cfg": "CacheHitRateQuery",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Logs::QueryDefinition",
+    "name": "CacheHitRateQuery",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "Claude Code - Cache Hit Rate by User",
+     "LogGroupNames": [
+      "/aws/claude-code/metrics"
+     ],
+     "QueryString": "filter @message like /type\":\"cache/\n| parse @message /\"type\":\"(?<token_type>[^\"]*)\"/\n| parse @message /\"claude_code.token.usage\":(?<tokens>[0-9.]+)/\n| parse @message /\"user.email\":\"(?<user_email>[^\"]*)\"/\n| parse @message /\"model\":\"(?<model>[^\"]*)\"/\n| filter token_type in [\"cacheRead\", \"cacheCreation\"]\n| stats sum(tokens) as total_tokens by user_email, model, token_type\n| stats\n    sum(if(token_type=\"cacheRead\", total_tokens, 0)) as cache_hits,\n    sum(if(token_type=\"cacheCreation\", total_tokens, 0)) as cache_misses\nby user_email, model\n| fields\n    user_email,\n    model,\n    cache_hits,\n    cache_misses,\n    cache_hits + cache_misses as total_cache_tokens,\n    round(cache_hits * 100.0 / (cache_hits + cache_misses + 0.001), 2) as cache_hit_rate_pct\n| sort cache_hit_rate_pct desc\n"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::QueryDefinition.CacheHitRateOverTimeQuery",
+   "cfg": "CacheHitRateOverTimeQuery",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Logs::QueryDefinition",
+    "name": "CacheHitRateOverTimeQuery",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "Claude Code - Cache Hit Rate Over Time",
+     "LogGroupNames": [
+      "/aws/claude-code/metrics"
+     ],
+     "QueryString": "filter @message like /type\":\"cache/\n| parse @message /\"type\":\"(?<token_type>[^\"]*)\"/\n| parse @message /\"claude_code.token.usage\":(?<tokens>[0-9.]+)/\n| filter token_type in [\"cacheRead\", \"cacheCreation\"]\n| stats sum(tokens) as total_tokens, count() as request_count by bin(1h) as time_window, token_type\n| stats\n    sum(if(token_type=\"cacheRead\", total_tokens, 0)) as cache_hits,\n    sum(if(token_type=\"cacheCreation\", total_tokens, 0)) as cache_misses,\n    sum(if(token_type=\"cacheRead\", request_count, 0)) as cache_hit_requests,\n    sum(if(token_type=\"cacheCreation\", request_count, 0)) as cache_miss_requests\nby time_window\n| fields\n    time_window,\n    cache_hits,\n    cache_misses,\n    cache_hits + cache_misses as total_cache_tokens,\n    round(cache_hits * 100.0 / (cache_hits + cache_misses + 0.001), 2) as cache_hit_rate_pct,\n    cache_hit_requests,\n    cache_miss_requests\n| sort time_window desc\n"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::QueryDefinition.CacheHitsBySessionQuery",
+   "cfg": "CacheHitsBySessionQuery",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Logs::QueryDefinition",
+    "name": "CacheHitsBySessionQuery",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "Claude Code - Cache Hits by Session",
+     "LogGroupNames": [
+      "/aws/claude-code/metrics"
+     ],
+     "QueryString": "filter @message like /type\":\"cacheRead/\n| parse @message /\"claude_code.token.usage\":(?<tokens>[0-9.]+)/\n| parse @message /\"session.id\":\"(?<session_id>[^\"]*)\"/\n| parse @message /\"user.email\":\"(?<user_email>[^\"]*)\"/\n| stats\n    sum(tokens) as cache_hit_tokens,\n    count() as cache_hit_count,\n    earliest(@timestamp) as session_start,\n    latest(@timestamp) as session_end\nby session_id, user_email\n| sort cache_hit_tokens desc\n| limit 100\n"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::QueryDefinition.CacheMissesBySessionQuery",
+   "cfg": "CacheMissesBySessionQuery",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Logs::QueryDefinition",
+    "name": "CacheMissesBySessionQuery",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "Claude Code - Cache Misses by Session",
+     "LogGroupNames": [
+      "/aws/claude-code/metrics"
+     ],
+     "QueryString": "filter @message like /type\":\"cacheCreation/\n| parse @message /\"claude_code.token.usage\":(?<tokens>[0-9.]+)/\n| parse @message /\"session.id\":\"(?<session_id>[^\"]*)\"/\n| parse @message /\"user.email\":\"(?<user_email>[^\"]*)\"/\n| stats\n    sum(tokens) as cache_miss_tokens,\n    count() as cache_miss_count,\n    earliest(@timestamp) as session_start,\n    latest(@timestamp) as session_end\nby session_id, user_email\n| sort cache_miss_tokens desc\n| limit 100\n"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::QueryDefinition.PeakUsageWindowsQuery",
+   "cfg": "PeakUsageWindowsQuery",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Logs::QueryDefinition",
+    "name": "PeakUsageWindowsQuery",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "Claude Code - Peak Usage Windows",
+     "LogGroupNames": [
+      "/aws/claude-code/metrics"
+     ],
+     "QueryString": "filter @message like /claude_code.token.usage/\n| parse @message /\"claude_code.token.usage\":(?<tokens>[0-9.]+)/\n| parse @message /\"user.email\":\"(?<user_email>[^\"]*)\"/\n| stats\n    sum(tokens) as window_tokens,\n    count() as window_requests,\n    count_distinct(user_email) as active_users\nby bin(15m) as time_window\n| sort window_tokens desc\n| limit 50\n| display time_window, window_tokens, window_requests, active_users\n"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::QueryDefinition.SessionDeepDiveQuery",
+   "cfg": "SessionDeepDiveQuery",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Logs::QueryDefinition",
+    "name": "SessionDeepDiveQuery",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "Claude Code - Session Deep Dive",
+     "LogGroupNames": [
+      "/aws/claude-code/metrics"
+     ],
+     "QueryString": "# Replace SESSION_ID_HERE with actual session ID to analyze\nfilter @message like /SESSION_ID_HERE/\n| parse @message /\"session.id\":\"(?<session_id>[^\"]*)\"/\n| parse @message /\"user.email\":\"(?<user_email>[^\"]*)\"/\n| parse @message /\"claude_code.token.usage\":(?<tokens>[0-9.]+)/\n| parse @message /\"model\":\"(?<model>[^\"]*)\"/\n| parse @message /\"type\":\"(?<token_type>[^\"]*)\"/\n| fields\n    @timestamp,\n    session_id,\n    user_email,\n    model,\n    token_type,\n    tokens,\n    @message\n| sort @timestamp asc\n| display @timestamp, user_email, model, token_type, tokens\n"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::QueryDefinition.MetricFieldExplorerQuery",
+   "cfg": "MetricFieldExplorerQuery",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Logs::QueryDefinition",
+    "name": "MetricFieldExplorerQuery",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "Claude Code - Metric Field Explorer",
+     "LogGroupNames": [
+      "/aws/claude-code/metrics"
+     ],
+     "QueryString": "# Explore all available fields in Claude Code metrics\nfilter @message like /claude_code.token.usage/\n| parse @message /\"user.email\":\"(?<user_email>[^\"]*)\"/\n| parse @message /\"user.id\":\"(?<user_id>[^\"]*)\"/\n| parse @message /\"session.id\":\"(?<session_id>[^\"]*)\"/\n| parse @message /\"organization\":\"(?<org>[^\"]*)\"/\n| parse @message /\"model\":\"(?<model>[^\"]*)\"/\n| parse @message /\"type\":\"(?<token_type>[^\"]*)\"/\n| parse @message /\"terminal.type\":\"(?<terminal_type>[^\"]*)\"/\n| parse @message /\"OTelLib\":\"(?<otel_lib>[^\"]*)\"/\n| parse @message /\"claude_code.token.usage\":(?<tokens>[0-9.]+)/\n| limit 10\n| display @timestamp, user_email, user_id, session_id, org, model, token_type, terminal_type, otel_lib, tokens\n"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::QueryDefinition.DailyUsageSummaryQuery",
+   "cfg": "DailyUsageSummaryQuery",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Logs::QueryDefinition",
+    "name": "DailyUsageSummaryQuery",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "Claude Code - Daily Usage Summary",
+     "LogGroupNames": [
+      "/aws/claude-code/metrics"
+     ],
+     "QueryString": "filter @message like /claude_code.token.usage/\n| parse @message /\"claude_code.token.usage\":(?<tokens>[0-9.]+)/\n| parse @message /\"user.email\":\"(?<user_email>[^\"]*)\"/\n| parse @message /\"model\":\"(?<model>[^\"]*)\"/\n| stats\n    sum(tokens) as daily_tokens,\n    count() as daily_requests\nby bin(1d) as date\n| sort date desc\n| limit 30\n"
+    }
+   }
+  }
+ ]
+}

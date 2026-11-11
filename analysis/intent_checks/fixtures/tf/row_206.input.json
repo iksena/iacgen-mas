@@ -1,0 +1,216 @@
+{
+ "meta": {
+  "lang": "tf",
+  "mode": "plan",
+  "warnings": [],
+  "gt_hash": "2093750d4e4b54d1506ed570c333aee08cbcfcc3a9214b23aa4b7e06bcb99b0c",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "aws_efs_file_system.elastic_file_system",
+   "cfg": "aws_efs_file_system.elastic_file_system",
+   "type": "aws_efs_file_system",
+   "values": {
+    "creation_token": "test-efs",
+    "encrypted": true,
+    "lifecycle_policy": [
+     {
+      "transition_to_archive": null,
+      "transition_to_ia": "AFTER_30_DAYS",
+      "transition_to_primary_storage_class": null
+     }
+    ],
+    "performance_mode": "generalPurpose",
+    "provisioned_throughput_in_mibps": null,
+    "region": "us-east-1",
+    "tags": null,
+    "throughput_mode": "bursting"
+   },
+   "refs": [
+    "aws_kms_key.kms_key_efs"
+   ]
+  },
+  {
+   "id": "aws_kms_key.kms_key_efs",
+   "cfg": "aws_kms_key.kms_key_efs",
+   "type": "aws_kms_key",
+   "values": {
+    "bypass_policy_lockout_safety_check": false,
+    "custom_key_store_id": null,
+    "customer_master_key_spec": "SYMMETRIC_DEFAULT",
+    "deletion_window_in_days": null,
+    "description": "KMS key for EFS",
+    "enable_key_rotation": true,
+    "is_enabled": true,
+    "key_usage": "ENCRYPT_DECRYPT",
+    "region": "us-east-1",
+    "tags": null,
+    "timeouts": null,
+    "xks_key_id": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.creation_token",
+   "cfg": "__parameter__.creation_token",
+   "type": "__parameter__",
+   "values": {
+    "name": "creation_token",
+    "default": "test-efs"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.encryption_set",
+   "cfg": "__parameter__.encryption_set",
+   "type": "__parameter__",
+   "values": {
+    "name": "encryption_set",
+    "default": true
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.performance_mode",
+   "cfg": "__parameter__.performance_mode",
+   "type": "__parameter__",
+   "values": {
+    "name": "performance_mode",
+    "default": "generalPurpose"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.security_groups",
+   "cfg": "__parameter__.security_groups",
+   "type": "__parameter__",
+   "values": {
+    "name": "security_groups",
+    "default": []
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.subnet_id",
+   "cfg": "__parameter__.subnet_id",
+   "type": "__parameter__",
+   "values": {
+    "name": "subnet_id",
+    "default": []
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.throughput_mode",
+   "cfg": "__parameter__.throughput_mode",
+   "type": "__parameter__",
+   "values": {
+    "name": "throughput_mode",
+    "default": "bursting"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.efs_arn",
+   "cfg": "__output__.efs_arn",
+   "type": "__output__",
+   "values": {
+    "name": "efs_arn",
+    "value": null,
+    "description": "The ARN of the EFS created"
+   },
+   "refs": [
+    "aws_efs_file_system.elastic_file_system"
+   ]
+  },
+  {
+   "id": "__output__.efs_id",
+   "cfg": "__output__.efs_id",
+   "type": "__output__",
+   "values": {
+    "name": "efs_id",
+    "value": null,
+    "description": "The ID of the EFS created"
+   },
+   "refs": [
+    "aws_efs_file_system.elastic_file_system"
+   ]
+  },
+  {
+   "id": "__output__.efs_mount_id",
+   "cfg": "__output__.efs_mount_id",
+   "type": "__output__",
+   "values": {
+    "name": "efs_mount_id",
+    "value": [],
+    "description": "The IDs of the EFS mount"
+   },
+   "refs": [
+    "aws_efs_mount_target.efs_mount_target"
+   ]
+  },
+  {
+   "id": "__declared__.aws_efs_file_system.elastic_file_system",
+   "cfg": "aws_efs_file_system.elastic_file_system",
+   "type": "__declared__",
+   "refs": [
+    "aws_kms_key.kms_key_efs"
+   ],
+   "values": {
+    "type": "aws_efs_file_system",
+    "name": "elastic_file_system",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "creation_token": "test-efs",
+     "lifecycle_policy": [
+      {
+       "transition_to_ia": "AFTER_30_DAYS"
+      }
+     ],
+     "encrypted": true,
+     "kms_key_id": "${aws_kms_key.kms_key_efs.arn}",
+     "performance_mode": "generalPurpose",
+     "throughput_mode": "bursting"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_efs_mount_target.efs_mount_target",
+   "cfg": "aws_efs_mount_target.efs_mount_target",
+   "type": "__declared__",
+   "refs": [
+    "aws_efs_file_system.elastic_file_system"
+   ],
+   "values": {
+    "type": "aws_efs_mount_target",
+    "name": "efs_mount_target",
+    "gated": true,
+    "gate": "length(var.subnet_id)",
+    "properties": {
+     "count": "${length(var.subnet_id)}",
+     "file_system_id": "${aws_efs_file_system.elastic_file_system.id}",
+     "subnet_id": "${var.subnet_id[count.index]}",
+     "security_groups": []
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_kms_key.kms_key_efs",
+   "cfg": "aws_kms_key.kms_key_efs",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_kms_key",
+    "name": "kms_key_efs",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "description": "KMS key for EFS",
+     "enable_key_rotation": true
+    }
+   }
+  }
+ ]
+}

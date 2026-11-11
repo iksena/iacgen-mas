@@ -1,0 +1,847 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "0d3642d0324bb4fd9e93101176d77281fe1756bcd0a96143be84230e3bba6810",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "IDPUnauthRole",
+   "cfg": "IDPUnauthRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "Description": "This role is assumed by cognito ",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Federated": [
+         "cognito-identity.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRoleWithWebIdentity"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "cognito-identity.amazonaws.com:aud": {
+          "ref": "IdentityPool",
+          "attr": "Name"
+         }
+        },
+        "ForAnyValue:StringLike": {
+         "cognito-identity.amazonaws.com:amr": "unauthenticated"
+        }
+       }
+      }
+     ]
+    }
+   },
+   "refs": [
+    "IdentityPool"
+   ]
+  },
+  {
+   "id": "IDPAuthRole",
+   "cfg": "IDPAuthRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "Description": "This role is assumed by cognito ",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Federated": [
+         "cognito-identity.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRoleWithWebIdentity"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "cognito-identity.amazonaws.com:aud": {
+          "ref": "IdentityPool"
+         }
+        },
+        "ForAnyValue:StringLike": {
+         "cognito-identity.amazonaws.com:amr": "authenticated"
+        }
+       }
+      }
+     ]
+    }
+   },
+   "refs": [
+    "IdentityPool"
+   ]
+  },
+  {
+   "id": "IDPAuthRoleS3Policy",
+   "cfg": "IDPAuthRoleS3Policy",
+   "type": "AWS::IAM::Policy",
+   "values": {
+    "PolicyName": "nih-grants-cognito-auth-role",
+    "PolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Action": [
+        "s3:PutObject",
+        "s3:PutObjectTagging",
+        "s3:PutObjectAcl",
+        "s3:GetObject",
+        "s3:DeleteObject"
+       ],
+       "Resource": [
+        "arn:aws:s3:::nih-grants-context-us-east-1-123456789012/*"
+       ]
+      },
+      {
+       "Effect": "Allow",
+       "Action": [
+        "kms:GenerateDataKey",
+        "kms:Decrypt"
+       ],
+       "Resource": [
+        "*"
+       ],
+       "Condition": {
+        "StringLike": {
+         "kms:RequestAlias": "alias/nih-grants-s3-key"
+        }
+       }
+      },
+      {
+       "Effect": "Allow",
+       "Action": [
+        "execute-api:Invoke"
+       ],
+       "Resource": [
+        "arn:aws:execute-api:us-east-1:123456789012:*/*/$connect"
+       ]
+      }
+     ]
+    },
+    "Roles": [
+     {
+      "ref": "IDPAuthRole"
+     }
+    ],
+    "__resource__": {
+     "DependsOn": [
+      "IDPAuthRole"
+     ]
+    }
+   },
+   "refs": [
+    "IDPAuthRole"
+   ]
+  },
+  {
+   "id": "UserPool",
+   "cfg": "UserPool",
+   "type": "AWS::Cognito::UserPool",
+   "values": {
+    "AdminCreateUserConfig": {
+     "AllowAdminCreateUserOnly": false
+    },
+    "AutoVerifiedAttributes": [],
+    "AccountRecoverySetting": {
+     "RecoveryMechanisms": [
+      {
+       "Name": "verified_email",
+       "Priority": 1
+      }
+     ]
+    },
+    "VerificationMessageTemplate": {
+     "DefaultEmailOption": "CONFIRM_WITH_CODE"
+    },
+    "EmailVerificationMessage": "Your verification code is {####}",
+    "EmailVerificationSubject": "Your verification code",
+    "Policies": {
+     "PasswordPolicy": {
+      "MinimumLength": "11",
+      "RequireLowercase": true,
+      "RequireNumbers": true,
+      "RequireSymbols": true,
+      "RequireUppercase": true,
+      "TemporaryPasswordValidityDays": 7
+     }
+    },
+    "UserPoolAddOns": {
+     "AdvancedSecurityMode": "ENFORCED"
+    },
+    "Schema": [
+     {
+      "Mutable": true,
+      "Name": "email",
+      "Required": true
+     }
+    ],
+    "UsernameConfiguration": {
+     "CaseSensitive": false
+    },
+    "UserPoolName": "nih-grants-cognito-pool-us-east-1-123456789012"
+   },
+   "refs": []
+  },
+  {
+   "id": "UserPoolClientWeb",
+   "cfg": "UserPoolClientWeb",
+   "type": "AWS::Cognito::UserPoolClient",
+   "values": {
+    "UserPoolId": {
+     "ref": "UserPool"
+    },
+    "ClientName": "nih-grants-app-client-web-us-east-1-123456789012",
+    "RefreshTokenValidity": "30",
+    "TokenValidityUnits": {
+     "RefreshToken": "days"
+    },
+    "__resource__": {
+     "DependsOn": [
+      "UserPool"
+     ]
+    }
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "UserPoolClient",
+   "cfg": "UserPoolClient",
+   "type": "AWS::Cognito::UserPoolClient",
+   "values": {
+    "UserPoolId": {
+     "ref": "UserPool"
+    },
+    "ClientName": "nih-grants-app-client-us-east-1-123456789012",
+    "GenerateSecret": "false",
+    "RefreshTokenValidity": "30",
+    "TokenValidityUnits": {
+     "RefreshToken": "days"
+    },
+    "__resource__": {
+     "DependsOn": [
+      "UserPool"
+     ]
+    }
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "IdentityPool",
+   "cfg": "IdentityPool",
+   "type": "AWS::Cognito::IdentityPool",
+   "values": {
+    "AllowUnauthenticatedIdentities": "false",
+    "CognitoIdentityProviders": [
+     {
+      "ClientId": {
+       "ref": "UserPoolClient"
+      },
+      "ProviderName": "cognito-idp.us-east-1.amazonaws.com/{'ref': 'UserPool'}"
+     },
+     {
+      "ClientId": {
+       "ref": "UserPoolClientWeb"
+      },
+      "ProviderName": "cognito-idp.us-east-1.amazonaws.com/{'ref': 'UserPool'}"
+     }
+    ],
+    "IdentityPoolName": "nih-grants-identity-pool-us-east-1-123456789012"
+   },
+   "refs": [
+    "UserPool",
+    "UserPoolClient",
+    "UserPoolClientWeb"
+   ]
+  },
+  {
+   "id": "IdentityPoolRoleMap",
+   "cfg": "IdentityPoolRoleMap",
+   "type": "AWS::Cognito::IdentityPoolRoleAttachment",
+   "values": {
+    "IdentityPoolId": {
+     "ref": "IdentityPool"
+    },
+    "Roles": {
+     "unauthenticated": {
+      "ref": "IDPUnauthRole",
+      "attr": "Arn"
+     },
+     "authenticated": {
+      "ref": "IDPAuthRole",
+      "attr": "Arn"
+     }
+    },
+    "__resource__": {
+     "DependsOn": [
+      "IDPAuthRole",
+      "IdentityPool"
+     ]
+    }
+   },
+   "refs": [
+    "IDPAuthRole",
+    "IDPUnauthRole",
+    "IdentityPool"
+   ]
+  },
+  {
+   "id": "__parameter__.NIHCONTEXTBUCKET",
+   "cfg": "__parameter__.NIHCONTEXTBUCKET",
+   "type": "__parameter__",
+   "values": {
+    "name": "NIHCONTEXTBUCKET",
+    "type": "String",
+    "default": "xxxxxxxxxxxx",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.allowUnauthenticatedIdentities",
+   "cfg": "__parameter__.allowUnauthenticatedIdentities",
+   "type": "__parameter__",
+   "values": {
+    "name": "allowUnauthenticatedIdentities",
+    "type": "String",
+    "default": "false",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.mfaConfiguration",
+   "cfg": "__parameter__.mfaConfiguration",
+   "type": "__parameter__",
+   "values": {
+    "name": "mfaConfiguration",
+    "type": "String",
+    "default": "On",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.emailVerificationSubject",
+   "cfg": "__parameter__.emailVerificationSubject",
+   "type": "__parameter__",
+   "values": {
+    "name": "emailVerificationSubject",
+    "type": "String",
+    "default": "Your verification code",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.emailVerificationMessage",
+   "cfg": "__parameter__.emailVerificationMessage",
+   "type": "__parameter__",
+   "values": {
+    "name": "emailVerificationMessage",
+    "type": "String",
+    "default": "Your verification code is {####}",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.passwordPolicyMinLength",
+   "cfg": "__parameter__.passwordPolicyMinLength",
+   "type": "__parameter__",
+   "values": {
+    "name": "passwordPolicyMinLength",
+    "type": "String",
+    "default": "11",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.userpoolClientGenerateSecret",
+   "cfg": "__parameter__.userpoolClientGenerateSecret",
+   "type": "__parameter__",
+   "values": {
+    "name": "userpoolClientGenerateSecret",
+    "type": "String",
+    "default": "false",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.userpoolClientRefreshTokenValidity",
+   "cfg": "__parameter__.userpoolClientRefreshTokenValidity",
+   "type": "__parameter__",
+   "values": {
+    "name": "userpoolClientRefreshTokenValidity",
+    "type": "String",
+    "default": "30",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.IdentityPoolId",
+   "cfg": "__output__.IdentityPoolId",
+   "type": "__output__",
+   "values": {
+    "name": "IdentityPoolId",
+    "value": {
+     "ref": "IdentityPool"
+    },
+    "description": "Id for the identity pool",
+    "export": null
+   },
+   "refs": [
+    "IdentityPool"
+   ]
+  },
+  {
+   "id": "__output__.IdentityPoolName",
+   "cfg": "__output__.IdentityPoolName",
+   "type": "__output__",
+   "values": {
+    "name": "IdentityPoolName",
+    "value": {
+     "ref": "IdentityPool",
+     "attr": "Name"
+    },
+    "description": "Name for the identity pool",
+    "export": null
+   },
+   "refs": [
+    "IdentityPool"
+   ]
+  },
+  {
+   "id": "__output__.UserPoolId",
+   "cfg": "__output__.UserPoolId",
+   "type": "__output__",
+   "values": {
+    "name": "UserPoolId",
+    "value": {
+     "ref": "UserPool"
+    },
+    "description": "Id for the user pool",
+    "export": null
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "__output__.UserPoolArn",
+   "cfg": "__output__.UserPoolArn",
+   "type": "__output__",
+   "values": {
+    "name": "UserPoolArn",
+    "value": {
+     "ref": "UserPool",
+     "attr": "Arn"
+    },
+    "description": "Arn for the user pool",
+    "export": null
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "__output__.UserPoolName",
+   "cfg": "__output__.UserPoolName",
+   "type": "__output__",
+   "values": {
+    "name": "UserPoolName",
+    "value": "nih-grants-cognito-pool-us-east-1-123456789012",
+    "description": null,
+    "export": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.AppClientIDWeb",
+   "cfg": "__output__.AppClientIDWeb",
+   "type": "__output__",
+   "values": {
+    "name": "AppClientIDWeb",
+    "value": {
+     "ref": "UserPoolClientWeb"
+    },
+    "description": "The user pool app client id for web",
+    "export": null
+   },
+   "refs": [
+    "UserPoolClientWeb"
+   ]
+  },
+  {
+   "id": "__output__.AppClientID",
+   "cfg": "__output__.AppClientID",
+   "type": "__output__",
+   "values": {
+    "name": "AppClientID",
+    "value": {
+     "ref": "UserPoolClient"
+    },
+    "description": "The user pool app client id",
+    "export": null
+   },
+   "refs": [
+    "UserPoolClient"
+   ]
+  },
+  {
+   "id": "__output__.IDPAuthRole",
+   "cfg": "__output__.IDPAuthRole",
+   "type": "__output__",
+   "values": {
+    "name": "IDPAuthRole",
+    "value": {
+     "ref": "IDPAuthRole",
+     "attr": "Arn"
+    },
+    "description": "Authenticated role ARN for Cognito Identity Pool",
+    "export": "stack-IDPAuthRole"
+   },
+   "refs": [
+    "IDPAuthRole"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.IDPUnauthRole",
+   "cfg": "IDPUnauthRole",
+   "type": "__declared__",
+   "refs": [
+    "IdentityPool"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "IDPUnauthRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Description": "This role is assumed by cognito ",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Federated": [
+          "cognito-identity.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRoleWithWebIdentity"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "cognito-identity.amazonaws.com:aud": {
+           "ref": "IdentityPool",
+           "attr": "Name"
+          }
+         },
+         "ForAnyValue:StringLike": {
+          "cognito-identity.amazonaws.com:amr": "unauthenticated"
+         }
+        }
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.IDPAuthRole",
+   "cfg": "IDPAuthRole",
+   "type": "__declared__",
+   "refs": [
+    "IdentityPool"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "IDPAuthRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Description": "This role is assumed by cognito ",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Federated": [
+          "cognito-identity.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRoleWithWebIdentity"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "cognito-identity.amazonaws.com:aud": {
+           "ref": "IdentityPool"
+          }
+         },
+         "ForAnyValue:StringLike": {
+          "cognito-identity.amazonaws.com:amr": "authenticated"
+         }
+        }
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Policy.IDPAuthRoleS3Policy",
+   "cfg": "IDPAuthRoleS3Policy",
+   "type": "__declared__",
+   "refs": [
+    "IDPAuthRole"
+   ],
+   "values": {
+    "type": "AWS::IAM::Policy",
+    "name": "IDPAuthRoleS3Policy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "PolicyName": "nih-grants-cognito-auth-role",
+     "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Action": [
+         "s3:PutObject",
+         "s3:PutObjectTagging",
+         "s3:PutObjectAcl",
+         "s3:GetObject",
+         "s3:DeleteObject"
+        ],
+        "Resource": [
+         "arn:aws:s3:::nih-grants-context-us-east-1-123456789012/*"
+        ]
+       },
+       {
+        "Effect": "Allow",
+        "Action": [
+         "kms:GenerateDataKey",
+         "kms:Decrypt"
+        ],
+        "Resource": [
+         "*"
+        ],
+        "Condition": {
+         "StringLike": {
+          "kms:RequestAlias": "alias/nih-grants-s3-key"
+         }
+        }
+       },
+       {
+        "Effect": "Allow",
+        "Action": [
+         "execute-api:Invoke"
+        ],
+        "Resource": [
+         "arn:aws:execute-api:us-east-1:123456789012:*/*/$connect"
+        ]
+       }
+      ]
+     },
+     "Roles": [
+      {
+       "ref": "IDPAuthRole"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPool.UserPool",
+   "cfg": "UserPool",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Cognito::UserPool",
+    "name": "UserPool",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AdminCreateUserConfig": {
+      "AllowAdminCreateUserOnly": false
+     },
+     "AutoVerifiedAttributes": [],
+     "AccountRecoverySetting": {
+      "RecoveryMechanisms": [
+       {
+        "Name": "verified_email",
+        "Priority": 1
+       }
+      ]
+     },
+     "VerificationMessageTemplate": {
+      "DefaultEmailOption": "CONFIRM_WITH_CODE"
+     },
+     "EmailVerificationMessage": "Your verification code is {####}",
+     "EmailVerificationSubject": "Your verification code",
+     "Policies": {
+      "PasswordPolicy": {
+       "MinimumLength": "11",
+       "RequireLowercase": true,
+       "RequireNumbers": true,
+       "RequireSymbols": true,
+       "RequireUppercase": true,
+       "TemporaryPasswordValidityDays": 7
+      }
+     },
+     "UserPoolAddOns": {
+      "AdvancedSecurityMode": "ENFORCED"
+     },
+     "Schema": [
+      {
+       "Mutable": true,
+       "Name": "email",
+       "Required": true
+      }
+     ],
+     "UsernameConfiguration": {
+      "CaseSensitive": false
+     },
+     "UserPoolName": "nih-grants-cognito-pool-us-east-1-123456789012"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolClient.UserPoolClientWeb",
+   "cfg": "UserPoolClientWeb",
+   "type": "__declared__",
+   "refs": [
+    "UserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolClient",
+    "name": "UserPoolClientWeb",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "UserPoolId": {
+      "ref": "UserPool"
+     },
+     "ClientName": "nih-grants-app-client-web-us-east-1-123456789012",
+     "RefreshTokenValidity": "30",
+     "TokenValidityUnits": {
+      "RefreshToken": "days"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolClient.UserPoolClient",
+   "cfg": "UserPoolClient",
+   "type": "__declared__",
+   "refs": [
+    "UserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolClient",
+    "name": "UserPoolClient",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "UserPoolId": {
+      "ref": "UserPool"
+     },
+     "ClientName": "nih-grants-app-client-us-east-1-123456789012",
+     "GenerateSecret": "false",
+     "RefreshTokenValidity": "30",
+     "TokenValidityUnits": {
+      "RefreshToken": "days"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::IdentityPool.IdentityPool",
+   "cfg": "IdentityPool",
+   "type": "__declared__",
+   "refs": [
+    "UserPool",
+    "UserPoolClient",
+    "UserPoolClientWeb"
+   ],
+   "values": {
+    "type": "AWS::Cognito::IdentityPool",
+    "name": "IdentityPool",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AllowUnauthenticatedIdentities": "false",
+     "CognitoIdentityProviders": [
+      {
+       "ClientId": {
+        "ref": "UserPoolClient"
+       },
+       "ProviderName": "cognito-idp.us-east-1.amazonaws.com/{'ref': 'UserPool'}"
+      },
+      {
+       "ClientId": {
+        "ref": "UserPoolClientWeb"
+       },
+       "ProviderName": "cognito-idp.us-east-1.amazonaws.com/{'ref': 'UserPool'}"
+      }
+     ],
+     "IdentityPoolName": "nih-grants-identity-pool-us-east-1-123456789012"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::IdentityPoolRoleAttachment.IdentityPoolRoleMap",
+   "cfg": "IdentityPoolRoleMap",
+   "type": "__declared__",
+   "refs": [
+    "IDPAuthRole",
+    "IDPUnauthRole",
+    "IdentityPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::IdentityPoolRoleAttachment",
+    "name": "IdentityPoolRoleMap",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "IdentityPoolId": {
+      "ref": "IdentityPool"
+     },
+     "Roles": {
+      "unauthenticated": {
+       "ref": "IDPUnauthRole",
+       "attr": "Arn"
+      },
+      "authenticated": {
+       "ref": "IDPAuthRole",
+       "attr": "Arn"
+      }
+     }
+    }
+   }
+  }
+ ]
+}

@@ -1,0 +1,301 @@
+{
+ "meta": {
+  "lang": "tf",
+  "mode": "plan",
+  "warnings": [],
+  "gt_hash": "3d6e429e6d4d30fa3e50f74bf7fb2b7f8489f3696e79b62a3a9acc0c0d0940bd",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "aws_ecr_repository.this",
+   "cfg": "aws_ecr_repository.this",
+   "type": "aws_ecr_repository",
+   "values": {
+    "encryption_configuration": [
+     {
+      "encryption_type": "AES256"
+     }
+    ],
+    "force_delete": false,
+    "image_scanning_configuration": [
+     {
+      "scan_on_push": true
+     }
+    ],
+    "image_tag_mutability": "IMMUTABLE",
+    "image_tag_mutability_exclusion_filter": [],
+    "name": "my-ecr-repo",
+    "region": "us-east-1",
+    "tags": null,
+    "timeouts": null
+   },
+   "refs": [
+    "aws_kms_key.this"
+   ]
+  },
+  {
+   "id": "__parameter__.allowed_principals",
+   "cfg": "__parameter__.allowed_principals",
+   "type": "__parameter__",
+   "values": {
+    "name": "allowed_principals",
+    "default": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.force_delete",
+   "cfg": "__parameter__.force_delete",
+   "type": "__parameter__",
+   "values": {
+    "name": "force_delete",
+    "default": false
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.kms_encryption",
+   "cfg": "__parameter__.kms_encryption",
+   "type": "__parameter__",
+   "values": {
+    "name": "kms_encryption",
+    "default": false
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.lifecycle_policy",
+   "cfg": "__parameter__.lifecycle_policy",
+   "type": "__parameter__",
+   "values": {
+    "name": "lifecycle_policy",
+    "default": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.mutability",
+   "cfg": "__parameter__.mutability",
+   "type": "__parameter__",
+   "values": {
+    "name": "mutability",
+    "default": "IMMUTABLE"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.name",
+   "cfg": "__parameter__.name",
+   "type": "__parameter__",
+   "values": {
+    "name": "name",
+    "default": "my-ecr-repo"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.tags",
+   "cfg": "__parameter__.tags",
+   "type": "__parameter__",
+   "values": {
+    "name": "tags",
+    "default": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.arn",
+   "cfg": "__output__.arn",
+   "type": "__output__",
+   "values": {
+    "name": "arn",
+    "value": null,
+    "description": "Repository ARN"
+   },
+   "refs": [
+    "aws_ecr_repository.this"
+   ]
+  },
+  {
+   "id": "__output__.kms_key_arn",
+   "cfg": "__output__.kms_key_arn",
+   "type": "__output__",
+   "values": {
+    "name": "kms_key_arn",
+    "value": [],
+    "description": "KMS key ARN"
+   },
+   "refs": [
+    "aws_kms_key.this"
+   ]
+  },
+  {
+   "id": "__output__.kms_key_id",
+   "cfg": "__output__.kms_key_id",
+   "type": "__output__",
+   "values": {
+    "name": "kms_key_id",
+    "value": [],
+    "description": "KMS Key ID"
+   },
+   "refs": [
+    "aws_kms_key.this"
+   ]
+  },
+  {
+   "id": "__output__.repository_url",
+   "cfg": "__output__.repository_url",
+   "type": "__output__",
+   "values": {
+    "name": "repository_url",
+    "value": null,
+    "description": "Repository URL"
+   },
+   "refs": [
+    "aws_ecr_repository.this"
+   ]
+  },
+  {
+   "id": "__declared__.aws_ecr_repository.this",
+   "cfg": "aws_ecr_repository.this",
+   "type": "__declared__",
+   "refs": [
+    "aws_kms_key.this"
+   ],
+   "values": {
+    "type": "aws_ecr_repository",
+    "name": "this",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "my-ecr-repo",
+     "image_tag_mutability": "IMMUTABLE",
+     "encryption_configuration": [
+      {
+       "encryption_type": "${var.kms_encryption == True ? \"KMS\" : \"AES256\"}",
+       "kms_key": "${var.kms_encryption == True ? aws_kms_key.this[0].arn : None}"
+      }
+     ],
+     "image_scanning_configuration": [
+      {
+       "scan_on_push": true
+      }
+     ],
+     "force_delete": false,
+     "tags": "${var.tags}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.data.aws_iam_policy_document.this_policy",
+   "cfg": "data.aws_iam_policy_document.this_policy",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "data.aws_iam_policy_document",
+    "name": "this_policy",
+    "gated": true,
+    "gate": "var.allowed_principals != null ? 1 : 0",
+    "properties": {
+     "count": "${var.allowed_principals != None ? 1 : 0}",
+     "statement": [
+      {
+       "sid": "AllowPull",
+       "effect": "Allow",
+       "principals": [
+        {
+         "type": "AWS",
+         "identifiers": "${var.allowed_principals}"
+        }
+       ],
+       "actions": [
+        "ecr:GetDownloadUrlForLayer",
+        "ecr:BatchGetImage",
+        "ecr:BatchCheckLayerAvailability",
+        "ecr:DescribeRepositories",
+        "ecr:GetRepositoryPolicy",
+        "ecr:ListImages"
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_ecr_repository_policy.this",
+   "cfg": "aws_ecr_repository_policy.this",
+   "type": "__declared__",
+   "refs": [
+    "aws_ecr_repository.this",
+    "data.aws_iam_policy_document.this_policy"
+   ],
+   "values": {
+    "type": "aws_ecr_repository_policy",
+    "name": "this",
+    "gated": true,
+    "gate": "var.allowed_principals != null ? 1 : 0",
+    "properties": {
+     "count": "${var.allowed_principals != None ? 1 : 0}",
+     "repository": "${aws_ecr_repository.this.name}",
+     "policy": "${data.aws_iam_policy_document.this_policy[0].json}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_ecr_lifecycle_policy.this",
+   "cfg": "aws_ecr_lifecycle_policy.this",
+   "type": "__declared__",
+   "refs": [
+    "aws_ecr_repository.this"
+   ],
+   "values": {
+    "type": "aws_ecr_lifecycle_policy",
+    "name": "this",
+    "gated": true,
+    "gate": "var.lifecycle_policy != null ? 1 : 0",
+    "properties": {
+     "count": "${var.lifecycle_policy != None ? 1 : 0}",
+     "repository": "${aws_ecr_repository.this.name}",
+     "policy": "${jsonencode(var.lifecycle_policy)}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_kms_key.this",
+   "cfg": "aws_kms_key.this",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_kms_key",
+    "name": "this",
+    "gated": true,
+    "gate": "var.kms_encryption == true ? 1 : 0",
+    "properties": {
+     "count": "${var.kms_encryption == True ? 1 : 0}",
+     "enable_key_rotation": true,
+     "tags": "${var.tags}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_kms_alias.this",
+   "cfg": "aws_kms_alias.this",
+   "type": "__declared__",
+   "refs": [
+    "aws_kms_key.this"
+   ],
+   "values": {
+    "type": "aws_kms_alias",
+    "name": "this",
+    "gated": true,
+    "gate": "var.kms_encryption == true ? 1 : 0",
+    "properties": {
+     "count": "${var.kms_encryption == True ? 1 : 0}",
+     "name": "alias/ecr/repository/${var.name}",
+     "target_key_id": "${aws_kms_key.this[0].key_id}"
+    }
+   }
+  }
+ ]
+}

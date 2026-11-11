@@ -1,0 +1,1177 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "98a281cf549004048d67bc73b3816bd64f6c68913440abc63b4956c84a5e7d84",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "CognitoUserPool",
+   "cfg": "CognitoUserPool",
+   "type": "AWS::Cognito::UserPool",
+   "values": {
+    "UserPoolName": "agui-mcp-demo-user-pool",
+    "AutoVerifiedAttributes": [
+     "email"
+    ],
+    "UsernameAttributes": [
+     "email"
+    ],
+    "Policies": {
+     "PasswordPolicy": {
+      "MinimumLength": 8,
+      "RequireUppercase": true,
+      "RequireLowercase": true,
+      "RequireNumbers": true,
+      "RequireSymbols": false
+     }
+    },
+    "Schema": [
+     {
+      "Name": "email",
+      "AttributeDataType": "String",
+      "Required": true,
+      "Mutable": true
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "CognitoUserPoolDomain",
+   "cfg": "CognitoUserPoolDomain",
+   "type": "AWS::Cognito::UserPoolDomain",
+   "values": {
+    "Domain": "agui-mcp-demo-123456789012",
+    "UserPoolId": {
+     "ref": "CognitoUserPool"
+    }
+   },
+   "refs": [
+    "CognitoUserPool"
+   ]
+  },
+  {
+   "id": "CognitoResourceServer",
+   "cfg": "CognitoResourceServer",
+   "type": "AWS::Cognito::UserPoolResourceServer",
+   "values": {
+    "UserPoolId": {
+     "ref": "CognitoUserPool"
+    },
+    "Identifier": "agui-mcp-demo-api",
+    "Name": "agui-mcp-demo-api",
+    "Scopes": [
+     {
+      "ScopeName": "invoke",
+      "ScopeDescription": "Invoke AgentCore endpoints"
+     }
+    ]
+   },
+   "refs": [
+    "CognitoUserPool"
+   ]
+  },
+  {
+   "id": "CognitoMachineClient",
+   "cfg": "CognitoMachineClient",
+   "type": "AWS::Cognito::UserPoolClient",
+   "values": {
+    "ClientName": "agui-mcp-demo-machine-client",
+    "UserPoolId": {
+     "ref": "CognitoUserPool"
+    },
+    "GenerateSecret": true,
+    "AllowedOAuthFlows": [
+     "client_credentials"
+    ],
+    "AllowedOAuthFlowsUserPoolClient": true,
+    "AllowedOAuthScopes": [
+     "agui-mcp-demo-api/invoke"
+    ],
+    "ExplicitAuthFlows": [
+     "ALLOW_USER_PASSWORD_AUTH",
+     "ALLOW_REFRESH_TOKEN_AUTH"
+    ],
+    "SupportedIdentityProviders": [
+     "COGNITO"
+    ],
+    "__resource__": {
+     "DependsOn": [
+      "CognitoResourceServer"
+     ]
+    }
+   },
+   "refs": [
+    "CognitoUserPool"
+   ]
+  },
+  {
+   "id": "CognitoWebClient",
+   "cfg": "CognitoWebClient",
+   "type": "AWS::Cognito::UserPoolClient",
+   "values": {
+    "ClientName": "agui-mcp-demo-web-client",
+    "UserPoolId": {
+     "ref": "CognitoUserPool"
+    },
+    "GenerateSecret": false,
+    "ExplicitAuthFlows": [
+     "ALLOW_USER_PASSWORD_AUTH",
+     "ALLOW_REFRESH_TOKEN_AUTH"
+    ],
+    "SupportedIdentityProviders": [
+     "COGNITO"
+    ]
+   },
+   "refs": [
+    "CognitoUserPool"
+   ]
+  },
+  {
+   "id": "FinanceTrackerTable",
+   "cfg": "FinanceTrackerTable",
+   "type": "AWS::DynamoDB::Table",
+   "values": {
+    "TableName": "agui-mcp-demo-finance-tracker",
+    "BillingMode": "PAY_PER_REQUEST",
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "pk",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "sk",
+      "AttributeType": "S"
+     }
+    ],
+    "KeySchema": [
+     {
+      "AttributeName": "pk",
+      "KeyType": "HASH"
+     },
+     {
+      "AttributeName": "sk",
+      "KeyType": "RANGE"
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "MCPServerRuntimeRole",
+   "cfg": "MCPServerRuntimeRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "agui-mcp-demo-mcp-server-role",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "bedrock-agentcore.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Policies": [
+     {
+      "PolicyName": "MCPServerPolicy",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "dynamodb:PutItem",
+          "dynamodb:GetItem",
+          "dynamodb:Query",
+          "dynamodb:UpdateItem",
+          "dynamodb:DeleteItem"
+         ],
+         "Resource": {
+          "ref": "FinanceTrackerTable",
+          "attr": "Arn"
+         }
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "ecr:GetAuthorizationToken",
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:BatchGetImage"
+         ],
+         "Resource": [
+          "*"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+         ],
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": [
+    "FinanceTrackerTable"
+   ]
+  },
+  {
+   "id": "AGUIAgentRuntimeRole",
+   "cfg": "AGUIAgentRuntimeRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "agui-mcp-demo-agui-agent-role",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "bedrock-agentcore.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Policies": [
+     {
+      "PolicyName": "AGUIAgentPolicy",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "bedrock:InvokeModel",
+          "bedrock:InvokeModelWithResponseStream"
+         ],
+         "Resource": [
+          "*"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "ecr:GetAuthorizationToken",
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:BatchGetImage"
+         ],
+         "Resource": [
+          "*"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+         ],
+         "Resource": [
+          "*"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "secretsmanager:GetSecretValue"
+         ],
+         "Resource": [
+          "*"
+         ]
+        },
+        {
+         "Effect": "Allow",
+         "Action": [
+          "ssm:GetParameter",
+          "ssm:GetParameters"
+         ],
+         "Resource": [
+          "arn:aws:ssm:us-east-1:123456789012:parameter/agui-mcp-demo/*"
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "SSMUserPoolId",
+   "cfg": "SSMUserPoolId",
+   "type": "AWS::SSM::Parameter",
+   "values": {
+    "Name": "/agui-mcp-demo/cognito/user-pool-id",
+    "Type": "String",
+    "Value": {
+     "ref": "CognitoUserPool"
+    }
+   },
+   "refs": [
+    "CognitoUserPool"
+   ]
+  },
+  {
+   "id": "SSMUserPoolArn",
+   "cfg": "SSMUserPoolArn",
+   "type": "AWS::SSM::Parameter",
+   "values": {
+    "Name": "/agui-mcp-demo/cognito/user-pool-arn",
+    "Type": "String",
+    "Value": {
+     "ref": "CognitoUserPool",
+     "attr": "Arn"
+    }
+   },
+   "refs": [
+    "CognitoUserPool"
+   ]
+  },
+  {
+   "id": "SSMMachineClientId",
+   "cfg": "SSMMachineClientId",
+   "type": "AWS::SSM::Parameter",
+   "values": {
+    "Name": "/agui-mcp-demo/cognito/machine-client-id",
+    "Type": "String",
+    "Value": {
+     "ref": "CognitoMachineClient"
+    }
+   },
+   "refs": [
+    "CognitoMachineClient"
+   ]
+  },
+  {
+   "id": "SSMWebClientId",
+   "cfg": "SSMWebClientId",
+   "type": "AWS::SSM::Parameter",
+   "values": {
+    "Name": "/agui-mcp-demo/cognito/web-client-id",
+    "Type": "String",
+    "Value": {
+     "ref": "CognitoWebClient"
+    }
+   },
+   "refs": [
+    "CognitoWebClient"
+   ]
+  },
+  {
+   "id": "SSMDiscoveryUrl",
+   "cfg": "SSMDiscoveryUrl",
+   "type": "AWS::SSM::Parameter",
+   "values": {
+    "Name": "/agui-mcp-demo/cognito/discovery-url",
+    "Type": "String",
+    "Value": "https://cognito-idp.us-east-1.amazonaws.com/${CognitoUserPool}/.well-known/openid-configuration"
+   },
+   "refs": [
+    "CognitoUserPool"
+   ]
+  },
+  {
+   "id": "SSMTokenUrl",
+   "cfg": "SSMTokenUrl",
+   "type": "AWS::SSM::Parameter",
+   "values": {
+    "Name": "/agui-mcp-demo/cognito/token-url",
+    "Type": "String",
+    "Value": "https://agui-mcp-demo-123456789012.auth.us-east-1.amazoncognito.com/oauth2/token"
+   },
+   "refs": []
+  },
+  {
+   "id": "SSMTableName",
+   "cfg": "SSMTableName",
+   "type": "AWS::SSM::Parameter",
+   "values": {
+    "Name": "/agui-mcp-demo/dynamodb/table-name",
+    "Type": "String",
+    "Value": {
+     "ref": "FinanceTrackerTable"
+    }
+   },
+   "refs": [
+    "FinanceTrackerTable"
+   ]
+  },
+  {
+   "id": "SSMMCPServerRoleArn",
+   "cfg": "SSMMCPServerRoleArn",
+   "type": "AWS::SSM::Parameter",
+   "values": {
+    "Name": "/agui-mcp-demo/iam/mcp-server-role-arn",
+    "Type": "String",
+    "Value": {
+     "ref": "MCPServerRuntimeRole",
+     "attr": "Arn"
+    }
+   },
+   "refs": [
+    "MCPServerRuntimeRole"
+   ]
+  },
+  {
+   "id": "SSMAGUIAgentRoleArn",
+   "cfg": "SSMAGUIAgentRoleArn",
+   "type": "AWS::SSM::Parameter",
+   "values": {
+    "Name": "/agui-mcp-demo/iam/agui-agent-role-arn",
+    "Type": "String",
+    "Value": {
+     "ref": "AGUIAgentRuntimeRole",
+     "attr": "Arn"
+    }
+   },
+   "refs": [
+    "AGUIAgentRuntimeRole"
+   ]
+  },
+  {
+   "id": "__parameter__.ProjectName",
+   "cfg": "__parameter__.ProjectName",
+   "type": "__parameter__",
+   "values": {
+    "name": "ProjectName",
+    "type": "String",
+    "default": "agui-mcp-demo",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.TestUserEmail",
+   "cfg": "__parameter__.TestUserEmail",
+   "type": "__parameter__",
+   "values": {
+    "name": "TestUserEmail",
+    "type": "String",
+    "default": "testuser@example.com",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.TestUserPassword",
+   "cfg": "__parameter__.TestUserPassword",
+   "type": "__parameter__",
+   "values": {
+    "name": "TestUserPassword",
+    "type": "String",
+    "default": "DemoPass123!",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.UserPoolId",
+   "cfg": "__output__.UserPoolId",
+   "type": "__output__",
+   "values": {
+    "name": "UserPoolId",
+    "value": {
+     "ref": "CognitoUserPool"
+    },
+    "description": "Cognito User Pool ID",
+    "export": null
+   },
+   "refs": [
+    "CognitoUserPool"
+   ]
+  },
+  {
+   "id": "__output__.UserPoolArn",
+   "cfg": "__output__.UserPoolArn",
+   "type": "__output__",
+   "values": {
+    "name": "UserPoolArn",
+    "value": {
+     "ref": "CognitoUserPool",
+     "attr": "Arn"
+    },
+    "description": "Cognito User Pool ARN",
+    "export": null
+   },
+   "refs": [
+    "CognitoUserPool"
+   ]
+  },
+  {
+   "id": "__output__.MachineClientId",
+   "cfg": "__output__.MachineClientId",
+   "type": "__output__",
+   "values": {
+    "name": "MachineClientId",
+    "value": {
+     "ref": "CognitoMachineClient"
+    },
+    "description": "Machine-to-machine OAuth client ID",
+    "export": null
+   },
+   "refs": [
+    "CognitoMachineClient"
+   ]
+  },
+  {
+   "id": "__output__.WebClientId",
+   "cfg": "__output__.WebClientId",
+   "type": "__output__",
+   "values": {
+    "name": "WebClientId",
+    "value": {
+     "ref": "CognitoWebClient"
+    },
+    "description": "Web frontend OAuth client ID",
+    "export": null
+   },
+   "refs": [
+    "CognitoWebClient"
+   ]
+  },
+  {
+   "id": "__output__.DiscoveryUrl",
+   "cfg": "__output__.DiscoveryUrl",
+   "type": "__output__",
+   "values": {
+    "name": "DiscoveryUrl",
+    "value": "https://cognito-idp.us-east-1.amazonaws.com/${CognitoUserPool}/.well-known/openid-configuration",
+    "description": "OIDC Discovery URL for JWT validation",
+    "export": null
+   },
+   "refs": [
+    "CognitoUserPool"
+   ]
+  },
+  {
+   "id": "__output__.TokenUrl",
+   "cfg": "__output__.TokenUrl",
+   "type": "__output__",
+   "values": {
+    "name": "TokenUrl",
+    "value": "https://agui-mcp-demo-123456789012.auth.us-east-1.amazoncognito.com/oauth2/token",
+    "description": "OAuth2 Token endpoint",
+    "export": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.DynamoDBTableName",
+   "cfg": "__output__.DynamoDBTableName",
+   "type": "__output__",
+   "values": {
+    "name": "DynamoDBTableName",
+    "value": {
+     "ref": "FinanceTrackerTable"
+    },
+    "description": "Finance tracker DynamoDB table name",
+    "export": null
+   },
+   "refs": [
+    "FinanceTrackerTable"
+   ]
+  },
+  {
+   "id": "__output__.MCPServerRoleArn",
+   "cfg": "__output__.MCPServerRoleArn",
+   "type": "__output__",
+   "values": {
+    "name": "MCPServerRoleArn",
+    "value": {
+     "ref": "MCPServerRuntimeRole",
+     "attr": "Arn"
+    },
+    "description": "IAM Role ARN for MCP Server Runtime",
+    "export": null
+   },
+   "refs": [
+    "MCPServerRuntimeRole"
+   ]
+  },
+  {
+   "id": "__output__.AGUIAgentRoleArn",
+   "cfg": "__output__.AGUIAgentRoleArn",
+   "type": "__output__",
+   "values": {
+    "name": "AGUIAgentRoleArn",
+    "value": {
+     "ref": "AGUIAgentRuntimeRole",
+     "attr": "Arn"
+    },
+    "description": "IAM Role ARN for AG-UI Agent Runtime",
+    "export": null
+   },
+   "refs": [
+    "AGUIAgentRuntimeRole"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPool.CognitoUserPool",
+   "cfg": "CognitoUserPool",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Cognito::UserPool",
+    "name": "CognitoUserPool",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "UserPoolName": "agui-mcp-demo-user-pool",
+     "AutoVerifiedAttributes": [
+      "email"
+     ],
+     "UsernameAttributes": [
+      "email"
+     ],
+     "Policies": {
+      "PasswordPolicy": {
+       "MinimumLength": 8,
+       "RequireUppercase": true,
+       "RequireLowercase": true,
+       "RequireNumbers": true,
+       "RequireSymbols": false
+      }
+     },
+     "Schema": [
+      {
+       "Name": "email",
+       "AttributeDataType": "String",
+       "Required": true,
+       "Mutable": true
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolDomain.CognitoUserPoolDomain",
+   "cfg": "CognitoUserPoolDomain",
+   "type": "__declared__",
+   "refs": [
+    "CognitoUserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolDomain",
+    "name": "CognitoUserPoolDomain",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Domain": "agui-mcp-demo-123456789012",
+     "UserPoolId": {
+      "ref": "CognitoUserPool"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolResourceServer.CognitoResourceServer",
+   "cfg": "CognitoResourceServer",
+   "type": "__declared__",
+   "refs": [
+    "CognitoUserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolResourceServer",
+    "name": "CognitoResourceServer",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "UserPoolId": {
+      "ref": "CognitoUserPool"
+     },
+     "Identifier": "agui-mcp-demo-api",
+     "Name": "agui-mcp-demo-api",
+     "Scopes": [
+      {
+       "ScopeName": "invoke",
+       "ScopeDescription": "Invoke AgentCore endpoints"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolClient.CognitoMachineClient",
+   "cfg": "CognitoMachineClient",
+   "type": "__declared__",
+   "refs": [
+    "CognitoUserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolClient",
+    "name": "CognitoMachineClient",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ClientName": "agui-mcp-demo-machine-client",
+     "UserPoolId": {
+      "ref": "CognitoUserPool"
+     },
+     "GenerateSecret": true,
+     "AllowedOAuthFlows": [
+      "client_credentials"
+     ],
+     "AllowedOAuthFlowsUserPoolClient": true,
+     "AllowedOAuthScopes": [
+      "agui-mcp-demo-api/invoke"
+     ],
+     "ExplicitAuthFlows": [
+      "ALLOW_USER_PASSWORD_AUTH",
+      "ALLOW_REFRESH_TOKEN_AUTH"
+     ],
+     "SupportedIdentityProviders": [
+      "COGNITO"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolClient.CognitoWebClient",
+   "cfg": "CognitoWebClient",
+   "type": "__declared__",
+   "refs": [
+    "CognitoUserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolClient",
+    "name": "CognitoWebClient",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ClientName": "agui-mcp-demo-web-client",
+     "UserPoolId": {
+      "ref": "CognitoUserPool"
+     },
+     "GenerateSecret": false,
+     "ExplicitAuthFlows": [
+      "ALLOW_USER_PASSWORD_AUTH",
+      "ALLOW_REFRESH_TOKEN_AUTH"
+     ],
+     "SupportedIdentityProviders": [
+      "COGNITO"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::DynamoDB::Table.FinanceTrackerTable",
+   "cfg": "FinanceTrackerTable",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::DynamoDB::Table",
+    "name": "FinanceTrackerTable",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "TableName": "agui-mcp-demo-finance-tracker",
+     "BillingMode": "PAY_PER_REQUEST",
+     "AttributeDefinitions": [
+      {
+       "AttributeName": "pk",
+       "AttributeType": "S"
+      },
+      {
+       "AttributeName": "sk",
+       "AttributeType": "S"
+      }
+     ],
+     "KeySchema": [
+      {
+       "AttributeName": "pk",
+       "KeyType": "HASH"
+      },
+      {
+       "AttributeName": "sk",
+       "KeyType": "RANGE"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.MCPServerRuntimeRole",
+   "cfg": "MCPServerRuntimeRole",
+   "type": "__declared__",
+   "refs": [
+    "FinanceTrackerTable"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "MCPServerRuntimeRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "agui-mcp-demo-mcp-server-role",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "bedrock-agentcore.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Policies": [
+      {
+       "PolicyName": "MCPServerPolicy",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "dynamodb:PutItem",
+           "dynamodb:GetItem",
+           "dynamodb:Query",
+           "dynamodb:UpdateItem",
+           "dynamodb:DeleteItem"
+          ],
+          "Resource": {
+           "ref": "FinanceTrackerTable",
+           "attr": "Arn"
+          }
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "ecr:GetAuthorizationToken",
+           "ecr:BatchCheckLayerAvailability",
+           "ecr:GetDownloadUrlForLayer",
+           "ecr:BatchGetImage"
+          ],
+          "Resource": [
+           "*"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "logs:CreateLogGroup",
+           "logs:CreateLogStream",
+           "logs:PutLogEvents"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.AGUIAgentRuntimeRole",
+   "cfg": "AGUIAgentRuntimeRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "AGUIAgentRuntimeRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "agui-mcp-demo-agui-agent-role",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "bedrock-agentcore.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Policies": [
+      {
+       "PolicyName": "AGUIAgentPolicy",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "bedrock:InvokeModel",
+           "bedrock:InvokeModelWithResponseStream"
+          ],
+          "Resource": [
+           "*"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "ecr:GetAuthorizationToken",
+           "ecr:BatchCheckLayerAvailability",
+           "ecr:GetDownloadUrlForLayer",
+           "ecr:BatchGetImage"
+          ],
+          "Resource": [
+           "*"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "logs:CreateLogGroup",
+           "logs:CreateLogStream",
+           "logs:PutLogEvents"
+          ],
+          "Resource": [
+           "*"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "secretsmanager:GetSecretValue"
+          ],
+          "Resource": [
+           "*"
+          ]
+         },
+         {
+          "Effect": "Allow",
+          "Action": [
+           "ssm:GetParameter",
+           "ssm:GetParameters"
+          ],
+          "Resource": [
+           "arn:aws:ssm:us-east-1:123456789012:parameter/agui-mcp-demo/*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SSM::Parameter.SSMUserPoolId",
+   "cfg": "SSMUserPoolId",
+   "type": "__declared__",
+   "refs": [
+    "CognitoUserPool"
+   ],
+   "values": {
+    "type": "AWS::SSM::Parameter",
+    "name": "SSMUserPoolId",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "/agui-mcp-demo/cognito/user-pool-id",
+     "Type": "String",
+     "Value": {
+      "ref": "CognitoUserPool"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SSM::Parameter.SSMUserPoolArn",
+   "cfg": "SSMUserPoolArn",
+   "type": "__declared__",
+   "refs": [
+    "CognitoUserPool"
+   ],
+   "values": {
+    "type": "AWS::SSM::Parameter",
+    "name": "SSMUserPoolArn",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "/agui-mcp-demo/cognito/user-pool-arn",
+     "Type": "String",
+     "Value": {
+      "ref": "CognitoUserPool",
+      "attr": "Arn"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SSM::Parameter.SSMMachineClientId",
+   "cfg": "SSMMachineClientId",
+   "type": "__declared__",
+   "refs": [
+    "CognitoMachineClient"
+   ],
+   "values": {
+    "type": "AWS::SSM::Parameter",
+    "name": "SSMMachineClientId",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "/agui-mcp-demo/cognito/machine-client-id",
+     "Type": "String",
+     "Value": {
+      "ref": "CognitoMachineClient"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SSM::Parameter.SSMWebClientId",
+   "cfg": "SSMWebClientId",
+   "type": "__declared__",
+   "refs": [
+    "CognitoWebClient"
+   ],
+   "values": {
+    "type": "AWS::SSM::Parameter",
+    "name": "SSMWebClientId",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "/agui-mcp-demo/cognito/web-client-id",
+     "Type": "String",
+     "Value": {
+      "ref": "CognitoWebClient"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SSM::Parameter.SSMDiscoveryUrl",
+   "cfg": "SSMDiscoveryUrl",
+   "type": "__declared__",
+   "refs": [
+    "CognitoUserPool"
+   ],
+   "values": {
+    "type": "AWS::SSM::Parameter",
+    "name": "SSMDiscoveryUrl",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "/agui-mcp-demo/cognito/discovery-url",
+     "Type": "String",
+     "Value": "https://cognito-idp.us-east-1.amazonaws.com/${CognitoUserPool}/.well-known/openid-configuration"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SSM::Parameter.SSMTokenUrl",
+   "cfg": "SSMTokenUrl",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::SSM::Parameter",
+    "name": "SSMTokenUrl",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "/agui-mcp-demo/cognito/token-url",
+     "Type": "String",
+     "Value": "https://agui-mcp-demo-123456789012.auth.us-east-1.amazoncognito.com/oauth2/token"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SSM::Parameter.SSMTableName",
+   "cfg": "SSMTableName",
+   "type": "__declared__",
+   "refs": [
+    "FinanceTrackerTable"
+   ],
+   "values": {
+    "type": "AWS::SSM::Parameter",
+    "name": "SSMTableName",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "/agui-mcp-demo/dynamodb/table-name",
+     "Type": "String",
+     "Value": {
+      "ref": "FinanceTrackerTable"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SSM::Parameter.SSMMCPServerRoleArn",
+   "cfg": "SSMMCPServerRoleArn",
+   "type": "__declared__",
+   "refs": [
+    "MCPServerRuntimeRole"
+   ],
+   "values": {
+    "type": "AWS::SSM::Parameter",
+    "name": "SSMMCPServerRoleArn",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "/agui-mcp-demo/iam/mcp-server-role-arn",
+     "Type": "String",
+     "Value": {
+      "ref": "MCPServerRuntimeRole",
+      "attr": "Arn"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SSM::Parameter.SSMAGUIAgentRoleArn",
+   "cfg": "SSMAGUIAgentRoleArn",
+   "type": "__declared__",
+   "refs": [
+    "AGUIAgentRuntimeRole"
+   ],
+   "values": {
+    "type": "AWS::SSM::Parameter",
+    "name": "SSMAGUIAgentRoleArn",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "/agui-mcp-demo/iam/agui-agent-role-arn",
+     "Type": "String",
+     "Value": {
+      "ref": "AGUIAgentRuntimeRole",
+      "attr": "Arn"
+     }
+    }
+   }
+  }
+ ]
+}

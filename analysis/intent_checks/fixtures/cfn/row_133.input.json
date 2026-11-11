@@ -1,0 +1,835 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "bc042e4f36ba8486008a0fb5cff0145c1060c45d75e90797df1c5e455f6d4554",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "ExistingRestApi",
+   "cfg": "ExistingRestApi",
+   "type": "AWS::ApiGateway::RestApi",
+   "values": {
+    "Body": {
+     "info": {
+      "title": "stack",
+      "version": "1.0"
+     },
+     "paths": {
+      "/pathget": {
+       "get": {
+        "responses": {
+         "200": {
+          "description": "OK"
+         },
+         "400": {
+          "description": "Bad Request"
+         }
+        },
+        "x-amazon-apigateway-integration": {
+         "credentials": {
+          "ref": "MyStateMachineGetApiRole",
+          "attr": "Arn"
+         },
+         "httpMethod": "POST",
+         "requestTemplates": {
+          "application/json": "{\"input\": \"$util.escapeJavaScript($input.json('$'))\", \"stateMachineArn\": \"${MyStateMachine}\"}"
+         },
+         "responses": {
+          "200": {
+           "statusCode": "200"
+          },
+          "400": {
+           "statusCode": "400"
+          }
+         },
+         "type": "aws",
+         "uri": "arn:aws:apigateway:us-east-1:states:action/StartExecution"
+        }
+       }
+      }
+     },
+     "swagger": "2.0"
+    }
+   },
+   "refs": [
+    "MyStateMachine",
+    "MyStateMachineGetApiRole"
+   ]
+  },
+  {
+   "id": "ExistingRestApiDeploymentefd42b7944",
+   "cfg": "ExistingRestApiDeploymentefd42b7944",
+   "type": "AWS::ApiGateway::Deployment",
+   "values": {
+    "Description": "RestApi deployment id: efd42b7944cf8a0dfeb6547818e5ee11b117fa4d",
+    "RestApiId": {
+     "ref": "ExistingRestApi"
+    },
+    "StageName": "Stage"
+   },
+   "refs": [
+    "ExistingRestApi"
+   ]
+  },
+  {
+   "id": "ExistingRestApiDevStage",
+   "cfg": "ExistingRestApiDevStage",
+   "type": "AWS::ApiGateway::Stage",
+   "values": {
+    "DeploymentId": {
+     "ref": "ExistingRestApiDeploymentefd42b7944"
+    },
+    "RestApiId": {
+     "ref": "ExistingRestApi"
+    },
+    "StageName": "Dev"
+   },
+   "refs": [
+    "ExistingRestApi",
+    "ExistingRestApiDeploymentefd42b7944"
+   ]
+  },
+  {
+   "id": "MyStateMachine",
+   "cfg": "MyStateMachine",
+   "type": "AWS::StepFunctions::StateMachine",
+   "values": {
+    "DefinitionString": "{\n    \"Comment\": \"A Hello World example of the Amazon States Language using Pass states\",\n    \"StartAt\": \"Hello\",\n    \"States\": {\n        \"Hello\": {\n            \"Next\": \"World\",\n            \"Result\": \"Hello\",\n            \"Type\": \"Pass\"\n        },\n        \"World\": {\n            \"End\": true,\n            \"Result\": \"World\",\n            \"Type\": \"Pass\"\n        }\n    }\n}",
+    "RoleArn": {
+     "ref": "MyStateMachineRole",
+     "attr": "Arn"
+    },
+    "Tags": [
+     {
+      "Key": "stateMachine:createdBy",
+      "Value": "SAM"
+     }
+    ]
+   },
+   "refs": [
+    "MyStateMachineRole"
+   ]
+  },
+  {
+   "id": "MyStateMachineGetApiRole",
+   "cfg": "MyStateMachineGetApiRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "apigateway.amazonaws.com"
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "Policies": [
+     {
+      "PolicyDocument": {
+       "Statement": [
+        {
+         "Action": [
+          "states:StartExecution"
+         ],
+         "Effect": "Allow",
+         "Resource": {
+          "ref": "MyStateMachine"
+         }
+        }
+       ]
+      },
+      "PolicyName": "MyStateMachineGetApiRoleStartExecutionPolicy"
+     }
+    ]
+   },
+   "refs": [
+    "MyStateMachine"
+   ]
+  },
+  {
+   "id": "MyStateMachinePostApiRole",
+   "cfg": "MyStateMachinePostApiRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "apigateway.amazonaws.com"
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "Policies": [
+     {
+      "PolicyDocument": {
+       "Statement": [
+        {
+         "Action": [
+          "states:StartExecution"
+         ],
+         "Effect": "Allow",
+         "Resource": {
+          "ref": "MyStateMachine"
+         }
+        }
+       ]
+      },
+      "PolicyName": "MyStateMachinePostApiRoleStartExecutionPolicy"
+     }
+    ]
+   },
+   "refs": [
+    "MyStateMachine"
+   ]
+  },
+  {
+   "id": "MyStateMachineRole",
+   "cfg": "MyStateMachineRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "states.amazonaws.com"
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "ManagedPolicyArns": [],
+    "Policies": [
+     {
+      "PolicyDocument": {
+       "Statement": [
+        {
+         "Action": [
+          "*"
+         ],
+         "Effect": "Deny",
+         "Resource": [
+          "*"
+         ]
+        }
+       ],
+       "Version": "2012-10-17"
+      },
+      "PolicyName": "MyStateMachineRolePolicy0"
+     }
+    ],
+    "Tags": [
+     {
+      "Key": "stateMachine:createdBy",
+      "Value": "SAM"
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "ServerlessRestApi",
+   "cfg": "ServerlessRestApi",
+   "type": "AWS::ApiGateway::RestApi",
+   "values": {
+    "Body": {
+     "info": {
+      "title": "stack",
+      "version": "1.0"
+     },
+     "paths": {
+      "/pathpost": {
+       "post": {
+        "responses": {
+         "200": {
+          "description": "OK"
+         },
+         "400": {
+          "description": "Bad Request"
+         }
+        },
+        "x-amazon-apigateway-integration": {
+         "credentials": {
+          "ref": "MyStateMachinePostApiRole",
+          "attr": "Arn"
+         },
+         "httpMethod": "POST",
+         "requestTemplates": {
+          "application/json": "{\"input\": \"$util.escapeJavaScript($input.json('$'))\", \"stateMachineArn\": \"${MyStateMachine}\"}"
+         },
+         "responses": {
+          "200": {
+           "statusCode": "200"
+          },
+          "400": {
+           "statusCode": "400"
+          }
+         },
+         "type": "aws",
+         "uri": "arn:aws:apigateway:us-east-1:states:action/StartExecution"
+        }
+       }
+      }
+     },
+     "swagger": "2.0"
+    }
+   },
+   "refs": [
+    "MyStateMachine",
+    "MyStateMachinePostApiRole"
+   ]
+  },
+  {
+   "id": "ServerlessRestApiDeployment5390046d30",
+   "cfg": "ServerlessRestApiDeployment5390046d30",
+   "type": "AWS::ApiGateway::Deployment",
+   "values": {
+    "Description": "RestApi deployment id: 5390046d30af30202ffeefe3944e76579b71af99",
+    "RestApiId": {
+     "ref": "ServerlessRestApi"
+    },
+    "StageName": "Stage"
+   },
+   "refs": [
+    "ServerlessRestApi"
+   ]
+  },
+  {
+   "id": "ServerlessRestApiProdStage",
+   "cfg": "ServerlessRestApiProdStage",
+   "type": "AWS::ApiGateway::Stage",
+   "values": {
+    "DeploymentId": {
+     "ref": "ServerlessRestApiDeployment5390046d30"
+    },
+    "RestApiId": {
+     "ref": "ServerlessRestApi"
+    },
+    "StageName": "Prod"
+   },
+   "refs": [
+    "ServerlessRestApi",
+    "ServerlessRestApiDeployment5390046d30"
+   ]
+  },
+  {
+   "id": "__output__.MyExplicitApiRoleArn",
+   "cfg": "__output__.MyExplicitApiRoleArn",
+   "type": "__output__",
+   "values": {
+    "name": "MyExplicitApiRoleArn",
+    "value": {
+     "ref": "MyStateMachineGetApiRole",
+     "attr": "Arn"
+    },
+    "description": "ARN of the role created for the explicit Api method",
+    "export": null
+   },
+   "refs": [
+    "MyStateMachineGetApiRole"
+   ]
+  },
+  {
+   "id": "__output__.MyExplicitApiRoleName",
+   "cfg": "__output__.MyExplicitApiRoleName",
+   "type": "__output__",
+   "values": {
+    "name": "MyExplicitApiRoleName",
+    "value": {
+     "ref": "MyStateMachineGetApiRole"
+    },
+    "description": "Name of the role created for the explicit Api method",
+    "export": null
+   },
+   "refs": [
+    "MyStateMachineGetApiRole"
+   ]
+  },
+  {
+   "id": "__output__.MyImplicitApiRoleArn",
+   "cfg": "__output__.MyImplicitApiRoleArn",
+   "type": "__output__",
+   "values": {
+    "name": "MyImplicitApiRoleArn",
+    "value": {
+     "ref": "MyStateMachinePostApiRole",
+     "attr": "Arn"
+    },
+    "description": "ARN of the role created for the implicit Api method",
+    "export": null
+   },
+   "refs": [
+    "MyStateMachinePostApiRole"
+   ]
+  },
+  {
+   "id": "__output__.MyImplicitApiRoleName",
+   "cfg": "__output__.MyImplicitApiRoleName",
+   "type": "__output__",
+   "values": {
+    "name": "MyImplicitApiRoleName",
+    "value": {
+     "ref": "MyStateMachinePostApiRole"
+    },
+    "description": "Name of the role created for the implicit Api method",
+    "export": null
+   },
+   "refs": [
+    "MyStateMachinePostApiRole"
+   ]
+  },
+  {
+   "id": "__output__.MyStateMachineArn",
+   "cfg": "__output__.MyStateMachineArn",
+   "type": "__output__",
+   "values": {
+    "name": "MyStateMachineArn",
+    "value": {
+     "ref": "MyStateMachine"
+    },
+    "description": "ARN of the State Machine",
+    "export": null
+   },
+   "refs": [
+    "MyStateMachine"
+   ]
+  },
+  {
+   "id": "__output__.Partition",
+   "cfg": "__output__.Partition",
+   "type": "__output__",
+   "values": {
+    "name": "Partition",
+    "value": "aws",
+    "description": "Partition",
+    "export": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.Region",
+   "cfg": "__output__.Region",
+   "type": "__output__",
+   "values": {
+    "name": "Region",
+    "value": "us-east-1",
+    "description": "Region",
+    "export": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::RestApi.ExistingRestApi",
+   "cfg": "ExistingRestApi",
+   "type": "__declared__",
+   "refs": [
+    "MyStateMachine",
+    "MyStateMachineGetApiRole"
+   ],
+   "values": {
+    "type": "AWS::ApiGateway::RestApi",
+    "name": "ExistingRestApi",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Body": {
+      "info": {
+       "title": "stack",
+       "version": "1.0"
+      },
+      "paths": {
+       "/pathget": {
+        "get": {
+         "responses": {
+          "200": {
+           "description": "OK"
+          },
+          "400": {
+           "description": "Bad Request"
+          }
+         },
+         "x-amazon-apigateway-integration": {
+          "credentials": {
+           "ref": "MyStateMachineGetApiRole",
+           "attr": "Arn"
+          },
+          "httpMethod": "POST",
+          "requestTemplates": {
+           "application/json": "{\"input\": \"$util.escapeJavaScript($input.json('$'))\", \"stateMachineArn\": \"${MyStateMachine}\"}"
+          },
+          "responses": {
+           "200": {
+            "statusCode": "200"
+           },
+           "400": {
+            "statusCode": "400"
+           }
+          },
+          "type": "aws",
+          "uri": "arn:aws:apigateway:us-east-1:states:action/StartExecution"
+         }
+        }
+       }
+      },
+      "swagger": "2.0"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::Deployment.ExistingRestApiDeploymentefd42b7944",
+   "cfg": "ExistingRestApiDeploymentefd42b7944",
+   "type": "__declared__",
+   "refs": [
+    "ExistingRestApi"
+   ],
+   "values": {
+    "type": "AWS::ApiGateway::Deployment",
+    "name": "ExistingRestApiDeploymentefd42b7944",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Description": "RestApi deployment id: efd42b7944cf8a0dfeb6547818e5ee11b117fa4d",
+     "RestApiId": {
+      "ref": "ExistingRestApi"
+     },
+     "StageName": "Stage"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::Stage.ExistingRestApiDevStage",
+   "cfg": "ExistingRestApiDevStage",
+   "type": "__declared__",
+   "refs": [
+    "ExistingRestApi",
+    "ExistingRestApiDeploymentefd42b7944"
+   ],
+   "values": {
+    "type": "AWS::ApiGateway::Stage",
+    "name": "ExistingRestApiDevStage",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "DeploymentId": {
+      "ref": "ExistingRestApiDeploymentefd42b7944"
+     },
+     "RestApiId": {
+      "ref": "ExistingRestApi"
+     },
+     "StageName": "Dev"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::StepFunctions::StateMachine.MyStateMachine",
+   "cfg": "MyStateMachine",
+   "type": "__declared__",
+   "refs": [
+    "MyStateMachineRole"
+   ],
+   "values": {
+    "type": "AWS::StepFunctions::StateMachine",
+    "name": "MyStateMachine",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "DefinitionString": "{\n    \"Comment\": \"A Hello World example of the Amazon States Language using Pass states\",\n    \"StartAt\": \"Hello\",\n    \"States\": {\n        \"Hello\": {\n            \"Next\": \"World\",\n            \"Result\": \"Hello\",\n            \"Type\": \"Pass\"\n        },\n        \"World\": {\n            \"End\": true,\n            \"Result\": \"World\",\n            \"Type\": \"Pass\"\n        }\n    }\n}",
+     "RoleArn": {
+      "ref": "MyStateMachineRole",
+      "attr": "Arn"
+     },
+     "Tags": [
+      {
+       "Key": "stateMachine:createdBy",
+       "Value": "SAM"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.MyStateMachineGetApiRole",
+   "cfg": "MyStateMachineGetApiRole",
+   "type": "__declared__",
+   "refs": [
+    "MyStateMachine"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "MyStateMachineGetApiRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "apigateway.amazonaws.com"
+         ]
+        }
+       }
+      ],
+      "Version": "2012-10-17"
+     },
+     "Policies": [
+      {
+       "PolicyDocument": {
+        "Statement": [
+         {
+          "Action": [
+           "states:StartExecution"
+          ],
+          "Effect": "Allow",
+          "Resource": {
+           "ref": "MyStateMachine"
+          }
+         }
+        ]
+       },
+       "PolicyName": "MyStateMachineGetApiRoleStartExecutionPolicy"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.MyStateMachinePostApiRole",
+   "cfg": "MyStateMachinePostApiRole",
+   "type": "__declared__",
+   "refs": [
+    "MyStateMachine"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "MyStateMachinePostApiRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "apigateway.amazonaws.com"
+         ]
+        }
+       }
+      ],
+      "Version": "2012-10-17"
+     },
+     "Policies": [
+      {
+       "PolicyDocument": {
+        "Statement": [
+         {
+          "Action": [
+           "states:StartExecution"
+          ],
+          "Effect": "Allow",
+          "Resource": {
+           "ref": "MyStateMachine"
+          }
+         }
+        ]
+       },
+       "PolicyName": "MyStateMachinePostApiRoleStartExecutionPolicy"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.MyStateMachineRole",
+   "cfg": "MyStateMachineRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "MyStateMachineRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "states.amazonaws.com"
+         ]
+        }
+       }
+      ],
+      "Version": "2012-10-17"
+     },
+     "ManagedPolicyArns": [],
+     "Policies": [
+      {
+       "PolicyDocument": {
+        "Statement": [
+         {
+          "Action": [
+           "*"
+          ],
+          "Effect": "Deny",
+          "Resource": [
+           "*"
+          ]
+         }
+        ],
+        "Version": "2012-10-17"
+       },
+       "PolicyName": "MyStateMachineRolePolicy0"
+      }
+     ],
+     "Tags": [
+      {
+       "Key": "stateMachine:createdBy",
+       "Value": "SAM"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::RestApi.ServerlessRestApi",
+   "cfg": "ServerlessRestApi",
+   "type": "__declared__",
+   "refs": [
+    "MyStateMachine",
+    "MyStateMachinePostApiRole"
+   ],
+   "values": {
+    "type": "AWS::ApiGateway::RestApi",
+    "name": "ServerlessRestApi",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Body": {
+      "info": {
+       "title": "stack",
+       "version": "1.0"
+      },
+      "paths": {
+       "/pathpost": {
+        "post": {
+         "responses": {
+          "200": {
+           "description": "OK"
+          },
+          "400": {
+           "description": "Bad Request"
+          }
+         },
+         "x-amazon-apigateway-integration": {
+          "credentials": {
+           "ref": "MyStateMachinePostApiRole",
+           "attr": "Arn"
+          },
+          "httpMethod": "POST",
+          "requestTemplates": {
+           "application/json": "{\"input\": \"$util.escapeJavaScript($input.json('$'))\", \"stateMachineArn\": \"${MyStateMachine}\"}"
+          },
+          "responses": {
+           "200": {
+            "statusCode": "200"
+           },
+           "400": {
+            "statusCode": "400"
+           }
+          },
+          "type": "aws",
+          "uri": "arn:aws:apigateway:us-east-1:states:action/StartExecution"
+         }
+        }
+       }
+      },
+      "swagger": "2.0"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::Deployment.ServerlessRestApiDeployment5390046d30",
+   "cfg": "ServerlessRestApiDeployment5390046d30",
+   "type": "__declared__",
+   "refs": [
+    "ServerlessRestApi"
+   ],
+   "values": {
+    "type": "AWS::ApiGateway::Deployment",
+    "name": "ServerlessRestApiDeployment5390046d30",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Description": "RestApi deployment id: 5390046d30af30202ffeefe3944e76579b71af99",
+     "RestApiId": {
+      "ref": "ServerlessRestApi"
+     },
+     "StageName": "Stage"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::Stage.ServerlessRestApiProdStage",
+   "cfg": "ServerlessRestApiProdStage",
+   "type": "__declared__",
+   "refs": [
+    "ServerlessRestApi",
+    "ServerlessRestApiDeployment5390046d30"
+   ],
+   "values": {
+    "type": "AWS::ApiGateway::Stage",
+    "name": "ServerlessRestApiProdStage",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "DeploymentId": {
+      "ref": "ServerlessRestApiDeployment5390046d30"
+     },
+     "RestApiId": {
+      "ref": "ServerlessRestApi"
+     },
+     "StageName": "Prod"
+    }
+   }
+  }
+ ]
+}

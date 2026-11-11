@@ -1,0 +1,403 @@
+package intent.cfn.row_000
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {
+  "alarms": {
+   "types": [
+    "AWS::CloudWatch::Alarm"
+   ],
+   "where": []
+  }
+ },
+ "checks": [
+  {
+   "id": "three_alarms",
+   "kind": "exists",
+   "select": "alarms",
+   "tier": "core",
+   "quote": "creates three CloudWatch alarms",
+   "min": 3,
+   "max": 3
+  },
+  {
+   "id": "metric_name",
+   "kind": "attr",
+   "select": "alarms",
+   "cond": {
+    "path": [
+     "MetricName"
+    ],
+    "op": "eq",
+    "value": "AlwaysOK"
+   },
+   "tier": "core",
+   "quote": "all monitoring the same \"AlwaysOK\" metric",
+   "quantifier": "all"
+  },
+  {
+   "id": "namespace",
+   "kind": "attr",
+   "select": "alarms",
+   "cond": {
+    "path": [
+     "Namespace"
+    ],
+    "op": "eq",
+    "value": "AWS/NetworkELB"
+   },
+   "tier": "core",
+   "quote": "from the AWS/NetworkELB namespace",
+   "quantifier": "all"
+  },
+  {
+   "id": "threshold",
+   "kind": "attr",
+   "select": "alarms",
+   "cond": {
+    "path": [
+     "Threshold"
+    ],
+    "op": "eq",
+    "value": 100
+   },
+   "tier": "detail",
+   "quote": "with a threshold of 100",
+   "quantifier": "all"
+  },
+  {
+   "id": "comparison",
+   "kind": "attr",
+   "select": "alarms",
+   "cond": {
+    "path": [
+     "ComparisonOperator"
+    ],
+    "op": "eq",
+    "value": "GreaterThanOrEqualToThreshold"
+   },
+   "tier": "detail",
+   "quote": "a comparison operator of greater-than-or-equal-to-threshold",
+   "quantifier": "all"
+  },
+  {
+   "id": "eval_periods",
+   "kind": "attr",
+   "select": "alarms",
+   "cond": {
+    "path": [
+     "EvaluationPeriods"
+    ],
+    "op": "eq",
+    "value": 1
+   },
+   "tier": "detail",
+   "quote": "one evaluation period",
+   "quantifier": "all",
+   "justify": "'one' evaluation period = 1"
+  },
+  {
+   "id": "period",
+   "kind": "attr",
+   "select": "alarms",
+   "cond": {
+    "path": [
+     "Period"
+    ],
+    "op": "eq",
+    "value": 60
+   },
+   "tier": "detail",
+   "quote": "a period of 60 seconds",
+   "quantifier": "all"
+  },
+  {
+   "id": "statistic",
+   "kind": "attr",
+   "select": "alarms",
+   "cond": {
+    "path": [
+     "Statistic"
+    ],
+    "op": "eq",
+    "value": "Minimum"
+   },
+   "tier": "detail",
+   "quote": "Minimum statistic",
+   "quantifier": "all"
+  },
+  {
+   "id": "tmd_not_breaching",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "AWS::CloudWatch::Alarm"
+    ],
+    "where": [
+     {
+      "path": [
+       "TreatMissingData"
+      ],
+      "op": "eq",
+      "value": "notBreaching"
+     }
+    ]
+   },
+   "tier": "core",
+   "quote": "\"notBreaching\""
+  },
+  {
+   "id": "tmd_breaching",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "AWS::CloudWatch::Alarm"
+    ],
+    "where": [
+     {
+      "path": [
+       "TreatMissingData"
+      ],
+      "op": "eq",
+      "value": "breaching"
+     }
+    ]
+   },
+   "tier": "core",
+   "quote": "\"breaching\""
+  },
+  {
+   "id": "tmd_missing",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "AWS::CloudWatch::Alarm"
+    ],
+    "where": [
+     {
+      "path": [
+       "TreatMissingData"
+      ],
+      "op": "eq",
+      "value": "missing"
+     }
+    ]
+   },
+   "tier": "core",
+   "quote": "\"missing\""
+  },
+  {
+   "id": "alarm_ok_named",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "named AlwaysOKAlarm, AlwaysFAILAlarm, and AlwaysINSUFFICIENTAlarm, with their TreatMissingData properties set to \"notBreaching\", \"breaching\", and \"missing\" respectively",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "AWS::CloudWatch::Alarm"
+      ],
+      "where": [
+       {
+        "path": [
+         "AlarmName"
+        ],
+        "op": "eq",
+        "value": "AlwaysOKAlarm"
+       },
+       {
+        "path": [
+         "TreatMissingData"
+        ],
+        "op": "eq",
+        "value": "notBreaching"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "AWS::CloudWatch::Alarm"
+       },
+       {
+        "path": [
+         "name"
+        ],
+        "op": "eq",
+        "value": "AlwaysOKAlarm"
+       },
+       {
+        "path": [
+         "properties",
+         "TreatMissingData"
+        ],
+        "op": "eq",
+        "value": "notBreaching"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "alarm_fail_named",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "named AlwaysOKAlarm, AlwaysFAILAlarm, and AlwaysINSUFFICIENTAlarm, with their TreatMissingData properties set to \"notBreaching\", \"breaching\", and \"missing\" respectively",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "AWS::CloudWatch::Alarm"
+      ],
+      "where": [
+       {
+        "path": [
+         "AlarmName"
+        ],
+        "op": "eq",
+        "value": "AlwaysFAILAlarm"
+       },
+       {
+        "path": [
+         "TreatMissingData"
+        ],
+        "op": "eq",
+        "value": "breaching"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "AWS::CloudWatch::Alarm"
+       },
+       {
+        "path": [
+         "name"
+        ],
+        "op": "eq",
+        "value": "AlwaysFAILAlarm"
+       },
+       {
+        "path": [
+         "properties",
+         "TreatMissingData"
+        ],
+        "op": "eq",
+        "value": "breaching"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "alarm_insufficient_named",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "named AlwaysOKAlarm, AlwaysFAILAlarm, and AlwaysINSUFFICIENTAlarm, with their TreatMissingData properties set to \"notBreaching\", \"breaching\", and \"missing\" respectively",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "AWS::CloudWatch::Alarm"
+      ],
+      "where": [
+       {
+        "path": [
+         "AlarmName"
+        ],
+        "op": "eq",
+        "value": "AlwaysINSUFFICIENTAlarm"
+       },
+       {
+        "path": [
+         "TreatMissingData"
+        ],
+        "op": "eq",
+        "value": "missing"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "AWS::CloudWatch::Alarm"
+       },
+       {
+        "path": [
+         "name"
+        ],
+        "op": "eq",
+        "value": "AlwaysINSUFFICIENTAlarm"
+       },
+       {
+        "path": [
+         "properties",
+         "TreatMissingData"
+        ],
+        "op": "eq",
+        "value": "missing"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "actions_disabled",
+   "kind": "attr",
+   "select": "alarms",
+   "cond": {
+    "path": [
+     "ActionsEnabled"
+    ],
+    "op": "falsy"
+   },
+   "tier": "core",
+   "quote": "all alarms must have actions disabled",
+   "quantifier": "all"
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

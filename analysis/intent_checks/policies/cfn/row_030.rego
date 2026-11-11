@@ -1,0 +1,407 @@
+package intent.cfn.row_030
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {
+  "tbl": {
+   "types": [
+    "AWS::DynamoDB::Table"
+   ],
+   "where": []
+  },
+  "rt": {
+   "types": [
+    "AWS::ApplicationAutoScaling::ScalableTarget"
+   ],
+   "where": [
+    {
+     "path": [
+      "ScalableDimension"
+     ],
+     "op": "contains",
+     "value": "ReadCapacityUnits"
+    }
+   ]
+  },
+  "wt": {
+   "types": [
+    "AWS::ApplicationAutoScaling::ScalableTarget"
+   ],
+   "where": [
+    {
+     "path": [
+      "ScalableDimension"
+     ],
+     "op": "contains",
+     "value": "WriteCapacityUnits"
+    }
+   ]
+  },
+  "rp": {
+   "types": [
+    "AWS::ApplicationAutoScaling::ScalingPolicy"
+   ],
+   "where": [
+    {
+     "path": [
+      "TargetTrackingScalingPolicyConfiguration",
+      "PredefinedMetricSpecification",
+      "PredefinedMetricType"
+     ],
+     "op": "contains",
+     "value": "ReadCapacity"
+    }
+   ]
+  },
+  "wp": {
+   "types": [
+    "AWS::ApplicationAutoScaling::ScalingPolicy"
+   ],
+   "where": [
+    {
+     "path": [
+      "TargetTrackingScalingPolicyConfiguration",
+      "PredefinedMetricSpecification",
+      "PredefinedMetricType"
+     ],
+     "op": "contains",
+     "value": "WriteCapacity"
+    }
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "table",
+   "kind": "exists",
+   "select": "tbl",
+   "tier": "core",
+   "quote": "creates a DynamoDB table"
+  },
+  {
+   "id": "name",
+   "kind": "attr",
+   "select": "tbl",
+   "cond": {
+    "path": [
+     "TableName"
+    ],
+    "op": "eq",
+    "value": "dva-lab-02-07-sessions"
+   },
+   "tier": "core",
+   "quote": "named \"dva-lab-02-07-sessions\""
+  },
+  {
+   "id": "key",
+   "kind": "attr",
+   "select": "tbl",
+   "cond": {
+    "path": [
+     "KeySchema",
+     "*"
+    ],
+    "op": "match",
+    "value": [
+     {
+      "path": [
+       "AttributeName"
+      ],
+      "op": "eq",
+      "value": "session_id"
+     },
+     {
+      "path": [
+       "KeyType"
+      ],
+      "op": "eq",
+      "value": "HASH"
+     }
+    ]
+   },
+   "tier": "core",
+   "quote": "a partition key \"session_id\" (string)",
+   "justify": "partition key means KeyType HASH"
+  },
+  {
+   "id": "key_string",
+   "kind": "attr",
+   "select": "tbl",
+   "cond": {
+    "path": [
+     "AttributeDefinitions",
+     "*"
+    ],
+    "op": "match",
+    "value": [
+     {
+      "path": [
+       "AttributeName"
+      ],
+      "op": "eq",
+      "value": "session_id"
+     },
+     {
+      "path": [
+       "AttributeType"
+      ],
+      "op": "eq",
+      "value": "S"
+     }
+    ]
+   },
+   "tier": "core",
+   "quote": "a partition key \"session_id\" (string)"
+  },
+  {
+   "id": "ttl",
+   "kind": "attr",
+   "select": "tbl",
+   "cond": {
+    "path": [
+     "TimeToLiveSpecification",
+     "AttributeName"
+    ],
+    "op": "eq",
+    "value": "expires_at"
+   },
+   "tier": "core",
+   "quote": "TTL enabled on the \"expires_at\" attribute"
+  },
+  {
+   "id": "ttl_enabled",
+   "kind": "attr",
+   "select": "tbl",
+   "cond": {
+    "path": [
+     "TimeToLiveSpecification",
+     "Enabled"
+    ],
+    "op": "truthy"
+   },
+   "tier": "core",
+   "quote": "TTL enabled on the \"expires_at\" attribute"
+  },
+  {
+   "id": "provisioned",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "tbl",
+     "cond": {
+      "path": [
+       "BillingMode"
+      ],
+      "op": "eq",
+      "value": "PROVISIONED"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "tbl",
+     "cond": {
+      "path": [
+       "BillingMode"
+      ],
+      "op": "absent"
+     }
+    }
+   ],
+   "quote": "provisioned billing mode",
+   "justify": "PROVISIONED is the default when BillingMode is omitted"
+  },
+  {
+   "id": "capacity_5",
+   "kind": "all_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "tbl",
+     "cond": {
+      "path": [
+       "ProvisionedThroughput",
+       "ReadCapacityUnits"
+      ],
+      "op": "eq",
+      "value": 5
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "tbl",
+     "cond": {
+      "path": [
+       "ProvisionedThroughput",
+       "WriteCapacityUnits"
+      ],
+      "op": "eq",
+      "value": 5
+     }
+    }
+   ],
+   "quote": "initial read and write capacity of 5 units each"
+  },
+  {
+   "id": "pitr",
+   "kind": "attr",
+   "select": "tbl",
+   "cond": {
+    "path": [
+     "PointInTimeRecoverySpecification",
+     "PointInTimeRecoveryEnabled"
+    ],
+    "op": "truthy"
+   },
+   "tier": "core",
+   "quote": "Point-in-Time Recovery should be enabled"
+  },
+  {
+   "id": "read_scaling_bounds",
+   "kind": "all_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "rt",
+     "cond": {
+      "path": [
+       "MinCapacity"
+      ],
+      "op": "eq",
+      "value": 5
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "rt",
+     "cond": {
+      "path": [
+       "MaxCapacity"
+      ],
+      "op": "eq",
+      "value": 40
+     }
+    }
+   ],
+   "quote": "with a minimum capacity of 5 and maximum of 40 units"
+  },
+  {
+   "id": "write_scaling_bounds",
+   "kind": "all_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "wt",
+     "cond": {
+      "path": [
+       "MinCapacity"
+      ],
+      "op": "eq",
+      "value": 5
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "wt",
+     "cond": {
+      "path": [
+       "MaxCapacity"
+      ],
+      "op": "eq",
+      "value": 40
+     }
+    }
+   ],
+   "quote": "with a minimum capacity of 5 and maximum of 40 units"
+  },
+  {
+   "id": "read_target_70",
+   "kind": "attr",
+   "select": "rp",
+   "cond": {
+    "path": [
+     "TargetTrackingScalingPolicyConfiguration",
+     "TargetValue"
+    ],
+    "op": "eq",
+    "value": 70
+   },
+   "tier": "core",
+   "quote": "target utilization of 70% for both read and write"
+  },
+  {
+   "id": "write_target_70",
+   "kind": "attr",
+   "select": "wp",
+   "cond": {
+    "path": [
+     "TargetTrackingScalingPolicyConfiguration",
+     "TargetValue"
+    ],
+    "op": "eq",
+    "value": 70
+   },
+   "tier": "core",
+   "quote": "target utilization of 70% for both read and write"
+  },
+  {
+   "id": "read_target_on_table",
+   "kind": "any_of",
+   "tier": "detail",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "rt",
+     "to": "tbl"
+    },
+    {
+     "kind": "attr",
+     "select": "rt",
+     "cond": {
+      "path": [
+       "ResourceId"
+      ],
+      "op": "contains",
+      "value": "dva-lab-02-07-sessions"
+     }
+    }
+   ],
+   "quote": "auto-scaling configured"
+  },
+  {
+   "id": "write_target_on_table",
+   "kind": "any_of",
+   "tier": "detail",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "wt",
+     "to": "tbl"
+    },
+    {
+     "kind": "attr",
+     "select": "wt",
+     "cond": {
+      "path": [
+       "ResourceId"
+      ],
+      "op": "contains",
+      "value": "dva-lab-02-07-sessions"
+     }
+    }
+   ],
+   "quote": "auto-scaling configured"
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

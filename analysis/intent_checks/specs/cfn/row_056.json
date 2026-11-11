@@ -1,0 +1,359 @@
+{
+  "lang": "cfn",
+  "row_number": 56,
+  "source_hash": {
+    "gt": "da5b740ace272f0ca0a97537c811ae338cc96f656df9dddffe3f8ec1c29a8da0",
+    "prompt": "2a59e2dc270cc943ed5b2d04adceaa349022c1b00991feeaaacb169fbf6b7b5e"
+  },
+  "selectors": {
+    "dom": {
+      "types": [
+        "AWS::DataZone::Domain"
+      ]
+    },
+    "proj": {
+      "types": [
+        "AWS::DataZone::Project"
+      ]
+    },
+    "role": {
+      "types": [
+        "AWS::IAM::Role"
+      ]
+    },
+    "bp": {
+      "types": [
+        "AWS::DataZone::EnvironmentBlueprintConfiguration"
+      ]
+    },
+    "iam": {
+      "types": [
+        "AWS::IAM::Role",
+        "AWS::IAM::Policy",
+        "AWS::IAM::ManagedPolicy"
+      ]
+    },
+    "sales": {
+      "types": [
+        "AWS::DataZone::Project"
+      ],
+      "where": [
+        {
+          "path": "Name",
+          "op": "eq",
+          "value": "SalesPublisher"
+        }
+      ]
+    },
+    "mkt": {
+      "types": [
+        "AWS::DataZone::Project"
+      ],
+      "where": [
+        {
+          "path": "Name",
+          "op": "eq",
+          "value": "MarketingConsumer"
+        }
+      ]
+    },
+    "dz_role": {
+      "types": [
+        "AWS::IAM::Role"
+      ],
+      "where": [
+        {
+          "path": "AssumeRolePolicyDocument",
+          "op": "contains",
+          "value": "datazone.amazonaws.com"
+        }
+      ]
+    }
+  },
+  "checks": [
+    {
+      "id": "domain",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "creates an Amazon DataZone domain",
+      "select": "dom"
+    },
+    {
+      "id": "domain_name_param",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "a configurable domain name defaulting to \"cookbookChapter11\"",
+      "select": {
+        "types": [
+          "__parameter__"
+        ],
+        "where": [
+          {
+            "path": "default",
+            "op": "eq",
+            "value": "cookbookChapter11"
+          }
+        ]
+      }
+    },
+    {
+      "id": "domain_name",
+      "kind": "attr",
+      "tier": "core",
+      "quote": "a configurable domain name defaulting to \"cookbookChapter11\"",
+      "select": "dom",
+      "cond": {
+        "path": "Name",
+        "op": "eq",
+        "value": "cookbookChapter11"
+      }
+    },
+    {
+      "id": "project_sales",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "named SalesPublisher",
+      "select": "sales"
+    },
+    {
+      "id": "project_marketing",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "MarketingConsumer",
+      "select": "mkt"
+    },
+    {
+      "id": "projects_in_domain",
+      "kind": "all_of",
+      "tier": "detail",
+      "quote": "two projects named SalesPublisher and MarketingConsumer",
+      "checks": [
+        {
+          "kind": "ref",
+          "from": "sales",
+          "to": "dom"
+        },
+        {
+          "kind": "ref",
+          "from": "mkt",
+          "to": "dom"
+        }
+      ]
+    },
+    {
+      "id": "iam_role",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "the required IAM roles for domain execution, data access (including Glue, Redshift, and Secrets Manager permissions), and provisioning",
+      "select": "role",
+      "min": 3,
+      "justify": "three roles are named: domain execution, data access, provisioning"
+    },
+    {
+      "id": "domain_exec_role",
+      "kind": "ref",
+      "tier": "core",
+      "quote": "IAM roles for domain execution",
+      "from": "dom",
+      "to": "role"
+    },
+    {
+      "id": "role_datazone_trust",
+      "kind": "ref",
+      "tier": "detail",
+      "quote": "IAM roles for domain execution",
+      "justify": "a domain execution role trusts the DataZone service principal",
+      "from": "dom",
+      "to": "dz_role"
+    },
+    {
+      "id": "perm_glue",
+      "kind": "attr",
+      "tier": "detail",
+      "quote": "data access (including Glue, Redshift, and Secrets Manager permissions)",
+      "select": "iam",
+      "cond": {
+        "path": "",
+        "op": "regex",
+        "value": "(?i)(glue:|AmazonDataZoneGlue|AWSGlue)"
+      },
+      "justify": "Glue permissions are glue: actions or a Glue managed policy"
+    },
+    {
+      "id": "perm_redshift",
+      "kind": "attr",
+      "tier": "detail",
+      "quote": "data access (including Glue, Redshift, and Secrets Manager permissions)",
+      "select": "iam",
+      "cond": {
+        "path": "",
+        "op": "regex",
+        "value": "(?i)(redshift[a-z-]*:|AmazonDataZoneRedshift|AmazonRedshift)"
+      },
+      "justify": "Redshift permissions are redshift actions or a Redshift managed policy"
+    },
+    {
+      "id": "perm_secrets",
+      "kind": "attr",
+      "tier": "detail",
+      "quote": "data access (including Glue, Redshift, and Secrets Manager permissions)",
+      "select": "iam",
+      "cond": {
+        "path": "",
+        "op": "regex",
+        "value": "(?i)(secretsmanager:|SecretsManagerReadWrite)"
+      },
+      "justify": "Secrets Manager permissions are secretsmanager: actions or its managed policy"
+    },
+    {
+      "id": "data_role_perms_together",
+      "kind": "any_of",
+      "tier": "detail",
+      "quote": "data access (including Glue, Redshift, and Secrets Manager permissions)",
+      "justify": "all three belong to one data access role, or one policy attached to a role",
+      "checks": [
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "AWS::IAM::Role"
+            ],
+            "where": [
+              {
+                "path": "",
+                "op": "regex",
+                "value": "(?i)(glue:|AmazonDataZoneGlue|AWSGlue)"
+              },
+              {
+                "path": "",
+                "op": "regex",
+                "value": "(?i)(redshift[a-z-]*:|AmazonDataZoneRedshift|AmazonRedshift)"
+              },
+              {
+                "path": "",
+                "op": "regex",
+                "value": "(?i)(secretsmanager:|SecretsManagerReadWrite)"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "AWS::IAM::Policy",
+              "AWS::IAM::ManagedPolicy"
+            ],
+            "where": [
+              {
+                "path": "",
+                "op": "regex",
+                "value": "(?i)(glue:|AmazonDataZoneGlue|AWSGlue)"
+              },
+              {
+                "path": "",
+                "op": "regex",
+                "value": "(?i)(redshift[a-z-]*:|AmazonDataZoneRedshift|AmazonRedshift)"
+              },
+              {
+                "path": "",
+                "op": "regex",
+                "value": "(?i)(secretsmanager:|SecretsManagerReadWrite)"
+              }
+            ]
+          },
+          "to": "role",
+          "bidirectional": true
+        }
+      ]
+    },
+    {
+      "id": "blueprint_config",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "an environment blueprint configuration",
+      "select": "bp"
+    },
+    {
+      "id": "blueprint_id",
+      "kind": "attr",
+      "tier": "core",
+      "quote": "for the DefaultDataWarehouse blueprint",
+      "select": "bp",
+      "cond": {
+        "path": "EnvironmentBlueprintIdentifier",
+        "op": "eq",
+        "value": "DefaultDataWarehouse"
+      }
+    },
+    {
+      "id": "blueprint_region",
+      "kind": "attr",
+      "tier": "core",
+      "quote": "enabled in the current region",
+      "justify": "current region resolves to AWS::Region",
+      "select": "bp",
+      "cond": {
+        "path": "EnabledRegions.*",
+        "op": "eq",
+        "value": "us-east-1"
+      }
+    },
+    {
+      "id": "blueprint_domain",
+      "kind": "ref",
+      "tier": "detail",
+      "quote": "environment blueprint configuration",
+      "from": "bp",
+      "to": "dom"
+    },
+    {
+      "id": "blueprint_provisioning_role",
+      "kind": "any_of",
+      "tier": "detail",
+      "quote": "and provisioning",
+      "justify": "the blueprint configuration is where a provisioning role is used",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "bp",
+          "cond": {
+            "path": "ProvisioningRoleArn.ref",
+            "op": "present"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "bp",
+          "cond": {
+            "path": "ProvisioningRoleArn",
+            "op": "contains",
+            "value": ":role/"
+          }
+        }
+      ]
+    },
+    {
+      "id": "x_exec_policy",
+      "kind": "attr",
+      "tier": "extra",
+      "select": "role",
+      "cond": {
+        "path": "ManagedPolicyArns.*",
+        "op": "contains",
+        "value": "AmazonDataZoneDomainExecutionRolePolicy"
+      }
+    },
+    {
+      "id": "x_manage_access_role",
+      "kind": "attr",
+      "tier": "extra",
+      "select": "bp",
+      "cond": {
+        "path": "ManageAccessRoleArn",
+        "op": "present"
+      }
+    }
+  ],
+  "notes": "Role purposes are not separable by type, so data_role_perms_together shows one role or policy holds all three permissions without proving it is the data access role. domain_name keeps the exact default: a name with a suffix added does not default to the stated value."
+}

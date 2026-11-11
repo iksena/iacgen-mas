@@ -1,0 +1,1235 @@
+{
+ "lang": "cfn",
+ "row_number": 159,
+ "source_hash": {
+  "gt": "220a4dab766e65415e3ac40624a89511f44f48d8557339c20c4bdda106b09ce4",
+  "prompt": "70f5ab833f0cb48ab47cb4cbb176a1035d3b295ec7fa1a1be17b337268d1ce0d"
+ },
+ "selectors": {
+  "zone": {
+   "types": [
+    "AWS::Route53::HostedZone"
+   ]
+  },
+  "grp": {
+   "types": [
+    "AWS::Route53::RecordSetGroup"
+   ]
+  },
+  "rec": {
+   "types": [
+    "AWS::Route53::RecordSet"
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "hosted_zone",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "creates a Route 53 hosted zone",
+   "select": "zone"
+  },
+  {
+   "id": "zone_name",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "for the domain parameter prxu.org (with a trailing period)",
+   "select": "zone",
+   "cond": {
+    "path": "Name",
+    "op": "regex",
+    "value": "^prxu\\.org\\.?$"
+   }
+  },
+  {
+   "id": "domain_param",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "the domain parameter prxu.org (with a trailing period)",
+   "select": "zone",
+   "cond": {
+    "path": "Name",
+    "op": "regex",
+    "value": "^prxu\\.org\\.$"
+   }
+  },
+  {
+   "id": "zone_production",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "in the Production environment",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "zone",
+     "cond": {
+      "path": "HostedZoneTags",
+      "op": "regex",
+      "value": "(?i)production"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "zone",
+     "cond": {
+      "path": "HostedZoneConfig.Comment",
+      "op": "regex",
+      "value": "(?i)production"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__parameter__"
+      ]
+     },
+     "cond": {
+      "path": "default",
+      "op": "eq",
+      "value": "Production"
+     }
+    }
+   ]
+  },
+  {
+   "id": "txt_apex",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "apex TXT and MX records with a 300 second TTL for domain verification",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "grp",
+     "cond": {
+      "path": "RecordSets.*",
+      "op": "match",
+      "value": [
+       {
+        "path": "Name",
+        "op": "regex",
+        "value": "^prxu\\.org\\.?$"
+       },
+       {
+        "path": "Type",
+        "op": "eq",
+        "value": "TXT"
+       },
+       {
+        "path": "TTL",
+        "op": "eq",
+        "value": 300
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "rec",
+     "cond": {
+      "path": "",
+      "op": "match",
+      "value": [
+       {
+        "path": "Name",
+        "op": "regex",
+        "value": "^prxu\\.org\\.?$"
+       },
+       {
+        "path": "Type",
+        "op": "eq",
+        "value": "TXT"
+       },
+       {
+        "path": "TTL",
+        "op": "eq",
+        "value": 300
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "mx_apex",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "email routing to Google's mail servers",
+   "justify": "Google Workspace mail servers are *.google.com / googlemail.com hosts",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "grp",
+     "cond": {
+      "path": "RecordSets.*",
+      "op": "match",
+      "value": [
+       {
+        "path": "Name",
+        "op": "regex",
+        "value": "^prxu\\.org\\.?$"
+       },
+       {
+        "path": "Type",
+        "op": "eq",
+        "value": "MX"
+       },
+       {
+        "path": "TTL",
+        "op": "eq",
+        "value": 300
+       },
+       {
+        "path": "ResourceRecords.*",
+        "op": "regex",
+        "value": "(?i)google"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "rec",
+     "cond": {
+      "path": "",
+      "op": "match",
+      "value": [
+       {
+        "path": "Name",
+        "op": "regex",
+        "value": "^prxu\\.org\\.?$"
+       },
+       {
+        "path": "Type",
+        "op": "eq",
+        "value": "MX"
+       },
+       {
+        "path": "TTL",
+        "op": "eq",
+        "value": 300
+       },
+       {
+        "path": "ResourceRecords.*",
+        "op": "regex",
+        "value": "(?i)google"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "alias_a",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "alias records (A and AAAA) pointing to the respective CloudFront distributions",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "grp",
+     "cond": {
+      "path": "RecordSets.*",
+      "op": "match",
+      "value": [
+       {
+        "path": "Type",
+        "op": "eq",
+        "value": "A"
+       },
+       {
+        "path": "AliasTarget",
+        "op": "regex",
+        "value": "(?i)cloudfront|Z2FDTNDATAQYW2"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "rec",
+     "cond": {
+      "path": "",
+      "op": "match",
+      "value": [
+       {
+        "path": "Type",
+        "op": "eq",
+        "value": "A"
+       },
+       {
+        "path": "AliasTarget",
+        "op": "regex",
+        "value": "(?i)cloudfront|Z2FDTNDATAQYW2"
+       }
+      ]
+     }
+    }
+   ],
+   "justify": "an alias to CloudFront uses a cloudfront.net target or CloudFront's fixed alias hosted zone ID"
+  },
+  {
+   "id": "alias_aaaa",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "alias records (A and AAAA) pointing to the respective CloudFront distributions",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "grp",
+     "cond": {
+      "path": "RecordSets.*",
+      "op": "match",
+      "value": [
+       {
+        "path": "Type",
+        "op": "eq",
+        "value": "AAAA"
+       },
+       {
+        "path": "AliasTarget",
+        "op": "regex",
+        "value": "(?i)cloudfront|Z2FDTNDATAQYW2"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "rec",
+     "cond": {
+      "path": "",
+      "op": "match",
+      "value": [
+       {
+        "path": "Type",
+        "op": "eq",
+        "value": "AAAA"
+       },
+       {
+        "path": "AliasTarget",
+        "op": "regex",
+        "value": "(?i)cloudfront|Z2FDTNDATAQYW2"
+       }
+      ]
+     }
+    }
+   ],
+   "justify": "an alias to CloudFront uses a cloudfront.net target or CloudFront's fixed alias hosted zone ID"
+  },
+  {
+   "id": "alias_dovetail_cdn",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "the dovetail-cdn",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "grp",
+     "cond": {
+      "path": "RecordSets.*",
+      "op": "match",
+      "value": [
+       {
+        "path": "Name",
+        "op": "regex",
+        "value": "^dovetail\\-cdn\\.prxu\\.org\\.?$"
+       },
+       {
+        "path": "Type",
+        "op": "in",
+        "value": [
+         "A",
+         "AAAA"
+        ]
+       },
+       {
+        "path": "AliasTarget",
+        "op": "regex",
+        "value": "(?i)cloudfront|Z2FDTNDATAQYW2"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "rec",
+     "cond": {
+      "path": "",
+      "op": "match",
+      "value": [
+       {
+        "path": "Name",
+        "op": "regex",
+        "value": "^dovetail\\-cdn\\.prxu\\.org\\.?$"
+       },
+       {
+        "path": "Type",
+        "op": "in",
+        "value": [
+         "A",
+         "AAAA"
+        ]
+       },
+       {
+        "path": "AliasTarget",
+        "op": "regex",
+        "value": "(?i)cloudfront|Z2FDTNDATAQYW2"
+       }
+      ]
+     }
+    }
+   ],
+   "justify": "an alias to CloudFront uses a cloudfront.net target or CloudFront's fixed alias hosted zone ID"
+  },
+  {
+   "id": "alias_dovetail_cdn_staging",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "dovetail-cdn-staging",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "grp",
+     "cond": {
+      "path": "RecordSets.*",
+      "op": "match",
+      "value": [
+       {
+        "path": "Name",
+        "op": "regex",
+        "value": "^dovetail-cdn[.-]staging\\.prxu\\.org\\.?$"
+       },
+       {
+        "path": "Type",
+        "op": "in",
+        "value": [
+         "A",
+         "AAAA"
+        ]
+       },
+       {
+        "path": "AliasTarget",
+        "op": "regex",
+        "value": "(?i)cloudfront|Z2FDTNDATAQYW2"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "rec",
+     "cond": {
+      "path": "",
+      "op": "match",
+      "value": [
+       {
+        "path": "Name",
+        "op": "regex",
+        "value": "^dovetail-cdn[.-]staging\\.prxu\\.org\\.?$"
+       },
+       {
+        "path": "Type",
+        "op": "in",
+        "value": [
+         "A",
+         "AAAA"
+        ]
+       },
+       {
+        "path": "AliasTarget",
+        "op": "regex",
+        "value": "(?i)cloudfront|Z2FDTNDATAQYW2"
+       }
+      ]
+     }
+    }
+   ],
+   "justify": "an alias to CloudFront uses a cloudfront.net target or CloudFront's fixed alias hosted zone ID"
+  },
+  {
+   "id": "alias_feeder",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "feeder CDN (f",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "grp",
+     "cond": {
+      "path": "RecordSets.*",
+      "op": "match",
+      "value": [
+       {
+        "path": "Name",
+        "op": "regex",
+        "value": "^f\\.prxu\\.org\\.?$"
+       },
+       {
+        "path": "Type",
+        "op": "in",
+        "value": [
+         "A",
+         "AAAA"
+        ]
+       },
+       {
+        "path": "AliasTarget",
+        "op": "regex",
+        "value": "(?i)cloudfront|Z2FDTNDATAQYW2"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "rec",
+     "cond": {
+      "path": "",
+      "op": "match",
+      "value": [
+       {
+        "path": "Name",
+        "op": "regex",
+        "value": "^f\\.prxu\\.org\\.?$"
+       },
+       {
+        "path": "Type",
+        "op": "in",
+        "value": [
+         "A",
+         "AAAA"
+        ]
+       },
+       {
+        "path": "AliasTarget",
+        "op": "regex",
+        "value": "(?i)cloudfront|Z2FDTNDATAQYW2"
+       }
+      ]
+     }
+    }
+   ],
+   "justify": "an alias to CloudFront uses a cloudfront.net target or CloudFront's fixed alias hosted zone ID"
+  },
+  {
+   "id": "alias_feeder_staging",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "f-staging",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "grp",
+     "cond": {
+      "path": "RecordSets.*",
+      "op": "match",
+      "value": [
+       {
+        "path": "Name",
+        "op": "regex",
+        "value": "^f\\-staging\\.prxu\\.org\\.?$"
+       },
+       {
+        "path": "Type",
+        "op": "in",
+        "value": [
+         "A",
+         "AAAA"
+        ]
+       },
+       {
+        "path": "AliasTarget",
+        "op": "regex",
+        "value": "(?i)cloudfront|Z2FDTNDATAQYW2"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "rec",
+     "cond": {
+      "path": "",
+      "op": "match",
+      "value": [
+       {
+        "path": "Name",
+        "op": "regex",
+        "value": "^f\\-staging\\.prxu\\.org\\.?$"
+       },
+       {
+        "path": "Type",
+        "op": "in",
+        "value": [
+         "A",
+         "AAAA"
+        ]
+       },
+       {
+        "path": "AliasTarget",
+        "op": "regex",
+        "value": "(?i)cloudfront|Z2FDTNDATAQYW2"
+       }
+      ]
+     }
+    }
+   ],
+   "justify": "an alias to CloudFront uses a cloudfront.net target or CloudFront's fixed alias hosted zone ID"
+  },
+  {
+   "id": "alias_feeder_dev",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "f.development)",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "grp",
+     "cond": {
+      "path": "RecordSets.*",
+      "op": "match",
+      "value": [
+       {
+        "path": "Name",
+        "op": "regex",
+        "value": "^f\\.development\\.prxu\\.org\\.?$"
+       },
+       {
+        "path": "Type",
+        "op": "in",
+        "value": [
+         "A",
+         "AAAA"
+        ]
+       },
+       {
+        "path": "AliasTarget",
+        "op": "regex",
+        "value": "(?i)cloudfront|Z2FDTNDATAQYW2"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "rec",
+     "cond": {
+      "path": "",
+      "op": "match",
+      "value": [
+       {
+        "path": "Name",
+        "op": "regex",
+        "value": "^f\\.development\\.prxu\\.org\\.?$"
+       },
+       {
+        "path": "Type",
+        "op": "in",
+        "value": [
+         "A",
+         "AAAA"
+        ]
+       },
+       {
+        "path": "AliasTarget",
+        "op": "regex",
+        "value": "(?i)cloudfront|Z2FDTNDATAQYW2"
+       }
+      ]
+     }
+    }
+   ],
+   "justify": "an alias to CloudFront uses a cloudfront.net target or CloudFront's fixed alias hosted zone ID"
+  },
+  {
+   "id": "alias_ads",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "ad files CDN (a)",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "grp",
+     "cond": {
+      "path": "RecordSets.*",
+      "op": "match",
+      "value": [
+       {
+        "path": "Name",
+        "op": "regex",
+        "value": "^a\\.prxu\\.org\\.?$"
+       },
+       {
+        "path": "Type",
+        "op": "in",
+        "value": [
+         "A",
+         "AAAA"
+        ]
+       },
+       {
+        "path": "AliasTarget",
+        "op": "regex",
+        "value": "(?i)cloudfront|Z2FDTNDATAQYW2"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "rec",
+     "cond": {
+      "path": "",
+      "op": "match",
+      "value": [
+       {
+        "path": "Name",
+        "op": "regex",
+        "value": "^a\\.prxu\\.org\\.?$"
+       },
+       {
+        "path": "Type",
+        "op": "in",
+        "value": [
+         "A",
+         "AAAA"
+        ]
+       },
+       {
+        "path": "AliasTarget",
+        "op": "regex",
+        "value": "(?i)cloudfront|Z2FDTNDATAQYW2"
+       }
+      ]
+     }
+    }
+   ],
+   "justify": "an alias to CloudFront uses a cloudfront.net target or CloudFront's fixed alias hosted zone ID"
+  },
+  {
+   "id": "alias_sandbox",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "a development sandbox CDN (ryan-cdn) subdomains",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "grp",
+     "cond": {
+      "path": "RecordSets.*",
+      "op": "match",
+      "value": [
+       {
+        "path": "Name",
+        "op": "regex",
+        "value": "^ryan\\-cdn\\.prxu\\.org\\.?$"
+       },
+       {
+        "path": "Type",
+        "op": "in",
+        "value": [
+         "A",
+         "AAAA"
+        ]
+       },
+       {
+        "path": "AliasTarget",
+        "op": "regex",
+        "value": "(?i)cloudfront|Z2FDTNDATAQYW2"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "rec",
+     "cond": {
+      "path": "",
+      "op": "match",
+      "value": [
+       {
+        "path": "Name",
+        "op": "regex",
+        "value": "^ryan\\-cdn\\.prxu\\.org\\.?$"
+       },
+       {
+        "path": "Type",
+        "op": "in",
+        "value": [
+         "A",
+         "AAAA"
+        ]
+       },
+       {
+        "path": "AliasTarget",
+        "op": "regex",
+        "value": "(?i)cloudfront|Z2FDTNDATAQYW2"
+       }
+      ]
+     }
+    }
+   ],
+   "justify": "an alias to CloudFront uses a cloudfront.net target or CloudFront's fixed alias hosted zone ID"
+  },
+  {
+   "id": "legacy_cname_prod",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "legacy CNAME records pointing to the corresponding dovetail-cdn subdomains with a 3600 second TTL",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "grp",
+     "cond": {
+      "path": "RecordSets.*",
+      "op": "match",
+      "value": [
+       {
+        "path": "Type",
+        "op": "eq",
+        "value": "CNAME"
+       },
+       {
+        "path": "TTL",
+        "op": "eq",
+        "value": 3600
+       },
+       {
+        "path": "ResourceRecords.*",
+        "op": "regex",
+        "value": "^dovetail-cdn\\.prxu\\.org\\.?$"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "rec",
+     "cond": {
+      "path": "",
+      "op": "match",
+      "value": [
+       {
+        "path": "Type",
+        "op": "eq",
+        "value": "CNAME"
+       },
+       {
+        "path": "TTL",
+        "op": "eq",
+        "value": 3600
+       },
+       {
+        "path": "ResourceRecords.*",
+        "op": "regex",
+        "value": "^dovetail-cdn\\.prxu\\.org\\.?$"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "legacy_cname_staging",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "legacy CNAME records pointing to the corresponding dovetail-cdn subdomains with a 3600 second TTL",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "grp",
+     "cond": {
+      "path": "RecordSets.*",
+      "op": "match",
+      "value": [
+       {
+        "path": "Type",
+        "op": "eq",
+        "value": "CNAME"
+       },
+       {
+        "path": "TTL",
+        "op": "eq",
+        "value": 3600
+       },
+       {
+        "path": "ResourceRecords.*",
+        "op": "regex",
+        "value": "^dovetail-cdn[.-]staging\\.prxu\\.org\\.?$"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "rec",
+     "cond": {
+      "path": "",
+      "op": "match",
+      "value": [
+       {
+        "path": "Type",
+        "op": "eq",
+        "value": "CNAME"
+       },
+       {
+        "path": "TTL",
+        "op": "eq",
+        "value": 3600
+       },
+       {
+        "path": "ResourceRecords.*",
+        "op": "regex",
+        "value": "^dovetail-cdn[.-]staging\\.prxu\\.org\\.?$"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "router_prod",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "CNAME records for the dovetail router covering production and staging subdomains with a 30 second TTL",
+   "justify": "the production router subdomain is named for dovetail or the router, optionally marked prod, and is not the staging one",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "grp",
+     "cond": {
+      "path": "RecordSets.*",
+      "op": "match",
+      "value": [
+       {
+        "path": "Type",
+        "op": "eq",
+        "value": "CNAME"
+       },
+       {
+        "path": "TTL",
+        "op": "eq",
+        "value": 30
+       },
+       {
+        "path": "Name",
+        "op": "regex",
+        "value": "(?i)^(prod[a-z]*[-.])?(dovetail|router|dovetail[-.]router|router[-.]dovetail)([-.]prod[a-z]*)?\\.prxu\\.org\\.?$"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "rec",
+     "cond": {
+      "path": "",
+      "op": "match",
+      "value": [
+       {
+        "path": "Type",
+        "op": "eq",
+        "value": "CNAME"
+       },
+       {
+        "path": "TTL",
+        "op": "eq",
+        "value": 30
+       },
+       {
+        "path": "Name",
+        "op": "regex",
+        "value": "(?i)^(prod[a-z]*[-.])?(dovetail|router|dovetail[-.]router|router[-.]dovetail)([-.]prod[a-z]*)?\\.prxu\\.org\\.?$"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "router_staging",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "CNAME records for the dovetail router covering production and staging subdomains with a 30 second TTL",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "grp",
+     "cond": {
+      "path": "RecordSets.*",
+      "op": "match",
+      "value": [
+       {
+        "path": "Type",
+        "op": "eq",
+        "value": "CNAME"
+       },
+       {
+        "path": "TTL",
+        "op": "eq",
+        "value": 30
+       },
+       {
+        "path": "Name",
+        "op": "regex",
+        "value": "(?i)(dovetail|router).*(staging|stg)|(staging|stg).*(dovetail|router)"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "rec",
+     "cond": {
+      "path": "",
+      "op": "match",
+      "value": [
+       {
+        "path": "Type",
+        "op": "eq",
+        "value": "CNAME"
+       },
+       {
+        "path": "TTL",
+        "op": "eq",
+        "value": 30
+       },
+       {
+        "path": "Name",
+        "op": "regex",
+        "value": "(?i)(dovetail|router).*(staging|stg)|(staging|stg).*(dovetail|router)"
+       }
+      ]
+     }
+    }
+   ],
+   "justify": "the staging router subdomain names dovetail or the router and staging"
+  },
+  {
+   "id": "proxy_cname_prod",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "CNAME records for the authenticated feed proxy subdomains (production and staging) with a 3600 second TTL",
+   "justify": "p abbreviates proxy; the production subdomain names the feed proxy, optionally marked prod, and is not the staging one",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "grp",
+     "cond": {
+      "path": "RecordSets.*",
+      "op": "match",
+      "value": [
+       {
+        "path": "Type",
+        "op": "eq",
+        "value": "CNAME"
+       },
+       {
+        "path": "TTL",
+        "op": "eq",
+        "value": 3600
+       },
+       {
+        "path": "Name",
+        "op": "regex",
+        "value": "(?i)^(prod[a-z]*[-.])?(p|auth[a-z]*([-.]?feed)?([-.]?proxy)?|feed([-.]?proxy)?|proxy)([-.]prod[a-z]*)?\\.prxu\\.org\\.?$"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "rec",
+     "cond": {
+      "path": "",
+      "op": "match",
+      "value": [
+       {
+        "path": "Type",
+        "op": "eq",
+        "value": "CNAME"
+       },
+       {
+        "path": "TTL",
+        "op": "eq",
+        "value": 3600
+       },
+       {
+        "path": "Name",
+        "op": "regex",
+        "value": "(?i)^(prod[a-z]*[-.])?(p|auth[a-z]*([-.]?feed)?([-.]?proxy)?|feed([-.]?proxy)?|proxy)([-.]prod[a-z]*)?\\.prxu\\.org\\.?$"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "proxy_cname_3600",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "CNAME records for the authenticated feed proxy subdomains (production and staging) with a 3600 second TTL",
+   "justify": "p abbreviates proxy; the name must identify the feed proxy and staging, so a legacy staging CNAME does not count",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "grp",
+     "cond": {
+      "path": "RecordSets.*",
+      "op": "match",
+      "value": [
+       {
+        "path": "Type",
+        "op": "eq",
+        "value": "CNAME"
+       },
+       {
+        "path": "TTL",
+        "op": "eq",
+        "value": 3600
+       },
+       {
+        "path": "Name",
+        "op": "regex",
+        "value": "(?i)(auth|feed|proxy|^p[.-]).*(staging|stg)|(staging|stg).*(auth|feed|proxy)"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "rec",
+     "cond": {
+      "path": "",
+      "op": "match",
+      "value": [
+       {
+        "path": "Type",
+        "op": "eq",
+        "value": "CNAME"
+       },
+       {
+        "path": "TTL",
+        "op": "eq",
+        "value": 3600
+       },
+       {
+        "path": "Name",
+        "op": "regex",
+        "value": "(?i)(auth|feed|proxy|^p[.-]).*(staging|stg)|(staging|stg).*(auth|feed|proxy)"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "acm_validation",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "all necessary ACM DNS validation CNAME records",
+   "justify": "ACM DNS validation targets end in acm-validations.aws",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "AWS::CertificateManager::Certificate"
+      ]
+     },
+     "cond": {
+      "path": "DomainValidationOptions.*.HostedZoneId",
+      "op": "present"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "grp",
+     "cond": {
+      "path": "RecordSets.*",
+      "op": "match",
+      "value": [
+       {
+        "path": "Type",
+        "op": "eq",
+        "value": "CNAME"
+       },
+       {
+        "path": "ResourceRecords.*",
+        "op": "regex",
+        "value": "(?i)acm-validations\\.aws"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "rec",
+     "cond": {
+      "path": "",
+      "op": "match",
+      "value": [
+       {
+        "path": "Type",
+        "op": "eq",
+        "value": "CNAME"
+       },
+       {
+        "path": "ResourceRecords.*",
+        "op": "regex",
+        "value": "(?i)acm-validations\\.aws"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "records_in_zone",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "creates a Route 53 hosted zone",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::Route53::RecordSetGroup"
+      ]
+     },
+     "to": "zone"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::Route53::RecordSet"
+      ]
+     },
+     "to": "zone"
+    },
+    {
+     "kind": "attr",
+     "select": "grp",
+     "cond": {
+      "path": "HostedZoneName",
+      "op": "regex",
+      "value": "^prxu\\.org\\.?$"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "rec",
+     "cond": {
+      "path": "HostedZoneName",
+      "op": "regex",
+      "value": "^prxu\\.org\\.?$"
+     }
+    }
+   ]
+  }
+ ],
+ "notes": "PROMPT_GT_MISMATCH: prompt says \"dovetail-cdn-staging\" but the ground truth names the record dovetail-cdn.staging.prxu.org, so name regexes accept both forms. Feed-proxy record names are not stated (ground truth: p and p.staging), so production and staging records are matched by words of the prompt with a 3600 TTL. Records may be RecordSetGroup elements or separate RecordSet resources. Per-subdomain alias checks accept A or AAAA, because requiring both on one subdomain in both record forms needs any_of inside all_of, which the interpreter rejects; alias_a and alias_aaaa require both types overall. Records gated off by default do not count, because the prompt says the template creates them. Review 2026-11-10: proxy_cname_prod's name regex no longer accepts a bare prod.prxu.org; the name must contain p, auth, feed or proxy."
+}

@@ -1,0 +1,423 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "48d0ce4d1a2ace4e0bd2936dba151292aed034555cf564a4047a3db5b10fb35c",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "TotalUsagePerClientVPNEndpoint",
+   "cfg": "TotalUsagePerClientVPNEndpoint",
+   "type": "AWS::Logs::QueryDefinition",
+   "values": {
+    "Name": "aws-client-vpn/Total Usage per Client VPN Endpoint",
+    "QueryString": "fields @timestamp, `client-vpn-endpoint-id`, `ingress-bytes`, `egress-bytes`, `connection-duration-seconds`, `username`, `common-name`\n| sort @timestamp asc\n| filter `ingress-bytes` > 0 OR `egress-bytes` > 0\n| stats\n    count(*) as connection_count,\n    min(@timestamp) as earliest_timestamp,\n    max(@timestamp) as latest_timestamp,\n    sum(`ingress-bytes`)/1048576 as total_ingress_MB,\n    sum(`egress-bytes`)/1048576 as total_egress_MB,\n    sum((`connection-duration-seconds`/60)/60) as total_connection_time_hours,\n    count_distinct(username) as unique_saml_ad_users,\n    count_distinct(`common-name`) as unique_mutual_auth_names\nby `client-vpn-endpoint-id`\n| sort by total_ingress_MB desc, total_egress_MB desc\n"
+   },
+   "refs": []
+  },
+  {
+   "id": "ADSAMLAuthTotalUsageReport",
+   "cfg": "ADSAMLAuthTotalUsageReport",
+   "type": "AWS::Logs::QueryDefinition",
+   "values": {
+    "Name": "aws-client-vpn/AD or SAML Auth Total Usage Report",
+    "QueryString": "fields @timestamp, `client-vpn-endpoint-id`, `username`, `ingress-bytes`, `egress-bytes`, `connection-start-time`, `connection-end-time`, `connection-duration-seconds`\n| sort @timestamp asc\n| filter `ingress-bytes` > 0 OR `egress-bytes` > 0\n| fields @timestamp, `client-vpn-endpoint-id`, `username`, `ingress-bytes`, `egress-bytes`, `connection-start-time`, `connection-end-time`, `connection-duration-seconds`, (`connection-duration-seconds`/60) as connection_time_minutes\n| sort by `ingress-bytes` desc, `egress-bytes` desc\n"
+   },
+   "refs": []
+  },
+  {
+   "id": "ADSAMLAuthDistinctUsersConnectionDuration",
+   "cfg": "ADSAMLAuthDistinctUsersConnectionDuration",
+   "type": "AWS::Logs::QueryDefinition",
+   "values": {
+    "Name": "aws-client-vpn/AD or SAML Auth Distinct Users Connection Duration",
+    "QueryString": "fields @timestamp, `client-vpn-endpoint-id`, `username`, `ingress-bytes`, `egress-bytes`, `connection-start-time`, `connection-end-time`, `connection-duration-seconds`\n| sort @timestamp asc\n| filter `ingress-bytes` > 0 OR `egress-bytes` > 0\n| stats count(*) as connection_count,\n  sum(`connection-duration-seconds`/60) as total_connection_time_minutes,\n  sum(`ingress-bytes`) as total_ingress_bytes,\n  sum(`egress-bytes`) as total_egress_bytes,\n  latest(`client-vpn-endpoint-id`) as client_vpn_endpoint_id\nby `username`\n| sort by total_ingress_bytes desc, total_egress_bytes desc\n"
+   },
+   "refs": []
+  },
+  {
+   "id": "ADSAMLAuthDistinctUsers",
+   "cfg": "ADSAMLAuthDistinctUsers",
+   "type": "AWS::Logs::QueryDefinition",
+   "values": {
+    "Name": "aws-client-vpn/AD or SAML Auth Distinct Users",
+    "QueryString": "fields @timestamp, `client-vpn-endpoint-id`, `username`\n| sort @timestamp asc\n| stats count(*) as connection_count,\n  latest(`client-vpn-endpoint-id`) as client_vpn_endpoint_id\nby `username`\n"
+   },
+   "refs": []
+  },
+  {
+   "id": "ADSAMLAuthUsersConnectionDuration",
+   "cfg": "ADSAMLAuthUsersConnectionDuration",
+   "type": "AWS::Logs::QueryDefinition",
+   "values": {
+    "Name": "aws-client-vpn/AD or SAML Auth Users Connection Duration",
+    "QueryString": "fields @timestamp, `client-vpn-endpoint-id`, `username`, `ingress-bytes`, `egress-bytes`, `connection-start-time`, `connection-end-time`, `connection-duration-seconds`\n| sort @timestamp asc\n| filter `ingress-bytes` > 0 OR `egress-bytes` > 0\n| stats count(*) as connection_count,\n  sum(`connection-duration-seconds`/60) as total_connection_time_minutes\nby `username`\n| sort by total_connection_time_minutes desc\n"
+   },
+   "refs": []
+  },
+  {
+   "id": "MutualAuthTotalUsageReport",
+   "cfg": "MutualAuthTotalUsageReport",
+   "type": "AWS::Logs::QueryDefinition",
+   "values": {
+    "Name": "aws-client-vpn/Mutual Auth Total Usage Report",
+    "QueryString": "fields @timestamp, `client-vpn-endpoint-id`, `common-name`, `ingress-bytes`, `egress-bytes`, `connection-start-time`, `connection-end-time`, `connection-duration-seconds`\n| sort @timestamp asc\n| filter `ingress-bytes` > 0 OR `egress-bytes` > 0\n| fields @timestamp, `client-vpn-endpoint-id`, `common-name`, `ingress-bytes`, `egress-bytes`, `connection-start-time`, `connection-end-time`, `connection-duration-seconds`, (`connection-duration-seconds`/60) as connection_time_minutes\n| sort by `ingress-bytes` desc, `egress-bytes` desc\n"
+   },
+   "refs": []
+  },
+  {
+   "id": "MutualAuthDistinctUsersConnectionDuration",
+   "cfg": "MutualAuthDistinctUsersConnectionDuration",
+   "type": "AWS::Logs::QueryDefinition",
+   "values": {
+    "Name": "aws-client-vpn/Mutual Auth Users Duration",
+    "QueryString": "fields @timestamp, `client-vpn-endpoint-id`, `common-name`, `ingress-bytes`, `egress-bytes`, `connection-duration-seconds` | sort @timestamp asc | filter `ingress-bytes` > 0 OR `egress-bytes` > 0 | stats count(*) as connection_count,\n  sum(`connection-duration-seconds`/60) as total_connection_time_minutes,\n  sum(`ingress-bytes`) as total_ingress_bytes,\n  sum(`egress-bytes`) as total_egress_bytes,\n  latest(`client-vpn-endpoint-id`) as client_vpn_endpoint_id\nby `common-name` | sort by total_ingress_bytes desc, total_egress_bytes desc\n"
+   },
+   "refs": []
+  },
+  {
+   "id": "MutualAuthDistinctUsers",
+   "cfg": "MutualAuthDistinctUsers",
+   "type": "AWS::Logs::QueryDefinition",
+   "values": {
+    "Name": "aws-client-vpn/Mutual Auth Distinct Users",
+    "QueryString": "fields @timestamp, `client-vpn-endpoint-id`, `common-name`\n| sort @timestamp asc\n| stats count(*) as connection_count, latest(`client-vpn-endpoint-id`) as client_vpn_endpoint_id by `common-name`\n"
+   },
+   "refs": []
+  },
+  {
+   "id": "MutualAuthUsersConnectionDuration",
+   "cfg": "MutualAuthUsersConnectionDuration",
+   "type": "AWS::Logs::QueryDefinition",
+   "values": {
+    "Name": "aws-client-vpn/Mutual Auth Distinct Users Connection Duration",
+    "QueryString": "fields @timestamp, `client-vpn-endpoint-id`, `common-name`, `ingress-bytes`, `egress-bytes`, `connection-start-time`, `connection-end-time`, `connection-duration-seconds` sort @timestamp asc filter `ingress-bytes` > 0 OR `egress-bytes` > 0 stats count(*) as connection_count, sum(`connection-duration-seconds`/60) as total_connection_time_minutes by `common-name`\n"
+   },
+   "refs": []
+  },
+  {
+   "id": "MixAuthTotalUsageReport",
+   "cfg": "MixAuthTotalUsageReport",
+   "type": "AWS::Logs::QueryDefinition",
+   "values": {
+    "Name": "aws-client-vpn/Mix Auth Total Usage Report",
+    "QueryString": "fields @timestamp, `client-vpn-endpoint-id`, `username`, `common-name`, `ingress-bytes`, `egress-bytes`, `connection-start-time`, `connection-end-time`, `connection-duration-seconds`\n| sort @timestamp asc\n| filter `ingress-bytes` > 0 OR `egress-bytes` > 0\n| fields @timestamp, `client-vpn-endpoint-id`, `username`, `common-name`, `ingress-bytes`, `egress-bytes`, `connection-start-time`, `connection-end-time`, `connection-duration-seconds`, (`connection-duration-seconds`/60) as connection_time_minutes\n| sort by `ingress-bytes` desc, `egress-bytes` desc\n"
+   },
+   "refs": []
+  },
+  {
+   "id": "MixAuthDistinctUsersConnectionDuration",
+   "cfg": "MixAuthDistinctUsersConnectionDuration",
+   "type": "AWS::Logs::QueryDefinition",
+   "values": {
+    "Name": "aws-client-vpn/Mix Auth Distinct Users Connection Duration",
+    "QueryString": "fields @timestamp, `client-vpn-endpoint-id`, `common-name`, `username`, `ingress-bytes`, `egress-bytes`, `connection-start-time`, `connection-end-time`, `connection-duration-seconds`\n| sort @timestamp asc\n| filter `ingress-bytes` > 0 OR `egress-bytes` > 0\n| stats count(*) as connection_count,\n  sum(`connection-duration-seconds`/60) as total_connection_time_minutes,\n  sum(`ingress-bytes`) as total_ingress_bytes,\n  sum(`egress-bytes`) as total_egress_bytes,\n  latest(`client-vpn-endpoint-id`) as client_vpn_endpoint_id\nby `common-name`, `username`\n| sort by total_ingress_bytes desc, total_egress_bytes desc\n"
+   },
+   "refs": []
+  },
+  {
+   "id": "MixAuthDistinctUsers",
+   "cfg": "MixAuthDistinctUsers",
+   "type": "AWS::Logs::QueryDefinition",
+   "values": {
+    "Name": "aws-client-vpn/Mix Auth Distinct Users",
+    "QueryString": "fields @timestamp, `client-vpn-endpoint-id`, `common-name`, `username`\n| sort @timestamp asc\n| stats count(*) as connection_count,\n  latest(`client-vpn-endpoint-id`) as client_vpn_endpoint_id\nby `username`, `common-name`\n"
+   },
+   "refs": []
+  },
+  {
+   "id": "MixAuthUsersConnectionDuration",
+   "cfg": "MixAuthUsersConnectionDuration",
+   "type": "AWS::Logs::QueryDefinition",
+   "values": {
+    "Name": "aws-client-vpn/Mix Auth Users Connection Duration",
+    "QueryString": "fields @timestamp, `client-vpn-endpoint-id`, `common-name`, `username`, `ingress-bytes`, `egress-bytes`, `connection-start-time`, `connection-end-time`, `connection-duration-seconds`\n| sort @timestamp asc\n| filter `ingress-bytes` > 0 OR `egress-bytes` > 0\n| stats count(*) as connection_count,\n  sum(`connection-duration-seconds`/60) as total_connection_time_minutes\nby `username`, `common-name`\n| sort by total_connection_time_minutes desc\n"
+   },
+   "refs": []
+  },
+  {
+   "id": "Dashboard",
+   "cfg": "Dashboard",
+   "type": "AWS::CloudWatch::Dashboard",
+   "values": {
+    "DashboardName": "us-east-1-AWS-ClientVPN-Usage-Dashboard",
+    "DashboardBody": "{\n  \"widgets\": [\n    {\n      \"type\": \"log\",\n      \"x\": 0,\n      \"y\": 0,\n      \"width\": 24,\n      \"height\": 6,\n      \"properties\": {\n        \"query\": \"SOURCE 'aws/aws-client-vpn/prod' | fields @timestamp, `client-vpn-endpoint-id`, `ingress-bytes`, `egress-bytes`, `connection-duration-seconds`, `username`, `common-name` | sort @timestamp asc | filter `ingress-bytes` > 0 OR `egress-bytes` > 0 | stats count(*) as connection_count, min(@timestamp) as earliest_timestamp, max(@timestamp) as latest_timestamp, sum(`ingress-bytes`)/1048576 as total_ingress_MB, sum(`egress-bytes`)/1048576 as total_egress_MB, sum((`connection-duration-seconds`/60)/60) as total_connection_time_hours, count_distinct(username) as unique_saml_ad_users, count_distinct(`common-name`) as unique_mutual_auth_names by `client-vpn-endpoint-id` | sort by total_ingress_MB desc, total_egress_MB desc\",\n        \"region\": \"us-east-1\",\n        \"title\": \"Total Usage per Client VPN Endpoint\",\n        \"view\": \"table\"\n      }\n    },\n    {\n      \"type\": \"log\",\n      \"x\": 0,\n      \"y\": 6,\n      \"width\": 24,\n      \"height\": 6,\n      \"properties\": {\n        \"query\": \"SOURCE 'aws/aws-client-vpn/prod' | fields @timestamp, `client-vpn-endpoint-id`, `username`, `ingress-bytes`, `egress-bytes`, `connection-start-time`, `connection-end-time`, `connection-duration-seconds` | sort @timestamp asc | filter `ingress-bytes` > 0 OR `egress-bytes` > 0 | fields @timestamp, `client-vpn-endpoint-id`, `username`, `ingress-bytes`, `egress-bytes`, `connection-start-time`, `connection-end-time`, `connection-duration-seconds`, (`connection-duration-seconds`/60) as connection_time_minutes | sort by `ingress-bytes` desc, `egress-bytes` desc\",\n        \"region\": \"us-east-1\",\n        \"title\": \"AD or SAML Auth Total Usage Report\",\n        \"view\": \"table\"\n      }\n    },\n    {\n      \"type\": \"log\",\n      \"x\": 0,\n      \"y\": 12,\n      \"width\": 24,\n      \"height\": 6,\n      \"properties\": {\n        \"query\": \"SOURCE 'aws/aws-client-vpn/prod' | fields @timestamp, `client-vpn-endpoint-id`, `username`, `ingress-bytes`, `egress-bytes`, `connection-start-time`, `connection-end-time`, `connection-duration-seconds` | sort @timestamp asc | filter `ingress-bytes` > 0 OR `egress-bytes` > 0 | stats count(*) as connection_count, sum(`connection-duration-seconds`/60) as total_connection_time_minutes, sum(`ingress-bytes`) as total_ingress_bytes, sum(`egress-bytes`) as total_egress_bytes, latest(`client-vpn-endpoint-id`) as client_vpn_endpoint_id by `username` | sort by total_ingress_bytes desc, total_egress_bytes desc\",\n        \"region\": \"us-east-1\",\n        \"title\": \"AD or SAML Auth Distinct Users Connection Duration\",\n        \"view\": \"table\"\n      }\n    },\n    {\n      \"type\": \"log\",\n      \"x\": 0,\n      \"y\": 18,\n      \"width\": 24,\n      \"height\": 6,\n      \"properties\": {\n        \"query\": \"SOURCE 'aws/aws-client-vpn/prod' | fields @timestamp, `client-vpn-endpoint-id`, `username` | sort @timestamp asc | stats count(*) as connection_count, latest(`client-vpn-endpoint-id`) as client_vpn_endpoint_id by `username`\",\n        \"region\": \"us-east-1\",\n        \"title\": \"AD or SAML Auth Distinct Users\",\n        \"view\": \"table\"\n      }\n    },\n    {\n      \"type\": \"log\",\n      \"x\": 0,\n      \"y\": 24,\n      \"width\": 24,\n      \"height\": 6,\n      \"properties\": {\n        \"query\": \"SOURCE 'aws/aws-client-vpn/prod' | fields @timestamp, `client-vpn-endpoint-id`, `username`, `ingress-bytes`, `egress-bytes`, `connection-start-time`, `connection-end-time`, `connection-duration-seconds` | sort @timestamp asc | filter `ingress-bytes` > 0 OR `egress-bytes` > 0 | stats count(*) as connection_count, sum(`connection-duration-seconds`/60) as total_connection_time_minutes by `username` | sort by total_connection_time_minutes desc\",\n        \"region\": \"us-east-1\",\n        \"title\": \"AD or SAML Auth Users Connection Duration\",\n        \"view\": \"table\"\n      }\n    },\n    {\n      \"type\": \"log\",\n      \"x\": 0,\n      \"y\": 30,\n      \"width\": 24,\n      \"height\": 6,\n      \"properties\": {\n        \"query\": \"SOURCE 'aws/aws-client-vpn/prod' | fields @timestamp, `client-vpn-endpoint-id`, `common-name`, `ingress-bytes`, `egress-bytes`, `connection-start-time`, `connection-end-time`, `connection-duration-seconds` | sort @timestamp asc | filter `ingress-bytes` > 0 OR `egress-bytes` > 0 | fields @timestamp, `client-vpn-endpoint-id`, `common-name`, `ingress-bytes`, `egress-bytes`, `connection-start-time`, `connection-end-time`, `connection-duration-seconds`, (`connection-duration-seconds`/60) as connection_time_minutes | sort by `ingress-bytes` desc, `egress-bytes` desc\",\n        \"region\": \"us-east-1\",\n        \"title\": \"Mutual Auth Total Usage Report\",\n        \"view\": \"table\"\n      }\n    },\n    {\n      \"type\": \"log\",\n      \"x\": 0,\n      \"y\": 36,\n      \"width\": 24,\n      \"height\": 6,\n      \"properties\": {\n        \"query\": \"SOURCE 'aws/aws-client-vpn/prod' | fields @timestamp, `client-vpn-endpoint-id`, `common-name`, `ingress-bytes`, `egress-bytes`, `connection-duration-seconds` | sort @timestamp asc | filter `ingress-bytes` > 0 OR `egress-bytes` > 0 | stats count(*) as connection_count, sum(`connection-duration-seconds`/60) as total_connection_time_minutes, sum(`ingress-bytes`) as total_ingress_bytes, sum(`egress-bytes`) as total_egress_bytes, latest(`client-vpn-endpoint-id`) as client_vpn_endpoint_id by `common-name` | sort by total_ingress_bytes desc, total_egress_bytes desc\",\n        \"region\": \"us-east-1\",\n        \"title\": \"Mutual Auth Users Duration\",\n        \"view\": \"table\"\n      }\n    },\n    {\n      \"type\": \"log\",\n      \"x\": 0,\n      \"y\": 42,\n      \"width\": 24,\n      \"height\": 6,\n      \"properties\": {\n        \"query\": \"SOURCE 'aws/aws-client-vpn/prod' | fields @timestamp, `client-vpn-endpoint-id`, `common-name` | sort @timestamp asc | stats count(*) as connection_count, latest(`client-vpn-endpoint-id`) as client_vpn_endpoint_id by `common-name`\",\n        \"region\": \"us-east-1\",\n        \"title\": \"Mutual Auth Distinct Users\",\n        \"view\": \"table\"\n      }\n    },\n    {\n      \"type\": \"log\",\n      \"x\": 0,\n      \"y\": 48,\n      \"width\": 24,\n      \"height\": 6,\n      \"properties\": {\n        \"query\": \"SOURCE 'aws/aws-client-vpn/prod' | fields @timestamp, `client-vpn-endpoint-id`, `username`, `common-name`, `ingress-bytes`, `egress-bytes`, `connection-start-time`, `connection-end-time`, `connection-duration-seconds` | sort @timestamp asc | filter `ingress-bytes` > 0 OR `egress-bytes` > 0 | fields @timestamp, `client-vpn-endpoint-id`, `username`, `common-name`, `ingress-bytes`, `egress-bytes`, `connection-start-time`, `connection-end-time`, `connection-duration-seconds`, (`connection-duration-seconds`/60) as connection_time_minutes | sort by `ingress-bytes` desc, `egress-bytes` desc\",\n        \"region\": \"us-east-1\",\n        \"title\": \"Mix Auth Total Usage Report\",\n        \"view\": \"table\"\n      }\n    },\n    {\n      \"type\": \"log\",\n      \"x\": 0,\n      \"y\": 54,\n      \"width\": 24,\n      \"height\": 6,\n      \"properties\": {\n        \"query\": \"SOURCE 'aws/aws-client-vpn/prod' | fields @timestamp, `client-vpn-endpoint-id`, `common-name`, `username`, `ingress-bytes`, `egress-bytes`, `connection-start-time`, `connection-end-time`, `connection-duration-seconds` | sort @timestamp asc | filter `ingress-bytes` > 0 OR `egress-bytes` > 0 | stats count(*) as connection_count, sum(`connection-duration-seconds`/60) as total_connection_time_minutes, sum(`ingress-bytes`) as total_ingress_bytes, sum(`egress-bytes`) as total_egress_bytes, latest(`client-vpn-endpoint-id`) as client_vpn_endpoint_id by `common-name`, `username` | sort by total_ingress_bytes desc, total_egress_bytes desc\",\n        \"region\": \"us-east-1\",\n        \"title\": \"Mix Auth Distinct Users Connection Duration\",\n        \"view\": \"table\"\n      }\n    },\n    {\n      \"type\": \"log\",\n      \"x\": 0,\n      \"y\": 60,\n      \"width\": 24,\n      \"height\": 6,\n      \"properties\": {\n        \"query\": \"SOURCE 'aws/aws-client-vpn/prod' | fields @timestamp, `client-vpn-endpoint-id`, `common-name`, `username` | sort @timestamp asc | stats count(*) as connection_count, latest(`client-vpn-endpoint-id`) as client_vpn_endpoint_id by `username`, `common-name`\",\n        \"region\": \"us-east-1\",\n        \"title\": \"Mix Auth Distinct Users\",\n        \"view\": \"table\"\n      }\n    },\n    {\n      \"type\": \"log\",\n      \"x\": 0,\n      \"y\": 66,\n      \"width\": 24,\n      \"height\": 6,\n      \"properties\": {\n        \"query\": \"SOURCE 'aws/aws-client-vpn/prod' | fields @timestamp, `client-vpn-endpoint-id`, `common-name`, `username`, `ingress-bytes`, `egress-bytes`, `connection-start-time`, `connection-end-time`, `connection-duration-seconds` | sort @timestamp asc | filter `ingress-bytes` > 0 OR `egress-bytes` > 0 | stats count(*) as connection_count, sum(`connection-duration-seconds`/60) as total_connection_time_minutes by `username`, `common-name` | sort by total_connection_time_minutes desc\",\n        \"region\": \"us-east-1\",\n        \"title\": \"Mix Auth Users Connection Duration\",\n        \"view\": \"table\"\n      }\n    }\n  ]\n}\n"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.Folder",
+   "cfg": "__parameter__.Folder",
+   "type": "__parameter__",
+   "values": {
+    "name": "Folder",
+    "type": "String",
+    "default": "aws-client-vpn",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.ClientVPNLogGroup",
+   "cfg": "__parameter__.ClientVPNLogGroup",
+   "type": "__parameter__",
+   "values": {
+    "name": "ClientVPNLogGroup",
+    "type": "String",
+    "default": "aws/aws-client-vpn/prod",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.LogInsightsUrl",
+   "cfg": "__output__.LogInsightsUrl",
+   "type": "__output__",
+   "values": {
+    "name": "LogInsightsUrl",
+    "value": "https://us-east-1.console.aws.amazon.com/cloudwatch/home?region=us-east-1#logsV2:logs-insights",
+    "description": null,
+    "export": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.DashboardUrl",
+   "cfg": "__output__.DashboardUrl",
+   "type": "__output__",
+   "values": {
+    "name": "DashboardUrl",
+    "value": "https://us-east-1.console.aws.amazon.com/cloudwatch/home?region=us-east-1#dashboards:name=us-east-1-AWS-ClientVPN-Usage-Dashboard",
+    "description": "URL to access the created CloudWatch Dashboard for AWS Client VPN Usage",
+    "export": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__declared__.AWS::Logs::QueryDefinition.TotalUsagePerClientVPNEndpoint",
+   "cfg": "TotalUsagePerClientVPNEndpoint",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Logs::QueryDefinition",
+    "name": "TotalUsagePerClientVPNEndpoint",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "aws-client-vpn/Total Usage per Client VPN Endpoint",
+     "QueryString": "fields @timestamp, `client-vpn-endpoint-id`, `ingress-bytes`, `egress-bytes`, `connection-duration-seconds`, `username`, `common-name`\n| sort @timestamp asc\n| filter `ingress-bytes` > 0 OR `egress-bytes` > 0\n| stats\n    count(*) as connection_count,\n    min(@timestamp) as earliest_timestamp,\n    max(@timestamp) as latest_timestamp,\n    sum(`ingress-bytes`)/1048576 as total_ingress_MB,\n    sum(`egress-bytes`)/1048576 as total_egress_MB,\n    sum((`connection-duration-seconds`/60)/60) as total_connection_time_hours,\n    count_distinct(username) as unique_saml_ad_users,\n    count_distinct(`common-name`) as unique_mutual_auth_names\nby `client-vpn-endpoint-id`\n| sort by total_ingress_MB desc, total_egress_MB desc\n"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::QueryDefinition.ADSAMLAuthTotalUsageReport",
+   "cfg": "ADSAMLAuthTotalUsageReport",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Logs::QueryDefinition",
+    "name": "ADSAMLAuthTotalUsageReport",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "aws-client-vpn/AD or SAML Auth Total Usage Report",
+     "QueryString": "fields @timestamp, `client-vpn-endpoint-id`, `username`, `ingress-bytes`, `egress-bytes`, `connection-start-time`, `connection-end-time`, `connection-duration-seconds`\n| sort @timestamp asc\n| filter `ingress-bytes` > 0 OR `egress-bytes` > 0\n| fields @timestamp, `client-vpn-endpoint-id`, `username`, `ingress-bytes`, `egress-bytes`, `connection-start-time`, `connection-end-time`, `connection-duration-seconds`, (`connection-duration-seconds`/60) as connection_time_minutes\n| sort by `ingress-bytes` desc, `egress-bytes` desc\n"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::QueryDefinition.ADSAMLAuthDistinctUsersConnectionDuration",
+   "cfg": "ADSAMLAuthDistinctUsersConnectionDuration",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Logs::QueryDefinition",
+    "name": "ADSAMLAuthDistinctUsersConnectionDuration",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "aws-client-vpn/AD or SAML Auth Distinct Users Connection Duration",
+     "QueryString": "fields @timestamp, `client-vpn-endpoint-id`, `username`, `ingress-bytes`, `egress-bytes`, `connection-start-time`, `connection-end-time`, `connection-duration-seconds`\n| sort @timestamp asc\n| filter `ingress-bytes` > 0 OR `egress-bytes` > 0\n| stats count(*) as connection_count,\n  sum(`connection-duration-seconds`/60) as total_connection_time_minutes,\n  sum(`ingress-bytes`) as total_ingress_bytes,\n  sum(`egress-bytes`) as total_egress_bytes,\n  latest(`client-vpn-endpoint-id`) as client_vpn_endpoint_id\nby `username`\n| sort by total_ingress_bytes desc, total_egress_bytes desc\n"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::QueryDefinition.ADSAMLAuthDistinctUsers",
+   "cfg": "ADSAMLAuthDistinctUsers",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Logs::QueryDefinition",
+    "name": "ADSAMLAuthDistinctUsers",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "aws-client-vpn/AD or SAML Auth Distinct Users",
+     "QueryString": "fields @timestamp, `client-vpn-endpoint-id`, `username`\n| sort @timestamp asc\n| stats count(*) as connection_count,\n  latest(`client-vpn-endpoint-id`) as client_vpn_endpoint_id\nby `username`\n"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::QueryDefinition.ADSAMLAuthUsersConnectionDuration",
+   "cfg": "ADSAMLAuthUsersConnectionDuration",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Logs::QueryDefinition",
+    "name": "ADSAMLAuthUsersConnectionDuration",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "aws-client-vpn/AD or SAML Auth Users Connection Duration",
+     "QueryString": "fields @timestamp, `client-vpn-endpoint-id`, `username`, `ingress-bytes`, `egress-bytes`, `connection-start-time`, `connection-end-time`, `connection-duration-seconds`\n| sort @timestamp asc\n| filter `ingress-bytes` > 0 OR `egress-bytes` > 0\n| stats count(*) as connection_count,\n  sum(`connection-duration-seconds`/60) as total_connection_time_minutes\nby `username`\n| sort by total_connection_time_minutes desc\n"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::QueryDefinition.MutualAuthTotalUsageReport",
+   "cfg": "MutualAuthTotalUsageReport",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Logs::QueryDefinition",
+    "name": "MutualAuthTotalUsageReport",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "aws-client-vpn/Mutual Auth Total Usage Report",
+     "QueryString": "fields @timestamp, `client-vpn-endpoint-id`, `common-name`, `ingress-bytes`, `egress-bytes`, `connection-start-time`, `connection-end-time`, `connection-duration-seconds`\n| sort @timestamp asc\n| filter `ingress-bytes` > 0 OR `egress-bytes` > 0\n| fields @timestamp, `client-vpn-endpoint-id`, `common-name`, `ingress-bytes`, `egress-bytes`, `connection-start-time`, `connection-end-time`, `connection-duration-seconds`, (`connection-duration-seconds`/60) as connection_time_minutes\n| sort by `ingress-bytes` desc, `egress-bytes` desc\n"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::QueryDefinition.MutualAuthDistinctUsersConnectionDuration",
+   "cfg": "MutualAuthDistinctUsersConnectionDuration",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Logs::QueryDefinition",
+    "name": "MutualAuthDistinctUsersConnectionDuration",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "aws-client-vpn/Mutual Auth Users Duration",
+     "QueryString": "fields @timestamp, `client-vpn-endpoint-id`, `common-name`, `ingress-bytes`, `egress-bytes`, `connection-duration-seconds` | sort @timestamp asc | filter `ingress-bytes` > 0 OR `egress-bytes` > 0 | stats count(*) as connection_count,\n  sum(`connection-duration-seconds`/60) as total_connection_time_minutes,\n  sum(`ingress-bytes`) as total_ingress_bytes,\n  sum(`egress-bytes`) as total_egress_bytes,\n  latest(`client-vpn-endpoint-id`) as client_vpn_endpoint_id\nby `common-name` | sort by total_ingress_bytes desc, total_egress_bytes desc\n"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::QueryDefinition.MutualAuthDistinctUsers",
+   "cfg": "MutualAuthDistinctUsers",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Logs::QueryDefinition",
+    "name": "MutualAuthDistinctUsers",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "aws-client-vpn/Mutual Auth Distinct Users",
+     "QueryString": "fields @timestamp, `client-vpn-endpoint-id`, `common-name`\n| sort @timestamp asc\n| stats count(*) as connection_count, latest(`client-vpn-endpoint-id`) as client_vpn_endpoint_id by `common-name`\n"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::QueryDefinition.MutualAuthUsersConnectionDuration",
+   "cfg": "MutualAuthUsersConnectionDuration",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Logs::QueryDefinition",
+    "name": "MutualAuthUsersConnectionDuration",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "aws-client-vpn/Mutual Auth Distinct Users Connection Duration",
+     "QueryString": "fields @timestamp, `client-vpn-endpoint-id`, `common-name`, `ingress-bytes`, `egress-bytes`, `connection-start-time`, `connection-end-time`, `connection-duration-seconds` sort @timestamp asc filter `ingress-bytes` > 0 OR `egress-bytes` > 0 stats count(*) as connection_count, sum(`connection-duration-seconds`/60) as total_connection_time_minutes by `common-name`\n"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::QueryDefinition.MixAuthTotalUsageReport",
+   "cfg": "MixAuthTotalUsageReport",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Logs::QueryDefinition",
+    "name": "MixAuthTotalUsageReport",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "aws-client-vpn/Mix Auth Total Usage Report",
+     "QueryString": "fields @timestamp, `client-vpn-endpoint-id`, `username`, `common-name`, `ingress-bytes`, `egress-bytes`, `connection-start-time`, `connection-end-time`, `connection-duration-seconds`\n| sort @timestamp asc\n| filter `ingress-bytes` > 0 OR `egress-bytes` > 0\n| fields @timestamp, `client-vpn-endpoint-id`, `username`, `common-name`, `ingress-bytes`, `egress-bytes`, `connection-start-time`, `connection-end-time`, `connection-duration-seconds`, (`connection-duration-seconds`/60) as connection_time_minutes\n| sort by `ingress-bytes` desc, `egress-bytes` desc\n"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::QueryDefinition.MixAuthDistinctUsersConnectionDuration",
+   "cfg": "MixAuthDistinctUsersConnectionDuration",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Logs::QueryDefinition",
+    "name": "MixAuthDistinctUsersConnectionDuration",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "aws-client-vpn/Mix Auth Distinct Users Connection Duration",
+     "QueryString": "fields @timestamp, `client-vpn-endpoint-id`, `common-name`, `username`, `ingress-bytes`, `egress-bytes`, `connection-start-time`, `connection-end-time`, `connection-duration-seconds`\n| sort @timestamp asc\n| filter `ingress-bytes` > 0 OR `egress-bytes` > 0\n| stats count(*) as connection_count,\n  sum(`connection-duration-seconds`/60) as total_connection_time_minutes,\n  sum(`ingress-bytes`) as total_ingress_bytes,\n  sum(`egress-bytes`) as total_egress_bytes,\n  latest(`client-vpn-endpoint-id`) as client_vpn_endpoint_id\nby `common-name`, `username`\n| sort by total_ingress_bytes desc, total_egress_bytes desc\n"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::QueryDefinition.MixAuthDistinctUsers",
+   "cfg": "MixAuthDistinctUsers",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Logs::QueryDefinition",
+    "name": "MixAuthDistinctUsers",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "aws-client-vpn/Mix Auth Distinct Users",
+     "QueryString": "fields @timestamp, `client-vpn-endpoint-id`, `common-name`, `username`\n| sort @timestamp asc\n| stats count(*) as connection_count,\n  latest(`client-vpn-endpoint-id`) as client_vpn_endpoint_id\nby `username`, `common-name`\n"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::QueryDefinition.MixAuthUsersConnectionDuration",
+   "cfg": "MixAuthUsersConnectionDuration",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Logs::QueryDefinition",
+    "name": "MixAuthUsersConnectionDuration",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "aws-client-vpn/Mix Auth Users Connection Duration",
+     "QueryString": "fields @timestamp, `client-vpn-endpoint-id`, `common-name`, `username`, `ingress-bytes`, `egress-bytes`, `connection-start-time`, `connection-end-time`, `connection-duration-seconds`\n| sort @timestamp asc\n| filter `ingress-bytes` > 0 OR `egress-bytes` > 0\n| stats count(*) as connection_count,\n  sum(`connection-duration-seconds`/60) as total_connection_time_minutes\nby `username`, `common-name`\n| sort by total_connection_time_minutes desc\n"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::CloudWatch::Dashboard.Dashboard",
+   "cfg": "Dashboard",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::CloudWatch::Dashboard",
+    "name": "Dashboard",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "DashboardName": "us-east-1-AWS-ClientVPN-Usage-Dashboard",
+     "DashboardBody": "{\n  \"widgets\": [\n    {\n      \"type\": \"log\",\n      \"x\": 0,\n      \"y\": 0,\n      \"width\": 24,\n      \"height\": 6,\n      \"properties\": {\n        \"query\": \"SOURCE 'aws/aws-client-vpn/prod' | fields @timestamp, `client-vpn-endpoint-id`, `ingress-bytes`, `egress-bytes`, `connection-duration-seconds`, `username`, `common-name` | sort @timestamp asc | filter `ingress-bytes` > 0 OR `egress-bytes` > 0 | stats count(*) as connection_count, min(@timestamp) as earliest_timestamp, max(@timestamp) as latest_timestamp, sum(`ingress-bytes`)/1048576 as total_ingress_MB, sum(`egress-bytes`)/1048576 as total_egress_MB, sum((`connection-duration-seconds`/60)/60) as total_connection_time_hours, count_distinct(username) as unique_saml_ad_users, count_distinct(`common-name`) as unique_mutual_auth_names by `client-vpn-endpoint-id` | sort by total_ingress_MB desc, total_egress_MB desc\",\n        \"region\": \"us-east-1\",\n        \"title\": \"Total Usage per Client VPN Endpoint\",\n        \"view\": \"table\"\n      }\n    },\n    {\n      \"type\": \"log\",\n      \"x\": 0,\n      \"y\": 6,\n      \"width\": 24,\n      \"height\": 6,\n      \"properties\": {\n        \"query\": \"SOURCE 'aws/aws-client-vpn/prod' | fields @timestamp, `client-vpn-endpoint-id`, `username`, `ingress-bytes`, `egress-bytes`, `connection-start-time`, `connection-end-time`, `connection-duration-seconds` | sort @timestamp asc | filter `ingress-bytes` > 0 OR `egress-bytes` > 0 | fields @timestamp, `client-vpn-endpoint-id`, `username`, `ingress-bytes`, `egress-bytes`, `connection-start-time`, `connection-end-time`, `connection-duration-seconds`, (`connection-duration-seconds`/60) as connection_time_minutes | sort by `ingress-bytes` desc, `egress-bytes` desc\",\n        \"region\": \"us-east-1\",\n        \"title\": \"AD or SAML Auth Total Usage Report\",\n        \"view\": \"table\"\n      }\n    },\n    {\n      \"type\": \"log\",\n      \"x\": 0,\n      \"y\": 12,\n      \"width\": 24,\n      \"height\": 6,\n      \"properties\": {\n        \"query\": \"SOURCE 'aws/aws-client-vpn/prod' | fields @timestamp, `client-vpn-endpoint-id`, `username`, `ingress-bytes`, `egress-bytes`, `connection-start-time`, `connection-end-time`, `connection-duration-seconds` | sort @timestamp asc | filter `ingress-bytes` > 0 OR `egress-bytes` > 0 | stats count(*) as connection_count, sum(`connection-duration-seconds`/60) as total_connection_time_minutes, sum(`ingress-bytes`) as total_ingress_bytes, sum(`egress-bytes`) as total_egress_bytes, latest(`client-vpn-endpoint-id`) as client_vpn_endpoint_id by `username` | sort by total_ingress_bytes desc, total_egress_bytes desc\",\n        \"region\": \"us-east-1\",\n        \"title\": \"AD or SAML Auth Distinct Users Connection Duration\",\n        \"view\": \"table\"\n      }\n    },\n    {\n      \"type\": \"log\",\n      \"x\": 0,\n      \"y\": 18,\n      \"width\": 24,\n      \"height\": 6,\n      \"properties\": {\n        \"query\": \"SOURCE 'aws/aws-client-vpn/prod' | fields @timestamp, `client-vpn-endpoint-id`, `username` | sort @timestamp asc | stats count(*) as connection_count, latest(`client-vpn-endpoint-id`) as client_vpn_endpoint_id by `username`\",\n        \"region\": \"us-east-1\",\n        \"title\": \"AD or SAML Auth Distinct Users\",\n        \"view\": \"table\"\n      }\n    },\n    {\n      \"type\": \"log\",\n      \"x\": 0,\n      \"y\": 24,\n      \"width\": 24,\n      \"height\": 6,\n      \"properties\": {\n        \"query\": \"SOURCE 'aws/aws-client-vpn/prod' | fields @timestamp, `client-vpn-endpoint-id`, `username`, `ingress-bytes`, `egress-bytes`, `connection-start-time`, `connection-end-time`, `connection-duration-seconds` | sort @timestamp asc | filter `ingress-bytes` > 0 OR `egress-bytes` > 0 | stats count(*) as connection_count, sum(`connection-duration-seconds`/60) as total_connection_time_minutes by `username` | sort by total_connection_time_minutes desc\",\n        \"region\": \"us-east-1\",\n        \"title\": \"AD or SAML Auth Users Connection Duration\",\n        \"view\": \"table\"\n      }\n    },\n    {\n      \"type\": \"log\",\n      \"x\": 0,\n      \"y\": 30,\n      \"width\": 24,\n      \"height\": 6,\n      \"properties\": {\n        \"query\": \"SOURCE 'aws/aws-client-vpn/prod' | fields @timestamp, `client-vpn-endpoint-id`, `common-name`, `ingress-bytes`, `egress-bytes`, `connection-start-time`, `connection-end-time`, `connection-duration-seconds` | sort @timestamp asc | filter `ingress-bytes` > 0 OR `egress-bytes` > 0 | fields @timestamp, `client-vpn-endpoint-id`, `common-name`, `ingress-bytes`, `egress-bytes`, `connection-start-time`, `connection-end-time`, `connection-duration-seconds`, (`connection-duration-seconds`/60) as connection_time_minutes | sort by `ingress-bytes` desc, `egress-bytes` desc\",\n        \"region\": \"us-east-1\",\n        \"title\": \"Mutual Auth Total Usage Report\",\n        \"view\": \"table\"\n      }\n    },\n    {\n      \"type\": \"log\",\n      \"x\": 0,\n      \"y\": 36,\n      \"width\": 24,\n      \"height\": 6,\n      \"properties\": {\n        \"query\": \"SOURCE 'aws/aws-client-vpn/prod' | fields @timestamp, `client-vpn-endpoint-id`, `common-name`, `ingress-bytes`, `egress-bytes`, `connection-duration-seconds` | sort @timestamp asc | filter `ingress-bytes` > 0 OR `egress-bytes` > 0 | stats count(*) as connection_count, sum(`connection-duration-seconds`/60) as total_connection_time_minutes, sum(`ingress-bytes`) as total_ingress_bytes, sum(`egress-bytes`) as total_egress_bytes, latest(`client-vpn-endpoint-id`) as client_vpn_endpoint_id by `common-name` | sort by total_ingress_bytes desc, total_egress_bytes desc\",\n        \"region\": \"us-east-1\",\n        \"title\": \"Mutual Auth Users Duration\",\n        \"view\": \"table\"\n      }\n    },\n    {\n      \"type\": \"log\",\n      \"x\": 0,\n      \"y\": 42,\n      \"width\": 24,\n      \"height\": 6,\n      \"properties\": {\n        \"query\": \"SOURCE 'aws/aws-client-vpn/prod' | fields @timestamp, `client-vpn-endpoint-id`, `common-name` | sort @timestamp asc | stats count(*) as connection_count, latest(`client-vpn-endpoint-id`) as client_vpn_endpoint_id by `common-name`\",\n        \"region\": \"us-east-1\",\n        \"title\": \"Mutual Auth Distinct Users\",\n        \"view\": \"table\"\n      }\n    },\n    {\n      \"type\": \"log\",\n      \"x\": 0,\n      \"y\": 48,\n      \"width\": 24,\n      \"height\": 6,\n      \"properties\": {\n        \"query\": \"SOURCE 'aws/aws-client-vpn/prod' | fields @timestamp, `client-vpn-endpoint-id`, `username`, `common-name`, `ingress-bytes`, `egress-bytes`, `connection-start-time`, `connection-end-time`, `connection-duration-seconds` | sort @timestamp asc | filter `ingress-bytes` > 0 OR `egress-bytes` > 0 | fields @timestamp, `client-vpn-endpoint-id`, `username`, `common-name`, `ingress-bytes`, `egress-bytes`, `connection-start-time`, `connection-end-time`, `connection-duration-seconds`, (`connection-duration-seconds`/60) as connection_time_minutes | sort by `ingress-bytes` desc, `egress-bytes` desc\",\n        \"region\": \"us-east-1\",\n        \"title\": \"Mix Auth Total Usage Report\",\n        \"view\": \"table\"\n      }\n    },\n    {\n      \"type\": \"log\",\n      \"x\": 0,\n      \"y\": 54,\n      \"width\": 24,\n      \"height\": 6,\n      \"properties\": {\n        \"query\": \"SOURCE 'aws/aws-client-vpn/prod' | fields @timestamp, `client-vpn-endpoint-id`, `common-name`, `username`, `ingress-bytes`, `egress-bytes`, `connection-start-time`, `connection-end-time`, `connection-duration-seconds` | sort @timestamp asc | filter `ingress-bytes` > 0 OR `egress-bytes` > 0 | stats count(*) as connection_count, sum(`connection-duration-seconds`/60) as total_connection_time_minutes, sum(`ingress-bytes`) as total_ingress_bytes, sum(`egress-bytes`) as total_egress_bytes, latest(`client-vpn-endpoint-id`) as client_vpn_endpoint_id by `common-name`, `username` | sort by total_ingress_bytes desc, total_egress_bytes desc\",\n        \"region\": \"us-east-1\",\n        \"title\": \"Mix Auth Distinct Users Connection Duration\",\n        \"view\": \"table\"\n      }\n    },\n    {\n      \"type\": \"log\",\n      \"x\": 0,\n      \"y\": 60,\n      \"width\": 24,\n      \"height\": 6,\n      \"properties\": {\n        \"query\": \"SOURCE 'aws/aws-client-vpn/prod' | fields @timestamp, `client-vpn-endpoint-id`, `common-name`, `username` | sort @timestamp asc | stats count(*) as connection_count, latest(`client-vpn-endpoint-id`) as client_vpn_endpoint_id by `username`, `common-name`\",\n        \"region\": \"us-east-1\",\n        \"title\": \"Mix Auth Distinct Users\",\n        \"view\": \"table\"\n      }\n    },\n    {\n      \"type\": \"log\",\n      \"x\": 0,\n      \"y\": 66,\n      \"width\": 24,\n      \"height\": 6,\n      \"properties\": {\n        \"query\": \"SOURCE 'aws/aws-client-vpn/prod' | fields @timestamp, `client-vpn-endpoint-id`, `common-name`, `username`, `ingress-bytes`, `egress-bytes`, `connection-start-time`, `connection-end-time`, `connection-duration-seconds` | sort @timestamp asc | filter `ingress-bytes` > 0 OR `egress-bytes` > 0 | stats count(*) as connection_count, sum(`connection-duration-seconds`/60) as total_connection_time_minutes by `username`, `common-name` | sort by total_connection_time_minutes desc\",\n        \"region\": \"us-east-1\",\n        \"title\": \"Mix Auth Users Connection Duration\",\n        \"view\": \"table\"\n      }\n    }\n  ]\n}\n"
+    }
+   }
+  }
+ ]
+}

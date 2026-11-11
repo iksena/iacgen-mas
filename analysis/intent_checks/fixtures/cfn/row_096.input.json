@@ -1,0 +1,666 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "9a62e31735a265a288172784e8d42ddff13789c103ab7b9a30ae668b0773b199",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "ApiGatewaySESRole",
+   "cfg": "ApiGatewaySESRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "Path": "/stack/",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Sid": "AllowApiGatewayServiceToAssumeRole",
+       "Effect": "Allow",
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Principal": {
+        "Service": [
+         "apigateway.amazonaws.com"
+        ]
+       }
+      }
+     ]
+    },
+    "Policies": [
+     {
+      "PolicyName": "SESSendEmail",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "ses:SendEmail"
+         ],
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "ApiGateway",
+   "cfg": "ApiGateway",
+   "type": "AWS::ApiGateway::RestApi",
+   "values": {
+    "EndpointConfiguration": {
+     "Types": [
+      "REGIONAL"
+     ]
+    },
+    "Name": "stack-api"
+   },
+   "refs": []
+  },
+  {
+   "id": "ApiGatewayRootMethod",
+   "cfg": "ApiGatewayRootMethod",
+   "type": "AWS::ApiGateway::Method",
+   "values": {
+    "AuthorizationType": "NONE",
+    "HttpMethod": "POST",
+    "ApiKeyRequired": true,
+    "MethodResponses": [
+     {
+      "StatusCode": 200,
+      "ResponseModels": {
+       "application/json": "Empty"
+      }
+     }
+    ],
+    "RequestParameters": {
+     "method.request.header.Content-Type": false
+    },
+    "RequestValidatorId": {
+     "ref": "ApiRequestValidator"
+    },
+    "Integration": {
+     "IntegrationHttpMethod": "POST",
+     "Type": "AWS",
+     "Credentials": {
+      "ref": "ApiGatewaySESRole",
+      "attr": "Arn"
+     },
+     "Uri": "arn:aws:apigateway:us-east-1:email:action/SendEmail",
+     "PassthroughBehavior": "WHEN_NO_TEMPLATES",
+     "RequestParameters": {
+      "integration.request.header.Content-Type": "'application/x-www-form-urlencoded'"
+     },
+     "RequestTemplates": {
+      "application/json": "#set($inputRoot = $input.path('$'))\nAction=SendEmail\n&Source=$inputRoot.from\n#foreach($to in $inputRoot.to)\n&Destination.ToAddresses.member.$foreach.count=$to\n#end\n#foreach($bcc in $inputRoot.bcc)\n&Destination.BccAddresses.member.$foreach.count=$bcc\n#end\n#foreach($cc in $inputRoot.cc)\n&Destination.CcAddresses.member.$foreach.count=$cc\n#end\n&Message.Subject.Data=$inputRoot.subject\n&Message.Body.Text.Data=$inputRoot.text\n&Message.Body.Html.Data=$inputRoot.html"
+     },
+     "IntegrationResponses": [
+      {
+       "StatusCode": 200
+      },
+      {
+       "StatusCode": 400
+      },
+      {
+       "StatusCode": 403
+      },
+      {
+       "StatusCode": 404
+      },
+      {
+       "StatusCode": 500
+      },
+      {
+       "StatusCode": 503
+      }
+     ]
+    },
+    "ResourceId": {
+     "ref": "ApiGateway",
+     "attr": "RootResourceId"
+    },
+    "RestApiId": {
+     "ref": "ApiGateway"
+    }
+   },
+   "refs": [
+    "ApiGateway",
+    "ApiGatewaySESRole",
+    "ApiRequestValidator"
+   ]
+  },
+  {
+   "id": "ApiKey",
+   "cfg": "ApiKey",
+   "type": "AWS::ApiGateway::ApiKey",
+   "values": {
+    "Enabled": true,
+    "Name": "email-apikey",
+    "StageKeys": [
+     {
+      "RestApiId": {
+       "ref": "ApiGateway"
+      },
+      "StageName": "dev"
+     }
+    ],
+    "__resource__": {
+     "DependsOn": [
+      "ApiGatewayDeployment"
+     ]
+    }
+   },
+   "refs": [
+    "ApiGateway"
+   ]
+  },
+  {
+   "id": "ApiUsagePlan",
+   "cfg": "ApiUsagePlan",
+   "type": "AWS::ApiGateway::UsagePlan",
+   "values": {
+    "ApiStages": [
+     {
+      "ApiId": {
+       "ref": "ApiGateway"
+      },
+      "Stage": "dev"
+     }
+    ],
+    "Throttle": {
+     "RateLimit": 500,
+     "BurstLimit": 1000
+    },
+    "UsagePlanName": "usage-plan",
+    "Quota": {
+     "Limit": 10000,
+     "Period": "MONTH"
+    },
+    "__resource__": {
+     "DependsOn": [
+      "ApiGatewayDeployment"
+     ]
+    }
+   },
+   "refs": [
+    "ApiGateway"
+   ]
+  },
+  {
+   "id": "ApiUsagePlanKey",
+   "cfg": "ApiUsagePlanKey",
+   "type": "AWS::ApiGateway::UsagePlanKey",
+   "values": {
+    "KeyType": "API_KEY",
+    "KeyId": {
+     "ref": "ApiKey"
+    },
+    "UsagePlanId": {
+     "ref": "ApiUsagePlan"
+    }
+   },
+   "refs": [
+    "ApiKey",
+    "ApiUsagePlan"
+   ]
+  },
+  {
+   "id": "ApiRequestValidator",
+   "cfg": "ApiRequestValidator",
+   "type": "AWS::ApiGateway::RequestValidator",
+   "values": {
+    "Name": "RequestBodyValidator",
+    "RestApiId": {
+     "ref": "ApiGateway"
+    },
+    "ValidateRequestBody": true,
+    "ValidateRequestParameters": true
+   },
+   "refs": [
+    "ApiGateway"
+   ]
+  },
+  {
+   "id": "RequestModel",
+   "cfg": "RequestModel",
+   "type": "AWS::ApiGateway::Model",
+   "values": {
+    "ContentType": "application/json",
+    "RestApiId": {
+     "ref": "ApiGateway"
+    },
+    "Schema": {
+     "$schema": "http://json-schema.org/draft-04/schema#",
+     "title": "Stats",
+     "type": "object",
+     "properties": {
+      "to": {
+       "type": "array"
+      },
+      "from": {
+       "type": "string"
+      },
+      "cc": {
+       "type": "array"
+      },
+      "bcc": {
+       "type": "array"
+      },
+      "subject": {
+       "type": "string"
+      },
+      "text": {
+       "type": "string"
+      },
+      "html": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "to",
+      "from",
+      "html",
+      "text"
+     ]
+    }
+   },
+   "refs": [
+    "ApiGateway"
+   ]
+  },
+  {
+   "id": "ApiGatewayDeployment",
+   "cfg": "ApiGatewayDeployment",
+   "type": "AWS::ApiGateway::Deployment",
+   "values": {
+    "RestApiId": {
+     "ref": "ApiGateway"
+    },
+    "StageName": "dev",
+    "__resource__": {
+     "DependsOn": [
+      "ApiGatewayRootMethod"
+     ]
+    }
+   },
+   "refs": [
+    "ApiGateway"
+   ]
+  },
+  {
+   "id": "__parameter__.StageName",
+   "cfg": "__parameter__.StageName",
+   "type": "__parameter__",
+   "values": {
+    "name": "StageName",
+    "type": "String",
+    "default": "dev",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.ApiKeyName",
+   "cfg": "__parameter__.ApiKeyName",
+   "type": "__parameter__",
+   "values": {
+    "name": "ApiKeyName",
+    "type": "String",
+    "default": "email-apikey",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.ApiEndpoint",
+   "cfg": "__output__.ApiEndpoint",
+   "type": "__output__",
+   "values": {
+    "name": "ApiEndpoint",
+    "value": "https://${ApiGateway}.execute-api.us-east-1.amazonaws.com/dev/",
+    "description": "API Gateway endpoint URL for Email API",
+    "export": null
+   },
+   "refs": [
+    "ApiGateway"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.ApiGatewaySESRole",
+   "cfg": "ApiGatewaySESRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "ApiGatewaySESRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Path": "/stack/",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Sid": "AllowApiGatewayServiceToAssumeRole",
+        "Effect": "Allow",
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Principal": {
+         "Service": [
+          "apigateway.amazonaws.com"
+         ]
+        }
+       }
+      ]
+     },
+     "Policies": [
+      {
+       "PolicyName": "SESSendEmail",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "ses:SendEmail"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::RestApi.ApiGateway",
+   "cfg": "ApiGateway",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::ApiGateway::RestApi",
+    "name": "ApiGateway",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "EndpointConfiguration": {
+      "Types": [
+       "REGIONAL"
+      ]
+     },
+     "Name": "stack-api"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::Method.ApiGatewayRootMethod",
+   "cfg": "ApiGatewayRootMethod",
+   "type": "__declared__",
+   "refs": [
+    "ApiGateway",
+    "ApiGatewaySESRole",
+    "ApiRequestValidator"
+   ],
+   "values": {
+    "type": "AWS::ApiGateway::Method",
+    "name": "ApiGatewayRootMethod",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AuthorizationType": "NONE",
+     "HttpMethod": "POST",
+     "ApiKeyRequired": true,
+     "MethodResponses": [
+      {
+       "StatusCode": 200,
+       "ResponseModels": {
+        "application/json": "Empty"
+       }
+      }
+     ],
+     "RequestParameters": {
+      "method.request.header.Content-Type": false
+     },
+     "RequestValidatorId": {
+      "ref": "ApiRequestValidator"
+     },
+     "Integration": {
+      "IntegrationHttpMethod": "POST",
+      "Type": "AWS",
+      "Credentials": {
+       "ref": "ApiGatewaySESRole",
+       "attr": "Arn"
+      },
+      "Uri": "arn:aws:apigateway:us-east-1:email:action/SendEmail",
+      "PassthroughBehavior": "WHEN_NO_TEMPLATES",
+      "RequestParameters": {
+       "integration.request.header.Content-Type": "'application/x-www-form-urlencoded'"
+      },
+      "RequestTemplates": {
+       "application/json": "#set($inputRoot = $input.path('$'))\nAction=SendEmail\n&Source=$inputRoot.from\n#foreach($to in $inputRoot.to)\n&Destination.ToAddresses.member.$foreach.count=$to\n#end\n#foreach($bcc in $inputRoot.bcc)\n&Destination.BccAddresses.member.$foreach.count=$bcc\n#end\n#foreach($cc in $inputRoot.cc)\n&Destination.CcAddresses.member.$foreach.count=$cc\n#end\n&Message.Subject.Data=$inputRoot.subject\n&Message.Body.Text.Data=$inputRoot.text\n&Message.Body.Html.Data=$inputRoot.html"
+      },
+      "IntegrationResponses": [
+       {
+        "StatusCode": 200
+       },
+       {
+        "StatusCode": 400
+       },
+       {
+        "StatusCode": 403
+       },
+       {
+        "StatusCode": 404
+       },
+       {
+        "StatusCode": 500
+       },
+       {
+        "StatusCode": 503
+       }
+      ]
+     },
+     "ResourceId": {
+      "ref": "ApiGateway",
+      "attr": "RootResourceId"
+     },
+     "RestApiId": {
+      "ref": "ApiGateway"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::ApiKey.ApiKey",
+   "cfg": "ApiKey",
+   "type": "__declared__",
+   "refs": [
+    "ApiGateway"
+   ],
+   "values": {
+    "type": "AWS::ApiGateway::ApiKey",
+    "name": "ApiKey",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Enabled": true,
+     "Name": "email-apikey",
+     "StageKeys": [
+      {
+       "RestApiId": {
+        "ref": "ApiGateway"
+       },
+       "StageName": "dev"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::UsagePlan.ApiUsagePlan",
+   "cfg": "ApiUsagePlan",
+   "type": "__declared__",
+   "refs": [
+    "ApiGateway"
+   ],
+   "values": {
+    "type": "AWS::ApiGateway::UsagePlan",
+    "name": "ApiUsagePlan",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ApiStages": [
+      {
+       "ApiId": {
+        "ref": "ApiGateway"
+       },
+       "Stage": "dev"
+      }
+     ],
+     "Throttle": {
+      "RateLimit": 500,
+      "BurstLimit": 1000
+     },
+     "UsagePlanName": "usage-plan",
+     "Quota": {
+      "Limit": 10000,
+      "Period": "MONTH"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::UsagePlanKey.ApiUsagePlanKey",
+   "cfg": "ApiUsagePlanKey",
+   "type": "__declared__",
+   "refs": [
+    "ApiKey",
+    "ApiUsagePlan"
+   ],
+   "values": {
+    "type": "AWS::ApiGateway::UsagePlanKey",
+    "name": "ApiUsagePlanKey",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "KeyType": "API_KEY",
+     "KeyId": {
+      "ref": "ApiKey"
+     },
+     "UsagePlanId": {
+      "ref": "ApiUsagePlan"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::RequestValidator.ApiRequestValidator",
+   "cfg": "ApiRequestValidator",
+   "type": "__declared__",
+   "refs": [
+    "ApiGateway"
+   ],
+   "values": {
+    "type": "AWS::ApiGateway::RequestValidator",
+    "name": "ApiRequestValidator",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "RequestBodyValidator",
+     "RestApiId": {
+      "ref": "ApiGateway"
+     },
+     "ValidateRequestBody": true,
+     "ValidateRequestParameters": true
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::Model.RequestModel",
+   "cfg": "RequestModel",
+   "type": "__declared__",
+   "refs": [
+    "ApiGateway"
+   ],
+   "values": {
+    "type": "AWS::ApiGateway::Model",
+    "name": "RequestModel",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ContentType": "application/json",
+     "RestApiId": {
+      "ref": "ApiGateway"
+     },
+     "Schema": {
+      "$schema": "http://json-schema.org/draft-04/schema#",
+      "title": "Stats",
+      "type": "object",
+      "properties": {
+       "to": {
+        "type": "array"
+       },
+       "from": {
+        "type": "string"
+       },
+       "cc": {
+        "type": "array"
+       },
+       "bcc": {
+        "type": "array"
+       },
+       "subject": {
+        "type": "string"
+       },
+       "text": {
+        "type": "string"
+       },
+       "html": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "to",
+       "from",
+       "html",
+       "text"
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::Deployment.ApiGatewayDeployment",
+   "cfg": "ApiGatewayDeployment",
+   "type": "__declared__",
+   "refs": [
+    "ApiGateway"
+   ],
+   "values": {
+    "type": "AWS::ApiGateway::Deployment",
+    "name": "ApiGatewayDeployment",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RestApiId": {
+      "ref": "ApiGateway"
+     },
+     "StageName": "dev"
+    }
+   }
+  }
+ ]
+}

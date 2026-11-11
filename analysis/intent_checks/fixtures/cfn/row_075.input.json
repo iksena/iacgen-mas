@@ -1,0 +1,550 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "d1f8f323a5f069a7c04565c9f658d76515fe2a60e8f2d9dc24b4db11a4afab6b",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "AutomationRole",
+   "cfg": "AutomationRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "AuroraFailoverAutomationRole",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "ssm.amazonaws.com",
+         "lambda.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/AmazonSSMAutomationRole"
+    ],
+    "Policies": [
+     {
+      "PolicyName": "FailoverPermissions",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "rds:*",
+          "route53-recovery-control-config:*",
+          "route53-recovery-cluster:*",
+          "secretsmanager:*",
+          "ssm:*",
+          "logs:*"
+         ],
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "LambdaRole",
+   "cfg": "LambdaRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "AuroraFailoverLambdaRole",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+    ],
+    "Policies": [
+     {
+      "PolicyName": "TriggerSSM",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "ssm:StartAutomationExecution",
+          "ssm:GetAutomationExecution"
+         ],
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "FailoverDocument",
+   "cfg": "FailoverDocument",
+   "type": "AWS::SSM::Document",
+   "values": {
+    "Name": "AuroraGlobalDatabaseFailoverSSMDocument",
+    "DocumentType": "Automation",
+    "DocumentFormat": "YAML",
+    "Content": {
+     "schemaVersion": "0.3",
+     "description": "Automates Aurora Global Database failover with ARC",
+     "assumeRole": {
+      "ref": "AutomationRole",
+      "attr": "Arn"
+     },
+     "parameters": {
+      "PrimaryRegion": {
+       "type": "String",
+       "default": "us-east-1"
+      },
+      "SecondaryRegion": {
+       "type": "String",
+       "default": "us-west-2"
+      }
+     },
+     "mainSteps": [
+      {
+       "name": "DetermineActiveRegion",
+       "action": "aws:executeScript",
+       "inputs": {
+        "Runtime": "python3.11",
+        "Handler": "script_handler",
+        "Script": "import boto3\ndef script_handler(events, context):\n  ssm = boto3.client('ssm', region_name='us-east-1')\n  control1 = ssm.get_parameter(Name='/app-failover/arc-control-us-east-1')['Parameter']['Value']\n  control2 = ssm.get_parameter(Name='/app-failover/arc-control-us-west-2')['Parameter']['Value']\n  cluster = ssm.get_parameter(Name='/app-failover/arc-cluster')['Parameter']['Value']\n\n  config = boto3.client('route53-recovery-control-config', region_name='us-west-2')\n  cluster_info = config.describe_cluster(ClusterArn=cluster)\n  endpoint = cluster_info['Cluster']['ClusterEndpoints'][0]['Endpoint']\n\n  # Extract region from endpoint URL\n  import re\n  region_match = re.search(r'\\.([a-z]{2}-[a-z]+-\\d)\\.amazonaws\\.com', endpoint)\n  endpoint_region = region_match.group(1) if region_match else 'us-east-1'\n\n  arc = boto3.client('route53-recovery-cluster', endpoint_url=endpoint, region_name=endpoint_region)\n  state1 = arc.get_routing_control_state(RoutingControlArn=control1)['RoutingControlState']\n\n  if state1 == 'On':\n    return {'active': 'us-east-1', 'passive': 'us-west-2', 'control1': control1, 'control2': control2, 'endpoint': endpoint, 'endpoint_region': endpoint_region}\n  else:\n    return {'active': 'us-west-2', 'passive': 'us-east-1', 'control1': control1, 'control2': control2, 'endpoint': endpoint, 'endpoint_region': endpoint_region}\n"
+       },
+       "outputs": [
+        {
+         "Name": "ActiveRegion",
+         "Selector": "$.Payload.active",
+         "Type": "String"
+        },
+        {
+         "Name": "PassiveRegion",
+         "Selector": "$.Payload.passive",
+         "Type": "String"
+        },
+        {
+         "Name": "Control1",
+         "Selector": "$.Payload.control1",
+         "Type": "String"
+        },
+        {
+         "Name": "Control2",
+         "Selector": "$.Payload.control2",
+         "Type": "String"
+        },
+        {
+         "Name": "Endpoint",
+         "Selector": "$.Payload.endpoint",
+         "Type": "String"
+        },
+        {
+         "Name": "EndpointRegion",
+         "Selector": "$.Payload.endpoint_region",
+         "Type": "String"
+        }
+       ]
+      },
+      {
+       "name": "FailoverAurora",
+       "action": "aws:executeScript",
+       "inputs": {
+        "Runtime": "python3.11",
+        "Handler": "script_handler",
+        "InputPayload": {
+         "ActiveRegion": "{{DetermineActiveRegion.ActiveRegion}}"
+        },
+        "Script": "import boto3\nimport time\ndef script_handler(events, context):\n  active_region = events['ActiveRegion']\n  rds = boto3.client('rds', region_name=active_region)\n\n  # Wait for global cluster to be available\n  while True:\n    response = rds.describe_global_clusters(GlobalClusterIdentifier='aurora-global-test')\n    if response['GlobalClusters'][0]['Status'] == 'available':\n      break\n    time.sleep(10)\n\n  # Get reader cluster\n  response = rds.describe_global_clusters(GlobalClusterIdentifier='aurora-global-test')\n  members = response['GlobalClusters'][0]['GlobalClusterMembers']\n\n  reader_cluster_arn = None\n  for member in members:\n    if not member['IsWriter']:\n      reader_cluster_arn = member['DBClusterArn']\n      break\n\n  # Wait for target cluster to be available\n  target_region = reader_cluster_arn.split(':')[3]\n  target_cluster_id = reader_cluster_arn.split(':')[-1]\n  rds_target = boto3.client('rds', region_name=target_region)\n\n  while True:\n    cluster_info = rds_target.describe_db_clusters(DBClusterIdentifier=target_cluster_id)\n    if cluster_info['DBClusters'][0]['Status'] == 'available':\n      break\n    time.sleep(10)\n\n  # Perform failover\n  rds.failover_global_cluster(\n    GlobalClusterIdentifier='aurora-global-test',\n    TargetDbClusterIdentifier=reader_cluster_arn\n  )\n\n  # Wait for failover to complete\n  while True:\n    response = rds.describe_global_clusters(GlobalClusterIdentifier='aurora-global-test')\n    if response['GlobalClusters'][0]['Status'] == 'available':\n      break\n    time.sleep(10)\n\n  return {'status': 'success'}\n"
+       }
+      },
+      {
+       "name": "FlipARCControls",
+       "action": "aws:executeScript",
+       "inputs": {
+        "Runtime": "python3.11",
+        "Handler": "script_handler",
+        "InputPayload": {
+         "Control1": "{{DetermineActiveRegion.Control1}}",
+         "Control2": "{{DetermineActiveRegion.Control2}}",
+         "Endpoint": "{{DetermineActiveRegion.Endpoint}}",
+         "EndpointRegion": "{{DetermineActiveRegion.EndpointRegion}}",
+         "ActiveRegion": "{{DetermineActiveRegion.ActiveRegion}}"
+        },
+        "Script": "import boto3\ndef script_handler(events, context):\n  control1 = events['Control1']\n  control2 = events['Control2']\n  endpoint = events['Endpoint']\n  endpoint_region = events['EndpointRegion']\n  active_region = events['ActiveRegion']\n\n  arc = boto3.client('route53-recovery-cluster', endpoint_url=endpoint, region_name=endpoint_region)\n\n  # Determine which control should be on after failover\n  if active_region == 'us-east-1':\n    # Currently us-east-1 is active, flip to us-west-2\n    arc.update_routing_control_state(RoutingControlArn=control1, RoutingControlState='Off')\n    arc.update_routing_control_state(RoutingControlArn=control2, RoutingControlState='On')\n    return {'status': 'success', 'new_active': 'us-west-2'}\n  else:\n    # Currently us-west-2 is active, flip to us-east-1\n    arc.update_routing_control_state(RoutingControlArn=control2, RoutingControlState='Off')\n    arc.update_routing_control_state(RoutingControlArn=control1, RoutingControlState='On')\n    return {'status': 'success', 'new_active': 'us-east-1'}\n"
+       }
+      },
+      {
+       "name": "UpdateSecret",
+       "action": "aws:executeScript",
+       "inputs": {
+        "Runtime": "python3.11",
+        "Handler": "script_handler",
+        "Script": "import boto3\nimport json\ndef script_handler(events, context):\n  rds = boto3.client('rds', region_name='us-east-1')\n  response = rds.describe_global_clusters(GlobalClusterIdentifier='aurora-global-test')\n\n  writer_cluster_arn = None\n  for member in response['GlobalClusters'][0]['GlobalClusterMembers']:\n    if member['IsWriter']:\n      writer_cluster_arn = member['DBClusterArn']\n      break\n\n  cluster_region = writer_cluster_arn.split(':')[3]\n  cluster_id = writer_cluster_arn.split(':')[-1]\n\n  rds_regional = boto3.client('rds', region_name=cluster_region)\n  cluster_info = rds_regional.describe_db_clusters(DBClusterIdentifier=cluster_id)\n  endpoint = cluster_info['DBClusters'][0]['Endpoint']\n\n  sm = boto3.client('secretsmanager', region_name='us-east-1')\n  secret = sm.get_secret_value(SecretId='aurora-failover-db-secret')\n  secret_data = json.loads(secret['SecretString'])\n  secret_data['host'] = endpoint\n\n  sm.put_secret_value(SecretId='aurora-failover-db-secret', SecretString=json.dumps(secret_data))\n\n  return {'new_endpoint': endpoint}\n"
+       }
+      }
+     ]
+    }
+   },
+   "refs": [
+    "AutomationRole"
+   ]
+  },
+  {
+   "id": "TriggerFailoverFunction",
+   "cfg": "TriggerFailoverFunction",
+   "type": "AWS::Lambda::Function",
+   "values": {
+    "FunctionName": "TriggerFailover",
+    "Runtime": "python3.13",
+    "Handler": "index.lambda_handler",
+    "Role": {
+     "ref": "LambdaRole",
+     "attr": "Arn"
+    },
+    "Timeout": 30,
+    "Code": {
+     "ZipFile": "import boto3\nimport json\n\ndef lambda_handler(event, context):\n    ssm = boto3.client('ssm')\n\n    response = ssm.start_automation_execution(\n        DocumentName='AuroraGlobalDatabaseFailoverSSMDocument'\n    )\n\n    return {\n        'statusCode': 200,\n        'body': json.dumps({\n            'message': 'Failover initiated',\n            'executionId': response['AutomationExecutionId']\n        })\n    }\n"
+    }
+   },
+   "refs": [
+    "LambdaRole"
+   ]
+  },
+  {
+   "id": "__output__.LambdaFunctionName",
+   "cfg": "__output__.LambdaFunctionName",
+   "type": "__output__",
+   "values": {
+    "name": "LambdaFunctionName",
+    "value": {
+     "ref": "TriggerFailoverFunction"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "TriggerFailoverFunction"
+   ]
+  },
+  {
+   "id": "__output__.SSMDocumentName",
+   "cfg": "__output__.SSMDocumentName",
+   "type": "__output__",
+   "values": {
+    "name": "SSMDocumentName",
+    "value": {
+     "ref": "FailoverDocument"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "FailoverDocument"
+   ]
+  },
+  {
+   "id": "__output__.AutomationRoleArn",
+   "cfg": "__output__.AutomationRoleArn",
+   "type": "__output__",
+   "values": {
+    "name": "AutomationRoleArn",
+    "value": {
+     "ref": "AutomationRole",
+     "attr": "Arn"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "AutomationRole"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.AutomationRole",
+   "cfg": "AutomationRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "AutomationRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "AuroraFailoverAutomationRole",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "ssm.amazonaws.com",
+          "lambda.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AmazonSSMAutomationRole"
+     ],
+     "Policies": [
+      {
+       "PolicyName": "FailoverPermissions",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "rds:*",
+           "route53-recovery-control-config:*",
+           "route53-recovery-cluster:*",
+           "secretsmanager:*",
+           "ssm:*",
+           "logs:*"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.LambdaRole",
+   "cfg": "LambdaRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "LambdaRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "AuroraFailoverLambdaRole",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+     ],
+     "Policies": [
+      {
+       "PolicyName": "TriggerSSM",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "ssm:StartAutomationExecution",
+           "ssm:GetAutomationExecution"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SSM::Document.FailoverDocument",
+   "cfg": "FailoverDocument",
+   "type": "__declared__",
+   "refs": [
+    "AutomationRole"
+   ],
+   "values": {
+    "type": "AWS::SSM::Document",
+    "name": "FailoverDocument",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "AuroraGlobalDatabaseFailoverSSMDocument",
+     "DocumentType": "Automation",
+     "DocumentFormat": "YAML",
+     "Content": {
+      "schemaVersion": "0.3",
+      "description": "Automates Aurora Global Database failover with ARC",
+      "assumeRole": {
+       "ref": "AutomationRole",
+       "attr": "Arn"
+      },
+      "parameters": {
+       "PrimaryRegion": {
+        "type": "String",
+        "default": "us-east-1"
+       },
+       "SecondaryRegion": {
+        "type": "String",
+        "default": "us-west-2"
+       }
+      },
+      "mainSteps": [
+       {
+        "name": "DetermineActiveRegion",
+        "action": "aws:executeScript",
+        "inputs": {
+         "Runtime": "python3.11",
+         "Handler": "script_handler",
+         "Script": "import boto3\ndef script_handler(events, context):\n  ssm = boto3.client('ssm', region_name='us-east-1')\n  control1 = ssm.get_parameter(Name='/app-failover/arc-control-us-east-1')['Parameter']['Value']\n  control2 = ssm.get_parameter(Name='/app-failover/arc-control-us-west-2')['Parameter']['Value']\n  cluster = ssm.get_parameter(Name='/app-failover/arc-cluster')['Parameter']['Value']\n\n  config = boto3.client('route53-recovery-control-config', region_name='us-west-2')\n  cluster_info = config.describe_cluster(ClusterArn=cluster)\n  endpoint = cluster_info['Cluster']['ClusterEndpoints'][0]['Endpoint']\n\n  # Extract region from endpoint URL\n  import re\n  region_match = re.search(r'\\.([a-z]{2}-[a-z]+-\\d)\\.amazonaws\\.com', endpoint)\n  endpoint_region = region_match.group(1) if region_match else 'us-east-1'\n\n  arc = boto3.client('route53-recovery-cluster', endpoint_url=endpoint, region_name=endpoint_region)\n  state1 = arc.get_routing_control_state(RoutingControlArn=control1)['RoutingControlState']\n\n  if state1 == 'On':\n    return {'active': 'us-east-1', 'passive': 'us-west-2', 'control1': control1, 'control2': control2, 'endpoint': endpoint, 'endpoint_region': endpoint_region}\n  else:\n    return {'active': 'us-west-2', 'passive': 'us-east-1', 'control1': control1, 'control2': control2, 'endpoint': endpoint, 'endpoint_region': endpoint_region}\n"
+        },
+        "outputs": [
+         {
+          "Name": "ActiveRegion",
+          "Selector": "$.Payload.active",
+          "Type": "String"
+         },
+         {
+          "Name": "PassiveRegion",
+          "Selector": "$.Payload.passive",
+          "Type": "String"
+         },
+         {
+          "Name": "Control1",
+          "Selector": "$.Payload.control1",
+          "Type": "String"
+         },
+         {
+          "Name": "Control2",
+          "Selector": "$.Payload.control2",
+          "Type": "String"
+         },
+         {
+          "Name": "Endpoint",
+          "Selector": "$.Payload.endpoint",
+          "Type": "String"
+         },
+         {
+          "Name": "EndpointRegion",
+          "Selector": "$.Payload.endpoint_region",
+          "Type": "String"
+         }
+        ]
+       },
+       {
+        "name": "FailoverAurora",
+        "action": "aws:executeScript",
+        "inputs": {
+         "Runtime": "python3.11",
+         "Handler": "script_handler",
+         "InputPayload": {
+          "ActiveRegion": "{{DetermineActiveRegion.ActiveRegion}}"
+         },
+         "Script": "import boto3\nimport time\ndef script_handler(events, context):\n  active_region = events['ActiveRegion']\n  rds = boto3.client('rds', region_name=active_region)\n\n  # Wait for global cluster to be available\n  while True:\n    response = rds.describe_global_clusters(GlobalClusterIdentifier='aurora-global-test')\n    if response['GlobalClusters'][0]['Status'] == 'available':\n      break\n    time.sleep(10)\n\n  # Get reader cluster\n  response = rds.describe_global_clusters(GlobalClusterIdentifier='aurora-global-test')\n  members = response['GlobalClusters'][0]['GlobalClusterMembers']\n\n  reader_cluster_arn = None\n  for member in members:\n    if not member['IsWriter']:\n      reader_cluster_arn = member['DBClusterArn']\n      break\n\n  # Wait for target cluster to be available\n  target_region = reader_cluster_arn.split(':')[3]\n  target_cluster_id = reader_cluster_arn.split(':')[-1]\n  rds_target = boto3.client('rds', region_name=target_region)\n\n  while True:\n    cluster_info = rds_target.describe_db_clusters(DBClusterIdentifier=target_cluster_id)\n    if cluster_info['DBClusters'][0]['Status'] == 'available':\n      break\n    time.sleep(10)\n\n  # Perform failover\n  rds.failover_global_cluster(\n    GlobalClusterIdentifier='aurora-global-test',\n    TargetDbClusterIdentifier=reader_cluster_arn\n  )\n\n  # Wait for failover to complete\n  while True:\n    response = rds.describe_global_clusters(GlobalClusterIdentifier='aurora-global-test')\n    if response['GlobalClusters'][0]['Status'] == 'available':\n      break\n    time.sleep(10)\n\n  return {'status': 'success'}\n"
+        }
+       },
+       {
+        "name": "FlipARCControls",
+        "action": "aws:executeScript",
+        "inputs": {
+         "Runtime": "python3.11",
+         "Handler": "script_handler",
+         "InputPayload": {
+          "Control1": "{{DetermineActiveRegion.Control1}}",
+          "Control2": "{{DetermineActiveRegion.Control2}}",
+          "Endpoint": "{{DetermineActiveRegion.Endpoint}}",
+          "EndpointRegion": "{{DetermineActiveRegion.EndpointRegion}}",
+          "ActiveRegion": "{{DetermineActiveRegion.ActiveRegion}}"
+         },
+         "Script": "import boto3\ndef script_handler(events, context):\n  control1 = events['Control1']\n  control2 = events['Control2']\n  endpoint = events['Endpoint']\n  endpoint_region = events['EndpointRegion']\n  active_region = events['ActiveRegion']\n\n  arc = boto3.client('route53-recovery-cluster', endpoint_url=endpoint, region_name=endpoint_region)\n\n  # Determine which control should be on after failover\n  if active_region == 'us-east-1':\n    # Currently us-east-1 is active, flip to us-west-2\n    arc.update_routing_control_state(RoutingControlArn=control1, RoutingControlState='Off')\n    arc.update_routing_control_state(RoutingControlArn=control2, RoutingControlState='On')\n    return {'status': 'success', 'new_active': 'us-west-2'}\n  else:\n    # Currently us-west-2 is active, flip to us-east-1\n    arc.update_routing_control_state(RoutingControlArn=control2, RoutingControlState='Off')\n    arc.update_routing_control_state(RoutingControlArn=control1, RoutingControlState='On')\n    return {'status': 'success', 'new_active': 'us-east-1'}\n"
+        }
+       },
+       {
+        "name": "UpdateSecret",
+        "action": "aws:executeScript",
+        "inputs": {
+         "Runtime": "python3.11",
+         "Handler": "script_handler",
+         "Script": "import boto3\nimport json\ndef script_handler(events, context):\n  rds = boto3.client('rds', region_name='us-east-1')\n  response = rds.describe_global_clusters(GlobalClusterIdentifier='aurora-global-test')\n\n  writer_cluster_arn = None\n  for member in response['GlobalClusters'][0]['GlobalClusterMembers']:\n    if member['IsWriter']:\n      writer_cluster_arn = member['DBClusterArn']\n      break\n\n  cluster_region = writer_cluster_arn.split(':')[3]\n  cluster_id = writer_cluster_arn.split(':')[-1]\n\n  rds_regional = boto3.client('rds', region_name=cluster_region)\n  cluster_info = rds_regional.describe_db_clusters(DBClusterIdentifier=cluster_id)\n  endpoint = cluster_info['DBClusters'][0]['Endpoint']\n\n  sm = boto3.client('secretsmanager', region_name='us-east-1')\n  secret = sm.get_secret_value(SecretId='aurora-failover-db-secret')\n  secret_data = json.loads(secret['SecretString'])\n  secret_data['host'] = endpoint\n\n  sm.put_secret_value(SecretId='aurora-failover-db-secret', SecretString=json.dumps(secret_data))\n\n  return {'new_endpoint': endpoint}\n"
+        }
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Function.TriggerFailoverFunction",
+   "cfg": "TriggerFailoverFunction",
+   "type": "__declared__",
+   "refs": [
+    "LambdaRole"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Function",
+    "name": "TriggerFailoverFunction",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "FunctionName": "TriggerFailover",
+     "Runtime": "python3.13",
+     "Handler": "index.lambda_handler",
+     "Role": {
+      "ref": "LambdaRole",
+      "attr": "Arn"
+     },
+     "Timeout": 30,
+     "Code": {
+      "ZipFile": "import boto3\nimport json\n\ndef lambda_handler(event, context):\n    ssm = boto3.client('ssm')\n\n    response = ssm.start_automation_execution(\n        DocumentName='AuroraGlobalDatabaseFailoverSSMDocument'\n    )\n\n    return {\n        'statusCode': 200,\n        'body': json.dumps({\n            'message': 'Failover initiated',\n            'executionId': response['AutomationExecutionId']\n        })\n    }\n"
+     }
+    }
+   }
+  }
+ ]
+}

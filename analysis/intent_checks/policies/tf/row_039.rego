@@ -1,0 +1,230 @@
+package intent.tf.row_039
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {
+  "key": {
+   "types": [
+    "aws_kms_key"
+   ],
+   "where": []
+  },
+  "alias": {
+   "types": [
+    "aws_kms_alias"
+   ],
+   "where": []
+  }
+ },
+ "checks": [
+  {
+   "id": "kms_key",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "creates a KMS Customer Managed Key (CMK) along with an alias",
+   "select": "key"
+  },
+  {
+   "id": "key_deletion_window",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "a 7-day deletion window",
+   "select": "key",
+   "cond": {
+    "path": [
+     "deletion_window_in_days"
+    ],
+    "op": "eq",
+    "value": 7
+   }
+  },
+  {
+   "id": "key_policy_kms_all",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "grants full KMS permissions (\"kms:*\")",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "key",
+     "cond": {
+      "path": [
+       "policy"
+      ],
+      "op": "regex",
+      "value": "kms:\\*"
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "in",
+        "value": [
+         "aws_kms_key",
+         "data.aws_iam_policy_document"
+        ]
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "regex",
+        "value": "kms:\\*"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "key_policy_caller_identity",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "grants full KMS permissions (\"kms:*\") exclusively to the current caller's IAM identity",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "data.aws_iam_policy_document"
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "regex",
+        "value": "kms:\\*"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "statement",
+       "*",
+       "principals",
+       "*",
+       "identifiers",
+       "*"
+      ],
+      "op": "regex",
+      "value": "aws_caller_identity\\.",
+      "every": true
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_kms_key"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "policy"
+      ],
+      "op": "regex",
+      "value": "(?is)(kms:\\*.{0,400}principal.{0,200}aws_caller_identity\\.|principal.{0,200}aws_caller_identity\\..{0,400}kms:\\*)"
+     }
+    }
+   ]
+  },
+  {
+   "id": "alias_exists",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "provision a KMS key alias",
+   "select": "alias"
+  },
+  {
+   "id": "alias_targets_key",
+   "kind": "ref",
+   "tier": "core",
+   "quote": "a KMS key alias whose target is the created key",
+   "from": "alias",
+   "to": "key"
+  },
+  {
+   "id": "alias_name_default",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "whose name uses a configurable variable prefixing \"alias/\" to a default alias string of \"kms-cmk-example\"",
+   "justify": "the prompt says the name prefixes alias/ to the default string",
+   "select": "alias",
+   "cond": {
+    "path": [
+     "name"
+    ],
+    "op": "eq",
+    "value": "alias/kms-cmk-example"
+   }
+  },
+  {
+   "id": "alias_name_variable",
+   "kind": "exists",
+   "tier": "detail",
+   "quote": "uses a configurable variable prefixing \"alias/\" to a default alias string of \"kms-cmk-example\"",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": [
+       "default"
+      ],
+      "op": "eq",
+      "value": "kms-cmk-example"
+     }
+    ]
+   }
+  },
+  {
+   "id": "key_usage_extra",
+   "kind": "attr",
+   "tier": "extra",
+   "quote": "",
+   "select": "key",
+   "cond": {
+    "path": [
+     "key_usage"
+    ],
+    "op": "eq",
+    "value": "ENCRYPT_DECRYPT"
+   }
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

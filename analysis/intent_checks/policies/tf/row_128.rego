@@ -1,0 +1,476 @@
+package intent.tf.row_128
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {
+  "vpc": {
+   "types": [
+    "aws_vpc"
+   ],
+   "where": []
+  },
+  "igw": {
+   "types": [
+    "aws_internet_gateway"
+   ],
+   "where": [
+    {
+     "path": [
+      "tags",
+      "Name"
+     ],
+     "op": "eq",
+     "value": "demogwInternet"
+    }
+   ]
+  },
+  "rt": {
+   "types": [
+    "aws_route_table"
+   ],
+   "where": [
+    {
+     "path": [
+      "tags",
+      "Name"
+     ],
+     "op": "eq",
+     "value": "demoPublicRouteTable"
+    }
+   ]
+  },
+  "subnets": {
+   "types": [
+    "aws_subnet"
+   ],
+   "where": []
+  }
+ },
+ "checks": [
+  {
+   "id": "vpc_exists",
+   "kind": "exists",
+   "tier": "core",
+   "select": "vpc",
+   "quote": "custom VPC environment"
+  },
+  {
+   "id": "vpc_cidr",
+   "kind": "attr",
+   "tier": "core",
+   "select": "vpc",
+   "cond": {
+    "path": [
+     "cidr_block"
+    ],
+    "op": "eq",
+    "value": "10.0.0.0/16"
+   },
+   "quote": "primary VPC CIDR block of \"10.0.0.0/16\""
+  },
+  {
+   "id": "vpc_dns_support",
+   "kind": "attr",
+   "tier": "core",
+   "select": "vpc",
+   "cond": {
+    "path": [
+     "enable_dns_support"
+    ],
+    "op": "eq",
+    "value": true
+   },
+   "quote": "DNS support and DNS hostnames enabled"
+  },
+  {
+   "id": "vpc_dns_hostnames",
+   "kind": "attr",
+   "tier": "core",
+   "select": "vpc",
+   "cond": {
+    "path": [
+     "enable_dns_hostnames"
+    ],
+    "op": "eq",
+    "value": true
+   },
+   "quote": "DNS support and DNS hostnames enabled"
+  },
+  {
+   "id": "igw_named",
+   "kind": "exists",
+   "tier": "core",
+   "select": "igw",
+   "quote": "an Internet Gateway named \"demogwInternet\""
+  },
+  {
+   "id": "igw_vpc",
+   "kind": "ref",
+   "tier": "detail",
+   "from": {
+    "types": [
+     "aws_internet_gateway"
+    ],
+    "where": []
+   },
+   "to": "vpc",
+   "quote": "an Internet Gateway"
+  },
+  {
+   "id": "rt_named",
+   "kind": "exists",
+   "tier": "core",
+   "select": "rt",
+   "quote": "a public route table named \"demoPublicRouteTable\""
+  },
+  {
+   "id": "route_default_igw",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route"
+      ],
+      "where": [
+       {
+        "path": [
+         "destination_cidr_block"
+        ],
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     },
+     "to": "igw"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route_table"
+      ],
+      "where": [
+       {
+        "path": [
+         "route",
+         "*",
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     },
+     "to": "igw"
+    }
+   ],
+   "quote": "sending all outbound traffic to 0.0.0.0/0 via the gateway"
+  },
+  {
+   "id": "rt_default_route",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "a public route table named \"demoPublicRouteTable\" sending all outbound traffic to 0.0.0.0/0",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route"
+      ],
+      "where": [
+       {
+        "path": [
+         "destination_cidr_block"
+        ],
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     },
+     "to": "rt"
+    },
+    {
+     "kind": "attr",
+     "select": "rt",
+     "cond": {
+      "path": [
+       "route",
+       "*",
+       "cidr_block"
+      ],
+      "op": "eq",
+      "value": "0.0.0.0/0"
+     }
+    }
+   ]
+  },
+  {
+   "id": "public_subnets",
+   "kind": "exists",
+   "tier": "core",
+   "select": "subnets",
+   "min": 2,
+   "quote": "a set of public subnets",
+   "justify": "two default CIDRs are given"
+  },
+  {
+   "id": "subnets_no_autoip",
+   "kind": "attr",
+   "tier": "core",
+   "select": "subnets",
+   "cond": {
+    "path": [
+     "map_public_ip_on_launch"
+    ],
+    "op": "eq",
+    "value": false
+   },
+   "quantifier": "all",
+   "quote": "public subnets that do not auto-assign public IPs on launch"
+  },
+  {
+   "id": "subnets_across_azs",
+   "kind": "exists",
+   "tier": "detail",
+   "select": "subnets",
+   "distinct_path": [
+    "availability_zone"
+   ],
+   "min": 2,
+   "quote": "mapped across specified availability zones",
+   "justify": "CIDRs given for two subnets spread over the specified zones"
+  },
+  {
+   "id": "subnet_cidr_a",
+   "kind": "attr",
+   "tier": "core",
+   "select": "subnets",
+   "cond": {
+    "path": [
+     "cidr_block"
+    ],
+    "op": "eq",
+    "value": "10.0.0.0/24"
+   },
+   "quote": "default CIDRs \"10.0.0.0/24\" and \"10.0.2.0/24\""
+  },
+  {
+   "id": "subnet_cidr_b",
+   "kind": "attr",
+   "tier": "core",
+   "select": "subnets",
+   "cond": {
+    "path": [
+     "cidr_block"
+    ],
+    "op": "eq",
+    "value": "10.0.2.0/24"
+   },
+   "quote": "default CIDRs \"10.0.0.0/24\" and \"10.0.2.0/24\""
+  },
+  {
+   "id": "var_project",
+   "kind": "exists",
+   "tier": "detail",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": [
+       "default"
+      ],
+      "op": "eq",
+      "value": "demo"
+     }
+    ]
+   },
+   "quote": "project (\"demo\")"
+  },
+  {
+   "id": "var_environment",
+   "kind": "exists",
+   "tier": "detail",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": [
+       "default"
+      ],
+      "op": "eq",
+      "value": "poc"
+     }
+    ]
+   },
+   "quote": "environment (\"poc\")"
+  },
+  {
+   "id": "var_vpc_name",
+   "kind": "exists",
+   "tier": "detail",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": [
+       "default"
+      ],
+      "op": "eq",
+      "value": "demo-dataflow"
+     }
+    ]
+   },
+   "quote": "VPC name (\"demo-dataflow\")"
+  },
+  {
+   "id": "var_private_cidrs",
+   "kind": "all_of",
+   "tier": "detail",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": [
+         "default",
+         "*"
+        ],
+        "op": "eq",
+        "value": "10.0.1.0/24"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": [
+         "default",
+         "*"
+        ],
+        "op": "eq",
+        "value": "10.0.3.0/24"
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "private subnet CIDR blocks (\"10.0.1.0/24\" and \"10.0.3.0/24\")"
+  },
+  {
+   "id": "var_key_name",
+   "kind": "exists",
+   "tier": "detail",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": [
+       "default"
+      ],
+      "op": "eq",
+      "value": "kplinuxdemo"
+     }
+    ]
+   },
+   "quote": "EC2 key pair name (\"kplinuxdemo\")"
+  },
+  {
+   "id": "var_instance_type",
+   "kind": "exists",
+   "tier": "detail",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": [
+       "default"
+      ],
+      "op": "eq",
+      "value": "t3.nano"
+     }
+    ]
+   },
+   "quote": "bastion instance type (\"t3.nano\")"
+  },
+  {
+   "id": "var_ebs_optimized",
+   "kind": "exists",
+   "tier": "detail",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": [
+       "name"
+      ],
+      "op": "regex",
+      "value": "(?i)ebs"
+     },
+     {
+      "path": [
+       "default"
+      ],
+      "op": "eq",
+      "value": false
+     }
+    ]
+   },
+   "quote": "EBS optimization toggle (false)",
+   "justify": "a variable whose name mentions ebs defaults to false"
+  },
+  {
+   "id": "var_tags",
+   "kind": "exists",
+   "tier": "detail",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": [
+       "name"
+      ],
+      "op": "regex",
+      "value": "(?i)tag"
+     }
+    ]
+   },
+   "quote": "custom resource tagging maps",
+   "justify": "a tags variable"
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

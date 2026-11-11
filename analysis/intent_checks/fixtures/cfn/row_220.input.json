@@ -1,0 +1,634 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "d3648265fbfa32a957fd6d5e42a435b6e884fd347bcaaa165184b1e28f2ac05f",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "RestApi",
+   "cfg": "RestApi",
+   "type": "AWS::ApiGateway::RestApi",
+   "values": {
+    "Name": "stack",
+    "Description": "Stripe webhook callback endpoints",
+    "Tags": [
+     {
+      "Key": "Project",
+      "Value": "Misc"
+     },
+     {
+      "Key": "prx:cloudformation:stack-name",
+      "Value": "stack"
+     },
+     {
+      "Key": "prx:cloudformation:stack-id",
+      "Value": "arn:aws:cloudformation:us-east-1:123456789012:stack/stack/id"
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "RestApiWebhooksResource",
+   "cfg": "RestApiWebhooksResource",
+   "type": "AWS::ApiGateway::Resource",
+   "values": {
+    "RestApiId": {
+     "ref": "RestApi"
+    },
+    "ParentId": {
+     "ref": "RestApi",
+     "attr": "RootResourceId"
+    },
+    "PathPart": "webhooks"
+   },
+   "refs": [
+    "RestApi"
+   ]
+  },
+  {
+   "id": "RestApiWebhooksPostMethod",
+   "cfg": "RestApiWebhooksPostMethod",
+   "type": "AWS::ApiGateway::Method",
+   "values": {
+    "AuthorizationType": "NONE",
+    "HttpMethod": "POST",
+    "Integration": {
+     "IntegrationHttpMethod": "POST",
+     "Type": "AWS_PROXY",
+     "Uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/${LambdaFunction.Arn}/invocations"
+    },
+    "RestApiId": {
+     "ref": "RestApi"
+    },
+    "ResourceId": {
+     "ref": "RestApiWebhooksResource"
+    }
+   },
+   "refs": [
+    "LambdaFunction",
+    "RestApi",
+    "RestApiWebhooksResource"
+   ]
+  },
+  {
+   "id": "RestApiDeployment",
+   "cfg": "RestApiDeployment",
+   "type": "AWS::ApiGateway::Deployment",
+   "values": {
+    "RestApiId": {
+     "ref": "RestApi"
+    },
+    "__resource__": {
+     "DependsOn": [
+      "RestApiWebhooksPostMethod"
+     ]
+    }
+   },
+   "refs": [
+    "RestApi"
+   ]
+  },
+  {
+   "id": "RestApiStage",
+   "cfg": "RestApiStage",
+   "type": "AWS::ApiGateway::Stage",
+   "values": {
+    "StageName": "prod",
+    "Description": "Production API",
+    "RestApiId": {
+     "ref": "RestApi"
+    },
+    "DeploymentId": {
+     "ref": "RestApiDeployment"
+    }
+   },
+   "refs": [
+    "RestApi",
+    "RestApiDeployment"
+   ]
+  },
+  {
+   "id": "LambdaIamRole",
+   "cfg": "LambdaIamRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Path": "/",
+    "Policies": [
+     {
+      "PolicyName": "SnsPolicy",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "sns:Publish"
+         ],
+         "Resource": [
+          "<param:SlackMessageRelayTopicArn>"
+         ]
+        }
+       ]
+      }
+     }
+    ],
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+    ],
+    "Tags": [
+     {
+      "Key": "Project",
+      "Value": "Misc"
+     },
+     {
+      "Key": "prx:cloudformation:stack-name",
+      "Value": "stack"
+     },
+     {
+      "Key": "prx:cloudformation:stack-id",
+      "Value": "arn:aws:cloudformation:us-east-1:123456789012:stack/stack/id"
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "LambdaFunction",
+   "cfg": "LambdaFunction",
+   "type": "AWS::Lambda::Function",
+   "values": {
+    "Code": {
+     "ZipFile": "const https = require('https');\nconst { SNS } = require('@aws-sdk/client-sns');\nconst url = require('url');\n\nconst sns = new AWS.SNS({ apiVersion: '2010-03-31' });\nconst sns = new SNS({\n    apiVersion: '2010-03-31',\n    region: process.env.SLACK_MESSAGE_RELAY_SNS_TOPIC_ARN.split(':')[3]\n});\n\nconst SLACK_CHANNEL = '#garage-registration';\nconst SLACK_USERNAME = 'Squarespace';\nconst SLACK_ICON = ':squarespace:';\n\nfunction httpGet(reqUrl) {\n    return new Promise((resolve, reject) => {\n        // Setup request options\n        const options = url.parse(reqUrl);\n        options.method = 'GET';\n        options.headers = {\n            'Authorization': `Bearer ${process.env.SQUARESPACE_API_TOKEN}`,\n            'User-Agent': 'PRX/1.0.0 (AWS Lambda/Node)',\n        };\n\n        // Request with response handler\n        const req = https.request(options, (res) => {\n            res.setEncoding('utf8');\n\n            let json = '';\n            res.on('data', (chunk) => { json += chunk; });\n            res.on('end', () => {\n                try {\n\n                    const resPayload = JSON.parse(json);\n                    resolve(resPayload);\n                } catch (e) {\n                    console.error('Error handling JSON response!');\n                    reject(e);\n                }\n            });\n        });\n\n        // Generic request error handling\n        req.on('error', e => reject(e));\n\n        req.end();\n    });\n}\n\nasync function getOrder(orderId) {\n    console.info(`Getting Sqsqp order ${orderId}`);\n    const orderUrl = `https://api.squarespace.com/1.0/commerce/orders/${orderId}`;\n    const order = await httpGet(orderUrl);\n    return order;\n}\n\nasync function getAllInventory(cursor) {\n    console.info(`Getting Sqsqp inventory ${cursor}`);\n    const param = cursor ? `?cursor=${cursor}` : '';\n    const inventoryUrl = `https://api.squarespace.com/1.0/commerce/inventory${param}`;\n\n    const response = await httpGet(inventoryUrl);\n\n    if (response.pagination.hasNextPage) {\n        console.log(`Paging ${response.pagination.nextPageCursor}`);\n        const more = await getAllInventory(response.pagination.nextPageCursor);\n        response.inventory.push(...more.inventory);\n    }\n\n    return response;\n}\n\nasync function getInventory(variantId1) {\n    console.info(`Getting Sqsqp inventory ${variantId1}`);\n    const inventoryUrl = `https://api.squarespace.com/1.0/commerce/inventory/${variantId1}`;\n    const inventory = await httpGet(inventoryUrl);\n    return inventory.inventory[0];\n}\n\nexports.handler = async (event) => {\n    try {\n        const stripePayload = JSON.parse(event.body);\n\n        const sqspOrderId = stripePayload.data.object.metadata.id;\n        const order = await getOrder(sqspOrderId);\n        const allInventory = await getAllInventory();\n\n        for (const lineItem of order.lineItems) {\n            const variant = allInventory.inventory.find(i => i.sku === lineItem.sku);\n            const inventory = await getInventory(variant.variantId);\n\n            await sns.publish({\n                TopicArn: process.env.SLACK_MESSAGE_RELAY_SNS_TOPIC_ARN,\n                Message: JSON.stringify({\n                    channel: SLACK_CHANNEL,\n                    username: SLACK_USERNAME,\n                    icon_emoji: SLACK_ICON,\n                    text: [\n                        `<mailto:${order.customerEmail}|${order.billingAddress.firstName} ${order.billingAddress.lastName}> ordered ${lineItem.quantity} ticket${lineItem.quantity === 1 ? '' : 's' } for *${inventory.descriptor}*`,\n                    ].join('\\n')\n                }),\n            });\n        }\n\n        return { statusCode: 200, headers: {}, body: '' };\n    } catch (e) {\n        console.error(e);\n        return { statusCode: 200, headers: {}, body: '' };\n    }\n};\n"
+    },
+    "Description": "Backs Stripe/Squarespace webhook API Gateway",
+    "Environment": {
+     "Variables": {
+      "STRIPE_WEBHOOK_SIGNING_SECRET": "<param:StripeWebhookSigningSecret>",
+      "SLACK_MESSAGE_RELAY_SNS_TOPIC_ARN": "<param:SlackMessageRelayTopicArn>",
+      "SQUARESPACE_API_TOKEN": "<param:SquarespaceApiToken>"
+     }
+    },
+    "Handler": "index.handler",
+    "MemorySize": 128,
+    "Role": {
+     "ref": "LambdaIamRole",
+     "attr": "Arn"
+    },
+    "Runtime": "nodejs24.x",
+    "Tags": [
+     {
+      "Key": "Project",
+      "Value": "Misc"
+     },
+     {
+      "Key": "prx:cloudformation:stack-name",
+      "Value": "stack"
+     },
+     {
+      "Key": "prx:cloudformation:stack-id",
+      "Value": "arn:aws:cloudformation:us-east-1:123456789012:stack/stack/id"
+     }
+    ],
+    "Timeout": 8
+   },
+   "refs": [
+    "LambdaIamRole"
+   ]
+  },
+  {
+   "id": "RestApiLambdaPermission",
+   "cfg": "RestApiLambdaPermission",
+   "type": "AWS::Lambda::Permission",
+   "values": {
+    "Action": "lambda:InvokeFunction",
+    "FunctionName": {
+     "ref": "LambdaFunction"
+    },
+    "Principal": "apigateway.amazonaws.com",
+    "SourceArn": "arn:aws:execute-api:us-east-1:123456789012:${RestApi}/${RestApiStage}/*"
+   },
+   "refs": [
+    "LambdaFunction",
+    "RestApi",
+    "RestApiStage"
+   ]
+  },
+  {
+   "id": "LambdaErrorAlarm",
+   "cfg": "LambdaErrorAlarm",
+   "type": "AWS::CloudWatch::Alarm",
+   "values": {
+    "AlarmName": "ERROR [Squarespace] Commerce webhook <prod> INVOCATION ERRORS (stack)",
+    "AlarmDescription": "The error rate on the Squarespace sales lambda has exceeded 0",
+    "ComparisonOperator": "GreaterThanThreshold",
+    "EvaluationPeriods": 1,
+    "MetricName": "Errors",
+    "Namespace": "AWS/Lambda",
+    "Period": 60,
+    "Statistic": "Sum",
+    "Threshold": 0,
+    "TreatMissingData": "notBreaching",
+    "Dimensions": [
+     {
+      "Name": "FunctionName",
+      "Value": {
+       "ref": "LambdaFunction"
+      }
+     }
+    ]
+   },
+   "refs": [
+    "LambdaFunction"
+   ]
+  },
+  {
+   "id": "LambdaFunctionLogGroup",
+   "cfg": "LambdaFunctionLogGroup",
+   "type": "AWS::Logs::LogGroup",
+   "values": {
+    "LogGroupName": "/aws/lambda/${LambdaFunction}",
+    "RetentionInDays": 5
+   },
+   "refs": [
+    "LambdaFunction"
+   ]
+  },
+  {
+   "id": "__parameter__.SquarespaceApiToken",
+   "cfg": "__parameter__.SquarespaceApiToken",
+   "type": "__parameter__",
+   "values": {
+    "name": "SquarespaceApiToken",
+    "type": "String",
+    "default": null,
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.StripeWebhookSigningSecret",
+   "cfg": "__parameter__.StripeWebhookSigningSecret",
+   "type": "__parameter__",
+   "values": {
+    "name": "StripeWebhookSigningSecret",
+    "type": "String",
+    "default": null,
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.SlackMessageRelayTopicArn",
+   "cfg": "__parameter__.SlackMessageRelayTopicArn",
+   "type": "__parameter__",
+   "values": {
+    "name": "SlackMessageRelayTopicArn",
+    "type": "String",
+    "default": null,
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::RestApi.RestApi",
+   "cfg": "RestApi",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::ApiGateway::RestApi",
+    "name": "RestApi",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "stack",
+     "Description": "Stripe webhook callback endpoints",
+     "Tags": [
+      {
+       "Key": "Project",
+       "Value": "Misc"
+      },
+      {
+       "Key": "prx:cloudformation:stack-name",
+       "Value": "stack"
+      },
+      {
+       "Key": "prx:cloudformation:stack-id",
+       "Value": "arn:aws:cloudformation:us-east-1:123456789012:stack/stack/id"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::Resource.RestApiWebhooksResource",
+   "cfg": "RestApiWebhooksResource",
+   "type": "__declared__",
+   "refs": [
+    "RestApi"
+   ],
+   "values": {
+    "type": "AWS::ApiGateway::Resource",
+    "name": "RestApiWebhooksResource",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RestApiId": {
+      "ref": "RestApi"
+     },
+     "ParentId": {
+      "ref": "RestApi",
+      "attr": "RootResourceId"
+     },
+     "PathPart": "webhooks"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::Method.RestApiWebhooksPostMethod",
+   "cfg": "RestApiWebhooksPostMethod",
+   "type": "__declared__",
+   "refs": [
+    "LambdaFunction",
+    "RestApi",
+    "RestApiWebhooksResource"
+   ],
+   "values": {
+    "type": "AWS::ApiGateway::Method",
+    "name": "RestApiWebhooksPostMethod",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AuthorizationType": "NONE",
+     "HttpMethod": "POST",
+     "Integration": {
+      "IntegrationHttpMethod": "POST",
+      "Type": "AWS_PROXY",
+      "Uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/${LambdaFunction.Arn}/invocations"
+     },
+     "RestApiId": {
+      "ref": "RestApi"
+     },
+     "ResourceId": {
+      "ref": "RestApiWebhooksResource"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::Deployment.RestApiDeployment",
+   "cfg": "RestApiDeployment",
+   "type": "__declared__",
+   "refs": [
+    "RestApi"
+   ],
+   "values": {
+    "type": "AWS::ApiGateway::Deployment",
+    "name": "RestApiDeployment",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RestApiId": {
+      "ref": "RestApi"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::Stage.RestApiStage",
+   "cfg": "RestApiStage",
+   "type": "__declared__",
+   "refs": [
+    "RestApi",
+    "RestApiDeployment"
+   ],
+   "values": {
+    "type": "AWS::ApiGateway::Stage",
+    "name": "RestApiStage",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "StageName": "prod",
+     "Description": "Production API",
+     "RestApiId": {
+      "ref": "RestApi"
+     },
+     "DeploymentId": {
+      "ref": "RestApiDeployment"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.LambdaIamRole",
+   "cfg": "LambdaIamRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "LambdaIamRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Path": "/",
+     "Policies": [
+      {
+       "PolicyName": "SnsPolicy",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "sns:Publish"
+          ],
+          "Resource": [
+           "<param:SlackMessageRelayTopicArn>"
+          ]
+         }
+        ]
+       }
+      }
+     ],
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+     ],
+     "Tags": [
+      {
+       "Key": "Project",
+       "Value": "Misc"
+      },
+      {
+       "Key": "prx:cloudformation:stack-name",
+       "Value": "stack"
+      },
+      {
+       "Key": "prx:cloudformation:stack-id",
+       "Value": "arn:aws:cloudformation:us-east-1:123456789012:stack/stack/id"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Function.LambdaFunction",
+   "cfg": "LambdaFunction",
+   "type": "__declared__",
+   "refs": [
+    "LambdaIamRole"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Function",
+    "name": "LambdaFunction",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Code": {
+      "ZipFile": "const https = require('https');\nconst { SNS } = require('@aws-sdk/client-sns');\nconst url = require('url');\n\nconst sns = new AWS.SNS({ apiVersion: '2010-03-31' });\nconst sns = new SNS({\n    apiVersion: '2010-03-31',\n    region: process.env.SLACK_MESSAGE_RELAY_SNS_TOPIC_ARN.split(':')[3]\n});\n\nconst SLACK_CHANNEL = '#garage-registration';\nconst SLACK_USERNAME = 'Squarespace';\nconst SLACK_ICON = ':squarespace:';\n\nfunction httpGet(reqUrl) {\n    return new Promise((resolve, reject) => {\n        // Setup request options\n        const options = url.parse(reqUrl);\n        options.method = 'GET';\n        options.headers = {\n            'Authorization': `Bearer ${process.env.SQUARESPACE_API_TOKEN}`,\n            'User-Agent': 'PRX/1.0.0 (AWS Lambda/Node)',\n        };\n\n        // Request with response handler\n        const req = https.request(options, (res) => {\n            res.setEncoding('utf8');\n\n            let json = '';\n            res.on('data', (chunk) => { json += chunk; });\n            res.on('end', () => {\n                try {\n\n                    const resPayload = JSON.parse(json);\n                    resolve(resPayload);\n                } catch (e) {\n                    console.error('Error handling JSON response!');\n                    reject(e);\n                }\n            });\n        });\n\n        // Generic request error handling\n        req.on('error', e => reject(e));\n\n        req.end();\n    });\n}\n\nasync function getOrder(orderId) {\n    console.info(`Getting Sqsqp order ${orderId}`);\n    const orderUrl = `https://api.squarespace.com/1.0/commerce/orders/${orderId}`;\n    const order = await httpGet(orderUrl);\n    return order;\n}\n\nasync function getAllInventory(cursor) {\n    console.info(`Getting Sqsqp inventory ${cursor}`);\n    const param = cursor ? `?cursor=${cursor}` : '';\n    const inventoryUrl = `https://api.squarespace.com/1.0/commerce/inventory${param}`;\n\n    const response = await httpGet(inventoryUrl);\n\n    if (response.pagination.hasNextPage) {\n        console.log(`Paging ${response.pagination.nextPageCursor}`);\n        const more = await getAllInventory(response.pagination.nextPageCursor);\n        response.inventory.push(...more.inventory);\n    }\n\n    return response;\n}\n\nasync function getInventory(variantId1) {\n    console.info(`Getting Sqsqp inventory ${variantId1}`);\n    const inventoryUrl = `https://api.squarespace.com/1.0/commerce/inventory/${variantId1}`;\n    const inventory = await httpGet(inventoryUrl);\n    return inventory.inventory[0];\n}\n\nexports.handler = async (event) => {\n    try {\n        const stripePayload = JSON.parse(event.body);\n\n        const sqspOrderId = stripePayload.data.object.metadata.id;\n        const order = await getOrder(sqspOrderId);\n        const allInventory = await getAllInventory();\n\n        for (const lineItem of order.lineItems) {\n            const variant = allInventory.inventory.find(i => i.sku === lineItem.sku);\n            const inventory = await getInventory(variant.variantId);\n\n            await sns.publish({\n                TopicArn: process.env.SLACK_MESSAGE_RELAY_SNS_TOPIC_ARN,\n                Message: JSON.stringify({\n                    channel: SLACK_CHANNEL,\n                    username: SLACK_USERNAME,\n                    icon_emoji: SLACK_ICON,\n                    text: [\n                        `<mailto:${order.customerEmail}|${order.billingAddress.firstName} ${order.billingAddress.lastName}> ordered ${lineItem.quantity} ticket${lineItem.quantity === 1 ? '' : 's' } for *${inventory.descriptor}*`,\n                    ].join('\\n')\n                }),\n            });\n        }\n\n        return { statusCode: 200, headers: {}, body: '' };\n    } catch (e) {\n        console.error(e);\n        return { statusCode: 200, headers: {}, body: '' };\n    }\n};\n"
+     },
+     "Description": "Backs Stripe/Squarespace webhook API Gateway",
+     "Environment": {
+      "Variables": {
+       "STRIPE_WEBHOOK_SIGNING_SECRET": "<param:StripeWebhookSigningSecret>",
+       "SLACK_MESSAGE_RELAY_SNS_TOPIC_ARN": "<param:SlackMessageRelayTopicArn>",
+       "SQUARESPACE_API_TOKEN": "<param:SquarespaceApiToken>"
+      }
+     },
+     "Handler": "index.handler",
+     "MemorySize": 128,
+     "Role": {
+      "ref": "LambdaIamRole",
+      "attr": "Arn"
+     },
+     "Runtime": "nodejs24.x",
+     "Tags": [
+      {
+       "Key": "Project",
+       "Value": "Misc"
+      },
+      {
+       "Key": "prx:cloudformation:stack-name",
+       "Value": "stack"
+      },
+      {
+       "Key": "prx:cloudformation:stack-id",
+       "Value": "arn:aws:cloudformation:us-east-1:123456789012:stack/stack/id"
+      }
+     ],
+     "Timeout": 8
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Permission.RestApiLambdaPermission",
+   "cfg": "RestApiLambdaPermission",
+   "type": "__declared__",
+   "refs": [
+    "LambdaFunction",
+    "RestApi",
+    "RestApiStage"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Permission",
+    "name": "RestApiLambdaPermission",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Action": "lambda:InvokeFunction",
+     "FunctionName": {
+      "ref": "LambdaFunction"
+     },
+     "Principal": "apigateway.amazonaws.com",
+     "SourceArn": "arn:aws:execute-api:us-east-1:123456789012:${RestApi}/${RestApiStage}/*"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::CloudWatch::Alarm.LambdaErrorAlarm",
+   "cfg": "LambdaErrorAlarm",
+   "type": "__declared__",
+   "refs": [
+    "LambdaFunction"
+   ],
+   "values": {
+    "type": "AWS::CloudWatch::Alarm",
+    "name": "LambdaErrorAlarm",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AlarmName": "ERROR [Squarespace] Commerce webhook <prod> INVOCATION ERRORS (stack)",
+     "AlarmDescription": "The error rate on the Squarespace sales lambda has exceeded 0",
+     "ComparisonOperator": "GreaterThanThreshold",
+     "EvaluationPeriods": 1,
+     "MetricName": "Errors",
+     "Namespace": "AWS/Lambda",
+     "Period": 60,
+     "Statistic": "Sum",
+     "Threshold": 0,
+     "TreatMissingData": "notBreaching",
+     "Dimensions": [
+      {
+       "Name": "FunctionName",
+       "Value": {
+        "ref": "LambdaFunction"
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::LogGroup.LambdaFunctionLogGroup",
+   "cfg": "LambdaFunctionLogGroup",
+   "type": "__declared__",
+   "refs": [
+    "LambdaFunction"
+   ],
+   "values": {
+    "type": "AWS::Logs::LogGroup",
+    "name": "LambdaFunctionLogGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "LogGroupName": "/aws/lambda/${LambdaFunction}",
+     "RetentionInDays": 5
+    }
+   }
+  }
+ ]
+}

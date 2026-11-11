@@ -1,0 +1,401 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "sam_expanded",
+  "warnings": [],
+  "gt_hash": "fc4a09853b52c246b77ae049183b3262f6e90d77ea6cd9685f11632b98f35c30",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "EC2StateWatcherLogs",
+   "cfg": "EC2StateWatcherLogs",
+   "type": "AWS::Logs::LogGroup",
+   "values": {},
+   "refs": []
+  },
+  {
+   "id": "EC2StateWatcher",
+   "cfg": "EC2StateWatcher",
+   "type": "AWS::StepFunctions::StateMachine",
+   "values": {
+    "DefinitionString": "{\n    \"StartAt\": \"What Happened?\",\n    \"States\": {\n        \"It's Gone\": {\n            \"End\": true,\n            \"Type\": \"Pass\"\n        },\n        \"It's Running\": {\n            \"End\": true,\n            \"Type\": \"Pass\"\n        },\n        \"It's Stopped\": {\n            \"End\": true,\n            \"Type\": \"Pass\"\n        },\n        \"What Happened?\": {\n            \"Choices\": [\n                {\n                    \"Next\": \"It's Running\",\n                    \"StringEquals\": \"running\",\n                    \"Variable\": \"$.state\"\n                },\n                {\n                    \"Next\": \"It's Stopped\",\n                    \"StringEquals\": \"stopped\",\n                    \"Variable\": \"$.state\"\n                },\n                {\n                    \"Next\": \"It's Gone\",\n                    \"StringEquals\": \"terminated\",\n                    \"Variable\": \"$.state\"\n                }\n            ],\n            \"Type\": \"Choice\"\n        }\n    }\n}",
+    "LoggingConfiguration": {
+     "Level": "ERROR",
+     "Destinations": [
+      {
+       "CloudWatchLogsLogGroup": {
+        "LogGroupArn": {
+         "ref": "EC2StateWatcherLogs",
+         "attr": "Arn"
+        }
+       }
+      }
+     ]
+    },
+    "RoleArn": {
+     "ref": "EC2StateWatcherRole",
+     "attr": "Arn"
+    },
+    "Tags": [
+     {
+      "Key": "stateMachine:createdBy",
+      "Value": "SAM"
+     }
+    ]
+   },
+   "refs": [
+    "EC2StateWatcherLogs",
+    "EC2StateWatcherRole"
+   ]
+  },
+  {
+   "id": "EC2StateWatcherRole",
+   "cfg": "EC2StateWatcherRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "states.amazonaws.com"
+        ]
+       }
+      }
+     ]
+    },
+    "ManagedPolicyArns": [],
+    "Policies": [
+     {
+      "PolicyName": "EC2StateWatcherRolePolicy0",
+      "PolicyDocument": {
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "logs:*"
+         ],
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     }
+    ],
+    "Tags": [
+     {
+      "Key": "stateMachine:createdBy",
+      "Value": "SAM"
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "EC2StateWatcherStateChange",
+   "cfg": "EC2StateWatcherStateChange",
+   "type": "AWS::Events::Rule",
+   "values": {
+    "EventBusName": "default",
+    "EventPattern": {
+     "source": [
+      "aws.ec2"
+     ],
+     "detail": {
+      "state": [
+       "running",
+       "stopped",
+       "terminated"
+      ]
+     }
+    },
+    "Targets": [
+     {
+      "Arn": {
+       "ref": "EC2StateWatcher"
+      },
+      "Id": "EC2StateWatcherStateChangeStepFunctionsTarget",
+      "RoleArn": {
+       "ref": "EC2StateWatcherStateChangeRole",
+       "attr": "Arn"
+      },
+      "InputPath": "$.detail"
+     }
+    ]
+   },
+   "refs": [
+    "EC2StateWatcher",
+    "EC2StateWatcherStateChangeRole"
+   ]
+  },
+  {
+   "id": "EC2StateWatcherStateChangeRole",
+   "cfg": "EC2StateWatcherStateChangeRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "events.amazonaws.com"
+        ]
+       }
+      }
+     ]
+    },
+    "Policies": [
+     {
+      "PolicyName": "EC2StateWatcherStateChangeRoleStartExecutionPolicy",
+      "PolicyDocument": {
+       "Statement": [
+        {
+         "Action": [
+          "states:StartExecution"
+         ],
+         "Effect": "Allow",
+         "Resource": {
+          "ref": "EC2StateWatcher"
+         }
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": [
+    "EC2StateWatcher"
+   ]
+  },
+  {
+   "id": "__output__.EC2StateWatcherArn",
+   "cfg": "__output__.EC2StateWatcherArn",
+   "type": "__output__",
+   "values": {
+    "name": "EC2StateWatcherArn",
+    "value": {
+     "ref": "EC2StateWatcher"
+    },
+    "description": "EC2StateWatcher state machine ARN",
+    "export": null
+   },
+   "refs": [
+    "EC2StateWatcher"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::Logs::LogGroup.EC2StateWatcherLogs",
+   "cfg": "EC2StateWatcherLogs",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Logs::LogGroup",
+    "name": "EC2StateWatcherLogs",
+    "gated": false,
+    "gate": null,
+    "properties": {}
+   }
+  },
+  {
+   "id": "__declared__.AWS::StepFunctions::StateMachine.EC2StateWatcher",
+   "cfg": "EC2StateWatcher",
+   "type": "__declared__",
+   "refs": [
+    "EC2StateWatcherLogs",
+    "EC2StateWatcherRole"
+   ],
+   "values": {
+    "type": "AWS::StepFunctions::StateMachine",
+    "name": "EC2StateWatcher",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "DefinitionString": "{\n    \"StartAt\": \"What Happened?\",\n    \"States\": {\n        \"It's Gone\": {\n            \"End\": true,\n            \"Type\": \"Pass\"\n        },\n        \"It's Running\": {\n            \"End\": true,\n            \"Type\": \"Pass\"\n        },\n        \"It's Stopped\": {\n            \"End\": true,\n            \"Type\": \"Pass\"\n        },\n        \"What Happened?\": {\n            \"Choices\": [\n                {\n                    \"Next\": \"It's Running\",\n                    \"StringEquals\": \"running\",\n                    \"Variable\": \"$.state\"\n                },\n                {\n                    \"Next\": \"It's Stopped\",\n                    \"StringEquals\": \"stopped\",\n                    \"Variable\": \"$.state\"\n                },\n                {\n                    \"Next\": \"It's Gone\",\n                    \"StringEquals\": \"terminated\",\n                    \"Variable\": \"$.state\"\n                }\n            ],\n            \"Type\": \"Choice\"\n        }\n    }\n}",
+     "LoggingConfiguration": {
+      "Level": "ERROR",
+      "Destinations": [
+       {
+        "CloudWatchLogsLogGroup": {
+         "LogGroupArn": {
+          "ref": "EC2StateWatcherLogs",
+          "attr": "Arn"
+         }
+        }
+       }
+      ]
+     },
+     "RoleArn": {
+      "ref": "EC2StateWatcherRole",
+      "attr": "Arn"
+     },
+     "Tags": [
+      {
+       "Key": "stateMachine:createdBy",
+       "Value": "SAM"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.EC2StateWatcherRole",
+   "cfg": "EC2StateWatcherRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "EC2StateWatcherRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "states.amazonaws.com"
+         ]
+        }
+       }
+      ]
+     },
+     "ManagedPolicyArns": [],
+     "Policies": [
+      {
+       "PolicyName": "EC2StateWatcherRolePolicy0",
+       "PolicyDocument": {
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "logs:*"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      }
+     ],
+     "Tags": [
+      {
+       "Key": "stateMachine:createdBy",
+       "Value": "SAM"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Events::Rule.EC2StateWatcherStateChange",
+   "cfg": "EC2StateWatcherStateChange",
+   "type": "__declared__",
+   "refs": [
+    "EC2StateWatcher",
+    "EC2StateWatcherStateChangeRole"
+   ],
+   "values": {
+    "type": "AWS::Events::Rule",
+    "name": "EC2StateWatcherStateChange",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "EventBusName": "default",
+     "EventPattern": {
+      "source": [
+       "aws.ec2"
+      ],
+      "detail": {
+       "state": [
+        "running",
+        "stopped",
+        "terminated"
+       ]
+      }
+     },
+     "Targets": [
+      {
+       "Arn": {
+        "ref": "EC2StateWatcher"
+       },
+       "Id": "EC2StateWatcherStateChangeStepFunctionsTarget",
+       "RoleArn": {
+        "ref": "EC2StateWatcherStateChangeRole",
+        "attr": "Arn"
+       },
+       "InputPath": "$.detail"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.EC2StateWatcherStateChangeRole",
+   "cfg": "EC2StateWatcherStateChangeRole",
+   "type": "__declared__",
+   "refs": [
+    "EC2StateWatcher"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "EC2StateWatcherStateChangeRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "events.amazonaws.com"
+         ]
+        }
+       }
+      ]
+     },
+     "Policies": [
+      {
+       "PolicyName": "EC2StateWatcherStateChangeRoleStartExecutionPolicy",
+       "PolicyDocument": {
+        "Statement": [
+         {
+          "Action": [
+           "states:StartExecution"
+          ],
+          "Effect": "Allow",
+          "Resource": {
+           "ref": "EC2StateWatcher"
+          }
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  }
+ ]
+}

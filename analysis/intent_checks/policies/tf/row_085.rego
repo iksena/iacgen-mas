@@ -1,0 +1,1179 @@
+package intent.tf.row_085
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {},
+ "checks": [
+  {
+   "id": "topic",
+   "tier": "core",
+   "quote": "creates an Amazon SNS topic and subscription architecture",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_sns_topic"
+    ],
+    "where": []
+   }
+  },
+  {
+   "id": "subscription",
+   "tier": "core",
+   "quote": "a dynamic map of subscriptions supporting flexible endpoint, protocol",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": [
+       "type"
+      ],
+      "op": "eq",
+      "value": "aws_sns_topic_subscription"
+     }
+    ]
+   }
+  },
+  {
+   "id": "kms_key_declared",
+   "tier": "core",
+   "quote": "optional creation of a dedicated KMS key",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": [
+       "type"
+      ],
+      "op": "eq",
+      "value": "aws_kms_key"
+     },
+     {
+      "path": [
+       "gated"
+      ],
+      "op": "truthy"
+     }
+    ]
+   }
+  },
+  {
+   "id": "key_deletion_7",
+   "tier": "core",
+   "quote": "7-day key deletion window",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_kms_key"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "deletion_window_in_days"
+      ],
+      "op": "eq",
+      "value": 7
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_kms_key"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "deletion_window_in_days"
+      ],
+      "op": "eq",
+      "value": 7
+     }
+    }
+   ]
+  },
+  {
+   "id": "key_rotation",
+   "tier": "core",
+   "quote": "key rotation enabled",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_kms_key"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "enable_key_rotation"
+      ],
+      "op": "eq",
+      "value": true
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_kms_key"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "enable_key_rotation"
+      ],
+      "op": "eq",
+      "value": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "key_policy_logs",
+   "tier": "detail",
+   "quote": "permitting CloudWatch Logs service encryption",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_kms_key"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "policy"
+      ],
+      "op": "regex",
+      "value": "(?i)logs\\."
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_kms_key"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "policy"
+      ],
+      "op": "regex",
+      "value": "(?i)logs\\."
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "data.aws_iam_policy_document"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties"
+      ],
+      "op": "regex",
+      "value": "(?i)logs\\."
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_kms_key_policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": "(?i)logs\\."
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "key_policy_root",
+   "tier": "detail",
+   "quote": "account root administration",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_kms_key"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "policy"
+      ],
+      "op": "regex",
+      "value": ":root"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_kms_key"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "policy"
+      ],
+      "op": "regex",
+      "value": ":root"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "data.aws_iam_policy_document"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties"
+      ],
+      "op": "regex",
+      "value": ":root"
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_kms_key_policy"
+      ],
+      "where": [
+       {
+        "path": [
+         "policy"
+        ],
+        "op": "regex",
+        "value": ":root"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "alias_prefix",
+   "tier": "core",
+   "quote": "an alias prefixed with \"alias/sns/\"",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_kms_alias"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "name"
+      ],
+      "op": "regex",
+      "value": "^alias/sns/"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_kms_alias"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "name"
+      ],
+      "op": "regex",
+      "value": "^alias/sns/"
+     }
+    }
+   ]
+  },
+  {
+   "id": "alias_target_key",
+   "tier": "detail",
+   "quote": "automatically assigning an alias",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_kms_alias"
+      ],
+      "where": []
+     },
+     "to": {
+      "types": [
+       "aws_kms_key"
+      ],
+      "where": []
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_kms_alias"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_kms_key"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "topic_uses_created_key",
+   "tier": "core",
+   "quote": "the newly created KMS key ARN",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_sns_topic"
+      ],
+      "where": []
+     },
+     "to": {
+      "types": [
+       "aws_kms_key"
+      ],
+      "where": []
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_sns_topic"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_kms_key"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "topic_kms_configured",
+   "tier": "core",
+   "quote": "KMS encryption for the SNS topic must dynamically select between the newly created KMS key ARN, an explicitly provided KMS master key ARN, or fallback to \"alias/aws/sns\"",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_sns_topic"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "kms_master_key_id"
+      ],
+      "op": "present"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_sns_topic"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "kms_master_key_id"
+      ],
+      "op": "present"
+     }
+    }
+   ]
+  },
+  {
+   "id": "topic_provided_key_input",
+   "tier": "detail",
+   "quote": "an explicitly provided KMS master key ARN",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_sns_topic"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "kms_master_key_id"
+      ],
+      "op": "regex",
+      "value": "var\\."
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "regex",
+        "value": "(?i)(kms_?(master_?)?key_?(arn|id)|master_?key)"
+       }
+      ]
+     }
+    }
+   ],
+   "justify": "an explicitly provided key ARN implies an input variable for the key ARN/ID (not a create_kms_key toggle)"
+  },
+  {
+   "id": "topic_policy_optional",
+   "tier": "core",
+   "quote": "optional creation of an SNS topic policy using a custom JSON string",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": [
+       "type"
+      ],
+      "op": "eq",
+      "value": "aws_sns_topic_policy"
+     },
+     {
+      "path": [
+       "gated"
+      ],
+      "op": "truthy"
+     }
+    ]
+   }
+  },
+  {
+   "id": "feedback_application",
+   "tier": "detail",
+   "quote": "feedback role ARNs and sample rates for Application, HTTP, Lambda, SQS, and Firehose endpoints",
+   "kind": "all_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_sns_topic"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties"
+      ],
+      "op": "regex",
+      "value": "application_(success|failure)_feedback_role_arn"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_sns_topic"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties"
+      ],
+      "op": "regex",
+      "value": "application_success_feedback_sample_rate"
+     }
+    }
+   ]
+  },
+  {
+   "id": "feedback_http",
+   "tier": "detail",
+   "quote": "feedback role ARNs and sample rates for Application, HTTP, Lambda, SQS, and Firehose endpoints",
+   "kind": "all_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_sns_topic"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties"
+      ],
+      "op": "regex",
+      "value": "http_(success|failure)_feedback_role_arn"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_sns_topic"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties"
+      ],
+      "op": "regex",
+      "value": "http_success_feedback_sample_rate"
+     }
+    }
+   ]
+  },
+  {
+   "id": "feedback_lambda",
+   "tier": "detail",
+   "quote": "feedback role ARNs and sample rates for Application, HTTP, Lambda, SQS, and Firehose endpoints",
+   "kind": "all_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_sns_topic"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties"
+      ],
+      "op": "regex",
+      "value": "lambda_(success|failure)_feedback_role_arn"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_sns_topic"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties"
+      ],
+      "op": "regex",
+      "value": "lambda_success_feedback_sample_rate"
+     }
+    }
+   ]
+  },
+  {
+   "id": "feedback_sqs",
+   "tier": "detail",
+   "quote": "feedback role ARNs and sample rates for Application, HTTP, Lambda, SQS, and Firehose endpoints",
+   "kind": "all_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_sns_topic"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties"
+      ],
+      "op": "regex",
+      "value": "sqs_(success|failure)_feedback_role_arn"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_sns_topic"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties"
+      ],
+      "op": "regex",
+      "value": "sqs_success_feedback_sample_rate"
+     }
+    }
+   ]
+  },
+  {
+   "id": "feedback_firehose",
+   "tier": "detail",
+   "quote": "feedback role ARNs and sample rates for Application, HTTP, Lambda, SQS, and Firehose endpoints",
+   "kind": "all_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_sns_topic"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties"
+      ],
+      "op": "regex",
+      "value": "firehose_(success|failure)_feedback_role_arn"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_sns_topic"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties"
+      ],
+      "op": "regex",
+      "value": "firehose_success_feedback_sample_rate"
+     }
+    }
+   ]
+  },
+  {
+   "id": "fifo_settings",
+   "tier": "detail",
+   "quote": "FIFO topic settings with content-based deduplication",
+   "kind": "all_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_sns_topic"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "fifo_topic"
+      ],
+      "op": "present"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_sns_topic"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "content_based_deduplication"
+      ],
+      "op": "present"
+     }
+    }
+   ]
+  },
+  {
+   "id": "subscription_params",
+   "tier": "detail",
+   "quote": "supporting flexible endpoint, protocol, auto-confirmation, raw message delivery, filter policy, and redrive policy parameters",
+   "kind": "all_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_sns_topic_subscription"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "endpoint"
+      ],
+      "op": "present"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_sns_topic_subscription"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "protocol"
+      ],
+      "op": "present"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_sns_topic_subscription"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "endpoint_auto_confirms"
+      ],
+      "op": "present"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_sns_topic_subscription"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "raw_message_delivery"
+      ],
+      "op": "present"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_sns_topic_subscription"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "filter_policy"
+      ],
+      "op": "present"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_sns_topic_subscription"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "redrive_policy"
+      ],
+      "op": "present"
+     }
+    }
+   ]
+  },
+  {
+   "id": "subscription_dynamic",
+   "tier": "detail",
+   "quote": "a dynamic map of subscriptions",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": [
+       "type"
+      ],
+      "op": "eq",
+      "value": "aws_sns_topic_subscription"
+     },
+     {
+      "path": [
+       "gated"
+      ],
+      "op": "truthy"
+     }
+    ]
+   }
+  },
+  {
+   "id": "subscription_refs_topic",
+   "tier": "extra",
+   "kind": "ref",
+   "from": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": [
+       "type"
+      ],
+      "op": "eq",
+      "value": "aws_sns_topic_subscription"
+     }
+    ]
+   },
+   "to": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": [
+       "type"
+      ],
+      "op": "eq",
+      "value": "aws_sns_topic"
+     }
+    ]
+   }
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

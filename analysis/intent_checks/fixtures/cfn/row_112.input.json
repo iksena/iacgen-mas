@@ -1,0 +1,311 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "02a460f522b0e9a4372ff061dbb2b249c09f0c3dc9235b45d53942c3d54c1842",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "AverageSessionLengthCurrentMonth",
+   "cfg": "AverageSessionLengthCurrentMonth",
+   "type": "AWS::Athena::NamedQuery",
+   "values": {
+    "Database": "appstream-usage",
+    "Description": "Average AppStream 2.0 session length per stack in current month",
+    "Name": "AS2_avg_session_length_curr_mo",
+    "QueryString": "-- Average session length per stack for AppStream 2.0 user sessions launched during the current month -- Each session duration rounded up to whole minute and whole hour before being averaged\nSELECT stack_name, ROUND(AVG(CEIL(CAST(session_duration_in_seconds AS DOUBLE) / 60)), 2) AS avg_session_length_in_minutes, ROUND(AVG(CEIL(CAST(session_duration_in_seconds AS DOUBLE) / 3600)), 2) AS avg_session_length_in_hours\nFROM \"appstream-usage\".\"sessions\"\nWHERE year = DATE_FORMAT(current_date, '%Y') AND month = DATE_FORMAT(current_date, '%m') AND session_start_time >= DATE_FORMAT(current_date, '%Y-%m-01')\nGROUP BY stack_name ORDER BY avg_session_length_in_minutes DESC;"
+   },
+   "refs": []
+  },
+  {
+   "id": "AverageSessionLengthPreviousMonth",
+   "cfg": "AverageSessionLengthPreviousMonth",
+   "type": "AWS::Athena::NamedQuery",
+   "values": {
+    "Database": "appstream-usage",
+    "Description": "Average AppStream 2.0 session length per stack in previous month",
+    "Name": "AS2_avg_session_length_prev_mo",
+    "QueryString": "-- Average session length per stack for AppStream 2.0 user sessions launched during the previous month -- Each session duration rounded up to whole minute and whole hour before being averaged\nSELECT stack_name, ROUND(AVG(CEIL(CAST(session_duration_in_seconds AS DOUBLE) / 60)), 2) AS avg_session_length_in_minutes, ROUND(AVG(CEIL(CAST(session_duration_in_seconds AS DOUBLE) / 3600)), 2) AS avg_session_length_in_hours\nFROM \"appstream-usage\".\"sessions\"\nWHERE ((year = DATE_FORMAT(date_add('month', -1, current_date), '%Y') AND month = DATE_FORMAT(date_add('month', -1, current_date), '%m'))\nOR\n(year = DATE_FORMAT(current_date, '%Y') AND month = DATE_FORMAT(current_date, '%m') AND day <= '05'))\nAND session_start_time >= DATE_FORMAT(date_add('month', -1, current_date), '%Y-%m-01') AND session_start_time < DATE_FORMAT(current_date, '%Y-%m-01')\nGROUP BY stack_name ORDER BY avg_session_length_in_minutes DESC;"
+   },
+   "refs": []
+  },
+  {
+   "id": "DailySessionsCurrentMonth",
+   "cfg": "DailySessionsCurrentMonth",
+   "type": "AWS::Athena::NamedQuery",
+   "values": {
+    "Database": "appstream-usage",
+    "Description": "AppStream 2.0 sessions per day in current month",
+    "Name": "AS2_daily_sessions_curr_mo",
+    "QueryString": "-- Number of AppStream 2.0 sessions per day for the current month\nSELECT SUBSTRING(session_start_time, 1, 10) AS report_date, COUNT(DISTINCT user_session_id) AS num_sessions FROM \"appstream-usage\".\"sessions\" WHERE year = DATE_FORMAT(current_date, '%Y') AND month = DATE_FORMAT(current_date, '%m') AND session_start_time >= DATE_FORMAT(current_date, '%Y-%m-01') GROUP BY 1 ORDER BY 1"
+   },
+   "refs": []
+  },
+  {
+   "id": "DailySessionsPreviousMonth",
+   "cfg": "DailySessionsPreviousMonth",
+   "type": "AWS::Athena::NamedQuery",
+   "values": {
+    "Database": "appstream-usage",
+    "Description": "AppStream 2.0 sessions per day in previous month",
+    "Name": "AS2_daily_sessions_prev_mo",
+    "QueryString": "-- Number of AppStream 2.0 sessions per day for the previous month\nSELECT SUBSTRING(session_start_time, 1, 10) AS report_date, COUNT(DISTINCT user_session_id) AS num_sessions FROM \"appstream-usage\".\"sessions\" WHERE ((year = DATE_FORMAT(date_add('month', -1, current_date), '%Y') AND month = DATE_FORMAT(date_add('month', -1, current_date), '%m'))\nOR\n(year = DATE_FORMAT(current_date, '%Y') AND month = DATE_FORMAT(current_date, '%m') AND day <= '05'))\nAND session_start_time >= DATE_FORMAT(date_add('month', -1, current_date), '%Y-%m-01') AND session_start_time < DATE_FORMAT(current_date, '%Y-%m-01') GROUP BY 1 ORDER BY 1"
+   },
+   "refs": []
+  },
+  {
+   "id": "AllAppStreamSessionsCurrentMonth",
+   "cfg": "AllAppStreamSessionsCurrentMonth",
+   "type": "AWS::Athena::NamedQuery",
+   "values": {
+    "Database": "appstream-usage",
+    "Description": "All AppStream 2.0 sessions from current month",
+    "Name": "AS2_sessions_curr_mo",
+    "QueryString": "-- AppStream 2.0 sessions monthly report: all user sessions launched during the current month\nSELECT * FROM \"appstream-usage\".\"sessions\" WHERE year = DATE_FORMAT(current_date, '%Y') AND month = DATE_FORMAT(current_date, '%m') AND session_start_time >= DATE_FORMAT(current_date, '%Y-%m-01') ORDER BY session_start_time;"
+   },
+   "refs": []
+  },
+  {
+   "id": "AllAppStreamSessionsPreviousMonth",
+   "cfg": "AllAppStreamSessionsPreviousMonth",
+   "type": "AWS::Athena::NamedQuery",
+   "values": {
+    "Database": "appstream-usage",
+    "Description": "All AppStream 2.0 sessions from previous month",
+    "Name": "AS2_sessions_prev_mo",
+    "QueryString": "-- AppStream 2.0 sessions monthly report: all user sessions launched during the previous month\nSELECT * FROM \"appstream-usage\".\"sessions\" WHERE ((year = DATE_FORMAT(date_add('month', -1, current_date), '%Y') AND month = DATE_FORMAT(date_add('month', -1, current_date), '%m'))\nOR\n(year = DATE_FORMAT(current_date, '%Y') AND month = DATE_FORMAT(current_date, '%m') AND day <= '05'))\nAND session_start_time >= DATE_FORMAT(date_add('month', -1, current_date), '%Y-%m-01') AND session_start_time < DATE_FORMAT(current_date, '%Y-%m-01')\nORDER BY session_start_time;"
+   },
+   "refs": []
+  },
+  {
+   "id": "StreamingHoursPerUserCurrentMonth",
+   "cfg": "StreamingHoursPerUserCurrentMonth",
+   "type": "AWS::Athena::NamedQuery",
+   "values": {
+    "Database": "appstream-usage",
+    "Description": "AppStream 2.0 streaming hours per user in current month",
+    "Name": "AS2_users_curr_mo",
+    "QueryString": "-- AppStream 2.0 streaming hours per user in current month -- Each session duration rounded up to whole hour\nSELECT authentication_type_user_id AS user, SUM(CEIL(CAST(session_duration_in_seconds AS DOUBLE) / 3600)) AS streaming_hours FROM \"appstream-usage\".\"sessions\" WHERE year = DATE_FORMAT(current_date, '%Y') AND month = DATE_FORMAT(current_date, '%m') AND session_start_time >= DATE_FORMAT(current_date, '%Y-%m-01') GROUP BY 1 ORDER BY 2 DESC;"
+   },
+   "refs": []
+  },
+  {
+   "id": "StreamingHoursPerUserPreviousMonth",
+   "cfg": "StreamingHoursPerUserPreviousMonth",
+   "type": "AWS::Athena::NamedQuery",
+   "values": {
+    "Database": "appstream-usage",
+    "Description": "AppStream 2.0 streaming hours per user in previous month",
+    "Name": "AS2_users_prev_mo",
+    "QueryString": "-- AppStream 2.0 streaming hours per user in previous month -- Each session duration rounded up to whole hour\nSELECT authentication_type_user_id AS user, SUM(CEIL(CAST(session_duration_in_seconds AS DOUBLE) / 3600)) AS streaming_hours FROM \"appstream-usage\".\"sessions\" WHERE ((year = DATE_FORMAT(date_add('month', -1, current_date), '%Y') AND month = DATE_FORMAT(date_add('month', -1, current_date), '%m'))\nOR\n(year = DATE_FORMAT(current_date, '%Y') AND month = DATE_FORMAT(current_date, '%m') AND day <= '05'))\nAND session_start_time >= DATE_FORMAT(date_add('month', -1, current_date), '%Y-%m-01') AND session_start_time < DATE_FORMAT(current_date, '%Y-%m-01') GROUP BY 1 ORDER BY 2 DESC;"
+   },
+   "refs": []
+  },
+  {
+   "id": "UsersPerApplicationCurrentMonth",
+   "cfg": "UsersPerApplicationCurrentMonth",
+   "type": "AWS::Athena::NamedQuery",
+   "values": {
+    "Database": "appstream-usage",
+    "Description": "Users per AppStream 2.0 app in current month",
+    "Name": "AS2_users_per_app_curr_mo",
+    "QueryString": "-- Users per AppStream 2.0 app in current month\nSELECT DISTINCT apps.application_name, sessions.authentication_type_user_id\nFROM \"appstream-usage\".\"applications\" apps INNER JOIN \"appstream-usage\".\"sessions\" sessions ON ( apps.user_session_id = sessions.user_session_id AND apps.year = DATE_FORMAT(current_date, '%Y') AND apps.month = DATE_FORMAT(current_date, '%m'))\nWHERE sessions.year = DATE_FORMAT(current_date, '%Y') AND sessions.month = DATE_FORMAT(current_date, '%m') AND sessions.session_start_time >= DATE_FORMAT(current_date, '%Y-%m-01')\nORDER BY apps.application_name"
+   },
+   "refs": []
+  },
+  {
+   "id": "UsersPerApplicationPreviousMonth",
+   "cfg": "UsersPerApplicationPreviousMonth",
+   "type": "AWS::Athena::NamedQuery",
+   "values": {
+    "Database": "appstream-usage",
+    "Description": "Users per AppStream 2.0 app in previous month",
+    "Name": "AS2_users_per_app_prev_mo",
+    "QueryString": "-- Users per AppStream 2.0 app in previous month\nSELECT DISTINCT apps.application_name, sessions.authentication_type_user_id\nFROM \"appstream-usage\".\"applications\" apps INNER JOIN \"appstream-usage\".\"sessions\" sessions ON ( apps.user_session_id = sessions.user_session_id\nAND\n((apps.year = DATE_FORMAT(date_add('month', -1, current_date), '%Y') AND apps.month = DATE_FORMAT(date_add('month', -1, current_date), '%m'))\nOR\n(apps.year = DATE_FORMAT(current_date, '%Y') AND apps.month = DATE_FORMAT(current_date, '%m') AND apps.day <= '05')))\nWHERE ((sessions.year = DATE_FORMAT(date_add('month', -1, current_date), '%Y') AND sessions.month = DATE_FORMAT(date_add('month', -1, current_date), '%m'))\nOR\n(sessions.year = DATE_FORMAT(current_date, '%Y') AND sessions.month = DATE_FORMAT(current_date, '%m') AND sessions.day <= '05'))\nAND sessions.session_start_time >= DATE_FORMAT(date_add('month', -1, current_date), '%Y-%m-01') AND sessions.session_start_time < DATE_FORMAT(current_date, '%Y-%m-01')\nORDER BY apps.application_name"
+   },
+   "refs": []
+  },
+  {
+   "id": "__declared__.AWS::Athena::NamedQuery.AverageSessionLengthCurrentMonth",
+   "cfg": "AverageSessionLengthCurrentMonth",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Athena::NamedQuery",
+    "name": "AverageSessionLengthCurrentMonth",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Database": "appstream-usage",
+     "Description": "Average AppStream 2.0 session length per stack in current month",
+     "Name": "AS2_avg_session_length_curr_mo",
+     "QueryString": "-- Average session length per stack for AppStream 2.0 user sessions launched during the current month -- Each session duration rounded up to whole minute and whole hour before being averaged\nSELECT stack_name, ROUND(AVG(CEIL(CAST(session_duration_in_seconds AS DOUBLE) / 60)), 2) AS avg_session_length_in_minutes, ROUND(AVG(CEIL(CAST(session_duration_in_seconds AS DOUBLE) / 3600)), 2) AS avg_session_length_in_hours\nFROM \"appstream-usage\".\"sessions\"\nWHERE year = DATE_FORMAT(current_date, '%Y') AND month = DATE_FORMAT(current_date, '%m') AND session_start_time >= DATE_FORMAT(current_date, '%Y-%m-01')\nGROUP BY stack_name ORDER BY avg_session_length_in_minutes DESC;"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Athena::NamedQuery.AverageSessionLengthPreviousMonth",
+   "cfg": "AverageSessionLengthPreviousMonth",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Athena::NamedQuery",
+    "name": "AverageSessionLengthPreviousMonth",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Database": "appstream-usage",
+     "Description": "Average AppStream 2.0 session length per stack in previous month",
+     "Name": "AS2_avg_session_length_prev_mo",
+     "QueryString": "-- Average session length per stack for AppStream 2.0 user sessions launched during the previous month -- Each session duration rounded up to whole minute and whole hour before being averaged\nSELECT stack_name, ROUND(AVG(CEIL(CAST(session_duration_in_seconds AS DOUBLE) / 60)), 2) AS avg_session_length_in_minutes, ROUND(AVG(CEIL(CAST(session_duration_in_seconds AS DOUBLE) / 3600)), 2) AS avg_session_length_in_hours\nFROM \"appstream-usage\".\"sessions\"\nWHERE ((year = DATE_FORMAT(date_add('month', -1, current_date), '%Y') AND month = DATE_FORMAT(date_add('month', -1, current_date), '%m'))\nOR\n(year = DATE_FORMAT(current_date, '%Y') AND month = DATE_FORMAT(current_date, '%m') AND day <= '05'))\nAND session_start_time >= DATE_FORMAT(date_add('month', -1, current_date), '%Y-%m-01') AND session_start_time < DATE_FORMAT(current_date, '%Y-%m-01')\nGROUP BY stack_name ORDER BY avg_session_length_in_minutes DESC;"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Athena::NamedQuery.DailySessionsCurrentMonth",
+   "cfg": "DailySessionsCurrentMonth",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Athena::NamedQuery",
+    "name": "DailySessionsCurrentMonth",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Database": "appstream-usage",
+     "Description": "AppStream 2.0 sessions per day in current month",
+     "Name": "AS2_daily_sessions_curr_mo",
+     "QueryString": "-- Number of AppStream 2.0 sessions per day for the current month\nSELECT SUBSTRING(session_start_time, 1, 10) AS report_date, COUNT(DISTINCT user_session_id) AS num_sessions FROM \"appstream-usage\".\"sessions\" WHERE year = DATE_FORMAT(current_date, '%Y') AND month = DATE_FORMAT(current_date, '%m') AND session_start_time >= DATE_FORMAT(current_date, '%Y-%m-01') GROUP BY 1 ORDER BY 1"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Athena::NamedQuery.DailySessionsPreviousMonth",
+   "cfg": "DailySessionsPreviousMonth",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Athena::NamedQuery",
+    "name": "DailySessionsPreviousMonth",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Database": "appstream-usage",
+     "Description": "AppStream 2.0 sessions per day in previous month",
+     "Name": "AS2_daily_sessions_prev_mo",
+     "QueryString": "-- Number of AppStream 2.0 sessions per day for the previous month\nSELECT SUBSTRING(session_start_time, 1, 10) AS report_date, COUNT(DISTINCT user_session_id) AS num_sessions FROM \"appstream-usage\".\"sessions\" WHERE ((year = DATE_FORMAT(date_add('month', -1, current_date), '%Y') AND month = DATE_FORMAT(date_add('month', -1, current_date), '%m'))\nOR\n(year = DATE_FORMAT(current_date, '%Y') AND month = DATE_FORMAT(current_date, '%m') AND day <= '05'))\nAND session_start_time >= DATE_FORMAT(date_add('month', -1, current_date), '%Y-%m-01') AND session_start_time < DATE_FORMAT(current_date, '%Y-%m-01') GROUP BY 1 ORDER BY 1"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Athena::NamedQuery.AllAppStreamSessionsCurrentMonth",
+   "cfg": "AllAppStreamSessionsCurrentMonth",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Athena::NamedQuery",
+    "name": "AllAppStreamSessionsCurrentMonth",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Database": "appstream-usage",
+     "Description": "All AppStream 2.0 sessions from current month",
+     "Name": "AS2_sessions_curr_mo",
+     "QueryString": "-- AppStream 2.0 sessions monthly report: all user sessions launched during the current month\nSELECT * FROM \"appstream-usage\".\"sessions\" WHERE year = DATE_FORMAT(current_date, '%Y') AND month = DATE_FORMAT(current_date, '%m') AND session_start_time >= DATE_FORMAT(current_date, '%Y-%m-01') ORDER BY session_start_time;"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Athena::NamedQuery.AllAppStreamSessionsPreviousMonth",
+   "cfg": "AllAppStreamSessionsPreviousMonth",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Athena::NamedQuery",
+    "name": "AllAppStreamSessionsPreviousMonth",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Database": "appstream-usage",
+     "Description": "All AppStream 2.0 sessions from previous month",
+     "Name": "AS2_sessions_prev_mo",
+     "QueryString": "-- AppStream 2.0 sessions monthly report: all user sessions launched during the previous month\nSELECT * FROM \"appstream-usage\".\"sessions\" WHERE ((year = DATE_FORMAT(date_add('month', -1, current_date), '%Y') AND month = DATE_FORMAT(date_add('month', -1, current_date), '%m'))\nOR\n(year = DATE_FORMAT(current_date, '%Y') AND month = DATE_FORMAT(current_date, '%m') AND day <= '05'))\nAND session_start_time >= DATE_FORMAT(date_add('month', -1, current_date), '%Y-%m-01') AND session_start_time < DATE_FORMAT(current_date, '%Y-%m-01')\nORDER BY session_start_time;"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Athena::NamedQuery.StreamingHoursPerUserCurrentMonth",
+   "cfg": "StreamingHoursPerUserCurrentMonth",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Athena::NamedQuery",
+    "name": "StreamingHoursPerUserCurrentMonth",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Database": "appstream-usage",
+     "Description": "AppStream 2.0 streaming hours per user in current month",
+     "Name": "AS2_users_curr_mo",
+     "QueryString": "-- AppStream 2.0 streaming hours per user in current month -- Each session duration rounded up to whole hour\nSELECT authentication_type_user_id AS user, SUM(CEIL(CAST(session_duration_in_seconds AS DOUBLE) / 3600)) AS streaming_hours FROM \"appstream-usage\".\"sessions\" WHERE year = DATE_FORMAT(current_date, '%Y') AND month = DATE_FORMAT(current_date, '%m') AND session_start_time >= DATE_FORMAT(current_date, '%Y-%m-01') GROUP BY 1 ORDER BY 2 DESC;"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Athena::NamedQuery.StreamingHoursPerUserPreviousMonth",
+   "cfg": "StreamingHoursPerUserPreviousMonth",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Athena::NamedQuery",
+    "name": "StreamingHoursPerUserPreviousMonth",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Database": "appstream-usage",
+     "Description": "AppStream 2.0 streaming hours per user in previous month",
+     "Name": "AS2_users_prev_mo",
+     "QueryString": "-- AppStream 2.0 streaming hours per user in previous month -- Each session duration rounded up to whole hour\nSELECT authentication_type_user_id AS user, SUM(CEIL(CAST(session_duration_in_seconds AS DOUBLE) / 3600)) AS streaming_hours FROM \"appstream-usage\".\"sessions\" WHERE ((year = DATE_FORMAT(date_add('month', -1, current_date), '%Y') AND month = DATE_FORMAT(date_add('month', -1, current_date), '%m'))\nOR\n(year = DATE_FORMAT(current_date, '%Y') AND month = DATE_FORMAT(current_date, '%m') AND day <= '05'))\nAND session_start_time >= DATE_FORMAT(date_add('month', -1, current_date), '%Y-%m-01') AND session_start_time < DATE_FORMAT(current_date, '%Y-%m-01') GROUP BY 1 ORDER BY 2 DESC;"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Athena::NamedQuery.UsersPerApplicationCurrentMonth",
+   "cfg": "UsersPerApplicationCurrentMonth",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Athena::NamedQuery",
+    "name": "UsersPerApplicationCurrentMonth",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Database": "appstream-usage",
+     "Description": "Users per AppStream 2.0 app in current month",
+     "Name": "AS2_users_per_app_curr_mo",
+     "QueryString": "-- Users per AppStream 2.0 app in current month\nSELECT DISTINCT apps.application_name, sessions.authentication_type_user_id\nFROM \"appstream-usage\".\"applications\" apps INNER JOIN \"appstream-usage\".\"sessions\" sessions ON ( apps.user_session_id = sessions.user_session_id AND apps.year = DATE_FORMAT(current_date, '%Y') AND apps.month = DATE_FORMAT(current_date, '%m'))\nWHERE sessions.year = DATE_FORMAT(current_date, '%Y') AND sessions.month = DATE_FORMAT(current_date, '%m') AND sessions.session_start_time >= DATE_FORMAT(current_date, '%Y-%m-01')\nORDER BY apps.application_name"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Athena::NamedQuery.UsersPerApplicationPreviousMonth",
+   "cfg": "UsersPerApplicationPreviousMonth",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Athena::NamedQuery",
+    "name": "UsersPerApplicationPreviousMonth",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Database": "appstream-usage",
+     "Description": "Users per AppStream 2.0 app in previous month",
+     "Name": "AS2_users_per_app_prev_mo",
+     "QueryString": "-- Users per AppStream 2.0 app in previous month\nSELECT DISTINCT apps.application_name, sessions.authentication_type_user_id\nFROM \"appstream-usage\".\"applications\" apps INNER JOIN \"appstream-usage\".\"sessions\" sessions ON ( apps.user_session_id = sessions.user_session_id\nAND\n((apps.year = DATE_FORMAT(date_add('month', -1, current_date), '%Y') AND apps.month = DATE_FORMAT(date_add('month', -1, current_date), '%m'))\nOR\n(apps.year = DATE_FORMAT(current_date, '%Y') AND apps.month = DATE_FORMAT(current_date, '%m') AND apps.day <= '05')))\nWHERE ((sessions.year = DATE_FORMAT(date_add('month', -1, current_date), '%Y') AND sessions.month = DATE_FORMAT(date_add('month', -1, current_date), '%m'))\nOR\n(sessions.year = DATE_FORMAT(current_date, '%Y') AND sessions.month = DATE_FORMAT(current_date, '%m') AND sessions.day <= '05'))\nAND sessions.session_start_time >= DATE_FORMAT(date_add('month', -1, current_date), '%Y-%m-01') AND sessions.session_start_time < DATE_FORMAT(current_date, '%Y-%m-01')\nORDER BY apps.application_name"
+    }
+   }
+  }
+ ]
+}

@@ -1,0 +1,586 @@
+{
+ "lang": "cfn",
+ "row_number": 100,
+ "source_hash": {
+  "gt": "185d88ab18a8cebdac2f5cb277d362460ae4731b88e02917dc456c0811b9b623",
+  "prompt": "6dc249644441778ce7a6d151ad8b749bb532383a13ba21d70827b95d8f0a818b"
+ },
+ "selectors": {
+  "tables": {
+   "types": [
+    "AWS::DynamoDB::Table"
+   ]
+  },
+  "jobs": {
+   "types": [
+    "AWS::DynamoDB::Table"
+   ],
+   "where": [
+    {
+     "path": "KeySchema.*",
+     "op": "match",
+     "value": [
+      {
+       "path": "AttributeName",
+       "op": "eq",
+       "value": "job_id"
+      },
+      {
+       "path": "KeyType",
+       "op": "eq",
+       "value": "HASH"
+      }
+     ]
+    },
+    {
+     "path": "KeySchema.*.AttributeName",
+     "op": "none_eq",
+     "value": "timestamp"
+    }
+   ]
+  },
+  "queue": {
+   "types": [
+    "AWS::DynamoDB::Table"
+   ],
+   "where": [
+    {
+     "path": "KeySchema.*",
+     "op": "match",
+     "value": [
+      {
+       "path": "AttributeName",
+       "op": "eq",
+       "value": "status"
+      },
+      {
+       "path": "KeyType",
+       "op": "eq",
+       "value": "HASH"
+      }
+     ]
+    }
+   ]
+  },
+  "templates": {
+   "types": [
+    "AWS::DynamoDB::Table"
+   ],
+   "where": [
+    {
+     "path": "KeySchema.*",
+     "op": "match",
+     "value": [
+      {
+       "path": "AttributeName",
+       "op": "eq",
+       "value": "template_id"
+      },
+      {
+       "path": "KeyType",
+       "op": "eq",
+       "value": "HASH"
+      }
+     ]
+    }
+   ]
+  },
+  "cost": {
+   "types": [
+    "AWS::DynamoDB::Table"
+   ],
+   "where": [
+    {
+     "path": "KeySchema.*",
+     "op": "match",
+     "value": [
+      {
+       "path": "AttributeName",
+       "op": "eq",
+       "value": "job_id"
+      },
+      {
+       "path": "KeyType",
+       "op": "eq",
+       "value": "HASH"
+      }
+     ]
+    },
+    {
+     "path": "KeySchema.*",
+     "op": "match",
+     "value": [
+      {
+       "path": "AttributeName",
+       "op": "eq",
+       "value": "timestamp"
+      },
+      {
+       "path": "KeyType",
+       "op": "eq",
+       "value": "RANGE"
+      }
+     ]
+    }
+   ]
+  },
+  "outs": {
+   "types": [
+    "__output__"
+   ],
+   "where": [
+    {
+     "path": "export",
+     "op": "regex",
+     "value": "^stack"
+    }
+   ]
+  },
+  "params": {
+   "types": [
+    "__parameter__"
+   ],
+   "where": [
+    {
+     "path": "name",
+     "op": "eq",
+     "value": "EnvironmentName"
+    }
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "four_tables",
+   "tier": "core",
+   "kind": "exists",
+   "select": "tables",
+   "min": 4,
+   "quote": "creates four DynamoDB tables for the Plot Palette application: Jobs, Queue, Templates, and CostTracking",
+   "justify": "four tables"
+  },
+  {
+   "id": "jobs_hash",
+   "tier": "core",
+   "kind": "exists",
+   "select": "jobs",
+   "quote": "The Jobs table should have a hash key on job_id"
+  },
+  {
+   "id": "jobs_gsi",
+   "tier": "core",
+   "kind": "attr",
+   "select": "jobs",
+   "cond": {
+    "path": "GlobalSecondaryIndexes.*",
+    "op": "match",
+    "value": [
+     {
+      "path": "IndexName",
+      "op": "eq",
+      "value": "user-id-index"
+     },
+     {
+      "path": "KeySchema.0.AttributeName",
+      "op": "eq",
+      "value": "user_id"
+     }
+    ]
+   },
+   "quote": "a GSI named user-id-index on user_id"
+  },
+  {
+   "id": "jobs_gsi_range_projection",
+   "tier": "detail",
+   "kind": "attr",
+   "select": "jobs",
+   "cond": {
+    "path": "GlobalSecondaryIndexes.*",
+    "op": "match",
+    "value": [
+     {
+      "path": "IndexName",
+      "op": "eq",
+      "value": "user-id-index"
+     },
+     {
+      "path": "KeySchema.1.AttributeName",
+      "op": "eq",
+      "value": "created_at"
+     },
+     {
+      "path": "Projection.ProjectionType",
+      "op": "eq",
+      "value": "ALL"
+     }
+    ]
+   },
+   "quote": "with a range key on created_at, projected with all attributes"
+  },
+  {
+   "id": "queue_hash",
+   "tier": "core",
+   "kind": "exists",
+   "select": "queue",
+   "quote": "The Queue table should have a hash key on status"
+  },
+  {
+   "id": "queue_range",
+   "tier": "core",
+   "kind": "attr",
+   "select": "queue",
+   "cond": {
+    "path": "KeySchema.*",
+    "op": "match",
+    "value": [
+     {
+      "path": "AttributeName",
+      "op": "eq",
+      "value": "job_id_timestamp"
+     },
+     {
+      "path": "KeyType",
+      "op": "eq",
+      "value": "RANGE"
+     }
+    ]
+   },
+   "quote": "a range key on job_id_timestamp"
+  },
+  {
+   "id": "templates_hash",
+   "tier": "core",
+   "kind": "exists",
+   "select": "templates",
+   "quote": "The Templates table should have a hash key on template_id"
+  },
+  {
+   "id": "templates_range",
+   "tier": "core",
+   "kind": "attr",
+   "select": "templates",
+   "cond": {
+    "path": "KeySchema.*",
+    "op": "match",
+    "value": [
+     {
+      "path": "AttributeName",
+      "op": "eq",
+      "value": "version"
+     },
+     {
+      "path": "KeyType",
+      "op": "eq",
+      "value": "RANGE"
+     }
+    ]
+   },
+   "quote": "a range key on version"
+  },
+  {
+   "id": "templates_gsi",
+   "tier": "core",
+   "kind": "attr",
+   "select": "templates",
+   "cond": {
+    "path": "GlobalSecondaryIndexes.*",
+    "op": "match",
+    "value": [
+     {
+      "path": "IndexName",
+      "op": "eq",
+      "value": "user-id-index"
+     },
+     {
+      "path": "KeySchema.0.AttributeName",
+      "op": "eq",
+      "value": "user_id"
+     }
+    ]
+   },
+   "quote": "with a GSI named user-id-index on user_id projecting all attributes"
+  },
+  {
+   "id": "templates_gsi_projection",
+   "tier": "detail",
+   "kind": "attr",
+   "select": "templates",
+   "cond": {
+    "path": "GlobalSecondaryIndexes.*",
+    "op": "match",
+    "value": [
+     {
+      "path": "IndexName",
+      "op": "eq",
+      "value": "user-id-index"
+     },
+     {
+      "path": "Projection.ProjectionType",
+      "op": "eq",
+      "value": "ALL"
+     }
+    ]
+   },
+   "quote": "with a GSI named user-id-index on user_id projecting all attributes"
+  },
+  {
+   "id": "cost_table",
+   "tier": "core",
+   "kind": "exists",
+   "select": "cost",
+   "quote": "The CostTracking table should have a hash key on job_id and a range key on timestamp"
+  },
+  {
+   "id": "cost_ttl",
+   "tier": "core",
+   "kind": "attr",
+   "select": "cost",
+   "cond": {
+    "path": "TimeToLiveSpecification",
+    "op": "match",
+    "value": [
+     {
+      "path": "AttributeName",
+      "op": "eq",
+      "value": "ttl"
+     },
+     {
+      "path": "Enabled",
+      "op": "truthy"
+     }
+    ]
+   },
+   "quote": "with TTL enabled on the ttl attribute"
+  },
+  {
+   "id": "on_demand",
+   "tier": "core",
+   "kind": "attr",
+   "select": "tables",
+   "cond": {
+    "path": "BillingMode",
+    "op": "eq",
+    "value": "PAY_PER_REQUEST"
+   },
+   "quantifier": "all",
+   "quote": "All tables must use on-demand billing",
+   "justify": "on-demand billing = PAY_PER_REQUEST"
+  },
+  {
+   "id": "sse_kms",
+   "tier": "core",
+   "kind": "attr",
+   "select": "tables",
+   "cond": {
+    "path": "SSESpecification.SSEEnabled",
+    "op": "truthy"
+   },
+   "quantifier": "all",
+   "quote": "server-side encryption with KMS",
+   "justify": "SSEEnabled true always means KMS on DynamoDB, with or without SSEType"
+  },
+  {
+   "id": "pitr",
+   "tier": "core",
+   "kind": "attr",
+   "select": "tables",
+   "cond": {
+    "path": "PointInTimeRecoverySpecification.PointInTimeRecoveryEnabled",
+    "op": "truthy"
+   },
+   "quantifier": "all",
+   "quote": "point-in-time recovery"
+  },
+  {
+   "id": "env_param",
+   "tier": "core",
+   "kind": "exists",
+   "select": "params",
+   "quote": "The template should include an EnvironmentName parameter"
+  },
+  {
+   "id": "env_default",
+   "tier": "detail",
+   "kind": "attr",
+   "select": "params",
+   "cond": {
+    "path": "default",
+    "op": "eq",
+    "value": "production"
+   },
+   "quote": "defaulting to 'production'"
+  },
+  {
+   "id": "env_allowed",
+   "tier": "detail",
+   "kind": "attr",
+   "select": "params",
+   "cond": {
+    "path": "",
+    "op": "match",
+    "value": [
+     {
+      "path": "allowed_values.*",
+      "op": "eq",
+      "value": "development"
+     },
+     {
+      "path": "allowed_values.*",
+      "op": "eq",
+      "value": "staging"
+     },
+     {
+      "path": "allowed_values.*",
+      "op": "eq",
+      "value": "production"
+     }
+    ]
+   },
+   "quote": "with allowed values 'development', 'staging', 'production'"
+  },
+  {
+   "id": "table_names",
+   "tier": "detail",
+   "kind": "attr",
+   "select": "tables",
+   "cond": {
+    "path": "TableName",
+    "op": "regex",
+    "value": "(?i)^plot-palette-(jobs|queue|templates|cost-?tracking)-(production|staging|development)$"
+   },
+   "quantifier": "all",
+   "quote": "table names should follow the pattern plot-palette-<TableName>-<Environment>",
+   "justify": "default environment is production"
+  },
+  {
+   "id": "outputs_exported",
+   "tier": "detail",
+   "kind": "exists",
+   "select": "outs",
+   "min": 9,
+   "quote": "Outputs for each table name and ARN, as well as the GSI name user-id-index, should be exported with the stack name as a prefix",
+   "justify": "4 table names + 4 table ARNs + 1 GSI name"
+  },
+  {
+   "id": "outputs_reference_tables",
+   "tier": "detail",
+   "kind": "all_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "outs",
+     "to": "jobs"
+    },
+    {
+     "kind": "ref",
+     "from": "outs",
+     "to": "queue"
+    },
+    {
+     "kind": "ref",
+     "from": "outs",
+     "to": "templates"
+    },
+    {
+     "kind": "ref",
+     "from": "outs",
+     "to": "cost"
+    }
+   ],
+   "quote": "Outputs for each table name and ARN"
+  },
+  {
+   "id": "arn_outputs",
+   "tier": "detail",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__output__"
+    ],
+    "where": [
+     {
+      "path": "value",
+      "op": "regex",
+      "value": "(\"attr\": \"Arn\"|\\.Arn\\})"
+     },
+     {
+      "path": "export",
+      "op": "regex",
+      "value": "^stack"
+     }
+    ]
+   },
+   "min": 4,
+   "quote": "Outputs for each table name and ARN",
+   "justify": "one ARN output per table"
+  },
+  {
+   "id": "gsi_output",
+   "tier": "detail",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__output__"
+    ],
+    "where": [
+     {
+      "path": "value",
+      "op": "eq",
+      "value": "user-id-index"
+     },
+     {
+      "path": "export",
+      "op": "regex",
+      "value": "^stack"
+     }
+    ]
+   },
+   "quote": "as well as the GSI name user-id-index, should be exported with the stack name as a prefix"
+  },
+  {
+   "id": "x_version_numeric",
+   "tier": "extra",
+   "kind": "attr",
+   "select": "templates",
+   "cond": {
+    "path": "AttributeDefinitions.*",
+    "op": "match",
+    "value": [
+     {
+      "path": "AttributeName",
+      "op": "eq",
+      "value": "version"
+     },
+     {
+      "path": "AttributeType",
+      "op": "eq",
+      "value": "N"
+     }
+    ]
+   }
+  },
+  {
+   "id": "x_status_string",
+   "tier": "extra",
+   "kind": "attr",
+   "select": "queue",
+   "cond": {
+    "path": "AttributeDefinitions.*",
+    "op": "match",
+    "value": [
+     {
+      "path": "AttributeName",
+      "op": "eq",
+      "value": "status"
+     },
+     {
+      "path": "AttributeType",
+      "op": "eq",
+      "value": "S"
+     }
+    ]
+   }
+  }
+ ],
+ "notes": "Table identity is by key schema (not name) so renamed tables still match; Jobs is told from CostTracking by having no timestamp key. GSI hash and range are read by position because CloudFormation requires HASH first. Export prefix relies on the adapter rendering AWS::StackName as 'stack', which is what the prompt asks for."
+}

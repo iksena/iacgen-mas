@@ -1,0 +1,117 @@
+{
+ "meta": {
+  "lang": "tf",
+  "mode": "plan",
+  "warnings": [],
+  "gt_hash": "9fbb756cf4697d651f4e588dcb9051220943e7f474dc6724caa629eb98ea75d1",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "aws_ecs_task_definition.service",
+   "cfg": "aws_ecs_task_definition.service",
+   "type": "aws_ecs_task_definition",
+   "values": {
+    "container_definitions": "[{\"cpu\":10,\"essential\":true,\"image\":\"service-first\",\"memory\":512,\"name\":\"first\",\"portMappings\":[{\"containerPort\":80,\"hostPort\":80}]},{\"cpu\":10,\"essential\":true,\"image\":\"service-second\",\"memory\":256,\"name\":\"second\",\"portMappings\":[{\"containerPort\":443,\"hostPort\":443}]}]",
+    "cpu": null,
+    "ephemeral_storage": [],
+    "execution_role_arn": null,
+    "family": "cloudrail-test-encryption",
+    "ipc_mode": null,
+    "memory": null,
+    "pid_mode": null,
+    "placement_constraints": [],
+    "proxy_configuration": [],
+    "region": "us-east-1",
+    "requires_compatibilities": null,
+    "runtime_platform": [],
+    "skip_destroy": false,
+    "tags": null,
+    "task_role_arn": null,
+    "track_latest": false,
+    "volume": [
+     {
+      "docker_volume_configuration": [],
+      "efs_volume_configuration": [
+       {
+        "authorization_config": [],
+        "root_directory": "/opt/data",
+        "transit_encryption": "ENABLED",
+        "transit_encryption_port": 2999
+       }
+      ],
+      "fsx_windows_file_server_volume_configuration": [],
+      "host_path": "",
+      "name": "service-storage",
+      "s3files_volume_configuration": []
+     }
+    ]
+   },
+   "refs": [
+    "aws_efs_file_system.test"
+   ]
+  },
+  {
+   "id": "aws_efs_file_system.test",
+   "cfg": "aws_efs_file_system.test",
+   "type": "aws_efs_file_system",
+   "values": {
+    "creation_token": "cloudrail-test",
+    "encrypted": true,
+    "lifecycle_policy": [],
+    "provisioned_throughput_in_mibps": null,
+    "region": "us-east-1",
+    "tags": null,
+    "throughput_mode": "bursting"
+   },
+   "refs": []
+  },
+  {
+   "id": "__declared__.aws_efs_file_system.test",
+   "cfg": "aws_efs_file_system.test",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_efs_file_system",
+    "name": "test",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "creation_token": "cloudrail-test",
+     "encrypted": true
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_ecs_task_definition.service",
+   "cfg": "aws_ecs_task_definition.service",
+   "type": "__declared__",
+   "refs": [
+    "aws_efs_file_system.test"
+   ],
+   "values": {
+    "type": "aws_ecs_task_definition",
+    "name": "service",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "family": "cloudrail-test-encryption",
+     "container_definitions": "[\n    {\n        \"name\": \"first\",\n        \"image\": \"service-first\",\n        \"cpu\": 10,\n        \"memory\": 512,\n        \"essential\": true,\n        \"portMappings\": [\n            {\n                \"containerPort\": 80,\n                \"hostPort\": 80\n            }\n        ]\n    },\n    {\n        \"name\": \"second\",\n        \"image\": \"service-second\",\n        \"cpu\": 10,\n        \"memory\": 256,\n        \"essential\": true,\n        \"portMappings\": [\n            {\n                \"containerPort\": 443,\n                \"hostPort\": 443\n            }\n        ]\n    }\n]",
+     "volume": [
+      {
+       "name": "service-storage",
+       "efs_volume_configuration": [
+        {
+         "file_system_id": "${aws_efs_file_system.test.id}",
+         "root_directory": "/opt/data",
+         "transit_encryption": "ENABLED",
+         "transit_encryption_port": 2999
+        }
+       ]
+      }
+     ]
+    }
+   }
+  }
+ ]
+}

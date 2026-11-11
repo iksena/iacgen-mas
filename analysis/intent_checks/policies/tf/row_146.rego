@@ -1,0 +1,1677 @@
+package intent.tf.row_146
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {
+  "vpc": {
+   "types": [
+    "aws_vpc"
+   ],
+   "where": [
+    {
+     "path": [
+      "cidr_block"
+     ],
+     "op": "eq",
+     "value": "10.0.0.0/16"
+    }
+   ]
+  },
+  "pub": {
+   "types": [
+    "aws_subnet"
+   ],
+   "where": [
+    {
+     "path": [
+      "cidr_block"
+     ],
+     "op": "in",
+     "value": [
+      "10.0.1.0/24",
+      "10.0.2.0/24"
+     ]
+    }
+   ]
+  },
+  "igw": {
+   "types": [
+    "aws_internet_gateway"
+   ],
+   "where": []
+  },
+  "ecrapi": {
+   "types": [
+    "aws_vpc_endpoint"
+   ],
+   "where": [
+    {
+     "path": [
+      "service_name"
+     ],
+     "op": "regex",
+     "value": "(?i)ecr\\.api$"
+    }
+   ]
+  },
+  "ecrdkr": {
+   "types": [
+    "aws_vpc_endpoint"
+   ],
+   "where": [
+    {
+     "path": [
+      "service_name"
+     ],
+     "op": "regex",
+     "value": "(?i)ecr\\.dkr$"
+    }
+   ]
+  },
+  "sg": {
+   "types": [
+    "aws_security_group"
+   ],
+   "where": []
+  },
+  "ecrep": {
+   "types": [
+    "aws_vpc_endpoint"
+   ],
+   "where": [
+    {
+     "path": [
+      "service_name"
+     ],
+     "op": "regex",
+     "value": "(?i)\\.ecr\\.(api|dkr)$"
+    }
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "vpc",
+   "kind": "exists",
+   "tier": "core",
+   "select": "vpc",
+   "quote": "a vpc_cidr block defaulting to \"10.0.0.0/16\"",
+   "justify": "vpc_cidr default 10.0.0.0/16"
+  },
+  {
+   "id": "vpc_dns_hostnames",
+   "kind": "attr",
+   "tier": "core",
+   "select": "vpc",
+   "cond": {
+    "path": [
+     "enable_dns_hostnames"
+    ],
+    "op": "eq",
+    "value": true
+   },
+   "quote": "main VPC with enabled DNS hostnames"
+  },
+  {
+   "id": "vpc_name_prefix",
+   "kind": "any_of",
+   "tier": "detail",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "vpc",
+     "cond": {
+      "path": [
+       "tags",
+       "Name"
+      ],
+      "op": "regex",
+      "value": "(?i)^benchmark"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "vpc",
+     "cond": {
+      "path": [
+       "tags_all",
+       "Name"
+      ],
+      "op": "regex",
+      "value": "(?i)^benchmark"
+     }
+    }
+   ],
+   "quote": "a base_name prefix variable defaulting to \"benchmark\"",
+   "justify": "resources prefixed with the base_name default benchmark"
+  },
+  {
+   "id": "param_base_name",
+   "kind": "exists",
+   "tier": "detail",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": [
+       "name"
+      ],
+      "op": "eq",
+      "value": "base_name"
+     },
+     {
+      "path": [
+       "default"
+      ],
+      "op": "eq",
+      "value": "benchmark"
+     }
+    ]
+   },
+   "quote": "a base_name prefix variable defaulting to \"benchmark\""
+  },
+  {
+   "id": "param_vpc_cidr",
+   "kind": "exists",
+   "tier": "detail",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": [
+       "name"
+      ],
+      "op": "eq",
+      "value": "vpc_cidr"
+     },
+     {
+      "path": [
+       "default"
+      ],
+      "op": "eq",
+      "value": "10.0.0.0/16"
+     }
+    ]
+   },
+   "quote": "a vpc_cidr block defaulting to \"10.0.0.0/16\""
+  },
+  {
+   "id": "param_public_cidrs",
+   "kind": "exists",
+   "tier": "detail",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": [
+       "name"
+      ],
+      "op": "eq",
+      "value": "subnet_public_cidrs"
+     },
+     {
+      "path": [
+       "default"
+      ],
+      "op": "contains",
+      "value": "10.0.1.0/24"
+     },
+     {
+      "path": [
+       "default"
+      ],
+      "op": "contains",
+      "value": "10.0.2.0/24"
+     }
+    ]
+   },
+   "quote": "a subnet_public_cidrs list variable defaulting to [\"10.0.1.0/24\", \"10.0.2.0/24\"]"
+  },
+  {
+   "id": "param_private_cidrs",
+   "kind": "exists",
+   "tier": "detail",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": [
+       "name"
+      ],
+      "op": "eq",
+      "value": "subnet_private_cidrs"
+     },
+     {
+      "path": [
+       "default"
+      ],
+      "op": "absent"
+     }
+    ]
+   },
+   "quote": "a subnet_private_cidrs list variable defaulting to null",
+   "justify": "null default means no value"
+  },
+  {
+   "id": "public_subnets",
+   "kind": "exists",
+   "tier": "core",
+   "select": "pub",
+   "quote": "Public subnets must be provisioned using a subnet_public_cidrs list variable defaulting to [\"10.0.1.0/24\", \"10.0.2.0/24\"] across available availability zones",
+   "min": 2,
+   "distinct_path": [
+    "availability_zone"
+   ],
+   "justify": "two public subnets in different availability zones"
+  },
+  {
+   "id": "subnets_from_second_az",
+   "kind": "all_of",
+   "tier": "detail",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_subnet"
+       },
+       {
+        "path": [
+         "properties",
+         "cidr_block"
+        ],
+        "op": "regex",
+        "value": "(?i)public"
+       },
+       {
+        "path": [
+         "properties",
+         "availability_zone"
+        ],
+        "op": "regex",
+        "value": "(?i)(count\\.index|each\\.key|index)\\s*\\+\\s*1|slice\\([^)]*,\\s*1\\s*,"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_subnet"
+       },
+       {
+        "path": [
+         "properties",
+         "cidr_block"
+        ],
+        "op": "regex",
+        "value": "(?i)private"
+       },
+       {
+        "path": [
+         "properties",
+         "availability_zone"
+        ],
+        "op": "regex",
+        "value": "(?i)(count\\.index|each\\.key|index)\\s*\\+\\s*1|slice\\([^)]*,\\s*1\\s*,"
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "starting from the second zone index",
+   "justify": "the second zone index is the zone list offset by one"
+  },
+  {
+   "id": "igw",
+   "kind": "exists",
+   "tier": "core",
+   "select": "igw",
+   "quote": "a public route table connected to an Internet Gateway"
+  },
+  {
+   "id": "public_default_route",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route_table"
+      ],
+      "where": [
+       {
+        "path": [
+         "route",
+         "*",
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     },
+     "to": "igw"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route"
+      ],
+      "where": [
+       {
+        "path": [
+         "destination_cidr_block"
+        ],
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     },
+     "to": "igw"
+    }
+   ],
+   "quote": "a public route table connected to an Internet Gateway with a default route for \"0.0.0.0/0\""
+  },
+  {
+   "id": "public_subnets_associated",
+   "kind": "ref",
+   "tier": "detail",
+   "from": {
+    "types": [
+     "aws_route_table_association"
+    ],
+    "where": []
+   },
+   "to": "pub",
+   "quote": "mapped to a public route table"
+  },
+  {
+   "id": "private_subnets_conditional",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_subnet"
+       },
+       {
+        "path": [
+         "gated"
+        ],
+        "op": "eq",
+        "value": true
+       },
+       {
+        "path": [
+         "gate"
+        ],
+        "op": "regex",
+        "value": "(?i)private"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_subnet"
+       },
+       {
+        "path": [
+         "gated"
+        ],
+        "op": "eq",
+        "value": true
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "regex",
+        "value": "(?i)private"
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "Private subnets must be conditionally created based on a subnet_private_cidrs list variable defaulting to null"
+  },
+  {
+   "id": "private_eips",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_eip"
+       },
+       {
+        "path": [
+         "gated"
+        ],
+        "op": "eq",
+        "value": true
+       },
+       {
+        "path": [
+         "gate"
+        ],
+        "op": "regex",
+        "value": "(?i)private"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_eip"
+       },
+       {
+        "path": [
+         "gated"
+        ],
+        "op": "eq",
+        "value": true
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "regex",
+        "value": "(?i)private"
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "create per-public-subnet Elastic IPs and NAT Gateways"
+  },
+  {
+   "id": "private_nat_gateways",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_nat_gateway"
+       },
+       {
+        "path": [
+         "gated"
+        ],
+        "op": "eq",
+        "value": true
+       },
+       {
+        "path": [
+         "gate"
+        ],
+        "op": "regex",
+        "value": "(?i)private"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_nat_gateway"
+       },
+       {
+        "path": [
+         "gated"
+        ],
+        "op": "eq",
+        "value": true
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "regex",
+        "value": "(?i)private"
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "create per-public-subnet Elastic IPs and NAT Gateways"
+  },
+  {
+   "id": "nat_per_public_subnet",
+   "kind": "exists",
+   "tier": "detail",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": [
+       "type"
+      ],
+      "op": "eq",
+      "value": "aws_nat_gateway"
+     },
+     {
+      "path": [
+       "gate"
+      ],
+      "op": "regex",
+      "value": "(?i)public"
+     },
+     {
+      "path": [
+       "properties",
+       "subnet_id"
+      ],
+      "op": "regex",
+      "value": "(?i)public"
+     }
+    ]
+   },
+   "quote": "create per-public-subnet Elastic IPs and NAT Gateways"
+  },
+  {
+   "id": "private_route_table",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_route_table"
+       },
+       {
+        "path": [
+         "gated"
+        ],
+        "op": "eq",
+        "value": true
+       },
+       {
+        "path": [
+         "gate"
+        ],
+        "op": "regex",
+        "value": "(?i)private"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_route_table"
+       },
+       {
+        "path": [
+         "gated"
+        ],
+        "op": "eq",
+        "value": true
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "regex",
+        "value": "(?i)private"
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "with corresponding private route table entries for \"0.0.0.0/0\""
+  },
+  {
+   "id": "private_default_route",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_route"
+       },
+       {
+        "path": [
+         "gated"
+        ],
+        "op": "eq",
+        "value": true
+       },
+       {
+        "path": [
+         "gate"
+        ],
+        "op": "regex",
+        "value": "(?i)private"
+       },
+       {
+        "path": [
+         "properties",
+         "destination_cidr_block"
+        ],
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       },
+       {
+        "path": [
+         "properties",
+         "nat_gateway_id"
+        ],
+        "op": "present"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_route"
+       },
+       {
+        "path": [
+         "gated"
+        ],
+        "op": "eq",
+        "value": true
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "regex",
+        "value": "(?i)private"
+       },
+       {
+        "path": [
+         "properties",
+         "destination_cidr_block"
+        ],
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       },
+       {
+        "path": [
+         "properties",
+         "nat_gateway_id"
+        ],
+        "op": "present"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_route_table"
+       },
+       {
+        "path": [
+         "gated"
+        ],
+        "op": "eq",
+        "value": true
+       },
+       {
+        "path": [
+         "gate"
+        ],
+        "op": "regex",
+        "value": "(?i)private"
+       },
+       {
+        "path": [
+         "properties",
+         "route"
+        ],
+        "op": "regex",
+        "value": "(?s)0\\.0\\.0\\.0/0.{0,300}nat_gateway_id|nat_gateway_id.{0,300}0\\.0\\.0\\.0/0"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_route_table"
+       },
+       {
+        "path": [
+         "gated"
+        ],
+        "op": "eq",
+        "value": true
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "regex",
+        "value": "(?i)private"
+       },
+       {
+        "path": [
+         "properties",
+         "route"
+        ],
+        "op": "regex",
+        "value": "(?s)0\\.0\\.0\\.0/0.{0,300}nat_gateway_id|nat_gateway_id.{0,300}0\\.0\\.0\\.0/0"
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "NAT Gateways with corresponding private route table entries for \"0.0.0.0/0\""
+  },
+  {
+   "id": "private_s3_endpoint",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_vpc_endpoint"
+       },
+       {
+        "path": [
+         "gated"
+        ],
+        "op": "eq",
+        "value": true
+       },
+       {
+        "path": [
+         "gate"
+        ],
+        "op": "regex",
+        "value": "(?i)private"
+       },
+       {
+        "path": [
+         "properties",
+         "service_name"
+        ],
+        "op": "regex",
+        "value": "(?i)\\.s3$"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_vpc_endpoint"
+       },
+       {
+        "path": [
+         "gated"
+        ],
+        "op": "eq",
+        "value": true
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "regex",
+        "value": "(?i)private"
+       },
+       {
+        "path": [
+         "properties",
+         "service_name"
+        ],
+        "op": "regex",
+        "value": "(?i)\\.s3$"
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "associate a dedicated private gateway endpoint for S3"
+  },
+  {
+   "id": "s3_gateway_endpoint",
+   "kind": "exists",
+   "tier": "core",
+   "select": {
+    "types": [
+     "aws_vpc_endpoint"
+    ],
+    "where": [
+     {
+      "path": [
+       "service_name"
+      ],
+      "op": "regex",
+      "value": "(?i)\\.s3$"
+     },
+     {
+      "path": [
+       "vpc_endpoint_type"
+      ],
+      "op": "eq",
+      "value": "Gateway"
+     }
+    ]
+   },
+   "quote": "an S3 gateway endpoint for public subnets"
+  },
+  {
+   "id": "s3_public_endpoint_route_table",
+   "kind": "any_of",
+   "tier": "detail",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_vpc_endpoint"
+      ],
+      "where": [
+       {
+        "path": [
+         "service_name"
+        ],
+        "op": "regex",
+        "value": "(?i)\\.s3$"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_route_table"
+      ],
+      "where": []
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_vpc_endpoint_route_table_association"
+      ],
+      "where": []
+     },
+     "to": {
+      "types": [
+       "aws_vpc_endpoint"
+      ],
+      "where": [
+       {
+        "path": [
+         "service_name"
+        ],
+        "op": "regex",
+        "value": "(?i)\\.s3$"
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "an S3 gateway endpoint for public subnets"
+  },
+  {
+   "id": "ecr_api_endpoint",
+   "kind": "exists",
+   "tier": "core",
+   "select": {
+    "types": [
+     "aws_vpc_endpoint"
+    ],
+    "where": [
+     {
+      "path": [
+       "service_name"
+      ],
+      "op": "regex",
+      "value": "(?i)ecr\\.api$"
+     },
+     {
+      "path": [
+       "vpc_endpoint_type"
+      ],
+      "op": "eq",
+      "value": "Interface"
+     },
+     {
+      "path": [
+       "private_dns_enabled"
+      ],
+      "op": "eq",
+      "value": true
+     }
+    ]
+   },
+   "quote": "HTTPS interface VPC endpoints for ECR API and ECR Docker with private DNS enabled"
+  },
+  {
+   "id": "ecr_dkr_endpoint",
+   "kind": "exists",
+   "tier": "core",
+   "select": {
+    "types": [
+     "aws_vpc_endpoint"
+    ],
+    "where": [
+     {
+      "path": [
+       "service_name"
+      ],
+      "op": "regex",
+      "value": "(?i)ecr\\.dkr$"
+     },
+     {
+      "path": [
+       "vpc_endpoint_type"
+      ],
+      "op": "eq",
+      "value": "Interface"
+     },
+     {
+      "path": [
+       "private_dns_enabled"
+      ],
+      "op": "eq",
+      "value": true
+     }
+    ]
+   },
+   "quote": "HTTPS interface VPC endpoints for ECR API and ECR Docker with private DNS enabled"
+  },
+  {
+   "id": "ecr_endpoints_use_sg",
+   "kind": "ref",
+   "tier": "core",
+   "from": "ecrep",
+   "to": "sg",
+   "quote": "bound to an ECR security group"
+  },
+  {
+   "id": "ecr_sg_egress_vpc_only",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "sg",
+     "cond": {
+      "path": [
+       "egress",
+       "*",
+       "cidr_blocks",
+       "*"
+      ],
+      "op": "eq",
+      "value": "10.0.0.0/16",
+      "every": true
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_security_group_rule"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "egress"
+       }
+      ]
+     },
+     "quantifier": "all",
+     "cond": {
+      "path": [
+       "cidr_blocks",
+       "*"
+      ],
+      "op": "eq",
+      "value": "10.0.0.0/16",
+      "every": true
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_vpc_security_group_egress_rule"
+      ],
+      "where": []
+     },
+     "quantifier": "all",
+     "cond": {
+      "path": [
+       "cidr_ipv4"
+      ],
+      "op": "eq",
+      "value": "10.0.0.0/16"
+     }
+    }
+   ],
+   "quote": "an ECR security group that allows egress only within the VPC CIDR",
+   "justify": "egress only within the VPC CIDR: every egress destination is the vpc_cidr default 10.0.0.0/16"
+  },
+  {
+   "id": "ecr_sg_ingress_public1",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "sg",
+     "cond": {
+      "path": [
+       "ingress",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [],
+        "op": "port_covers",
+        "value": 443
+       },
+       {
+        "path": [
+         "cidr_blocks",
+         "*"
+        ],
+        "op": "eq",
+        "value": "10.0.1.0/24"
+       },
+       {
+        "path": [
+         "protocol"
+        ],
+        "op": "in",
+        "value": [
+         "tcp",
+         "6"
+        ]
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_security_group_rule"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "ingress"
+       },
+       {
+        "path": [],
+        "op": "port_covers",
+        "value": 443
+       },
+       {
+        "path": [
+         "cidr_blocks",
+         "*"
+        ],
+        "op": "eq",
+        "value": "10.0.1.0/24"
+       },
+       {
+        "path": [
+         "protocol"
+        ],
+        "op": "in",
+        "value": [
+         "tcp",
+         "6"
+        ]
+       }
+      ]
+     },
+     "to": "sg"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_vpc_security_group_ingress_rule"
+      ],
+      "where": [
+       {
+        "path": [],
+        "op": "port_covers",
+        "value": 443
+       },
+       {
+        "path": [
+         "cidr_ipv4"
+        ],
+        "op": "eq",
+        "value": "10.0.1.0/24"
+       },
+       {
+        "path": [
+         "ip_protocol"
+        ],
+        "op": "in",
+        "value": [
+         "tcp",
+         "6"
+        ]
+       }
+      ]
+     },
+     "to": "sg"
+    }
+   ],
+   "quote": "permits ingress on port 443 from all public subnet CIDRs"
+  },
+  {
+   "id": "ecr_sg_ingress_public2",
+   "kind": "any_of",
+   "tier": "core",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "sg",
+     "cond": {
+      "path": [
+       "ingress",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [],
+        "op": "port_covers",
+        "value": 443
+       },
+       {
+        "path": [
+         "cidr_blocks",
+         "*"
+        ],
+        "op": "eq",
+        "value": "10.0.2.0/24"
+       },
+       {
+        "path": [
+         "protocol"
+        ],
+        "op": "in",
+        "value": [
+         "tcp",
+         "6"
+        ]
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_security_group_rule"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "ingress"
+       },
+       {
+        "path": [],
+        "op": "port_covers",
+        "value": 443
+       },
+       {
+        "path": [
+         "cidr_blocks",
+         "*"
+        ],
+        "op": "eq",
+        "value": "10.0.2.0/24"
+       },
+       {
+        "path": [
+         "protocol"
+        ],
+        "op": "in",
+        "value": [
+         "tcp",
+         "6"
+        ]
+       }
+      ]
+     },
+     "to": "sg"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_vpc_security_group_ingress_rule"
+      ],
+      "where": [
+       {
+        "path": [],
+        "op": "port_covers",
+        "value": 443
+       },
+       {
+        "path": [
+         "cidr_ipv4"
+        ],
+        "op": "eq",
+        "value": "10.0.2.0/24"
+       },
+       {
+        "path": [
+         "ip_protocol"
+        ],
+        "op": "in",
+        "value": [
+         "tcp",
+         "6"
+        ]
+       }
+      ]
+     },
+     "to": "sg"
+    }
+   ],
+   "quote": "permits ingress on port 443 from all public subnet CIDRs"
+  },
+  {
+   "id": "ecr_sg_ingress_private_conditional",
+   "kind": "any_of",
+   "tier": "detail",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_security_group_rule"
+       },
+       {
+        "path": [
+         "gated"
+        ],
+        "op": "eq",
+        "value": true
+       },
+       {
+        "path": [
+         "gate"
+        ],
+        "op": "regex",
+        "value": "(?i)private"
+       },
+       {
+        "path": [
+         "properties",
+         "from_port"
+        ],
+        "op": "eq",
+        "value": 443
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_security_group_rule"
+       },
+       {
+        "path": [
+         "gated"
+        ],
+        "op": "eq",
+        "value": true
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "regex",
+        "value": "(?i)private"
+       },
+       {
+        "path": [
+         "properties",
+         "from_port"
+        ],
+        "op": "eq",
+        "value": 443
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_vpc_security_group_ingress_rule"
+       },
+       {
+        "path": [
+         "gated"
+        ],
+        "op": "eq",
+        "value": true
+       },
+       {
+        "path": [
+         "gate"
+        ],
+        "op": "regex",
+        "value": "(?i)private"
+       },
+       {
+        "path": [
+         "properties",
+         "from_port"
+        ],
+        "op": "eq",
+        "value": 443
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_vpc_security_group_ingress_rule"
+       },
+       {
+        "path": [
+         "gated"
+        ],
+        "op": "eq",
+        "value": true
+       },
+       {
+        "path": [
+         "properties"
+        ],
+        "op": "regex",
+        "value": "(?i)private"
+       },
+       {
+        "path": [
+         "properties",
+         "from_port"
+        ],
+        "op": "eq",
+        "value": 443
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_security_group"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties"
+      ],
+      "op": "regex",
+      "value": "(?is)dynamic\\W{0,10}ingress.{0,600}private|ingress.{0,600}(private.{0,200}(\\?|null)|(\\?|null).{0,200}private)"
+     }
+    }
+   ],
+   "quote": "conditionally permits ingress on port 443 from private subnet CIDRs when private subnets are present"
+  },
+  {
+   "kind": "attr",
+   "select": "vpc",
+   "cond": {
+    "path": [
+     "enable_dns_support"
+    ],
+    "op": "eq",
+    "value": true
+   },
+   "id": "vpc_dns_support",
+   "tier": "extra"
+  },
+  {
+   "kind": "ref",
+   "from": "ecrep",
+   "to": {
+    "types": [
+     "aws_subnet"
+    ],
+    "where": []
+   },
+   "id": "ecr_endpoints_in_subnets",
+   "tier": "extra"
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

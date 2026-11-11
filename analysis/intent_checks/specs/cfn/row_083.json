@@ -1,0 +1,455 @@
+{
+  "lang": "cfn",
+  "row_number": 83,
+  "source_hash": {
+    "gt": "fdf973e1d41f1b1d1cbc98d998325969e3e9297c7b99647ddd269b2bd66b8190",
+    "prompt": "bea05bc190c1463cf4105d7bad3f0a26d853e4a5953f3d2fa7e5cfeaf094f7dc"
+  },
+  "selectors": {
+    "pool": {
+      "types": [
+        "AWS::Cognito::UserPool"
+      ]
+    },
+    "rs": {
+      "types": [
+        "AWS::Cognito::UserPoolResourceServer"
+      ]
+    },
+    "cl": {
+      "types": [
+        "AWS::Cognito::UserPoolClient"
+      ]
+    },
+    "ssm": {
+      "types": [
+        "AWS::SSM::Parameter"
+      ]
+    }
+  },
+  "checks": [
+    {
+      "id": "user_pool",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "The template should create a user pool",
+      "select": "pool"
+    },
+    {
+      "id": "software_token_mfa",
+      "kind": "attr",
+      "tier": "core",
+      "quote": "a user pool with software token MFA enabled",
+      "select": {
+        "types": [
+          "AWS::Cognito::UserPool"
+        ],
+        "where": [
+          {
+            "path": "MfaConfiguration",
+            "op": "in",
+            "value": [
+              "ON",
+              "OPTIONAL",
+              "true"
+            ]
+          }
+        ]
+      },
+      "cond": {
+        "path": "EnabledMfas.*",
+        "op": "eq",
+        "value": "SOFTWARE_TOKEN_MFA"
+      },
+      "justify": "enabled means MFA is ON or OPTIONAL, not OFF; an unquoted YAML ON reads as true"
+    },
+    {
+      "id": "resource_server_read_scope",
+      "kind": "attr",
+      "tier": "core",
+      "quote": "a resource server with a read scope",
+      "select": "rs",
+      "cond": {
+        "path": "Scopes.*.ScopeName",
+        "op": "eq",
+        "value": "read"
+      }
+    },
+    {
+      "id": "resource_server_in_pool",
+      "kind": "ref",
+      "tier": "detail",
+      "quote": "a resource server with a read scope",
+      "from": "rs",
+      "to": "pool"
+    },
+    {
+      "id": "client_generates_secret",
+      "kind": "attr",
+      "tier": "core",
+      "quote": "a machine-to-machine app client configured for client credentials grant flow with a generated secret",
+      "select": {
+        "types": [
+          "AWS::Cognito::UserPoolClient"
+        ],
+        "where": [
+          {
+            "path": "AllowedOAuthFlows.*",
+            "op": "eq",
+            "value": "client_credentials"
+          }
+        ]
+      },
+      "cond": {
+        "path": "GenerateSecret",
+        "op": "truthy"
+      }
+    },
+    {
+      "id": "client_credentials_flow",
+      "kind": "attr",
+      "tier": "core",
+      "quote": "configured for client credentials grant flow",
+      "select": "cl",
+      "cond": {
+        "path": "AllowedOAuthFlows.*",
+        "op": "eq",
+        "value": "client_credentials"
+      }
+    },
+    {
+      "id": "client_in_pool",
+      "kind": "ref",
+      "tier": "detail",
+      "quote": "a machine-to-machine app client",
+      "from": "cl",
+      "to": "pool"
+    },
+    {
+      "id": "ssm_param_count",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "must be stored as individual parameters in AWS Systems Manager Parameter Store",
+      "select": "ssm",
+      "min": 7,
+      "distinct_path": "Name",
+      "justify": "seven values are listed: client ID, client secret, user pool ID, OAuth scope, discovery URL, token URL, domain"
+    },
+    {
+      "id": "ssm_under_app_prefix",
+      "kind": "attr",
+      "tier": "core",
+      "quote": "under a path prefixed with the application name",
+      "select": "ssm",
+      "quantifier": "all",
+      "cond": {
+        "path": "Name",
+        "op": "regex",
+        "value": "(?i)(^|/)ontology-lookup-service"
+      },
+      "justify": "the application name defaults to ontology-lookup-service"
+    },
+    {
+      "id": "ssm_client_id",
+      "kind": "any_of",
+      "tier": "detail",
+      "quote": "the client ID",
+      "checks": [
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "AWS::SSM::Parameter"
+            ],
+            "where": [
+              {
+                "path": "Value.attr",
+                "op": "absent"
+              },
+              {
+                "path": "Value.ref",
+                "op": "present"
+              }
+            ]
+          },
+          "to": "cl"
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "AWS::SSM::Parameter"
+            ]
+          },
+          "cond": {
+            "path": "Value.attr",
+            "op": "eq",
+            "value": "ClientId"
+          }
+        },
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "AWS::SSM::Parameter"
+            ],
+            "where": [
+              {
+                "path": "Value",
+                "op": "regex",
+                "value": "^\\$\\{[A-Za-z0-9]+\\}$"
+              }
+            ]
+          },
+          "to": "cl"
+        }
+      ]
+    },
+    {
+      "id": "ssm_client_secret",
+      "kind": "any_of",
+      "tier": "detail",
+      "quote": "client secret",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "ssm",
+          "cond": {
+            "path": "Value.attr",
+            "op": "eq",
+            "value": "ClientSecret"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "ssm",
+          "cond": {
+            "path": "Value",
+            "op": "regex",
+            "value": "(?i)ClientSecret"
+          }
+        }
+      ]
+    },
+    {
+      "id": "ssm_user_pool_id",
+      "kind": "any_of",
+      "tier": "detail",
+      "quote": "user pool ID",
+      "checks": [
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "AWS::SSM::Parameter"
+            ],
+            "where": [
+              {
+                "path": "Value.attr",
+                "op": "absent"
+              },
+              {
+                "path": "Value.ref",
+                "op": "present"
+              }
+            ]
+          },
+          "to": "pool"
+        },
+        {
+          "kind": "attr",
+          "select": "ssm",
+          "cond": {
+            "path": "Value.attr",
+            "op": "eq",
+            "value": "UserPoolId"
+          }
+        },
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "AWS::SSM::Parameter"
+            ],
+            "where": [
+              {
+                "path": "Value",
+                "op": "regex",
+                "value": "^\\$\\{[A-Za-z0-9]+\\}$"
+              }
+            ]
+          },
+          "to": "pool"
+        }
+      ]
+    },
+    {
+      "id": "ssm_oauth_scope",
+      "kind": "attr",
+      "tier": "detail",
+      "quote": "OAuth scope",
+      "select": "ssm",
+      "cond": {
+        "path": "Value",
+        "op": "regex",
+        "value": "(?i)(^|/)read$"
+      },
+      "justify": "the scope on the resource server is read"
+    },
+    {
+      "id": "ssm_discovery_url",
+      "kind": "attr",
+      "tier": "detail",
+      "quote": "discovery URL",
+      "select": "ssm",
+      "cond": {
+        "path": "Value",
+        "op": "contains",
+        "value": "openid-configuration"
+      },
+      "justify": "an OIDC discovery URL ends with .well-known/openid-configuration"
+    },
+    {
+      "id": "ssm_token_url",
+      "kind": "attr",
+      "tier": "detail",
+      "quote": "token URL",
+      "select": "ssm",
+      "cond": {
+        "path": "Value",
+        "op": "contains",
+        "value": "oauth2/token"
+      },
+      "justify": "the Cognito token endpoint path is /oauth2/token"
+    },
+    {
+      "id": "ssm_domain",
+      "kind": "any_of",
+      "tier": "detail",
+      "quote": "and domain",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "ssm",
+          "cond": {
+            "path": "Value",
+            "op": "regex",
+            "value": "(?i)^(https://)?[^/]+\\.auth\\.[^/]+\\.amazoncognito\\.com/?$"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "ssm",
+          "cond": {
+            "path": "Name",
+            "op": "regex",
+            "value": "(?i)domain"
+          }
+        }
+      ],
+      "justify": "the Cognito hosted domain is a *.auth.<region>.amazoncognito.com host"
+    },
+    {
+      "id": "app_name_parameter",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "defaulting to \"ontology-lookup-service\"",
+      "select": {
+        "types": [
+          "__parameter__"
+        ],
+        "where": [
+          {
+            "path": "default",
+            "op": "eq",
+            "value": "ontology-lookup-service"
+          }
+        ]
+      }
+    },
+    {
+      "id": "user_pool_name_parameter",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "defaulting to \"OLSGatewayPool\"",
+      "select": {
+        "types": [
+          "__parameter__"
+        ],
+        "where": [
+          {
+            "path": "default",
+            "op": "eq",
+            "value": "OLSGatewayPool"
+          }
+        ]
+      }
+    },
+    {
+      "id": "user_pool_name_value",
+      "kind": "attr",
+      "tier": "detail",
+      "quote": "the user pool name as a parameter defaulting to \"OLSGatewayPool\"",
+      "select": "pool",
+      "cond": {
+        "path": "UserPoolName",
+        "op": "eq",
+        "value": "OLSGatewayPool"
+      }
+    },
+    {
+      "id": "x_client_oauth_enabled",
+      "kind": "attr",
+      "tier": "extra",
+      "select": "cl",
+      "cond": {
+        "path": "AllowedOAuthFlowsUserPoolClient",
+        "op": "truthy"
+      }
+    },
+    {
+      "id": "x_client_scope_read",
+      "kind": "attr",
+      "tier": "extra",
+      "select": "cl",
+      "cond": {
+        "path": "AllowedOAuthScopes.*",
+        "op": "regex",
+        "value": "/read$"
+      }
+    },
+    {
+      "id": "x_client_token_revocation",
+      "kind": "attr",
+      "tier": "extra",
+      "select": "cl",
+      "cond": {
+        "path": "EnableTokenRevocation",
+        "op": "truthy"
+      }
+    },
+    {
+      "id": "x_pool_auto_verify_email",
+      "kind": "attr",
+      "tier": "extra",
+      "select": "pool",
+      "cond": {
+        "path": "AutoVerifiedAttributes.*",
+        "op": "eq",
+        "value": "email"
+      }
+    },
+    {
+      "id": "extra_type_aws_cognito_userpooldomain",
+      "kind": "exists",
+      "tier": "extra",
+      "select": {
+        "types": [
+          "AWS::Cognito::UserPoolDomain"
+        ],
+        "where": []
+      }
+    }
+  ],
+  "notes": "No UserPoolDomain existence check: the prompt names the domain only as a value to store. Existence of a domain resource is left to extras. client_generates_secret binds the secret to the client that has the client_credentials flow. MfaConfiguration is tested with the factor because EnabledMfas on a pool with MFA OFF leaves MFA disabled."
+}

@@ -1,0 +1,129 @@
+{
+ "lang": "tf",
+ "row_number": 319,
+ "source_hash": {
+  "gt": "20e558c4022de01ae8689b217b08c4029ddb9e65ab326c3370748a6ac78ffad9",
+  "prompt": "6913ed315842523d7f5ca419616fc0d3c4fb02b04ce6eafa9d48e75d7eb3301d"
+ },
+ "selectors": {
+  "rule": {
+   "types": [
+    "aws_config_config_rule"
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "config_rule",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "creates an AWS Config managed rule",
+   "select": "rule"
+  },
+  {
+   "id": "rule_owner_aws",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "AWS Config managed rule",
+   "select": "rule",
+   "cond": {
+    "path": "source.*.owner",
+    "op": "eq",
+    "value": "AWS"
+   }
+  },
+  {
+   "id": "rule_acm_expiration",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "checks whether ACM certificates in the account are close to expiring",
+   "select": "rule",
+   "cond": {
+    "path": "source.*.source_identifier",
+    "op": "regex",
+    "value": "(?i)ACM_CERTIFICATE_EXPIRATION"
+   },
+   "justify": "the AWS managed rule for ACM certificates nearing expiry is ACM_CERTIFICATE_EXPIRATION_CHECK"
+  },
+  {
+   "id": "rule_toggle",
+   "kind": "exists",
+   "tier": "detail",
+   "quote": "enabled by default",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": "type",
+      "op": "eq",
+      "value": "aws_config_config_rule"
+     },
+     {
+      "path": "gated",
+      "op": "truthy"
+     },
+     {
+      "path": "gate",
+      "op": "regex",
+      "value": "(var|local)\\."
+     }
+    ]
+   },
+   "justify": "'enabled by default' implies the rule's count depends on an input that can switch it off"
+  },
+  {
+   "id": "name_prefix_optional",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "with an optional name prefix",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_config_config_rule"
+       },
+       {
+        "path": "properties.name",
+        "op": "regex",
+        "value": "(?i)prefix"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "regex",
+        "value": "(?i)prefix"
+       },
+       {
+        "path": "default",
+        "op": "in",
+        "value": [
+         "",
+         null
+        ]
+       }
+      ]
+     }
+    }
+   ]
+  }
+ ],
+ "notes": "rule_toggle: the rule's count/for_each must depend on an input, since 'enabled by default' implies it can be switched off; that the default creates it is config_rule. name_prefix_optional: the rule name uses a prefix input, or (names built in locals are invisible) a prefix variable defaulting to empty. Two of three real templates have no toggle and fail rule_toggle (detail) because they omit a stated capability."
+}

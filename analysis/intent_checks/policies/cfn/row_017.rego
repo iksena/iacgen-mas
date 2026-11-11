@@ -1,0 +1,512 @@
+package intent.cfn.row_017
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {
+  "waf": {
+   "types": [
+    "AWS::WAFv2::WebACL"
+   ],
+   "where": []
+  },
+  "param": {
+   "types": [
+    "__parameter__"
+   ],
+   "where": []
+  }
+ },
+ "checks": [
+  {
+   "id": "web_acl",
+   "kind": "exists",
+   "select": "waf",
+   "tier": "core",
+   "quote": "creates a WAF WebACL"
+  },
+  {
+   "id": "scope_cloudfront",
+   "kind": "attr",
+   "select": "waf",
+   "cond": {
+    "path": [
+     "Scope"
+    ],
+    "op": "eq",
+    "value": "CLOUDFRONT"
+   },
+   "tier": "core",
+   "quote": "a WAF WebACL for a CloudFront distribution"
+  },
+  {
+   "id": "env_default",
+   "kind": "attr",
+   "select": "param",
+   "cond": {
+    "path": [
+     "default"
+    ],
+    "op": "eq",
+    "value": "spree-production"
+   },
+   "tier": "detail",
+   "quote": "environment name defaulting to \"spree-production\""
+  },
+  {
+   "id": "grp_common",
+   "kind": "attr",
+   "select": "waf",
+   "cond": {
+    "path": [
+     "Rules",
+     "*",
+     "Statement",
+     "*",
+     "ManagedRuleGroupStatement",
+     "Name"
+    ],
+    "op": "eq",
+    "value": "AWSManagedRulesCommonRuleSet"
+   },
+   "tier": "core",
+   "quote": "common web threats",
+   "justify": "the AWS managed rule group for common web threats is the Common rule set"
+  },
+  {
+   "id": "grp_bad_inputs",
+   "kind": "attr",
+   "select": "waf",
+   "cond": {
+    "path": [
+     "Rules",
+     "*",
+     "Statement",
+     "*",
+     "ManagedRuleGroupStatement",
+     "Name"
+    ],
+    "op": "eq",
+    "value": "AWSManagedRulesKnownBadInputsRuleSet"
+   },
+   "tier": "core",
+   "quote": "known bad inputs",
+   "justify": "known bad inputs names the Known Bad Inputs rule set"
+  },
+  {
+   "id": "grp_sqli",
+   "kind": "attr",
+   "select": "waf",
+   "cond": {
+    "path": [
+     "Rules",
+     "*",
+     "Statement",
+     "*",
+     "ManagedRuleGroupStatement",
+     "Name"
+    ],
+    "op": "eq",
+    "value": "AWSManagedRulesSQLiRuleSet"
+   },
+   "tier": "core",
+   "quote": "SQL injection",
+   "justify": "SQL injection names the SQLi rule set"
+  },
+  {
+   "id": "grp_linux",
+   "kind": "attr",
+   "select": "waf",
+   "cond": {
+    "path": [
+     "Rules",
+     "*",
+     "Statement",
+     "*",
+     "ManagedRuleGroupStatement",
+     "Name"
+    ],
+    "op": "eq",
+    "value": "AWSManagedRulesLinuxRuleSet"
+   },
+   "tier": "core",
+   "quote": "Linux exploits",
+   "justify": "Linux exploits names the Linux rule set"
+  },
+  {
+   "id": "admin_excluded",
+   "kind": "all_of",
+   "tier": "detail",
+   "quote": "the first three excluding paths starting with /admin",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "waf",
+     "cond": {
+      "path": [
+       "Rules",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "Statement",
+         "*",
+         "ManagedRuleGroupStatement",
+         "Name"
+        ],
+        "op": "eq",
+        "value": "AWSManagedRulesCommonRuleSet"
+       },
+       {
+        "path": [
+         "Statement",
+         "*",
+         "ManagedRuleGroupStatement",
+         "ScopeDownStatement"
+        ],
+        "op": "regex",
+        "value": "(?s)NotStatement.*(STARTS_WITH.*/admin|\\^/admin)"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "waf",
+     "cond": {
+      "path": [
+       "Rules",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "Statement",
+         "*",
+         "ManagedRuleGroupStatement",
+         "Name"
+        ],
+        "op": "eq",
+        "value": "AWSManagedRulesKnownBadInputsRuleSet"
+       },
+       {
+        "path": [
+         "Statement",
+         "*",
+         "ManagedRuleGroupStatement",
+         "ScopeDownStatement"
+        ],
+        "op": "regex",
+        "value": "(?s)NotStatement.*(STARTS_WITH.*/admin|\\^/admin)"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "waf",
+     "cond": {
+      "path": [
+       "Rules",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "Statement",
+         "*",
+         "ManagedRuleGroupStatement",
+         "Name"
+        ],
+        "op": "eq",
+        "value": "AWSManagedRulesSQLiRuleSet"
+       },
+       {
+        "path": [
+         "Statement",
+         "*",
+         "ManagedRuleGroupStatement",
+         "ScopeDownStatement"
+        ],
+        "op": "regex",
+        "value": "(?s)NotStatement.*(STARTS_WITH.*/admin|\\^/admin)"
+       }
+      ]
+     }
+    }
+   ],
+   "justify": "the first three groups are the three named before Linux exploits"
+  },
+  {
+   "id": "linux_not_excluded",
+   "kind": "attr",
+   "select": "waf",
+   "cond": {
+    "path": [
+     "Rules",
+     "*"
+    ],
+    "op": "match",
+    "value": [
+     {
+      "path": [
+       "Statement",
+       "*",
+       "ManagedRuleGroupStatement",
+       "Name"
+      ],
+      "op": "eq",
+      "value": "AWSManagedRulesLinuxRuleSet"
+     },
+     {
+      "path": [
+       "Statement",
+       "*",
+       "ManagedRuleGroupStatement",
+       "ScopeDownStatement"
+      ],
+      "op": "absent"
+     }
+    ]
+   },
+   "tier": "detail",
+   "quote": "the first three excluding paths starting with /admin",
+   "justify": "only the first three are excluded, so the Linux group has no scope-down"
+  },
+  {
+   "id": "rate_limit",
+   "kind": "attr",
+   "select": "waf",
+   "cond": {
+    "path": [
+     "Rules",
+     "*"
+    ],
+    "op": "match",
+    "value": [
+     {
+      "path": [
+       "Statement",
+       "*",
+       "RateBasedStatement",
+       "Limit"
+      ],
+      "op": "eq",
+      "value": 2000
+     },
+     {
+      "path": [
+       "Action"
+      ],
+      "op": "regex",
+      "value": "(?i)block|captcha|challenge"
+     }
+    ]
+   },
+   "tier": "core",
+   "quote": "a rate limit of 2000 requests per IP",
+   "justify": "a limit must act on requests, so a Count action does not limit"
+  },
+  {
+   "id": "rate_per_ip",
+   "kind": "attr",
+   "select": "waf",
+   "cond": {
+    "path": [
+     "Rules",
+     "*",
+     "Statement",
+     "*",
+     "RateBasedStatement"
+    ],
+    "op": "match",
+    "value": [
+     {
+      "path": [
+       "Limit"
+      ],
+      "op": "eq",
+      "value": 2000
+     },
+     {
+      "path": [
+       "AggregateKeyType"
+      ],
+      "op": "in",
+      "value": [
+       "IP",
+       "FORWARDED_IP"
+      ]
+     }
+    ]
+   },
+   "tier": "detail",
+   "quote": "2000 requests per IP",
+   "justify": "per IP is aggregation by IP, directly or forwarded"
+  },
+  {
+   "id": "block_bot_user_agent",
+   "kind": "attr",
+   "select": "waf",
+   "cond": {
+    "path": [
+     "Rules",
+     "*"
+    ],
+    "op": "match",
+    "value": [
+     {
+      "path": [
+       "Action"
+      ],
+      "op": "regex",
+      "value": "(?i)block"
+     },
+     {
+      "path": [
+       "Statement"
+      ],
+      "op": "regex",
+      "value": "(?is)user-agent\\W.{0,80}(CONTAINS(_WORD)?\\W{1,8}SearchString\\W{1,4}bot\\W|RegexString\\W{1,4}[^\"]*bot)"
+     }
+    ]
+   },
+   "tier": "core",
+   "quote": "block requests whose user-agent header contains \"bot\""
+  },
+  {
+   "id": "allow_googlebot",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "still allowing legitimate crawlers like Googlebot and Bingbot through",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "waf",
+     "cond": {
+      "path": [
+       "Rules",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "Action"
+        ],
+        "op": "regex",
+        "value": "(?i)block"
+       },
+       {
+        "path": [
+         "Statement"
+        ],
+        "op": "regex",
+        "value": "(?is)NotStatement.*googlebot"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "waf",
+     "cond": {
+      "path": [
+       "Rules",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "Action"
+        ],
+        "op": "regex",
+        "value": "(?i)allow"
+       },
+       {
+        "path": [
+         "Statement"
+        ],
+        "op": "regex",
+        "value": "(?i)googlebot"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "allow_bingbot",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "still allowing legitimate crawlers like Googlebot and Bingbot through",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "waf",
+     "cond": {
+      "path": [
+       "Rules",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "Action"
+        ],
+        "op": "regex",
+        "value": "(?i)block"
+       },
+       {
+        "path": [
+         "Statement"
+        ],
+        "op": "regex",
+        "value": "(?is)NotStatement.*bingbot"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "waf",
+     "cond": {
+      "path": [
+       "Rules",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "Action"
+        ],
+        "op": "regex",
+        "value": "(?i)allow"
+       },
+       {
+        "path": [
+         "Statement"
+        ],
+        "op": "regex",
+        "value": "(?i)bingbot"
+       }
+      ]
+     }
+    }
+   ]
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

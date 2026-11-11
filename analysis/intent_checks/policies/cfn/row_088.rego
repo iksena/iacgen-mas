@@ -1,0 +1,660 @@
+package intent.cfn.row_088
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {
+  "project": {
+   "types": [
+    "AWS::CodeBuild::Project"
+   ],
+   "where": []
+  },
+  "role": {
+   "types": [
+    "AWS::IAM::Role"
+   ],
+   "where": []
+  },
+  "topic": {
+   "types": [
+    "AWS::SNS::Topic"
+   ],
+   "where": []
+  },
+  "rule": {
+   "types": [
+    "AWS::Events::Rule"
+   ],
+   "where": []
+  },
+  "cb_role": {
+   "types": [
+    "AWS::IAM::Role"
+   ],
+   "where": [
+    {
+     "path": [
+      "AssumeRolePolicyDocument",
+      "Statement",
+      "*",
+      "Principal",
+      "Service",
+      "*"
+     ],
+     "op": "eq",
+     "value": "codebuild.amazonaws.com"
+    }
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "codebuild_project",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "creates a CodeBuild project",
+   "select": "project"
+  },
+  {
+   "id": "sns_topic",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "along with an SNS topic",
+   "select": "topic"
+  },
+  {
+   "id": "eventbridge_rule",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "an EventBridge rule to send build status notifications",
+   "select": "rule"
+  },
+  {
+   "id": "rule_targets_topic",
+   "kind": "ref",
+   "tier": "core",
+   "quote": "an EventBridge rule to send build status notifications",
+   "from": {
+    "types": [
+     "AWS::Events::Rule"
+    ],
+    "where": [
+     {
+      "path": [
+       "EventPattern"
+      ],
+      "op": "regex",
+      "value": "(?i)codebuild"
+     }
+    ]
+   },
+   "to": "topic",
+   "justify": "the rule sending build status matches CodeBuild events"
+  },
+  {
+   "id": "rule_matches_codebuild",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "build status notifications",
+   "select": "rule",
+   "cond": {
+    "path": [
+     "EventPattern",
+     "source",
+     "*"
+    ],
+    "op": "eq",
+    "value": "aws.codebuild"
+   },
+   "justify": "build status events come from the CodeBuild event source"
+  },
+  {
+   "id": "project_uses_role",
+   "kind": "ref",
+   "tier": "core",
+   "quote": "The project should have an IAM role",
+   "from": "project",
+   "to": "role"
+  },
+  {
+   "id": "role_trusts_codebuild",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "The project should have an IAM role",
+   "select": "role",
+   "cond": {
+    "path": [
+     "AssumeRolePolicyDocument",
+     "Statement",
+     "*",
+     "Principal",
+     "Service",
+     "*"
+    ],
+    "op": "eq",
+    "value": "codebuild.amazonaws.com"
+   },
+   "justify": "a CodeBuild project role is assumed by the CodeBuild service"
+  },
+  {
+   "id": "role_s3",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "permissions for S3",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "cb_role",
+     "cond": {
+      "path": [
+       "Policies",
+       "*",
+       "PolicyDocument",
+       "Statement",
+       "*",
+       "Action",
+       "*"
+      ],
+      "op": "glob_covers",
+      "value": "s3:PutObject"
+     }
+    },
+    {
+     "kind": "ref",
+     "bidirectional": true,
+     "from": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy"
+      ],
+      "where": [
+       {
+        "path": [
+         "PolicyDocument",
+         "Statement",
+         "*",
+         "Action",
+         "*"
+        ],
+        "op": "glob_covers",
+        "value": "s3:PutObject"
+       }
+      ]
+     },
+     "to": "cb_role"
+    },
+    {
+     "kind": "attr",
+     "select": "cb_role",
+     "cond": {
+      "path": [
+       "ManagedPolicyArns",
+       "*"
+      ],
+      "op": "regex",
+      "value": "(?i)(AmazonS3FullAccess|AdministratorAccess)"
+     }
+    }
+   ],
+   "justify": "uploading templates to S3 needs object writes; read-only S3 cannot publish"
+  },
+  {
+   "id": "role_codecommit",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "CodeCommit",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "cb_role",
+     "cond": {
+      "path": [
+       "Policies",
+       "*",
+       "PolicyDocument",
+       "Statement",
+       "*",
+       "Action",
+       "*"
+      ],
+      "op": "regex",
+      "value": "(?i)^(codecommit:.+|\\*)$"
+     }
+    },
+    {
+     "kind": "ref",
+     "bidirectional": true,
+     "from": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy"
+      ],
+      "where": [
+       {
+        "path": [
+         "PolicyDocument",
+         "Statement",
+         "*",
+         "Action",
+         "*"
+        ],
+        "op": "regex",
+        "value": "(?i)^(codecommit:.+|\\*)$"
+       }
+      ]
+     },
+     "to": "cb_role"
+    },
+    {
+     "kind": "attr",
+     "select": "cb_role",
+     "cond": {
+      "path": [
+       "ManagedPolicyArns",
+       "*"
+      ],
+      "op": "regex",
+      "value": "(?i)(codecommit|AdministratorAccess)"
+     }
+    }
+   ],
+   "justify": "any CodeCommit action counts: the prompt names the service, not an action"
+  },
+  {
+   "id": "role_ec2_describe_regions",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "EC2 describe regions",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "cb_role",
+     "cond": {
+      "path": [
+       "Policies",
+       "*",
+       "PolicyDocument",
+       "Statement",
+       "*",
+       "Action",
+       "*"
+      ],
+      "op": "glob_covers",
+      "value": "ec2:DescribeRegions"
+     }
+    },
+    {
+     "kind": "ref",
+     "bidirectional": true,
+     "from": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy"
+      ],
+      "where": [
+       {
+        "path": [
+         "PolicyDocument",
+         "Statement",
+         "*",
+         "Action",
+         "*"
+        ],
+        "op": "glob_covers",
+        "value": "ec2:DescribeRegions"
+       }
+      ]
+     },
+     "to": "cb_role"
+    },
+    {
+     "kind": "attr",
+     "select": "cb_role",
+     "cond": {
+      "path": [
+       "ManagedPolicyArns",
+       "*"
+      ],
+      "op": "regex",
+      "value": "(?i)(ec2.{0,10}(readonly|fullaccess)|AdministratorAccess)"
+     }
+    }
+   ]
+  },
+  {
+   "id": "role_sts",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "STS",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "cb_role",
+     "cond": {
+      "path": [
+       "Policies",
+       "*",
+       "PolicyDocument",
+       "Statement",
+       "*",
+       "Action",
+       "*"
+      ],
+      "op": "regex",
+      "value": "(?i)^(sts:.+|\\*)$"
+     }
+    },
+    {
+     "kind": "ref",
+     "bidirectional": true,
+     "from": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy"
+      ],
+      "where": [
+       {
+        "path": [
+         "PolicyDocument",
+         "Statement",
+         "*",
+         "Action",
+         "*"
+        ],
+        "op": "regex",
+        "value": "(?i)^(sts:.+|\\*)$"
+       }
+      ]
+     },
+     "to": "cb_role"
+    },
+    {
+     "kind": "attr",
+     "select": "cb_role",
+     "cond": {
+      "path": [
+       "ManagedPolicyArns",
+       "*"
+      ],
+      "op": "regex",
+      "value": "(?i)AdministratorAccess"
+     }
+    }
+   ],
+   "justify": "any STS action counts: the prompt names the service, not an action"
+  },
+  {
+   "id": "role_logs",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "CloudWatch Logs",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "cb_role",
+     "cond": {
+      "path": [
+       "Policies",
+       "*",
+       "PolicyDocument",
+       "Statement",
+       "*",
+       "Action",
+       "*"
+      ],
+      "op": "regex",
+      "value": "(?i)^(logs:.+|\\*)$"
+     }
+    },
+    {
+     "kind": "ref",
+     "bidirectional": true,
+     "from": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy"
+      ],
+      "where": [
+       {
+        "path": [
+         "PolicyDocument",
+         "Statement",
+         "*",
+         "Action",
+         "*"
+        ],
+        "op": "regex",
+        "value": "(?i)^(logs:.+|\\*)$"
+       }
+      ]
+     },
+     "to": "cb_role"
+    },
+    {
+     "kind": "attr",
+     "select": "cb_role",
+     "cond": {
+      "path": [
+       "ManagedPolicyArns",
+       "*"
+      ],
+      "op": "regex",
+      "value": "(?i)(logs|cloudwatchfullaccess|AdministratorAccess)"
+     }
+    }
+   ],
+   "justify": "any CloudWatch Logs action counts: the prompt names the service, not an action"
+  },
+  {
+   "id": "role_ecr",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "and ECR",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "cb_role",
+     "cond": {
+      "path": [
+       "Policies",
+       "*",
+       "PolicyDocument",
+       "Statement",
+       "*",
+       "Action",
+       "*"
+      ],
+      "op": "regex",
+      "value": "(?i)^(ecr:.+|\\*)$"
+     }
+    },
+    {
+     "kind": "ref",
+     "bidirectional": true,
+     "from": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy"
+      ],
+      "where": [
+       {
+        "path": [
+         "PolicyDocument",
+         "Statement",
+         "*",
+         "Action",
+         "*"
+        ],
+        "op": "regex",
+        "value": "(?i)^(ecr:.+|\\*)$"
+       }
+      ]
+     },
+     "to": "cb_role"
+    },
+    {
+     "kind": "attr",
+     "select": "cb_role",
+     "cond": {
+      "path": [
+       "ManagedPolicyArns",
+       "*"
+      ],
+      "op": "regex",
+      "value": "(?i)(ecr|ContainerRegistry|AdministratorAccess)"
+     }
+    }
+   ],
+   "justify": "any ECR action counts: the prompt names the service, not an action"
+  },
+  {
+   "id": "buildspec_packages",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "handle packaging and uploading templates",
+   "select": "project",
+   "cond": {
+    "path": [
+     "Source",
+     "BuildSpec"
+    ],
+    "op": "regex",
+    "value": "(?i)(packag|\\bzip\\b|\\btar\\b|archive)"
+   },
+   "justify": "packaging templates"
+  },
+  {
+   "id": "buildspec_uploads",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "handle packaging and uploading templates",
+   "select": "project",
+   "cond": {
+    "path": [
+     "Source",
+     "BuildSpec"
+    ],
+    "op": "regex",
+    "value": "(?i)(s3\\s+(cp|sync|mv)|put[-_]object|upload_file)"
+   },
+   "justify": "uploading templates"
+  },
+  {
+   "id": "buildspec_creates_regional_buckets",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "creating region-specific buckets",
+   "select": "project",
+   "cond": {
+    "path": [
+     "Source",
+     "BuildSpec"
+    ],
+    "op": "regex",
+    "value": "(?i)(s3\\s+mb|create-bucket|make_bucket|mb\\s+s3)"
+   },
+   "justify": "creating buckets"
+  },
+  {
+   "id": "buildspec_all_regions",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "publish CloudFormation templates to S3 buckets in every AWS region",
+   "select": "project",
+   "cond": {
+    "path": [
+     "Source",
+     "BuildSpec"
+    ],
+    "op": "regex",
+    "value": "(?i)(describe[-_]regions|list[-_]regions|for\\s+\\$?\\w*region)"
+   },
+   "justify": "covering every region means discovering or looping over regions"
+  },
+  {
+   "id": "buildspec_index_page",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "generating an index page",
+   "select": "project",
+   "cond": {
+    "path": [
+     "Source",
+     "BuildSpec"
+    ],
+    "op": "regex",
+    "value": "(?i)(index\\.html?|index[ _-]?page)"
+   },
+   "justify": "an index page is an index.html or is named as one"
+  },
+  {
+   "id": "x_topic_kms_encrypted",
+   "kind": "attr",
+   "tier": "extra",
+   "select": "topic",
+   "cond": {
+    "path": [
+     "KmsMasterKeyId"
+    ],
+    "op": "present"
+   }
+  },
+  {
+   "id": "x_topic_policy_events",
+   "kind": "ref",
+   "tier": "extra",
+   "from": {
+    "types": [
+     "AWS::SNS::TopicPolicy"
+    ],
+    "where": []
+   },
+   "to": "topic"
+  },
+  {
+   "id": "x_rule_enabled",
+   "kind": "attr",
+   "tier": "extra",
+   "select": "rule",
+   "cond": {
+    "path": [
+     "State"
+    ],
+    "op": "eq",
+    "value": "ENABLED"
+   }
+  },
+  {
+   "id": "x_project_no_artifacts",
+   "kind": "attr",
+   "tier": "extra",
+   "select": "project",
+   "cond": {
+    "path": [
+     "Artifacts",
+     "Type"
+    ],
+    "op": "eq",
+    "value": "NO_ARTIFACTS"
+   }
+  },
+  {
+   "id": "extra_type_aws_kms_key",
+   "kind": "exists",
+   "tier": "extra",
+   "select": {
+    "types": [
+     "AWS::KMS::Key"
+    ],
+    "where": []
+   }
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

@@ -1,0 +1,418 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "9155821467ab8b0d23d67a880a8d2de8f1c3a52b7063c848743acb1314957141",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "EventBus",
+   "cfg": "EventBus",
+   "type": "AWS::Events::EventBus",
+   "values": {
+    "Name": "retaildemostore-bus"
+   },
+   "refs": []
+  },
+  {
+   "id": "CatchAllRule",
+   "cfg": "CatchAllRule",
+   "type": "AWS::Events::Rule",
+   "values": {
+    "Name": "CatchAllRetailDemoStoreEventsToCloudWatchLogs",
+    "EventBusName": {
+     "ref": "EventBus"
+    },
+    "EventPattern": {
+     "source": [
+      "*"
+     ]
+    },
+    "State": "DISABLED",
+    "RoleArn": {
+     "ref": "IAMEventsToCloudWatch",
+     "attr": "Arn"
+    },
+    "Targets": [
+     {
+      "Arn": {
+       "ref": "CatchAllEventsLogGroup",
+       "attr": "Arn"
+      },
+      "Id": "CatchAll-RetailDemoStore-Events"
+     }
+    ]
+   },
+   "refs": [
+    "CatchAllEventsLogGroup",
+    "EventBus",
+    "IAMEventsToCloudWatch"
+   ]
+  },
+  {
+   "id": "CatchAllEventsLogGroup",
+   "cfg": "CatchAllEventsLogGroup",
+   "type": "AWS::Logs::LogGroup",
+   "values": {
+    "LogGroupName": "retaildemostore-log",
+    "RetentionInDays": 120,
+    "__resource__": {
+     "DeletionPolicy": "Delete",
+     "UpdateReplacePolicy": "Delete"
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "IAMEventsToCloudWatch",
+   "cfg": "IAMEventsToCloudWatch",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "events.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Policies": [
+     {
+      "PolicyName": "EventBridgeToCloudWatchLogs",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "logs:CreateLogStream",
+          "logs:PutLogEvents",
+          "logs:DescribeLogGroups",
+          "logs:DescribeLogStreams"
+         ],
+         "Resource": {
+          "ref": "CatchAllEventsLogGroup",
+          "attr": "Arn"
+         }
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": [
+    "CatchAllEventsLogGroup"
+   ]
+  },
+  {
+   "id": "EventArchive",
+   "cfg": "EventArchive",
+   "type": "AWS::Events::Archive",
+   "values": {
+    "ArchiveName": "retaildemostore-arch",
+    "RetentionDays": 120,
+    "SourceArn": {
+     "ref": "EventBus",
+     "attr": "Arn"
+    },
+    "Description": "Holds a 120 day archive of events from the Retail Demo store event bus",
+    "__resource__": {
+     "DeletionPolicy": "Delete"
+    }
+   },
+   "refs": [
+    "EventBus"
+   ]
+  },
+  {
+   "id": "EventDiscoverer",
+   "cfg": "EventDiscoverer",
+   "type": "AWS::EventSchemas::Discoverer",
+   "values": {
+    "SourceArn": {
+     "ref": "EventBus",
+     "attr": "Arn"
+    }
+   },
+   "refs": [
+    "EventBus"
+   ]
+  },
+  {
+   "id": "SSMParamForEventBus",
+   "cfg": "SSMParamForEventBus",
+   "type": "AWS::SSM::Parameter",
+   "values": {
+    "Description": "The Name of the Retail Demo Store application EventBridge event bus",
+    "Name": "RetailDemoStore-eventbus",
+    "Type": "String",
+    "Value": {
+     "ref": "EventBus"
+    }
+   },
+   "refs": [
+    "EventBus"
+   ]
+  },
+  {
+   "id": "__parameter__.Uid",
+   "cfg": "__parameter__.Uid",
+   "type": "__parameter__",
+   "values": {
+    "name": "Uid",
+    "type": "String",
+    "default": "retaildemostore",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.EventBusName",
+   "cfg": "__output__.EventBusName",
+   "type": "__output__",
+   "values": {
+    "name": "EventBusName",
+    "value": {
+     "ref": "EventBus"
+    },
+    "description": "The name of the EventBridge event bus",
+    "export": "retaildemostore-bus"
+   },
+   "refs": [
+    "EventBus"
+   ]
+  },
+  {
+   "id": "__output__.SSMParameterForEventBus",
+   "cfg": "__output__.SSMParameterForEventBus",
+   "type": "__output__",
+   "values": {
+    "name": "SSMParameterForEventBus",
+    "value": {
+     "ref": "SSMParamForEventBus"
+    },
+    "description": "SSM Parameter storing the EventBridge event bus name for services to use",
+    "export": null
+   },
+   "refs": [
+    "SSMParamForEventBus"
+   ]
+  },
+  {
+   "id": "__output__.LoggingInformation",
+   "cfg": "__output__.LoggingInformation",
+   "type": "__output__",
+   "values": {
+    "name": "LoggingInformation",
+    "value": "The catch-all rule named 'CatchAllRetailDemoStoreEventsToCloudWatchLogs' is disabled by default. When enabled, all events will log to the '${CatchAllEventsLogGroup}' CloudWatch Log Group.",
+    "description": "Information on catch-all logging",
+    "export": null
+   },
+   "refs": [
+    "CatchAllEventsLogGroup"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::Events::EventBus.EventBus",
+   "cfg": "EventBus",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Events::EventBus",
+    "name": "EventBus",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "retaildemostore-bus"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Events::Rule.CatchAllRule",
+   "cfg": "CatchAllRule",
+   "type": "__declared__",
+   "refs": [
+    "CatchAllEventsLogGroup",
+    "EventBus",
+    "IAMEventsToCloudWatch"
+   ],
+   "values": {
+    "type": "AWS::Events::Rule",
+    "name": "CatchAllRule",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "CatchAllRetailDemoStoreEventsToCloudWatchLogs",
+     "EventBusName": {
+      "ref": "EventBus"
+     },
+     "EventPattern": {
+      "source": [
+       "*"
+      ]
+     },
+     "State": "DISABLED",
+     "RoleArn": {
+      "ref": "IAMEventsToCloudWatch",
+      "attr": "Arn"
+     },
+     "Targets": [
+      {
+       "Arn": {
+        "ref": "CatchAllEventsLogGroup",
+        "attr": "Arn"
+       },
+       "Id": "CatchAll-RetailDemoStore-Events"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::LogGroup.CatchAllEventsLogGroup",
+   "cfg": "CatchAllEventsLogGroup",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Logs::LogGroup",
+    "name": "CatchAllEventsLogGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "LogGroupName": "retaildemostore-log",
+     "RetentionInDays": 120
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.IAMEventsToCloudWatch",
+   "cfg": "IAMEventsToCloudWatch",
+   "type": "__declared__",
+   "refs": [
+    "CatchAllEventsLogGroup"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "IAMEventsToCloudWatch",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "events.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Policies": [
+      {
+       "PolicyName": "EventBridgeToCloudWatchLogs",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "logs:CreateLogStream",
+           "logs:PutLogEvents",
+           "logs:DescribeLogGroups",
+           "logs:DescribeLogStreams"
+          ],
+          "Resource": {
+           "ref": "CatchAllEventsLogGroup",
+           "attr": "Arn"
+          }
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Events::Archive.EventArchive",
+   "cfg": "EventArchive",
+   "type": "__declared__",
+   "refs": [
+    "EventBus"
+   ],
+   "values": {
+    "type": "AWS::Events::Archive",
+    "name": "EventArchive",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ArchiveName": "retaildemostore-arch",
+     "RetentionDays": 120,
+     "SourceArn": {
+      "ref": "EventBus",
+      "attr": "Arn"
+     },
+     "Description": "Holds a 120 day archive of events from the Retail Demo store event bus"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EventSchemas::Discoverer.EventDiscoverer",
+   "cfg": "EventDiscoverer",
+   "type": "__declared__",
+   "refs": [
+    "EventBus"
+   ],
+   "values": {
+    "type": "AWS::EventSchemas::Discoverer",
+    "name": "EventDiscoverer",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "SourceArn": {
+      "ref": "EventBus",
+      "attr": "Arn"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SSM::Parameter.SSMParamForEventBus",
+   "cfg": "SSMParamForEventBus",
+   "type": "__declared__",
+   "refs": [
+    "EventBus"
+   ],
+   "values": {
+    "type": "AWS::SSM::Parameter",
+    "name": "SSMParamForEventBus",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Description": "The Name of the Retail Demo Store application EventBridge event bus",
+     "Name": "RetailDemoStore-eventbus",
+     "Type": "String",
+     "Value": {
+      "ref": "EventBus"
+     }
+    }
+   }
+  }
+ ]
+}

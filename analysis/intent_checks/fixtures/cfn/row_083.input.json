@@ -1,0 +1,604 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "fdf973e1d41f1b1d1cbc98d998325969e3e9297c7b99647ddd269b2bd66b8190",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "UserPool",
+   "cfg": "UserPool",
+   "type": "AWS::Cognito::UserPool",
+   "values": {
+    "UserPoolName": "OLSGatewayPool",
+    "MfaConfiguration": "OPTIONAL",
+    "EnabledMfas": [
+     "SOFTWARE_TOKEN_MFA"
+    ],
+    "UsernameConfiguration": {
+     "CaseSensitive": false
+    },
+    "UsernameAttributes": [
+     "email"
+    ],
+    "AutoVerifiedAttributes": [
+     "email"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "ResourceServer",
+   "cfg": "ResourceServer",
+   "type": "AWS::Cognito::UserPoolResourceServer",
+   "values": {
+    "UserPoolId": {
+     "ref": "UserPool"
+    },
+    "Identifier": "default-m2m-resource-server-id",
+    "Name": "Default M2M Resource Server -id",
+    "Scopes": [
+     {
+      "ScopeName": "read",
+      "ScopeDescription": "Read access to OLS MCP Runtime tools"
+     }
+    ]
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "MachineUserPoolClient",
+   "cfg": "MachineUserPoolClient",
+   "type": "AWS::Cognito::UserPoolClient",
+   "values": {
+    "ClientName": "OLSMachineClient",
+    "UserPoolId": {
+     "ref": "UserPool"
+    },
+    "GenerateSecret": true,
+    "ExplicitAuthFlows": [
+     "ALLOW_REFRESH_TOKEN_AUTH"
+    ],
+    "RefreshTokenValidity": 1,
+    "AccessTokenValidity": 60,
+    "IdTokenValidity": 60,
+    "TokenValidityUnits": {
+     "AccessToken": "minutes",
+     "IdToken": "minutes",
+     "RefreshToken": "days"
+    },
+    "AllowedOAuthFlows": [
+     "client_credentials"
+    ],
+    "AllowedOAuthScopes": [
+     "default-m2m-resource-server-id/read"
+    ],
+    "AllowedOAuthFlowsUserPoolClient": true,
+    "SupportedIdentityProviders": [
+     "COGNITO"
+    ],
+    "EnableTokenRevocation": true,
+    "__resource__": {
+     "DependsOn": [
+      "ResourceServer"
+     ]
+    }
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "UserPoolDomain",
+   "cfg": "UserPoolDomain",
+   "type": "AWS::Cognito::UserPoolDomain",
+   "values": {
+    "UserPoolId": {
+     "ref": "UserPool"
+    },
+    "Domain": "us-east-1id-ols"
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "CognitoMachineClientIdParameter",
+   "cfg": "CognitoMachineClientIdParameter",
+   "type": "AWS::SSM::Parameter",
+   "values": {
+    "Name": "/app/ontology-lookup-service/agentcore/machine_client_id",
+    "Type": "String",
+    "Value": {
+     "ref": "MachineUserPoolClient"
+    },
+    "Description": "Machine Cognito client ID",
+    "Tags": {
+     "Application": "ontology-lookup-service"
+    }
+   },
+   "refs": [
+    "MachineUserPoolClient"
+   ]
+  },
+  {
+   "id": "CognitoMachineClientSecretParameter",
+   "cfg": "CognitoMachineClientSecretParameter",
+   "type": "AWS::SSM::Parameter",
+   "values": {
+    "Name": "/app/ontology-lookup-service/agentcore/cognito_secret",
+    "Type": "String",
+    "Value": {
+     "ref": "MachineUserPoolClient",
+     "attr": "ClientSecret"
+    },
+    "Description": "Machine Cognito client secret",
+    "Tags": {
+     "Application": "ontology-lookup-service"
+    }
+   },
+   "refs": [
+    "MachineUserPoolClient"
+   ]
+  },
+  {
+   "id": "UserPoolIdParameter",
+   "cfg": "UserPoolIdParameter",
+   "type": "AWS::SSM::Parameter",
+   "values": {
+    "Name": "/app/ontology-lookup-service/agentcore/userpool_id",
+    "Type": "String",
+    "Value": {
+     "ref": "UserPool"
+    },
+    "Description": "Cognito User Pool ID",
+    "Tags": {
+     "Application": "ontology-lookup-service"
+    }
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "CognitoAuthScopeParameter",
+   "cfg": "CognitoAuthScopeParameter",
+   "type": "AWS::SSM::Parameter",
+   "values": {
+    "Name": "/app/ontology-lookup-service/agentcore/cognito_auth_scope",
+    "Type": "String",
+    "Value": "default-m2m-resource-server-id/read",
+    "Description": "OAuth2 scope for Cognito auth",
+    "Tags": {
+     "Application": "ontology-lookup-service"
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "CognitoDiscoveryURLParameter",
+   "cfg": "CognitoDiscoveryURLParameter",
+   "type": "AWS::SSM::Parameter",
+   "values": {
+    "Name": "/app/ontology-lookup-service/agentcore/cognito_discovery_url",
+    "Type": "String",
+    "Value": "https://cognito-idp.us-east-1.amazonaws.com/${UserPool}/.well-known/openid-configuration",
+    "Description": "OAuth2 Discovery URL",
+    "Tags": {
+     "Application": "ontology-lookup-service"
+    }
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "CognitoTokenURLParameter",
+   "cfg": "CognitoTokenURLParameter",
+   "type": "AWS::SSM::Parameter",
+   "values": {
+    "Name": "/app/ontology-lookup-service/agentcore/cognito_token_url",
+    "Type": "String",
+    "Value": "https://us-east-1id-ols.auth.us-east-1.amazoncognito.com/oauth2/token",
+    "Description": "OAuth2 Token URL",
+    "Tags": {
+     "Application": "ontology-lookup-service"
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "CognitoDomainParameter",
+   "cfg": "CognitoDomainParameter",
+   "type": "AWS::SSM::Parameter",
+   "values": {
+    "Name": "/app/ontology-lookup-service/agentcore/cognito_domain",
+    "Type": "String",
+    "Value": "https://us-east-1id-ols.auth.us-east-1.amazoncognito.com",
+    "Description": "Cognito hosted domain for OAuth2",
+    "Tags": {
+     "Application": "ontology-lookup-service"
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.AppName",
+   "cfg": "__parameter__.AppName",
+   "type": "__parameter__",
+   "values": {
+    "name": "AppName",
+    "type": "String",
+    "default": "ontology-lookup-service",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.UserPoolName",
+   "cfg": "__parameter__.UserPoolName",
+   "type": "__parameter__",
+   "values": {
+    "name": "UserPoolName",
+    "type": "String",
+    "default": "OLSGatewayPool",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.MachineAppClientName",
+   "cfg": "__parameter__.MachineAppClientName",
+   "type": "__parameter__",
+   "values": {
+    "name": "MachineAppClientName",
+    "type": "String",
+    "default": "OLSMachineClient",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.UserPoolId",
+   "cfg": "__output__.UserPoolId",
+   "type": "__output__",
+   "values": {
+    "name": "UserPoolId",
+    "value": {
+     "ref": "UserPool"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "__output__.MachineClientId",
+   "cfg": "__output__.MachineClientId",
+   "type": "__output__",
+   "values": {
+    "name": "MachineClientId",
+    "value": {
+     "ref": "MachineUserPoolClient"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "MachineUserPoolClient"
+   ]
+  },
+  {
+   "id": "__output__.DiscoveryUrl",
+   "cfg": "__output__.DiscoveryUrl",
+   "type": "__output__",
+   "values": {
+    "name": "DiscoveryUrl",
+    "value": "https://cognito-idp.us-east-1.amazonaws.com/${UserPool}/.well-known/openid-configuration",
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "__output__.CognitoDomain",
+   "cfg": "__output__.CognitoDomain",
+   "type": "__output__",
+   "values": {
+    "name": "CognitoDomain",
+    "value": "https://us-east-1id-ols.auth.us-east-1.amazoncognito.com",
+    "description": null,
+    "export": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPool.UserPool",
+   "cfg": "UserPool",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Cognito::UserPool",
+    "name": "UserPool",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "UserPoolName": "OLSGatewayPool",
+     "MfaConfiguration": "OPTIONAL",
+     "EnabledMfas": [
+      "SOFTWARE_TOKEN_MFA"
+     ],
+     "UsernameConfiguration": {
+      "CaseSensitive": false
+     },
+     "UsernameAttributes": [
+      "email"
+     ],
+     "AutoVerifiedAttributes": [
+      "email"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolResourceServer.ResourceServer",
+   "cfg": "ResourceServer",
+   "type": "__declared__",
+   "refs": [
+    "UserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolResourceServer",
+    "name": "ResourceServer",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "UserPoolId": {
+      "ref": "UserPool"
+     },
+     "Identifier": "default-m2m-resource-server-id",
+     "Name": "Default M2M Resource Server -id",
+     "Scopes": [
+      {
+       "ScopeName": "read",
+       "ScopeDescription": "Read access to OLS MCP Runtime tools"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolClient.MachineUserPoolClient",
+   "cfg": "MachineUserPoolClient",
+   "type": "__declared__",
+   "refs": [
+    "UserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolClient",
+    "name": "MachineUserPoolClient",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ClientName": "OLSMachineClient",
+     "UserPoolId": {
+      "ref": "UserPool"
+     },
+     "GenerateSecret": true,
+     "ExplicitAuthFlows": [
+      "ALLOW_REFRESH_TOKEN_AUTH"
+     ],
+     "RefreshTokenValidity": 1,
+     "AccessTokenValidity": 60,
+     "IdTokenValidity": 60,
+     "TokenValidityUnits": {
+      "AccessToken": "minutes",
+      "IdToken": "minutes",
+      "RefreshToken": "days"
+     },
+     "AllowedOAuthFlows": [
+      "client_credentials"
+     ],
+     "AllowedOAuthScopes": [
+      "default-m2m-resource-server-id/read"
+     ],
+     "AllowedOAuthFlowsUserPoolClient": true,
+     "SupportedIdentityProviders": [
+      "COGNITO"
+     ],
+     "EnableTokenRevocation": true
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolDomain.UserPoolDomain",
+   "cfg": "UserPoolDomain",
+   "type": "__declared__",
+   "refs": [
+    "UserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolDomain",
+    "name": "UserPoolDomain",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "UserPoolId": {
+      "ref": "UserPool"
+     },
+     "Domain": "us-east-1id-ols"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SSM::Parameter.CognitoMachineClientIdParameter",
+   "cfg": "CognitoMachineClientIdParameter",
+   "type": "__declared__",
+   "refs": [
+    "MachineUserPoolClient"
+   ],
+   "values": {
+    "type": "AWS::SSM::Parameter",
+    "name": "CognitoMachineClientIdParameter",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "/app/ontology-lookup-service/agentcore/machine_client_id",
+     "Type": "String",
+     "Value": {
+      "ref": "MachineUserPoolClient"
+     },
+     "Description": "Machine Cognito client ID",
+     "Tags": {
+      "Application": "ontology-lookup-service"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SSM::Parameter.CognitoMachineClientSecretParameter",
+   "cfg": "CognitoMachineClientSecretParameter",
+   "type": "__declared__",
+   "refs": [
+    "MachineUserPoolClient"
+   ],
+   "values": {
+    "type": "AWS::SSM::Parameter",
+    "name": "CognitoMachineClientSecretParameter",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "/app/ontology-lookup-service/agentcore/cognito_secret",
+     "Type": "String",
+     "Value": {
+      "ref": "MachineUserPoolClient",
+      "attr": "ClientSecret"
+     },
+     "Description": "Machine Cognito client secret",
+     "Tags": {
+      "Application": "ontology-lookup-service"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SSM::Parameter.UserPoolIdParameter",
+   "cfg": "UserPoolIdParameter",
+   "type": "__declared__",
+   "refs": [
+    "UserPool"
+   ],
+   "values": {
+    "type": "AWS::SSM::Parameter",
+    "name": "UserPoolIdParameter",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "/app/ontology-lookup-service/agentcore/userpool_id",
+     "Type": "String",
+     "Value": {
+      "ref": "UserPool"
+     },
+     "Description": "Cognito User Pool ID",
+     "Tags": {
+      "Application": "ontology-lookup-service"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SSM::Parameter.CognitoAuthScopeParameter",
+   "cfg": "CognitoAuthScopeParameter",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::SSM::Parameter",
+    "name": "CognitoAuthScopeParameter",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "/app/ontology-lookup-service/agentcore/cognito_auth_scope",
+     "Type": "String",
+     "Value": "default-m2m-resource-server-id/read",
+     "Description": "OAuth2 scope for Cognito auth",
+     "Tags": {
+      "Application": "ontology-lookup-service"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SSM::Parameter.CognitoDiscoveryURLParameter",
+   "cfg": "CognitoDiscoveryURLParameter",
+   "type": "__declared__",
+   "refs": [
+    "UserPool"
+   ],
+   "values": {
+    "type": "AWS::SSM::Parameter",
+    "name": "CognitoDiscoveryURLParameter",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "/app/ontology-lookup-service/agentcore/cognito_discovery_url",
+     "Type": "String",
+     "Value": "https://cognito-idp.us-east-1.amazonaws.com/${UserPool}/.well-known/openid-configuration",
+     "Description": "OAuth2 Discovery URL",
+     "Tags": {
+      "Application": "ontology-lookup-service"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SSM::Parameter.CognitoTokenURLParameter",
+   "cfg": "CognitoTokenURLParameter",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::SSM::Parameter",
+    "name": "CognitoTokenURLParameter",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "/app/ontology-lookup-service/agentcore/cognito_token_url",
+     "Type": "String",
+     "Value": "https://us-east-1id-ols.auth.us-east-1.amazoncognito.com/oauth2/token",
+     "Description": "OAuth2 Token URL",
+     "Tags": {
+      "Application": "ontology-lookup-service"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SSM::Parameter.CognitoDomainParameter",
+   "cfg": "CognitoDomainParameter",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::SSM::Parameter",
+    "name": "CognitoDomainParameter",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "/app/ontology-lookup-service/agentcore/cognito_domain",
+     "Type": "String",
+     "Value": "https://us-east-1id-ols.auth.us-east-1.amazoncognito.com",
+     "Description": "Cognito hosted domain for OAuth2",
+     "Tags": {
+      "Application": "ontology-lookup-service"
+     }
+    }
+   }
+  }
+ ]
+}

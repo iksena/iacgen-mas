@@ -1,0 +1,151 @@
+{
+ "lang": "cfn",
+ "row_number": 18,
+ "source_hash": {
+  "gt": "0479a2eed664179d5f44b6d22622df038c06f2bdb782022053576316d7ea8e41",
+  "prompt": "1097968f60ae86c4fdc9e4b2c1f58b02ec7ed20ad3d2bf272c77f1bb64143b59"
+ },
+ "selectors": {
+  "b": {
+   "types": [
+    "AWS::Budgets::Budget"
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "budget",
+   "kind": "exists",
+   "select": "b",
+   "tier": "core",
+   "quote": "creates a monthly cost budget"
+  },
+  {
+   "id": "budget_monthly",
+   "kind": "attr",
+   "select": "b",
+   "cond": {
+    "path": "Budget.TimeUnit",
+    "op": "eq",
+    "value": "MONTHLY"
+   },
+   "tier": "core",
+   "quote": "a monthly cost budget"
+  },
+  {
+   "id": "budget_cost_type",
+   "kind": "attr",
+   "select": "b",
+   "cond": {
+    "path": "Budget.BudgetType",
+    "op": "eq",
+    "value": "COST"
+   },
+   "tier": "core",
+   "quote": "cost budget"
+  },
+  {
+   "id": "budget_amount",
+   "kind": "attr",
+   "select": "b",
+   "cond": {
+    "path": "Budget.BudgetLimit.Amount",
+    "op": "regex",
+    "value": "^100(\\.0+)?$"
+   },
+   "tier": "core",
+   "quote": "$100 USD"
+  },
+  {
+   "id": "budget_unit",
+   "kind": "attr",
+   "select": "b",
+   "cond": {
+    "path": "Budget.BudgetLimit.Unit",
+    "op": "eq",
+    "value": "USD"
+   },
+   "tier": "core",
+   "quote": "$100 USD"
+  },
+  {
+   "id": "alert_80",
+   "kind": "attr",
+   "select": "b",
+   "cond": {
+    "path": "NotificationsWithSubscribers.*",
+    "op": "match",
+    "value": [
+     {
+      "path": "Notification.Threshold",
+      "op": "eq",
+      "value": 80
+     },
+     {
+      "path": "Notification.NotificationType",
+      "op": "eq",
+      "value": "ACTUAL"
+     },
+     {
+      "path": "Notification.ComparisonOperator",
+      "op": "eq",
+      "value": "GREATER_THAN"
+     },
+     {
+      "path": "Subscribers.*.SubscriptionType",
+      "op": "eq",
+      "value": "EMAIL"
+     },
+     {
+      "path": "Subscribers.*.Address",
+      "op": "eq",
+      "value": "email@example.com"
+     }
+    ]
+   },
+   "tier": "core",
+   "quote": "email alerts sent to email@example.com when actual costs exceed 80%",
+   "justify": "exceed implies GREATER_THAN"
+  },
+  {
+   "id": "alert_99",
+   "kind": "attr",
+   "select": "b",
+   "cond": {
+    "path": "NotificationsWithSubscribers.*",
+    "op": "match",
+    "value": [
+     {
+      "path": "Notification.Threshold",
+      "op": "eq",
+      "value": 99
+     },
+     {
+      "path": "Notification.NotificationType",
+      "op": "eq",
+      "value": "ACTUAL"
+     },
+     {
+      "path": "Notification.ComparisonOperator",
+      "op": "eq",
+      "value": "GREATER_THAN"
+     },
+     {
+      "path": "Subscribers.*.SubscriptionType",
+      "op": "eq",
+      "value": "EMAIL"
+     },
+     {
+      "path": "Subscribers.*.Address",
+      "op": "eq",
+      "value": "email@example.com"
+     }
+    ]
+   },
+   "tier": "core",
+   "quote": "email alerts sent to email@example.com when actual costs exceed 80% and 99% of the budget",
+   "justify": "exceed implies GREATER_THAN"
+  }
+ ],
+ "notes": "alert_80 and alert_99 keep failing OneShot_DSV4F: it writes a Notifications property, which AWS::Budgets::Budget does not have (NotificationsWithSubscribers is the property). A subscriber routed through an SNS topic with an email subscription is not accepted; no real template wrote it. ThresholdType is unchecked because 80 and 99 mean the same on a $100 budget either way."
+}

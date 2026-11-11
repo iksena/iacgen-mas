@@ -1,0 +1,748 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "sam_expanded",
+  "warnings": [],
+  "gt_hash": "1f98e7ff89a6bcc792e5a122b00c880eb7aff646633c17a87d405c18d62d7a93",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "UserPool",
+   "cfg": "UserPool",
+   "type": "AWS::Cognito::UserPool",
+   "values": {
+    "UserPoolName": "dva-lab-04-05-pool",
+    "AutoVerifiedAttributes": [
+     "email"
+    ],
+    "UsernameAttributes": [
+     "email"
+    ],
+    "Policies": {
+     "PasswordPolicy": {
+      "MinimumLength": 8,
+      "RequireUppercase": true,
+      "RequireLowercase": true,
+      "RequireNumbers": true,
+      "RequireSymbols": true
+     }
+    },
+    "Schema": [
+     {
+      "Name": "email",
+      "AttributeDataType": "String",
+      "Required": true,
+      "Mutable": true
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "UserPoolClient",
+   "cfg": "UserPoolClient",
+   "type": "AWS::Cognito::UserPoolClient",
+   "values": {
+    "ClientName": "dva-lab-04-05-cli",
+    "UserPoolId": {
+     "ref": "UserPool"
+    },
+    "GenerateSecret": false,
+    "ExplicitAuthFlows": [
+     "ALLOW_ADMIN_USER_PASSWORD_AUTH",
+     "ALLOW_REFRESH_TOKEN_AUTH",
+     "ALLOW_USER_PASSWORD_AUTH"
+    ],
+    "AccessTokenValidity": 60,
+    "IdTokenValidity": 60,
+    "RefreshTokenValidity": 30,
+    "TokenValidityUnits": {
+     "AccessToken": "minutes",
+     "IdToken": "minutes",
+     "RefreshToken": "days"
+    }
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "RestApi",
+   "cfg": "RestApi",
+   "type": "AWS::ApiGateway::RestApi",
+   "values": {
+    "Name": "dva-lab-04-05-api",
+    "EndpointConfiguration": {
+     "Types": [
+      "REGIONAL"
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "Authorizer",
+   "cfg": "Authorizer",
+   "type": "AWS::ApiGateway::Authorizer",
+   "values": {
+    "Name": "dva-lab-04-05-cognito-authorizer",
+    "RestApiId": {
+     "ref": "RestApi"
+    },
+    "Type": "COGNITO_USER_POOLS",
+    "IdentitySource": "method.request.header.Authorization",
+    "ProviderARNs": [
+     {
+      "ref": "UserPool",
+      "attr": "Arn"
+     }
+    ]
+   },
+   "refs": [
+    "RestApi",
+    "UserPool"
+   ]
+  },
+  {
+   "id": "MeResource",
+   "cfg": "MeResource",
+   "type": "AWS::ApiGateway::Resource",
+   "values": {
+    "RestApiId": {
+     "ref": "RestApi"
+    },
+    "ParentId": {
+     "ref": "RestApi",
+     "attr": "RootResourceId"
+    },
+    "PathPart": "me"
+   },
+   "refs": [
+    "RestApi"
+   ]
+  },
+  {
+   "id": "MeMethod",
+   "cfg": "MeMethod",
+   "type": "AWS::ApiGateway::Method",
+   "values": {
+    "RestApiId": {
+     "ref": "RestApi"
+    },
+    "ResourceId": {
+     "ref": "MeResource"
+    },
+    "HttpMethod": "GET",
+    "AuthorizationType": "COGNITO_USER_POOLS",
+    "AuthorizerId": {
+     "ref": "Authorizer"
+    },
+    "Integration": {
+     "Type": "AWS_PROXY",
+     "IntegrationHttpMethod": "POST",
+     "Uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/${EchoFunction.Arn}/invocations"
+    }
+   },
+   "refs": [
+    "Authorizer",
+    "EchoFunction",
+    "MeResource",
+    "RestApi"
+   ]
+  },
+  {
+   "id": "OpenResource",
+   "cfg": "OpenResource",
+   "type": "AWS::ApiGateway::Resource",
+   "values": {
+    "RestApiId": {
+     "ref": "RestApi"
+    },
+    "ParentId": {
+     "ref": "RestApi",
+     "attr": "RootResourceId"
+    },
+    "PathPart": "open"
+   },
+   "refs": [
+    "RestApi"
+   ]
+  },
+  {
+   "id": "OpenMethod",
+   "cfg": "OpenMethod",
+   "type": "AWS::ApiGateway::Method",
+   "values": {
+    "RestApiId": {
+     "ref": "RestApi"
+    },
+    "ResourceId": {
+     "ref": "OpenResource"
+    },
+    "HttpMethod": "GET",
+    "AuthorizationType": "NONE",
+    "Integration": {
+     "Type": "AWS_PROXY",
+     "IntegrationHttpMethod": "POST",
+     "Uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/${EchoFunction.Arn}/invocations"
+    }
+   },
+   "refs": [
+    "EchoFunction",
+    "OpenResource",
+    "RestApi"
+   ]
+  },
+  {
+   "id": "EchoFunctionPermission",
+   "cfg": "EchoFunctionPermission",
+   "type": "AWS::Lambda::Permission",
+   "values": {
+    "Action": "lambda:InvokeFunction",
+    "FunctionName": {
+     "ref": "EchoFunction"
+    },
+    "Principal": "apigateway.amazonaws.com",
+    "SourceArn": "arn:aws:execute-api:us-east-1:123456789012:${RestApi}/*/*/*"
+   },
+   "refs": [
+    "EchoFunction",
+    "RestApi"
+   ]
+  },
+  {
+   "id": "Deployment",
+   "cfg": "Deployment",
+   "type": "AWS::ApiGateway::Deployment",
+   "values": {
+    "RestApiId": {
+     "ref": "RestApi"
+    },
+    "Description": "Lab 4.5 deployment",
+    "__resource__": {
+     "DependsOn": [
+      "MeMethod",
+      "OpenMethod"
+     ]
+    }
+   },
+   "refs": [
+    "RestApi"
+   ]
+  },
+  {
+   "id": "Stage",
+   "cfg": "Stage",
+   "type": "AWS::ApiGateway::Stage",
+   "values": {
+    "StageName": "prod",
+    "RestApiId": {
+     "ref": "RestApi"
+    },
+    "DeploymentId": {
+     "ref": "Deployment"
+    }
+   },
+   "refs": [
+    "Deployment",
+    "RestApi"
+   ]
+  },
+  {
+   "id": "EchoFunction",
+   "cfg": "EchoFunction",
+   "type": "AWS::Lambda::Function",
+   "values": {
+    "Code": {
+     "ZipFile": "import json\ndef handler(event, context):\n    ctx = event.get(\"requestContext\", {})\n    authorizer = ctx.get(\"authorizer\", {})\n    claims = authorizer.get(\"claims\", {})\n    return {\n        \"statusCode\": 200,\n        \"headers\": {\"Content-Type\": \"application/json\"},\n        \"body\": json.dumps({\n            \"path\": event.get(\"path\"),\n            \"method\": event.get(\"httpMethod\"),\n            \"claims\": claims,\n            \"message\": (\n                \"you are authenticated as \" + claims.get(\"email\", \"unknown\")\n                if claims else \"open endpoint \u2014 no claims\"\n            ),\n        }),\n    }\n"
+    },
+    "FunctionName": "dva-lab-04-05-echo",
+    "Handler": "index.handler",
+    "Role": {
+     "ref": "EchoFunctionRole",
+     "attr": "Arn"
+    },
+    "Runtime": "python3.12",
+    "Tags": [
+     {
+      "Key": "lambda:createdBy",
+      "Value": "SAM"
+     }
+    ]
+   },
+   "refs": [
+    "EchoFunctionRole"
+   ]
+  },
+  {
+   "id": "EchoFunctionRole",
+   "cfg": "EchoFunctionRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       }
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+    ],
+    "Tags": [
+     {
+      "Key": "lambda:createdBy",
+      "Value": "SAM"
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.UserPoolId",
+   "cfg": "__output__.UserPoolId",
+   "type": "__output__",
+   "values": {
+    "name": "UserPoolId",
+    "value": {
+     "ref": "UserPool"
+    },
+    "description": null,
+    "export": "dva-lab-04-05-user-pool-id"
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "__output__.UserPoolArn",
+   "cfg": "__output__.UserPoolArn",
+   "type": "__output__",
+   "values": {
+    "name": "UserPoolArn",
+    "value": {
+     "ref": "UserPool",
+     "attr": "Arn"
+    },
+    "description": null,
+    "export": "dva-lab-04-05-user-pool-arn"
+   },
+   "refs": [
+    "UserPool"
+   ]
+  },
+  {
+   "id": "__output__.ClientId",
+   "cfg": "__output__.ClientId",
+   "type": "__output__",
+   "values": {
+    "name": "ClientId",
+    "value": {
+     "ref": "UserPoolClient"
+    },
+    "description": null,
+    "export": "dva-lab-04-05-client-id"
+   },
+   "refs": [
+    "UserPoolClient"
+   ]
+  },
+  {
+   "id": "__output__.ApiUrl",
+   "cfg": "__output__.ApiUrl",
+   "type": "__output__",
+   "values": {
+    "name": "ApiUrl",
+    "value": "https://${RestApi}.execute-api.us-east-1.amazonaws.com/prod",
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "RestApi"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPool.UserPool",
+   "cfg": "UserPool",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Cognito::UserPool",
+    "name": "UserPool",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "UserPoolName": "dva-lab-04-05-pool",
+     "AutoVerifiedAttributes": [
+      "email"
+     ],
+     "UsernameAttributes": [
+      "email"
+     ],
+     "Policies": {
+      "PasswordPolicy": {
+       "MinimumLength": 8,
+       "RequireUppercase": true,
+       "RequireLowercase": true,
+       "RequireNumbers": true,
+       "RequireSymbols": true
+      }
+     },
+     "Schema": [
+      {
+       "Name": "email",
+       "AttributeDataType": "String",
+       "Required": true,
+       "Mutable": true
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Cognito::UserPoolClient.UserPoolClient",
+   "cfg": "UserPoolClient",
+   "type": "__declared__",
+   "refs": [
+    "UserPool"
+   ],
+   "values": {
+    "type": "AWS::Cognito::UserPoolClient",
+    "name": "UserPoolClient",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ClientName": "dva-lab-04-05-cli",
+     "UserPoolId": {
+      "ref": "UserPool"
+     },
+     "GenerateSecret": false,
+     "ExplicitAuthFlows": [
+      "ALLOW_ADMIN_USER_PASSWORD_AUTH",
+      "ALLOW_REFRESH_TOKEN_AUTH",
+      "ALLOW_USER_PASSWORD_AUTH"
+     ],
+     "AccessTokenValidity": 60,
+     "IdTokenValidity": 60,
+     "RefreshTokenValidity": 30,
+     "TokenValidityUnits": {
+      "AccessToken": "minutes",
+      "IdToken": "minutes",
+      "RefreshToken": "days"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::RestApi.RestApi",
+   "cfg": "RestApi",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::ApiGateway::RestApi",
+    "name": "RestApi",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "dva-lab-04-05-api",
+     "EndpointConfiguration": {
+      "Types": [
+       "REGIONAL"
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::Authorizer.Authorizer",
+   "cfg": "Authorizer",
+   "type": "__declared__",
+   "refs": [
+    "RestApi",
+    "UserPool"
+   ],
+   "values": {
+    "type": "AWS::ApiGateway::Authorizer",
+    "name": "Authorizer",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "dva-lab-04-05-cognito-authorizer",
+     "RestApiId": {
+      "ref": "RestApi"
+     },
+     "Type": "COGNITO_USER_POOLS",
+     "IdentitySource": "method.request.header.Authorization",
+     "ProviderARNs": [
+      {
+       "ref": "UserPool",
+       "attr": "Arn"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::Resource.MeResource",
+   "cfg": "MeResource",
+   "type": "__declared__",
+   "refs": [
+    "RestApi"
+   ],
+   "values": {
+    "type": "AWS::ApiGateway::Resource",
+    "name": "MeResource",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RestApiId": {
+      "ref": "RestApi"
+     },
+     "ParentId": {
+      "ref": "RestApi",
+      "attr": "RootResourceId"
+     },
+     "PathPart": "me"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::Method.MeMethod",
+   "cfg": "MeMethod",
+   "type": "__declared__",
+   "refs": [
+    "Authorizer",
+    "EchoFunction",
+    "MeResource",
+    "RestApi"
+   ],
+   "values": {
+    "type": "AWS::ApiGateway::Method",
+    "name": "MeMethod",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RestApiId": {
+      "ref": "RestApi"
+     },
+     "ResourceId": {
+      "ref": "MeResource"
+     },
+     "HttpMethod": "GET",
+     "AuthorizationType": "COGNITO_USER_POOLS",
+     "AuthorizerId": {
+      "ref": "Authorizer"
+     },
+     "Integration": {
+      "Type": "AWS_PROXY",
+      "IntegrationHttpMethod": "POST",
+      "Uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/${EchoFunction.Arn}/invocations"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::Resource.OpenResource",
+   "cfg": "OpenResource",
+   "type": "__declared__",
+   "refs": [
+    "RestApi"
+   ],
+   "values": {
+    "type": "AWS::ApiGateway::Resource",
+    "name": "OpenResource",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RestApiId": {
+      "ref": "RestApi"
+     },
+     "ParentId": {
+      "ref": "RestApi",
+      "attr": "RootResourceId"
+     },
+     "PathPart": "open"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::Method.OpenMethod",
+   "cfg": "OpenMethod",
+   "type": "__declared__",
+   "refs": [
+    "EchoFunction",
+    "OpenResource",
+    "RestApi"
+   ],
+   "values": {
+    "type": "AWS::ApiGateway::Method",
+    "name": "OpenMethod",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RestApiId": {
+      "ref": "RestApi"
+     },
+     "ResourceId": {
+      "ref": "OpenResource"
+     },
+     "HttpMethod": "GET",
+     "AuthorizationType": "NONE",
+     "Integration": {
+      "Type": "AWS_PROXY",
+      "IntegrationHttpMethod": "POST",
+      "Uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/${EchoFunction.Arn}/invocations"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Permission.EchoFunctionPermission",
+   "cfg": "EchoFunctionPermission",
+   "type": "__declared__",
+   "refs": [
+    "EchoFunction",
+    "RestApi"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Permission",
+    "name": "EchoFunctionPermission",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Action": "lambda:InvokeFunction",
+     "FunctionName": {
+      "ref": "EchoFunction"
+     },
+     "Principal": "apigateway.amazonaws.com",
+     "SourceArn": "arn:aws:execute-api:us-east-1:123456789012:${RestApi}/*/*/*"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::Deployment.Deployment",
+   "cfg": "Deployment",
+   "type": "__declared__",
+   "refs": [
+    "RestApi"
+   ],
+   "values": {
+    "type": "AWS::ApiGateway::Deployment",
+    "name": "Deployment",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RestApiId": {
+      "ref": "RestApi"
+     },
+     "Description": "Lab 4.5 deployment"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::Stage.Stage",
+   "cfg": "Stage",
+   "type": "__declared__",
+   "refs": [
+    "Deployment",
+    "RestApi"
+   ],
+   "values": {
+    "type": "AWS::ApiGateway::Stage",
+    "name": "Stage",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "StageName": "prod",
+     "RestApiId": {
+      "ref": "RestApi"
+     },
+     "DeploymentId": {
+      "ref": "Deployment"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Function.EchoFunction",
+   "cfg": "EchoFunction",
+   "type": "__declared__",
+   "refs": [
+    "EchoFunctionRole"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Function",
+    "name": "EchoFunction",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Code": {
+      "ZipFile": "import json\ndef handler(event, context):\n    ctx = event.get(\"requestContext\", {})\n    authorizer = ctx.get(\"authorizer\", {})\n    claims = authorizer.get(\"claims\", {})\n    return {\n        \"statusCode\": 200,\n        \"headers\": {\"Content-Type\": \"application/json\"},\n        \"body\": json.dumps({\n            \"path\": event.get(\"path\"),\n            \"method\": event.get(\"httpMethod\"),\n            \"claims\": claims,\n            \"message\": (\n                \"you are authenticated as \" + claims.get(\"email\", \"unknown\")\n                if claims else \"open endpoint \u2014 no claims\"\n            ),\n        }),\n    }\n"
+     },
+     "FunctionName": "dva-lab-04-05-echo",
+     "Handler": "index.handler",
+     "Role": {
+      "ref": "EchoFunctionRole",
+      "attr": "Arn"
+     },
+     "Runtime": "python3.12",
+     "Tags": [
+      {
+       "Key": "lambda:createdBy",
+       "Value": "SAM"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.EchoFunctionRole",
+   "cfg": "EchoFunctionRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "EchoFunctionRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        }
+       }
+      ]
+     },
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+     ],
+     "Tags": [
+      {
+       "Key": "lambda:createdBy",
+       "Value": "SAM"
+      }
+     ]
+    }
+   }
+  }
+ ]
+}

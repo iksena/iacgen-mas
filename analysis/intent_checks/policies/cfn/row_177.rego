@@ -1,0 +1,990 @@
+package intent.cfn.row_177
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {
+  "table": {
+   "types": [
+    "AWS::DynamoDB::Table"
+   ],
+   "where": []
+  },
+  "fn": {
+   "types": [
+    "AWS::Lambda::Function"
+   ],
+   "where": []
+  },
+  "api": {
+   "types": [
+    "AWS::ApiGateway::RestApi"
+   ],
+   "where": []
+  },
+  "movies_res": {
+   "types": [
+    "AWS::ApiGateway::Resource"
+   ],
+   "where": [
+    {
+     "path": [
+      "PathPart"
+     ],
+     "op": "eq",
+     "value": "Movies"
+    }
+   ]
+  },
+  "title_res": {
+   "types": [
+    "AWS::ApiGateway::Resource"
+   ],
+   "where": [
+    {
+     "path": [
+      "PathPart"
+     ],
+     "op": "eq",
+     "value": "{title}"
+    }
+   ]
+  },
+  "post": {
+   "types": [
+    "AWS::ApiGateway::Method"
+   ],
+   "where": [
+    {
+     "path": [
+      "HttpMethod"
+     ],
+     "op": "eq",
+     "value": "POST"
+    }
+   ]
+  },
+  "put": {
+   "types": [
+    "AWS::ApiGateway::Method"
+   ],
+   "where": [
+    {
+     "path": [
+      "HttpMethod"
+     ],
+     "op": "eq",
+     "value": "PUT"
+    }
+   ]
+  },
+  "delete": {
+   "types": [
+    "AWS::ApiGateway::Method"
+   ],
+   "where": [
+    {
+     "path": [
+      "HttpMethod"
+     ],
+     "op": "eq",
+     "value": "DELETE"
+    }
+   ]
+  },
+  "get": {
+   "types": [
+    "AWS::ApiGateway::Method"
+   ],
+   "where": [
+    {
+     "path": [
+      "HttpMethod"
+     ],
+     "op": "eq",
+     "value": "GET"
+    }
+   ]
+  },
+  "options_mock": {
+   "types": [
+    "AWS::ApiGateway::Method"
+   ],
+   "where": [
+    {
+     "path": [
+      "HttpMethod"
+     ],
+     "op": "eq",
+     "value": "OPTIONS"
+    },
+    {
+     "path": [
+      "Integration",
+      "Type"
+     ],
+     "op": "eq",
+     "value": "MOCK"
+    }
+   ]
+  },
+  "methods": {
+   "types": [
+    "AWS::ApiGateway::Method"
+   ],
+   "where": []
+  },
+  "lg": {
+   "types": [
+    "AWS::Logs::LogGroup"
+   ],
+   "where": [
+    {
+     "path": [
+      "LogGroupName"
+     ],
+     "op": "contains",
+     "value": "/aws/lambda/"
+    }
+   ]
+  },
+  "role": {
+   "types": [
+    "AWS::IAM::Role"
+   ],
+   "where": [
+    {
+     "path": [
+      "AssumeRolePolicyDocument"
+     ],
+     "op": "contains",
+     "value": "lambda.amazonaws.com"
+    }
+   ]
+  },
+  "stage": {
+   "types": [
+    "AWS::ApiGateway::Stage"
+   ],
+   "where": []
+  },
+  "deployment": {
+   "types": [
+    "AWS::ApiGateway::Deployment"
+   ],
+   "where": []
+  },
+  "perm": {
+   "types": [
+    "AWS::Lambda::Permission"
+   ],
+   "where": []
+  }
+ },
+ "checks": [
+  {
+   "id": "movies_table",
+   "kind": "exists",
+   "select": "table",
+   "tier": "core",
+   "quote": "a DynamoDB table"
+  },
+  {
+   "id": "pay_per_request",
+   "kind": "attr",
+   "select": "table",
+   "cond": {
+    "path": [
+     "BillingMode"
+    ],
+    "op": "eq",
+    "value": "PAY_PER_REQUEST"
+   },
+   "tier": "core",
+   "quote": "pay-per-request billing"
+  },
+  {
+   "id": "key_title",
+   "kind": "attr",
+   "select": "table",
+   "cond": {
+    "path": [
+     "KeySchema",
+     "*"
+    ],
+    "op": "match",
+    "value": [
+     {
+      "path": [
+       "AttributeName"
+      ],
+      "op": "eq",
+      "value": "title"
+     },
+     {
+      "path": [
+       "KeyType"
+      ],
+      "op": "eq",
+      "value": "HASH"
+     }
+    ]
+   },
+   "tier": "core",
+   "quote": "keyed on the title attribute",
+   "justify": "keyed on means the HASH key"
+  },
+  {
+   "id": "four_functions",
+   "kind": "exists",
+   "select": "fn",
+   "tier": "core",
+   "quote": "four Lambda functions for create, read, update, and delete operations against the table",
+   "min": 4
+  },
+  {
+   "id": "python312",
+   "kind": "attr",
+   "select": "fn",
+   "cond": {
+    "path": [
+     "Runtime"
+    ],
+    "op": "eq",
+    "value": "python3.12"
+   },
+   "tier": "core",
+   "quote": "using Python 3.12",
+   "quantifier": "all"
+  },
+  {
+   "id": "timeout_30",
+   "kind": "attr",
+   "select": "fn",
+   "cond": {
+    "path": [
+     "Timeout"
+    ],
+    "op": "eq",
+    "value": "30"
+   },
+   "tier": "core",
+   "quote": "30-second timeouts",
+   "quantifier": "all"
+  },
+  {
+   "id": "memory_128",
+   "kind": "attr",
+   "select": "fn",
+   "cond": {
+    "path": [
+     "MemorySize"
+    ],
+    "op": "eq",
+    "value": "128"
+   },
+   "tier": "core",
+   "quote": "128MB of memory",
+   "quantifier": "all"
+  },
+  {
+   "id": "inline_code_self_contained",
+   "kind": "attr",
+   "select": "fn",
+   "cond": {
+    "path": [
+     "Code",
+     "ZipFile"
+    ],
+    "op": "present"
+   },
+   "quantifier": "all",
+   "tier": "detail",
+   "quote": "fully self-contained serverless movies API",
+   "justify": "self-contained means no external code package, so code is inline"
+  },
+  {
+   "id": "functions_use_table",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "fn",
+     "to": "table"
+    },
+    {
+     "kind": "attr",
+     "select": "fn",
+     "cond": {
+      "path": [
+       "Code",
+       "ZipFile"
+      ],
+      "op": "regex",
+      "value": "(?i)dynamodb"
+     }
+    }
+   ],
+   "tier": "detail",
+   "quote": "functions for create, read, update, and delete operations against the table"
+  },
+  {
+   "id": "rest_api",
+   "kind": "exists",
+   "select": "api",
+   "tier": "core",
+   "quote": "an API Gateway REST API"
+  },
+  {
+   "id": "regional_endpoint",
+   "kind": "attr",
+   "select": "api",
+   "cond": {
+    "path": [
+     "EndpointConfiguration",
+     "Types",
+     "*"
+    ],
+    "op": "eq",
+    "value": "REGIONAL"
+   },
+   "tier": "core",
+   "quote": "a regional endpoint configuration"
+  },
+  {
+   "id": "movies_resource",
+   "kind": "exists",
+   "select": "movies_res",
+   "tier": "core",
+   "quote": "a /Movies resource"
+  },
+  {
+   "id": "title_resource",
+   "kind": "exists",
+   "select": "title_res",
+   "tier": "core",
+   "quote": "a /Movies/{title} resource"
+  },
+  {
+   "id": "title_under_movies",
+   "kind": "ref",
+   "from": "title_res",
+   "to": "movies_res",
+   "tier": "core",
+   "quote": "a /Movies/{title} resource"
+  },
+  {
+   "id": "post_method",
+   "kind": "exists",
+   "select": "post",
+   "tier": "core",
+   "quote": "exposing POST"
+  },
+  {
+   "id": "put_method",
+   "kind": "exists",
+   "select": "put",
+   "tier": "core",
+   "quote": "PUT"
+  },
+  {
+   "id": "delete_method",
+   "kind": "exists",
+   "select": "delete",
+   "tier": "core",
+   "quote": "DELETE on a /Movies resource"
+  },
+  {
+   "id": "get_method",
+   "kind": "exists",
+   "select": "get",
+   "tier": "core",
+   "quote": "GET on a /Movies/{title} resource"
+  },
+  {
+   "id": "post_on_movies",
+   "kind": "ref",
+   "from": "post",
+   "to": "movies_res",
+   "tier": "core",
+   "quote": "POST, PUT, and DELETE on a /Movies resource"
+  },
+  {
+   "id": "put_on_movies",
+   "kind": "ref",
+   "from": "put",
+   "to": "movies_res",
+   "tier": "core",
+   "quote": "POST, PUT, and DELETE on a /Movies resource"
+  },
+  {
+   "id": "delete_on_movies",
+   "kind": "ref",
+   "from": "delete",
+   "to": "movies_res",
+   "tier": "core",
+   "quote": "POST, PUT, and DELETE on a /Movies resource"
+  },
+  {
+   "id": "get_on_title",
+   "kind": "ref",
+   "from": "get",
+   "to": "title_res",
+   "tier": "core",
+   "quote": "GET on a /Movies/{title} resource"
+  },
+  {
+   "id": "cors_mock_preflight",
+   "kind": "exists",
+   "select": "options_mock",
+   "tier": "core",
+   "quote": "necessary CORS preflight support using MOCK integration",
+   "justify": "CORS preflight uses the OPTIONS method"
+  },
+  {
+   "id": "preflight_on_resource",
+   "kind": "all_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "options_mock",
+     "to": "movies_res"
+    },
+    {
+     "kind": "ref",
+     "from": "options_mock",
+     "to": "title_res"
+    }
+   ],
+   "tier": "detail",
+   "quote": "necessary CORS preflight support using MOCK integration",
+   "justify": "CORS preflight uses the OPTIONS method"
+  },
+  {
+   "id": "methods_invoke_functions",
+   "kind": "all_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "post",
+     "to": "fn"
+    },
+    {
+     "kind": "ref",
+     "from": "get",
+     "to": "fn"
+    },
+    {
+     "kind": "ref",
+     "from": "put",
+     "to": "fn"
+    },
+    {
+     "kind": "ref",
+     "from": "delete",
+     "to": "fn"
+    }
+   ],
+   "tier": "detail",
+   "quote": "four Lambda functions for create, read, update, and delete operations"
+  },
+  {
+   "id": "log_groups",
+   "kind": "exists",
+   "select": "lg",
+   "tier": "core",
+   "quote": "pre-created CloudWatch log groups with a 1-day retention for each function",
+   "min": 4,
+   "justify": "one log group per function, four functions, under the Lambda log-group path"
+  },
+  {
+   "id": "retention_one_day",
+   "kind": "attr",
+   "select": "lg",
+   "cond": {
+    "path": [
+     "RetentionInDays"
+    ],
+    "op": "eq",
+    "value": "1"
+   },
+   "tier": "core",
+   "quote": "1-day retention",
+   "quantifier": "all"
+  },
+  {
+   "id": "single_shared_role",
+   "kind": "exists",
+   "select": "role",
+   "tier": "core",
+   "quote": "a single shared IAM role",
+   "min": 1,
+   "max": 1,
+   "justify": "single shared role means exactly one"
+  },
+  {
+   "id": "functions_use_role",
+   "kind": "attr",
+   "select": "fn",
+   "cond": {
+    "path": [
+     "Role"
+    ],
+    "op": "regex",
+    "value": "(\"ref\"|\\$\\{)"
+   },
+   "quantifier": "all",
+   "tier": "core",
+   "quote": "a single shared IAM role"
+  },
+  {
+   "id": "dynamodb_put",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "role",
+     "cond": {
+      "path": [
+       "Policies",
+       "*",
+       "PolicyDocument",
+       "Statement",
+       "*",
+       "Action",
+       "*"
+      ],
+      "op": "glob_covers",
+      "value": "dynamodb:PutItem"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "role",
+     "cond": {
+      "path": [
+       "ManagedPolicyArns",
+       "*"
+      ],
+      "op": "contains",
+      "value": "AmazonDynamoDBFullAccess"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy",
+       "AWS::IAM::RolePolicy"
+      ],
+      "where": [
+       {
+        "path": [
+         "PolicyDocument",
+         "Statement",
+         "*",
+         "Action",
+         "*"
+        ],
+        "op": "glob_covers",
+        "value": "dynamodb:PutItem"
+       }
+      ]
+     },
+     "to": "role",
+     "bidirectional": true
+    }
+   ],
+   "tier": "core",
+   "quote": "granting DynamoDB CRUD access to the table",
+   "justify": "create is PutItem"
+  },
+  {
+   "id": "dynamodb_get",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "role",
+     "cond": {
+      "path": [
+       "Policies",
+       "*",
+       "PolicyDocument",
+       "Statement",
+       "*",
+       "Action",
+       "*"
+      ],
+      "op": "glob_covers",
+      "value": "dynamodb:GetItem"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "role",
+     "cond": {
+      "path": [
+       "ManagedPolicyArns",
+       "*"
+      ],
+      "op": "contains",
+      "value": "AmazonDynamoDBFullAccess"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy",
+       "AWS::IAM::RolePolicy"
+      ],
+      "where": [
+       {
+        "path": [
+         "PolicyDocument",
+         "Statement",
+         "*",
+         "Action",
+         "*"
+        ],
+        "op": "glob_covers",
+        "value": "dynamodb:GetItem"
+       }
+      ]
+     },
+     "to": "role",
+     "bidirectional": true
+    }
+   ],
+   "tier": "core",
+   "quote": "granting DynamoDB CRUD access to the table",
+   "justify": "read is GetItem"
+  },
+  {
+   "id": "dynamodb_update",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "role",
+     "cond": {
+      "path": [
+       "Policies",
+       "*",
+       "PolicyDocument",
+       "Statement",
+       "*",
+       "Action",
+       "*"
+      ],
+      "op": "glob_covers",
+      "value": "dynamodb:UpdateItem"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "role",
+     "cond": {
+      "path": [
+       "ManagedPolicyArns",
+       "*"
+      ],
+      "op": "contains",
+      "value": "AmazonDynamoDBFullAccess"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy",
+       "AWS::IAM::RolePolicy"
+      ],
+      "where": [
+       {
+        "path": [
+         "PolicyDocument",
+         "Statement",
+         "*",
+         "Action",
+         "*"
+        ],
+        "op": "glob_covers",
+        "value": "dynamodb:UpdateItem"
+       }
+      ]
+     },
+     "to": "role",
+     "bidirectional": true
+    }
+   ],
+   "tier": "core",
+   "quote": "granting DynamoDB CRUD access to the table",
+   "justify": "update is UpdateItem"
+  },
+  {
+   "id": "dynamodb_delete",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "role",
+     "cond": {
+      "path": [
+       "Policies",
+       "*",
+       "PolicyDocument",
+       "Statement",
+       "*",
+       "Action",
+       "*"
+      ],
+      "op": "glob_covers",
+      "value": "dynamodb:DeleteItem"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "role",
+     "cond": {
+      "path": [
+       "ManagedPolicyArns",
+       "*"
+      ],
+      "op": "contains",
+      "value": "AmazonDynamoDBFullAccess"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy",
+       "AWS::IAM::RolePolicy"
+      ],
+      "where": [
+       {
+        "path": [
+         "PolicyDocument",
+         "Statement",
+         "*",
+         "Action",
+         "*"
+        ],
+        "op": "glob_covers",
+        "value": "dynamodb:DeleteItem"
+       }
+      ]
+     },
+     "to": "role",
+     "bidirectional": true
+    }
+   ],
+   "tier": "core",
+   "quote": "granting DynamoDB CRUD access to the table",
+   "justify": "delete is DeleteItem"
+  },
+  {
+   "id": "basic_execution_policy",
+   "kind": "attr",
+   "select": "role",
+   "cond": {
+    "path": [
+     "ManagedPolicyArns",
+     "*"
+    ],
+    "op": "regex",
+    "value": "(?i)AWSLambdaBasicExecutionRole"
+   },
+   "tier": "core",
+   "quote": "the managed Lambda basic execution policy"
+  },
+  {
+   "id": "role_scoped_to_table",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "role",
+     "to": "table"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy"
+      ],
+      "where": []
+     },
+     "to": "table"
+    },
+    {
+     "kind": "attr",
+     "select": "role",
+     "cond": {
+      "path": [
+       "Policies"
+      ],
+      "op": "regex",
+      "value": ":table/[^*\"]"
+     }
+    }
+   ],
+   "tier": "detail",
+   "quote": "granting DynamoDB CRUD access to the table"
+  },
+  {
+   "id": "api_deployment",
+   "kind": "exists",
+   "select": "deployment",
+   "tier": "core",
+   "quote": "with the API deployed under a stage"
+  },
+  {
+   "id": "stage_named_dev",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "stage",
+     "cond": {
+      "path": [
+       "StageName"
+      ],
+      "op": "eq",
+      "value": "dev"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "deployment",
+     "cond": {
+      "path": [
+       "StageName"
+      ],
+      "op": "eq",
+      "value": "dev"
+     }
+    }
+   ],
+   "tier": "core",
+   "quote": "a stage named after the environment parameter which defaults to dev"
+  },
+  {
+   "id": "environment_parameter",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": [
+         "name"
+        ],
+        "op": "regex",
+        "value": "(?i)env"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "default"
+      ],
+      "op": "eq",
+      "value": "dev"
+     }
+    }
+   ],
+   "tier": "detail",
+   "quote": "the environment parameter which defaults to dev"
+  },
+  {
+   "id": "x_auth_none",
+   "kind": "attr",
+   "select": "methods",
+   "cond": {
+    "path": [
+     "AuthorizationType"
+    ],
+    "op": "eq",
+    "value": "NONE"
+   },
+   "tier": "extra",
+   "quantifier": "all"
+  },
+  {
+   "id": "x_cors_allow_origin",
+   "kind": "attr",
+   "select": "options_mock",
+   "cond": {
+    "path": [
+     "Integration",
+     "IntegrationResponses"
+    ],
+    "op": "contains",
+    "value": "Access-Control-Allow-Origin"
+   },
+   "tier": "extra",
+   "quantifier": "all"
+  },
+  {
+   "id": "x_function_env_table",
+   "kind": "attr",
+   "select": "fn",
+   "cond": {
+    "path": [
+     "Environment",
+     "Variables"
+    ],
+    "op": "present"
+   },
+   "tier": "extra"
+  },
+  {
+   "id": "x_apigw_permission",
+   "kind": "attr",
+   "select": "perm",
+   "cond": {
+    "path": [
+     "Principal"
+    ],
+    "op": "eq",
+    "value": "apigateway.amazonaws.com"
+   },
+   "tier": "extra"
+  },
+  {
+   "id": "x_role_trust_lambda",
+   "kind": "attr",
+   "select": "role",
+   "cond": {
+    "path": [
+     "AssumeRolePolicyDocument",
+     "Statement",
+     "*",
+     "Action",
+     "*"
+    ],
+    "op": "eq",
+    "value": "sts:AssumeRole"
+   },
+   "tier": "extra"
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

@@ -1,0 +1,1037 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "410d804037825c5bccc7e3f5484683047b99e5461f6569323c03c852fe8d7ba2",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "MyStateMachine",
+   "cfg": "MyStateMachine",
+   "type": "AWS::StepFunctions::StateMachine",
+   "values": {
+    "DefinitionString": "{\n    \"StartAt\": \"HelloWorld\",\n    \"States\": {\n        \"HelloWorld\": {\n            \"End\": true,\n            \"Result\": 1,\n            \"Type\": \"Pass\"\n        }\n    }\n}",
+    "RoleArn": "arn:aws:iam::123456789012:role/doesNotExist",
+    "StateMachineType": "STANDARD",
+    "Tags": [
+     {
+      "Key": "stateMachine:createdBy",
+      "Value": "SAM"
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "MyStateMachineAliastest",
+   "cfg": "MyStateMachineAliastest",
+   "type": "AWS::StepFunctions::StateMachineAlias",
+   "values": {
+    "DeploymentPreference": {
+     "StateMachineVersionArn": {
+      "ref": "MyStateMachineVersion"
+     },
+     "Type": "ALL_AT_ONCE"
+    },
+    "Name": "test"
+   },
+   "refs": [
+    "MyStateMachineVersion"
+   ]
+  },
+  {
+   "id": "MyStateMachineApiEventRole",
+   "cfg": "MyStateMachineApiEventRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "apigateway.amazonaws.com"
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "Policies": [
+     {
+      "PolicyDocument": {
+       "Statement": [
+        {
+         "Action": [
+          "states:StartExecution"
+         ],
+         "Effect": "Allow",
+         "Resource": {
+          "ref": "MyStateMachineAliastest"
+         }
+        }
+       ]
+      },
+      "PolicyName": "MyStateMachineApiEventRoleStartExecutionPolicy"
+     }
+    ]
+   },
+   "refs": [
+    "MyStateMachineAliastest"
+   ]
+  },
+  {
+   "id": "MyStateMachineCWEvent",
+   "cfg": "MyStateMachineCWEvent",
+   "type": "AWS::Events::Rule",
+   "values": {
+    "EventPattern": {
+     "detail": {
+      "state": [
+       "terminated"
+      ]
+     }
+    },
+    "Targets": [
+     {
+      "Arn": {
+       "ref": "MyStateMachineAliastest"
+      },
+      "Id": "MyStateMachineCWEventStepFunctionsTarget",
+      "RoleArn": {
+       "ref": "MyStateMachineCWEventRole",
+       "attr": "Arn"
+      }
+     }
+    ]
+   },
+   "refs": [
+    "MyStateMachineAliastest",
+    "MyStateMachineCWEventRole"
+   ]
+  },
+  {
+   "id": "MyStateMachineCWEventRole",
+   "cfg": "MyStateMachineCWEventRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "events.amazonaws.com"
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "Policies": [
+     {
+      "PolicyDocument": {
+       "Statement": [
+        {
+         "Action": [
+          "states:StartExecution"
+         ],
+         "Effect": "Allow",
+         "Resource": {
+          "ref": "MyStateMachineAliastest"
+         }
+        }
+       ]
+      },
+      "PolicyName": "MyStateMachineCWEventRoleStartExecutionPolicy"
+     }
+    ]
+   },
+   "refs": [
+    "MyStateMachineAliastest"
+   ]
+  },
+  {
+   "id": "MyStateMachineCWSchedule",
+   "cfg": "MyStateMachineCWSchedule",
+   "type": "AWS::Events::Rule",
+   "values": {
+    "Description": "test schedule",
+    "Name": "TestSchedule",
+    "ScheduleExpression": "rate(1 minute)",
+    "State": "DISABLED",
+    "Targets": [
+     {
+      "Arn": {
+       "ref": "MyStateMachineAliastest"
+      },
+      "Id": "MyStateMachineCWScheduleStepFunctionsTarget",
+      "RoleArn": {
+       "ref": "MyStateMachineCWScheduleRole",
+       "attr": "Arn"
+      }
+     }
+    ]
+   },
+   "refs": [
+    "MyStateMachineAliastest",
+    "MyStateMachineCWScheduleRole"
+   ]
+  },
+  {
+   "id": "MyStateMachineCWScheduleRole",
+   "cfg": "MyStateMachineCWScheduleRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "events.amazonaws.com"
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "Policies": [
+     {
+      "PolicyDocument": {
+       "Statement": [
+        {
+         "Action": [
+          "states:StartExecution"
+         ],
+         "Effect": "Allow",
+         "Resource": {
+          "ref": "MyStateMachineAliastest"
+         }
+        }
+       ]
+      },
+      "PolicyName": "MyStateMachineCWScheduleRoleStartExecutionPolicy"
+     }
+    ]
+   },
+   "refs": [
+    "MyStateMachineAliastest"
+   ]
+  },
+  {
+   "id": "MyStateMachineEBEvent",
+   "cfg": "MyStateMachineEBEvent",
+   "type": "AWS::Events::Rule",
+   "values": {
+    "EventPattern": {
+     "source": [
+      "aws.tag"
+     ]
+    },
+    "Targets": [
+     {
+      "Arn": {
+       "ref": "MyStateMachineAliastest"
+      },
+      "Id": "MyStateMachineEBEventStepFunctionsTarget",
+      "RoleArn": {
+       "ref": "MyStateMachineEBEventRole",
+       "attr": "Arn"
+      }
+     }
+    ]
+   },
+   "refs": [
+    "MyStateMachineAliastest",
+    "MyStateMachineEBEventRole"
+   ]
+  },
+  {
+   "id": "MyStateMachineEBEventRole",
+   "cfg": "MyStateMachineEBEventRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "events.amazonaws.com"
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "Policies": [
+     {
+      "PolicyDocument": {
+       "Statement": [
+        {
+         "Action": [
+          "states:StartExecution"
+         ],
+         "Effect": "Allow",
+         "Resource": {
+          "ref": "MyStateMachineAliastest"
+         }
+        }
+       ]
+      },
+      "PolicyName": "MyStateMachineEBEventRoleStartExecutionPolicy"
+     }
+    ]
+   },
+   "refs": [
+    "MyStateMachineAliastest"
+   ]
+  },
+  {
+   "id": "MyStateMachineScheduleEvent",
+   "cfg": "MyStateMachineScheduleEvent",
+   "type": "AWS::Scheduler::Schedule",
+   "values": {
+    "FlexibleTimeWindow": {
+     "Mode": "OFF"
+    },
+    "Name": "MyStateMachineScheduleEvent",
+    "ScheduleExpression": "rate(1 minute)",
+    "Target": {
+     "Arn": {
+      "ref": "MyStateMachineAliastest"
+     },
+     "RoleArn": {
+      "ref": "MyStateMachineScheduleEventRole",
+      "attr": "Arn"
+     }
+    }
+   },
+   "refs": [
+    "MyStateMachineAliastest",
+    "MyStateMachineScheduleEventRole"
+   ]
+  },
+  {
+   "id": "MyStateMachineScheduleEventRole",
+   "cfg": "MyStateMachineScheduleEventRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "scheduler.amazonaws.com"
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "Policies": [
+     {
+      "PolicyDocument": {
+       "Statement": [
+        {
+         "Action": [
+          "states:StartExecution"
+         ],
+         "Effect": "Allow",
+         "Resource": {
+          "ref": "MyStateMachineAliastest"
+         }
+        }
+       ]
+      },
+      "PolicyName": "MyStateMachineScheduleEventStartExecutionPolicy"
+     }
+    ]
+   },
+   "refs": [
+    "MyStateMachineAliastest"
+   ]
+  },
+  {
+   "id": "MyStateMachineVersion",
+   "cfg": "MyStateMachineVersion",
+   "type": "AWS::StepFunctions::StateMachineVersion",
+   "values": {
+    "StateMachineArn": {
+     "ref": "MyStateMachine"
+    },
+    "StateMachineRevisionId": {
+     "ref": "MyStateMachine",
+     "attr": "StateMachineRevisionId"
+    },
+    "__resource__": {
+     "DeletionPolicy": "Retain",
+     "UpdateReplacePolicy": "Retain"
+    }
+   },
+   "refs": [
+    "MyStateMachine"
+   ]
+  },
+  {
+   "id": "ServerlessRestApi",
+   "cfg": "ServerlessRestApi",
+   "type": "AWS::ApiGateway::RestApi",
+   "values": {
+    "Body": {
+     "info": {
+      "title": "stack",
+      "version": "1.0"
+     },
+     "paths": {
+      "/path": {
+       "get": {
+        "responses": {
+         "200": {
+          "description": "OK"
+         },
+         "400": {
+          "description": "Bad Request"
+         }
+        },
+        "x-amazon-apigateway-integration": {
+         "credentials": {
+          "ref": "MyStateMachineApiEventRole",
+          "attr": "Arn"
+         },
+         "httpMethod": "POST",
+         "requestTemplates": {
+          "application/json": "{\"input\": \"$util.escapeJavaScript($input.json('$'))\", \"stateMachineArn\": \"${MyStateMachineAliastest}\"}"
+         },
+         "responses": {
+          "200": {
+           "statusCode": "200"
+          },
+          "400": {
+           "statusCode": "400"
+          }
+         },
+         "type": "aws",
+         "uri": "arn:aws:apigateway:us-east-1:states:action/StartExecution"
+        }
+       }
+      }
+     },
+     "swagger": "2.0"
+    }
+   },
+   "refs": [
+    "MyStateMachineAliastest",
+    "MyStateMachineApiEventRole"
+   ]
+  },
+  {
+   "id": "ServerlessRestApiDeploymente6166edbc7",
+   "cfg": "ServerlessRestApiDeploymente6166edbc7",
+   "type": "AWS::ApiGateway::Deployment",
+   "values": {
+    "Description": "RestApi deployment id: e6166edbc7b05836f53278af31642807c36e76b3",
+    "RestApiId": {
+     "ref": "ServerlessRestApi"
+    },
+    "StageName": "Stage"
+   },
+   "refs": [
+    "ServerlessRestApi"
+   ]
+  },
+  {
+   "id": "ServerlessRestApiProdStage",
+   "cfg": "ServerlessRestApiProdStage",
+   "type": "AWS::ApiGateway::Stage",
+   "values": {
+    "DeploymentId": {
+     "ref": "ServerlessRestApiDeploymente6166edbc7"
+    },
+    "RestApiId": {
+     "ref": "ServerlessRestApi"
+    },
+    "StageName": "Prod"
+   },
+   "refs": [
+    "ServerlessRestApi",
+    "ServerlessRestApiDeploymente6166edbc7"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::StepFunctions::StateMachine.MyStateMachine",
+   "cfg": "MyStateMachine",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::StepFunctions::StateMachine",
+    "name": "MyStateMachine",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "DefinitionString": "{\n    \"StartAt\": \"HelloWorld\",\n    \"States\": {\n        \"HelloWorld\": {\n            \"End\": true,\n            \"Result\": 1,\n            \"Type\": \"Pass\"\n        }\n    }\n}",
+     "RoleArn": "arn:aws:iam::123456789012:role/doesNotExist",
+     "StateMachineType": "STANDARD",
+     "Tags": [
+      {
+       "Key": "stateMachine:createdBy",
+       "Value": "SAM"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::StepFunctions::StateMachineAlias.MyStateMachineAliastest",
+   "cfg": "MyStateMachineAliastest",
+   "type": "__declared__",
+   "refs": [
+    "MyStateMachineVersion"
+   ],
+   "values": {
+    "type": "AWS::StepFunctions::StateMachineAlias",
+    "name": "MyStateMachineAliastest",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "DeploymentPreference": {
+      "StateMachineVersionArn": {
+       "ref": "MyStateMachineVersion"
+      },
+      "Type": "ALL_AT_ONCE"
+     },
+     "Name": "test"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.MyStateMachineApiEventRole",
+   "cfg": "MyStateMachineApiEventRole",
+   "type": "__declared__",
+   "refs": [
+    "MyStateMachineAliastest"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "MyStateMachineApiEventRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "apigateway.amazonaws.com"
+         ]
+        }
+       }
+      ],
+      "Version": "2012-10-17"
+     },
+     "Policies": [
+      {
+       "PolicyDocument": {
+        "Statement": [
+         {
+          "Action": [
+           "states:StartExecution"
+          ],
+          "Effect": "Allow",
+          "Resource": {
+           "ref": "MyStateMachineAliastest"
+          }
+         }
+        ]
+       },
+       "PolicyName": "MyStateMachineApiEventRoleStartExecutionPolicy"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Events::Rule.MyStateMachineCWEvent",
+   "cfg": "MyStateMachineCWEvent",
+   "type": "__declared__",
+   "refs": [
+    "MyStateMachineAliastest",
+    "MyStateMachineCWEventRole"
+   ],
+   "values": {
+    "type": "AWS::Events::Rule",
+    "name": "MyStateMachineCWEvent",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "EventPattern": {
+      "detail": {
+       "state": [
+        "terminated"
+       ]
+      }
+     },
+     "Targets": [
+      {
+       "Arn": {
+        "ref": "MyStateMachineAliastest"
+       },
+       "Id": "MyStateMachineCWEventStepFunctionsTarget",
+       "RoleArn": {
+        "ref": "MyStateMachineCWEventRole",
+        "attr": "Arn"
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.MyStateMachineCWEventRole",
+   "cfg": "MyStateMachineCWEventRole",
+   "type": "__declared__",
+   "refs": [
+    "MyStateMachineAliastest"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "MyStateMachineCWEventRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "events.amazonaws.com"
+         ]
+        }
+       }
+      ],
+      "Version": "2012-10-17"
+     },
+     "Policies": [
+      {
+       "PolicyDocument": {
+        "Statement": [
+         {
+          "Action": [
+           "states:StartExecution"
+          ],
+          "Effect": "Allow",
+          "Resource": {
+           "ref": "MyStateMachineAliastest"
+          }
+         }
+        ]
+       },
+       "PolicyName": "MyStateMachineCWEventRoleStartExecutionPolicy"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Events::Rule.MyStateMachineCWSchedule",
+   "cfg": "MyStateMachineCWSchedule",
+   "type": "__declared__",
+   "refs": [
+    "MyStateMachineAliastest",
+    "MyStateMachineCWScheduleRole"
+   ],
+   "values": {
+    "type": "AWS::Events::Rule",
+    "name": "MyStateMachineCWSchedule",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Description": "test schedule",
+     "Name": "TestSchedule",
+     "ScheduleExpression": "rate(1 minute)",
+     "State": "DISABLED",
+     "Targets": [
+      {
+       "Arn": {
+        "ref": "MyStateMachineAliastest"
+       },
+       "Id": "MyStateMachineCWScheduleStepFunctionsTarget",
+       "RoleArn": {
+        "ref": "MyStateMachineCWScheduleRole",
+        "attr": "Arn"
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.MyStateMachineCWScheduleRole",
+   "cfg": "MyStateMachineCWScheduleRole",
+   "type": "__declared__",
+   "refs": [
+    "MyStateMachineAliastest"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "MyStateMachineCWScheduleRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "events.amazonaws.com"
+         ]
+        }
+       }
+      ],
+      "Version": "2012-10-17"
+     },
+     "Policies": [
+      {
+       "PolicyDocument": {
+        "Statement": [
+         {
+          "Action": [
+           "states:StartExecution"
+          ],
+          "Effect": "Allow",
+          "Resource": {
+           "ref": "MyStateMachineAliastest"
+          }
+         }
+        ]
+       },
+       "PolicyName": "MyStateMachineCWScheduleRoleStartExecutionPolicy"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Events::Rule.MyStateMachineEBEvent",
+   "cfg": "MyStateMachineEBEvent",
+   "type": "__declared__",
+   "refs": [
+    "MyStateMachineAliastest",
+    "MyStateMachineEBEventRole"
+   ],
+   "values": {
+    "type": "AWS::Events::Rule",
+    "name": "MyStateMachineEBEvent",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "EventPattern": {
+      "source": [
+       "aws.tag"
+      ]
+     },
+     "Targets": [
+      {
+       "Arn": {
+        "ref": "MyStateMachineAliastest"
+       },
+       "Id": "MyStateMachineEBEventStepFunctionsTarget",
+       "RoleArn": {
+        "ref": "MyStateMachineEBEventRole",
+        "attr": "Arn"
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.MyStateMachineEBEventRole",
+   "cfg": "MyStateMachineEBEventRole",
+   "type": "__declared__",
+   "refs": [
+    "MyStateMachineAliastest"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "MyStateMachineEBEventRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "events.amazonaws.com"
+         ]
+        }
+       }
+      ],
+      "Version": "2012-10-17"
+     },
+     "Policies": [
+      {
+       "PolicyDocument": {
+        "Statement": [
+         {
+          "Action": [
+           "states:StartExecution"
+          ],
+          "Effect": "Allow",
+          "Resource": {
+           "ref": "MyStateMachineAliastest"
+          }
+         }
+        ]
+       },
+       "PolicyName": "MyStateMachineEBEventRoleStartExecutionPolicy"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Scheduler::Schedule.MyStateMachineScheduleEvent",
+   "cfg": "MyStateMachineScheduleEvent",
+   "type": "__declared__",
+   "refs": [
+    "MyStateMachineAliastest",
+    "MyStateMachineScheduleEventRole"
+   ],
+   "values": {
+    "type": "AWS::Scheduler::Schedule",
+    "name": "MyStateMachineScheduleEvent",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "FlexibleTimeWindow": {
+      "Mode": "OFF"
+     },
+     "Name": "MyStateMachineScheduleEvent",
+     "ScheduleExpression": "rate(1 minute)",
+     "Target": {
+      "Arn": {
+       "ref": "MyStateMachineAliastest"
+      },
+      "RoleArn": {
+       "ref": "MyStateMachineScheduleEventRole",
+       "attr": "Arn"
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.MyStateMachineScheduleEventRole",
+   "cfg": "MyStateMachineScheduleEventRole",
+   "type": "__declared__",
+   "refs": [
+    "MyStateMachineAliastest"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "MyStateMachineScheduleEventRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "scheduler.amazonaws.com"
+         ]
+        }
+       }
+      ],
+      "Version": "2012-10-17"
+     },
+     "Policies": [
+      {
+       "PolicyDocument": {
+        "Statement": [
+         {
+          "Action": [
+           "states:StartExecution"
+          ],
+          "Effect": "Allow",
+          "Resource": {
+           "ref": "MyStateMachineAliastest"
+          }
+         }
+        ]
+       },
+       "PolicyName": "MyStateMachineScheduleEventStartExecutionPolicy"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::StepFunctions::StateMachineVersion.MyStateMachineVersion",
+   "cfg": "MyStateMachineVersion",
+   "type": "__declared__",
+   "refs": [
+    "MyStateMachine"
+   ],
+   "values": {
+    "type": "AWS::StepFunctions::StateMachineVersion",
+    "name": "MyStateMachineVersion",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "StateMachineArn": {
+      "ref": "MyStateMachine"
+     },
+     "StateMachineRevisionId": {
+      "ref": "MyStateMachine",
+      "attr": "StateMachineRevisionId"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::RestApi.ServerlessRestApi",
+   "cfg": "ServerlessRestApi",
+   "type": "__declared__",
+   "refs": [
+    "MyStateMachineAliastest",
+    "MyStateMachineApiEventRole"
+   ],
+   "values": {
+    "type": "AWS::ApiGateway::RestApi",
+    "name": "ServerlessRestApi",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Body": {
+      "info": {
+       "title": "stack",
+       "version": "1.0"
+      },
+      "paths": {
+       "/path": {
+        "get": {
+         "responses": {
+          "200": {
+           "description": "OK"
+          },
+          "400": {
+           "description": "Bad Request"
+          }
+         },
+         "x-amazon-apigateway-integration": {
+          "credentials": {
+           "ref": "MyStateMachineApiEventRole",
+           "attr": "Arn"
+          },
+          "httpMethod": "POST",
+          "requestTemplates": {
+           "application/json": "{\"input\": \"$util.escapeJavaScript($input.json('$'))\", \"stateMachineArn\": \"${MyStateMachineAliastest}\"}"
+          },
+          "responses": {
+           "200": {
+            "statusCode": "200"
+           },
+           "400": {
+            "statusCode": "400"
+           }
+          },
+          "type": "aws",
+          "uri": "arn:aws:apigateway:us-east-1:states:action/StartExecution"
+         }
+        }
+       }
+      },
+      "swagger": "2.0"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::Deployment.ServerlessRestApiDeploymente6166edbc7",
+   "cfg": "ServerlessRestApiDeploymente6166edbc7",
+   "type": "__declared__",
+   "refs": [
+    "ServerlessRestApi"
+   ],
+   "values": {
+    "type": "AWS::ApiGateway::Deployment",
+    "name": "ServerlessRestApiDeploymente6166edbc7",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Description": "RestApi deployment id: e6166edbc7b05836f53278af31642807c36e76b3",
+     "RestApiId": {
+      "ref": "ServerlessRestApi"
+     },
+     "StageName": "Stage"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::Stage.ServerlessRestApiProdStage",
+   "cfg": "ServerlessRestApiProdStage",
+   "type": "__declared__",
+   "refs": [
+    "ServerlessRestApi",
+    "ServerlessRestApiDeploymente6166edbc7"
+   ],
+   "values": {
+    "type": "AWS::ApiGateway::Stage",
+    "name": "ServerlessRestApiProdStage",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "DeploymentId": {
+      "ref": "ServerlessRestApiDeploymente6166edbc7"
+     },
+     "RestApiId": {
+      "ref": "ServerlessRestApi"
+     },
+     "StageName": "Prod"
+    }
+   }
+  }
+ ]
+}

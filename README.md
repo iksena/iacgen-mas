@@ -240,7 +240,7 @@ Both delete real resources. Use them only in a dedicated test account.
 | `baselines/opencode_baseline.py` | Coding-agent baseline: runs OpenCode once per scenario in an isolated workspace, then scores the template it leaves, validating and deploying it again if the agent did not. |
 | `baselines/opencode_driver.py` | Writes the OpenCode configuration (model endpoint, MCP server, tool allowlist), parses OpenCode's event stream into token counts and transcripts, and flags sessions that touched files outside their workspace. |
 | `baselines/opencode_agent_driver.py` | Coding-agent condition (`--agent`): OpenCode gets a shell and a logged-in AWS CLI instead of the three tools. Builds the self-testing system prompt, the permission rules, the reduced environment, and the Docker (or bubblewrap) isolation. |
-| `baselines/agent_container/` | Dockerfile of the image the agent runs in: OpenCode, AWS CLI, cfn-lint, Terraform, TFLint, and Trivy with the Validator's pinned checks bundle. |
+| `baselines/agent_container/` | Dockerfile of the image the agent runs in: OpenCode, AWS CLI, cfn-lint, yamllint, Terraform, TFLint, and Trivy, at the versions the Validator runs with (Trivy with its pinned checks bundle). |
 | `baselines/mcp_server.py` | MCP server started by OpenCode, exposing `validate_iac`, `deploy_iac`, and `submit_template`. |
 | `baselines/evaluation.py` | State behind the three tools: one `validate_iac` call is one iteration, the iteration cap, deployment only after static validation passed, the Engineer's error format, and per-iteration snapshots. |
 | `baselines/sandbox_audit.py` | Checks whether an OpenCode session's tool calls stayed inside its workspace; `analysis/audit/aggregate_benchmark_run_data.py` uses it to label workspace escapes. |
@@ -286,6 +286,7 @@ Each scenario runs in `runs/<run_id>/workspace`, which is initialised as its own
 
 ```bash
 docker build -t iacgod-agent:latest baselines/agent_container
+python -m scripts.verify_sandbox --agent --model deepseek/deepseek-v4-flash
 python -m baselines.opencode_baseline --agent \
   --expected-aws-account 123456789012 \
   --iac-type cloudformation \
@@ -295,7 +296,7 @@ python -m baselines.opencode_baseline --agent \
   --rows 1
 ```
 
-The run refuses to start unless the AWS CLI resolves to `--expected-aws-account`, and every row is swept against AWS after scoring, so use a dedicated account that nothing else runs in. The agent runs in the container with only its run directory (under `--agent-sandbox-root`, outside the checkout) and the read-only `~/.aws` mounted; `--agent-isolation bwrap` is the Linux alternative. A shell command that names the checkout, the real home directory or a code-hosting site marks the row `workspace_escape`. Extra columns: `agent_shell_calls`, `agent_aws_calls`, `agent_deploy_attempts`.
+The run refuses to start unless the AWS CLI resolves to `--expected-aws-account`, and every row is swept against AWS after scoring, so use a dedicated account that nothing else runs in. The agent runs in the container with only its run directory (under `--agent-sandbox-root`, outside the checkout) and the read-only `~/.aws` mounted; `--agent-isolation bwrap` is the Linux alternative. `scripts/verify_sandbox.py` runs the real driver against a throwaway layout with canary files outside the workspace, tells the model to read and write them with `cat`, `python3`, `ls`, `find` and `echo >`, and exits non-zero if any canary comes back, anything outside changes, or writing inside the workspace is blocked; run it on the benchmark machine before a sweep (it makes a few model calls and no AWS calls; without `--agent` it checks the file-tool baseline). A shell command that names or lists the checkout, the directory holding it (`--agent-hide-path`) or a code-hosting site marks the row `workspace_escape`. Extra columns: `agent_shell_calls`, `agent_aws_calls`, `agent_deploy_attempts`.
 
 ## Datasets
 
@@ -335,9 +336,9 @@ Paths in these CSVs are relative to the language folder, e.g. `benchmark/cloudfo
 
 - **Language**: `CFN` (CloudFormation) or `TF` (Terraform)
 - **Benchmark**: `RealAWS` (Multi-DPIaC-Eval on live AWS), `DPIaCEval`, `IaCEval`, or `Ablation` (50 scenarios per language on LocalStack); `LintOnly` = IaC-Eval run checked by TFLint and `terraform validate` only
-- **System**: no tag = IaCGen-MAS; `OpenCode` = coding-agent baseline (validator tools); `OpencodeAgent` = coding-agent baseline with a shell and the AWS CLI (`--agent`); `OneShot` / `ZeroShot` = zero-shot baseline; `IaCGen` = IaCGen baseline. In the ablation, `IaCGOD` is the full IaCGen-MAS and the other tags name the removed or changed component (`NoPlanner`, `NoDenseRAG`, `NoGraphRAG`, `NoQueryRewrite`, `NoRemediator`, `OpenCodeRetriever`, `TrivyAllSeverities`).
-- **Model**: `DSV4F` DeepSeek-V4-Flash, `GLM53F` GLM-5.3-Flash, `Gemini38F` Gemini-3.8-Flash, `Opus55` Claude-Opus-5.5, `o3mini` o3-mini
-- **Suffix**: `DeployOnly` = deployability-only criterion (no security gate); `L345` = difficulty levels 3–5 only; `PlanOnly` = no deployment and no security gate, a template passes when TFLint, `terraform validate`, and `terraform plan` accept it; `LiveAWS_GLM` = ablation scenarios deployed to live AWS with GLM-5.3-Flash. `FirstAttempt` = the first iteration of the scenarios whose first iteration was blocked by an environment error, run again with one iteration; the repair-loop notebook counts these passes at every passItr@n.
+- **System**: no tag = IaCGen-MAS; `OpenCode` = coding-agent baseline (validator tools); `OpencodeAgent` = coding-agent baseline with a shell and the AWS CLI (`--agent`); `OneShot` / `ZeroShot` = zero-shot baseline; `IaCGen` = IaCGen baseline; `NoRetrieval` = IaCGen-MAS without the Retriever; `TrivyAll` = IaCGen-MAS with the Trivy stage blocking findings of every severity. In the ablation, `IaCGOD` is the full IaCGen-MAS and the other tags name the removed or changed component (`NoPlanner`, `NoDenseRAG`, `NoGraphRAG`, `NoQueryRewrite`, `NoRemediator`, `OpenCodeRetriever`, `TrivyAllSeverities`).
+- **Model**: `DSV4F`, `DSV4Flash`, and `DSFlash` DeepSeek-V4-Flash, `GLM53F` GLM-5.3-Flash, `Gemini38F` Gemini-3.8-Flash, `Opus55` Claude-Opus-5.5, `o3mini` o3-mini
+- **Suffix**: `DeployOnly` = deployability-only criterion (no security gate); `L345` = difficulty levels 3–5 only; `PlanOnly` = no deployment and no security gate, a template passes when TFLint, `terraform validate`, and `terraform plan` accept it; `LiveAWS_GLM` = ablation scenarios deployed to live AWS with GLM-5.3-Flash. `FirstAttempt` = the first iteration of the scenarios whose first iteration was blocked by an environment error, run again with one iteration; the repair-loop notebook counts these passes at every passItr@n. `i19` = IaCGen with its own feedback schedule, two simple and four moderate feedbacks per stage and at most 19 iterations (the other IaCGen runs give moderate feedback from the first repair, with 15 iterations). `Security` = IaCGen with Trivy critical and high findings as a stage between cfn-lint and deployment.
 
 Unless noted, a scenario passes under the joint criterion: no syntax error, no critical or high Trivy finding, and a successful deployment.
 
@@ -351,7 +352,7 @@ Each experiment folder contains:
 | `attempts_all.csv` | Every attempt of every scenario, with a `validity` label (`valid_pass`, `valid_fail`, `superseded`, `invalid_environment`, `invalid_harness`, `invalid_runtime`, `invalid_workspace_escape`) and the reason for invalid ones. |
 | `status.json` | Counts of expected, valid, passing, failing, and invalid scenarios. |
 
-`scripts/import_iacgen_results.py` writes these three files for the `IaCGen` folders from IaCGen's own results table, error history, and final templates. `CFN_RealAWS_IaCGen_DSV4Flash/` also keeps the IaCGen files it was built from (`iterative_DSV4Flash_merged_results.csv`, `error_history.csv`) and `row_source.csv`, which records whether each row comes from the earlier or the new IaCGen run.
+`scripts/import_iacgen_results.py` writes these three files for the `IaCGen` folders from IaCGen's own results table, error history, and final templates. `CFN_RealAWS_IaCGen_DSV4Flash/` also keeps the IaCGen files it was built from (`iterative_DSV4Flash_merged_results.csv`, `error_history.csv`) and `row_source.csv`, which records whether each row comes from the earlier or the new IaCGen run. `CFN_RealAWS_IaCGen_DSV4Flash_i19/` and `CFN_RealAWS_IaCGen_DSV4Flash_Security/` keep their `iterative_*_results.csv` and `error_history.csv` in the same way.
 
 Top-level files:
 

@@ -1,0 +1,993 @@
+{
+ "meta": {
+  "lang": "tf",
+  "mode": "plan",
+  "warnings": [],
+  "gt_hash": "3d8afb158538550840a34bb67f5442e1a66029df2987aa9cb310b65f1e58ac05",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "data.aws_iam_policy_document.gitops_access",
+   "cfg": "data.aws_iam_policy_document.gitops_access",
+   "type": "data.aws_iam_policy_document",
+   "values": {
+    "override_json": null,
+    "override_policy_documents": null,
+    "policy_id": null,
+    "source_json": null,
+    "source_policy_documents": null,
+    "statement": [
+     {
+      "actions": [
+       "codecommit:GitPull",
+       "codecommit:GitPush"
+      ],
+      "condition": [],
+      "effect": "Allow",
+      "not_actions": null,
+      "not_principals": [],
+      "not_resources": null,
+      "principals": [],
+      "resources": [
+       null,
+       null,
+       null
+      ],
+      "sid": ""
+     }
+    ],
+    "version": null
+   },
+   "refs": [
+    "aws_codecommit_repository.addons",
+    "aws_codecommit_repository.platform",
+    "aws_codecommit_repository.workloads"
+   ]
+  },
+  {
+   "id": "aws_codecommit_repository.addons",
+   "cfg": "aws_codecommit_repository.addons",
+   "type": "aws_codecommit_repository",
+   "values": {
+    "default_branch": null,
+    "description": "CodeCommit repository for ArgoCD addons",
+    "region": "us-east-1",
+    "repository_name": "gitops-addons",
+    "tags": null
+   },
+   "refs": []
+  },
+  {
+   "id": "aws_codecommit_repository.platform",
+   "cfg": "aws_codecommit_repository.platform",
+   "type": "aws_codecommit_repository",
+   "values": {
+    "default_branch": null,
+    "description": "CodeCommit repository for ArgoCD platform",
+    "region": "us-east-1",
+    "repository_name": "gitops-platform",
+    "tags": null
+   },
+   "refs": []
+  },
+  {
+   "id": "aws_codecommit_repository.workloads",
+   "cfg": "aws_codecommit_repository.workloads",
+   "type": "aws_codecommit_repository",
+   "values": {
+    "default_branch": null,
+    "description": "CodeCommit repository for ArgoCD workloads",
+    "region": "us-east-1",
+    "repository_name": "gitops-apps",
+    "tags": null
+   },
+   "refs": []
+  },
+  {
+   "id": "aws_iam_policy.gitops_access",
+   "cfg": "aws_iam_policy.gitops_access",
+   "type": "aws_iam_policy",
+   "values": {
+    "delay_after_policy_creation_in_ms": null,
+    "description": null,
+    "name": "gitops-bridge-gitops",
+    "path": "/",
+    "tags": null
+   },
+   "refs": [
+    "data.aws_iam_policy_document.gitops_access"
+   ]
+  },
+  {
+   "id": "aws_iam_user.gitops",
+   "cfg": "aws_iam_user.gitops",
+   "type": "aws_iam_user",
+   "values": {
+    "force_destroy": false,
+    "name": "gitops-bridge-gitops",
+    "path": "/",
+    "permissions_boundary": null,
+    "tags": null
+   },
+   "refs": []
+  },
+  {
+   "id": "aws_iam_user_policy_attachment.gitops_access",
+   "cfg": "aws_iam_user_policy_attachment.gitops_access",
+   "type": "aws_iam_user_policy_attachment",
+   "values": {
+    "user": "gitops-bridge-gitops"
+   },
+   "refs": [
+    "aws_iam_policy.gitops_access",
+    "aws_iam_user.gitops"
+   ]
+  },
+  {
+   "id": "aws_iam_user_ssh_key.gitops",
+   "cfg": "aws_iam_user_ssh_key.gitops",
+   "type": "aws_iam_user_ssh_key",
+   "values": {
+    "encoding": "SSH",
+    "username": "gitops-bridge-gitops"
+   },
+   "refs": [
+    "aws_iam_user.gitops",
+    "tls_private_key.gitops"
+   ]
+  },
+  {
+   "id": "aws_secretsmanager_secret.codecommit_key",
+   "cfg": "aws_secretsmanager_secret.codecommit_key",
+   "type": "aws_secretsmanager_secret",
+   "values": {
+    "description": null,
+    "force_overwrite_replica_secret": false,
+    "kms_key_id": null,
+    "recovery_window_in_days": 30,
+    "region": "us-east-1",
+    "replica": [],
+    "tags": null,
+    "type": null
+   },
+   "refs": [
+    "random_string.secret_suffix"
+   ]
+  },
+  {
+   "id": "aws_secretsmanager_secret_version.private_key_secret_version",
+   "cfg": "aws_secretsmanager_secret_version.private_key_secret_version",
+   "type": "aws_secretsmanager_secret_version",
+   "values": {
+    "region": "us-east-1",
+    "secret_binary": null,
+    "secret_string_wo": null,
+    "secret_string_wo_version": null
+   },
+   "refs": [
+    "aws_secretsmanager_secret.codecommit_key",
+    "tls_private_key.gitops"
+   ]
+  },
+  {
+   "id": "local_file.ssh_private_key",
+   "cfg": "local_file.ssh_private_key",
+   "type": "local_file",
+   "values": {
+    "content_base64": null,
+    "directory_permission": "0777",
+    "file_permission": "0600",
+    "filename": "/Users/iksena/.ssh/gitops_ssh.pem",
+    "sensitive_content": null,
+    "source": null
+   },
+   "refs": [
+    "gitops_ssh.pem",
+    "tls_private_key.gitops"
+   ]
+  },
+  {
+   "id": "null_resource.append_string_block[0]",
+   "cfg": "null_resource.append_string_block",
+   "type": "null_resource",
+   "values": {
+    "triggers": {
+     "file": "/Users/iksena/.ssh/config"
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "random_string.secret_suffix",
+   "cfg": "random_string.secret_suffix",
+   "type": "random_string",
+   "values": {
+    "keepers": null,
+    "length": 5,
+    "lower": true,
+    "min_lower": 0,
+    "min_numeric": 0,
+    "min_special": 0,
+    "min_upper": 0,
+    "number": true,
+    "numeric": true,
+    "override_special": null,
+    "special": false,
+    "upper": true
+   },
+   "refs": []
+  },
+  {
+   "id": "tls_private_key.gitops",
+   "cfg": "tls_private_key.gitops",
+   "type": "tls_private_key",
+   "values": {
+    "algorithm": "RSA",
+    "ecdsa_curve": "P224",
+    "rsa_bits": 4096
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.gitops_addons_basepath",
+   "cfg": "__parameter__.gitops_addons_basepath",
+   "type": "__parameter__",
+   "values": {
+    "name": "gitops_addons_basepath",
+    "default": ""
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.gitops_addons_path",
+   "cfg": "__parameter__.gitops_addons_path",
+   "type": "__parameter__",
+   "values": {
+    "name": "gitops_addons_path",
+    "default": "bootstrap"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.gitops_addons_repo_name",
+   "cfg": "__parameter__.gitops_addons_repo_name",
+   "type": "__parameter__",
+   "values": {
+    "name": "gitops_addons_repo_name",
+    "default": "gitops-addons"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.gitops_addons_revision",
+   "cfg": "__parameter__.gitops_addons_revision",
+   "type": "__parameter__",
+   "values": {
+    "name": "gitops_addons_revision",
+    "default": "HEAD"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.gitops_platform_basepath",
+   "cfg": "__parameter__.gitops_platform_basepath",
+   "type": "__parameter__",
+   "values": {
+    "name": "gitops_platform_basepath",
+    "default": ""
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.gitops_platform_path",
+   "cfg": "__parameter__.gitops_platform_path",
+   "type": "__parameter__",
+   "values": {
+    "name": "gitops_platform_path",
+    "default": "bootstrap"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.gitops_platform_repo_name",
+   "cfg": "__parameter__.gitops_platform_repo_name",
+   "type": "__parameter__",
+   "values": {
+    "name": "gitops_platform_repo_name",
+    "default": "gitops-platform"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.gitops_platform_revision",
+   "cfg": "__parameter__.gitops_platform_revision",
+   "type": "__parameter__",
+   "values": {
+    "name": "gitops_platform_revision",
+    "default": "HEAD"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.gitops_workload_basepath",
+   "cfg": "__parameter__.gitops_workload_basepath",
+   "type": "__parameter__",
+   "values": {
+    "name": "gitops_workload_basepath",
+    "default": ""
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.gitops_workload_path",
+   "cfg": "__parameter__.gitops_workload_path",
+   "type": "__parameter__",
+   "values": {
+    "name": "gitops_workload_path",
+    "default": ""
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.gitops_workload_repo_name",
+   "cfg": "__parameter__.gitops_workload_repo_name",
+   "type": "__parameter__",
+   "values": {
+    "name": "gitops_workload_repo_name",
+    "default": "gitops-apps"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.gitops_workload_revision",
+   "cfg": "__parameter__.gitops_workload_revision",
+   "type": "__parameter__",
+   "values": {
+    "name": "gitops_workload_revision",
+    "default": "HEAD"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.ssh_key_basepath",
+   "cfg": "__parameter__.ssh_key_basepath",
+   "type": "__parameter__",
+   "values": {
+    "name": "ssh_key_basepath",
+    "default": "~/.ssh"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.codecommit_key_id",
+   "cfg": "__output__.codecommit_key_id",
+   "type": "__output__",
+   "values": {
+    "name": "codecommit_key_id",
+    "value": null,
+    "description": "Secret name that holds the SSH key for accessing CodeCommit"
+   },
+   "refs": [
+    "aws_secretsmanager_secret.codecommit_key"
+   ]
+  },
+  {
+   "id": "__output__.codecommit_key_name",
+   "cfg": "__output__.codecommit_key_name",
+   "type": "__output__",
+   "values": {
+    "name": "codecommit_key_name",
+    "value": null,
+    "description": "Secret name that holds the SSH key for accessing CodeCommit"
+   },
+   "refs": [
+    "aws_secretsmanager_secret.codecommit_key"
+   ]
+  },
+  {
+   "id": "__output__.configure_argocd",
+   "cfg": "__output__.configure_argocd",
+   "type": "__output__",
+   "values": {
+    "name": "configure_argocd",
+    "value": null,
+    "description": null
+   },
+   "refs": [
+    "aws_iam_user_ssh_key.gitops",
+    "data.aws_region.current"
+   ]
+  },
+  {
+   "id": "__output__.git_clone",
+   "cfg": "__output__.git_clone",
+   "type": "__output__",
+   "values": {
+    "name": "git_clone",
+    "value": null,
+    "description": null
+   },
+   "refs": [
+    "aws_iam_user_ssh_key.gitops",
+    "data.aws_region.current"
+   ]
+  },
+  {
+   "id": "__output__.git_private_ssh_key",
+   "cfg": "__output__.git_private_ssh_key",
+   "type": "__output__",
+   "values": {
+    "name": "git_private_ssh_key",
+    "value": "~/.ssh/gitops_ssh.pem",
+    "description": null
+   },
+   "refs": [
+    "gitops_ssh.pem"
+   ]
+  },
+  {
+   "id": "__output__.gitops_addons_basepath",
+   "cfg": "__output__.gitops_addons_basepath",
+   "type": "__output__",
+   "values": {
+    "name": "gitops_addons_basepath",
+    "value": "",
+    "description": "Git repository base path for addons"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.gitops_addons_org",
+   "cfg": "__output__.gitops_addons_org",
+   "type": "__output__",
+   "values": {
+    "name": "gitops_addons_org",
+    "value": null,
+    "description": "Git repository org/user contains for addons"
+   },
+   "refs": [
+    "aws_iam_user_ssh_key.gitops",
+    "data.aws_region.current"
+   ]
+  },
+  {
+   "id": "__output__.gitops_addons_path",
+   "cfg": "__output__.gitops_addons_path",
+   "type": "__output__",
+   "values": {
+    "name": "gitops_addons_path",
+    "value": "bootstrap",
+    "description": "Git repository path for addons"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.gitops_addons_repo",
+   "cfg": "__output__.gitops_addons_repo",
+   "type": "__output__",
+   "values": {
+    "name": "gitops_addons_repo",
+    "value": "v1/repos/gitops-addons",
+    "description": "Git repository contains for addons"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.gitops_addons_revision",
+   "cfg": "__output__.gitops_addons_revision",
+   "type": "__output__",
+   "values": {
+    "name": "gitops_addons_revision",
+    "value": "HEAD",
+    "description": "Git repository revision/branch/ref for addons"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.gitops_addons_url",
+   "cfg": "__output__.gitops_addons_url",
+   "type": "__output__",
+   "values": {
+    "name": "gitops_addons_url",
+    "value": null,
+    "description": null
+   },
+   "refs": [
+    "aws_iam_user_ssh_key.gitops",
+    "data.aws_region.current"
+   ]
+  },
+  {
+   "id": "__output__.gitops_platform_basepath",
+   "cfg": "__output__.gitops_platform_basepath",
+   "type": "__output__",
+   "values": {
+    "name": "gitops_platform_basepath",
+    "value": "",
+    "description": "Git repository base path for platform"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.gitops_platform_org",
+   "cfg": "__output__.gitops_platform_org",
+   "type": "__output__",
+   "values": {
+    "name": "gitops_platform_org",
+    "value": null,
+    "description": "Git repository org/user contains for platform"
+   },
+   "refs": [
+    "aws_iam_user_ssh_key.gitops",
+    "data.aws_region.current"
+   ]
+  },
+  {
+   "id": "__output__.gitops_platform_path",
+   "cfg": "__output__.gitops_platform_path",
+   "type": "__output__",
+   "values": {
+    "name": "gitops_platform_path",
+    "value": "bootstrap",
+    "description": "Git repository path for platform"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.gitops_platform_repo",
+   "cfg": "__output__.gitops_platform_repo",
+   "type": "__output__",
+   "values": {
+    "name": "gitops_platform_repo",
+    "value": "v1/repos/gitops-apps",
+    "description": "Git repository contains for platform"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.gitops_platform_revision",
+   "cfg": "__output__.gitops_platform_revision",
+   "type": "__output__",
+   "values": {
+    "name": "gitops_platform_revision",
+    "value": "HEAD",
+    "description": "Git repository revision/branch/ref for platform"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.gitops_platform_url",
+   "cfg": "__output__.gitops_platform_url",
+   "type": "__output__",
+   "values": {
+    "name": "gitops_platform_url",
+    "value": null,
+    "description": null
+   },
+   "refs": [
+    "aws_iam_user_ssh_key.gitops",
+    "data.aws_region.current"
+   ]
+  },
+  {
+   "id": "__output__.gitops_workload_basepath",
+   "cfg": "__output__.gitops_workload_basepath",
+   "type": "__output__",
+   "values": {
+    "name": "gitops_workload_basepath",
+    "value": "",
+    "description": "Git repository base path for workload"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.gitops_workload_org",
+   "cfg": "__output__.gitops_workload_org",
+   "type": "__output__",
+   "values": {
+    "name": "gitops_workload_org",
+    "value": null,
+    "description": "Git repository org/user contains for workload"
+   },
+   "refs": [
+    "aws_iam_user_ssh_key.gitops",
+    "data.aws_region.current"
+   ]
+  },
+  {
+   "id": "__output__.gitops_workload_path",
+   "cfg": "__output__.gitops_workload_path",
+   "type": "__output__",
+   "values": {
+    "name": "gitops_workload_path",
+    "value": "",
+    "description": "Git repository path for workload"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.gitops_workload_repo",
+   "cfg": "__output__.gitops_workload_repo",
+   "type": "__output__",
+   "values": {
+    "name": "gitops_workload_repo",
+    "value": "v1/repos/gitops-apps",
+    "description": "Git repository contains for workload"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.gitops_workload_revision",
+   "cfg": "__output__.gitops_workload_revision",
+   "type": "__output__",
+   "values": {
+    "name": "gitops_workload_revision",
+    "value": "HEAD",
+    "description": "Git repository revision/branch/ref for workload"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.gitops_workload_url",
+   "cfg": "__output__.gitops_workload_url",
+   "type": "__output__",
+   "values": {
+    "name": "gitops_workload_url",
+    "value": null,
+    "description": null
+   },
+   "refs": [
+    "aws_iam_user_ssh_key.gitops",
+    "data.aws_region.current"
+   ]
+  },
+  {
+   "id": "__output__.ssh_config",
+   "cfg": "__output__.ssh_config",
+   "type": "__output__",
+   "values": {
+    "name": "ssh_config",
+    "value": null,
+    "description": null
+   },
+   "refs": [
+    "aws_iam_user.gitops",
+    "gitops_ssh.pem"
+   ]
+  },
+  {
+   "id": "__output__.ssh_host",
+   "cfg": "__output__.ssh_host",
+   "type": "__output__",
+   "values": {
+    "name": "ssh_host",
+    "value": "git-codecommit.*.amazonaws.com",
+    "description": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__declared__.data.aws_region.current",
+   "cfg": "data.aws_region.current",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "data.aws_region",
+    "name": "current",
+    "gated": false,
+    "gate": null,
+    "properties": {}
+   }
+  },
+  {
+   "id": "__declared__.aws_codecommit_repository.workloads",
+   "cfg": "aws_codecommit_repository.workloads",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_codecommit_repository",
+    "name": "workloads",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "repository_name": "${local.gitops_workload_repo_name}",
+     "description": "CodeCommit repository for ArgoCD workloads"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_codecommit_repository.platform",
+   "cfg": "aws_codecommit_repository.platform",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_codecommit_repository",
+    "name": "platform",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "repository_name": "${local.gitops_platform_repo_name}",
+     "description": "CodeCommit repository for ArgoCD platform"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_codecommit_repository.addons",
+   "cfg": "aws_codecommit_repository.addons",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_codecommit_repository",
+    "name": "addons",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "repository_name": "${local.gitops_addons_repo_name}",
+     "description": "CodeCommit repository for ArgoCD addons"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_user.gitops",
+   "cfg": "aws_iam_user.gitops",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_iam_user",
+    "name": "gitops",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "${local.context_prefix}-gitops",
+     "path": "/"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_user_ssh_key.gitops",
+   "cfg": "aws_iam_user_ssh_key.gitops",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_user.gitops",
+    "tls_private_key.gitops"
+   ],
+   "values": {
+    "type": "aws_iam_user_ssh_key",
+    "name": "gitops",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "username": "${aws_iam_user.gitops.name}",
+     "encoding": "SSH",
+     "public_key": "${tls_private_key.gitops.public_key_openssh}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.tls_private_key.gitops",
+   "cfg": "tls_private_key.gitops",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "tls_private_key",
+    "name": "gitops",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "algorithm": "RSA",
+     "rsa_bits": 4096
+    }
+   }
+  },
+  {
+   "id": "__declared__.random_string.secret_suffix",
+   "cfg": "random_string.secret_suffix",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "random_string",
+    "name": "secret_suffix",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "length": 5,
+     "special": false,
+     "upper": true,
+     "lower": true,
+     "number": true
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_secretsmanager_secret.codecommit_key",
+   "cfg": "aws_secretsmanager_secret.codecommit_key",
+   "type": "__declared__",
+   "refs": [
+    "random_string.secret_suffix"
+   ],
+   "values": {
+    "type": "aws_secretsmanager_secret",
+    "name": "codecommit_key",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "codecommit-key-${random_string.secret_suffix.result}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_secretsmanager_secret_version.private_key_secret_version",
+   "cfg": "aws_secretsmanager_secret_version.private_key_secret_version",
+   "type": "__declared__",
+   "refs": [
+    "aws_secretsmanager_secret.codecommit_key",
+    "tls_private_key.gitops"
+   ],
+   "values": {
+    "type": "aws_secretsmanager_secret_version",
+    "name": "private_key_secret_version",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "secret_id": "${aws_secretsmanager_secret.codecommit_key.id}",
+     "secret_string": "${tls_private_key.gitops.private_key_pem}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.local_file.ssh_private_key",
+   "cfg": "local_file.ssh_private_key",
+   "type": "__declared__",
+   "refs": [
+    "gitops_ssh.pem",
+    "tls_private_key.gitops"
+   ],
+   "values": {
+    "type": "local_file",
+    "name": "ssh_private_key",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "content": "${tls_private_key.gitops.private_key_pem}",
+     "filename": "${pathexpand(local.git_private_ssh_key)}",
+     "file_permission": "0600"
+    }
+   }
+  },
+  {
+   "id": "__declared__.local_file.ssh_config",
+   "cfg": "local_file.ssh_config",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_user.gitops"
+   ],
+   "values": {
+    "type": "local_file",
+    "name": "ssh_config",
+    "gated": true,
+    "gate": "local.ssh_key_basepath == \"/home/ec2-user/.ssh\" ? 1 : 0",
+    "properties": {
+     "count": "${local.ssh_key_basepath == \"/home/ec2-user/.ssh\" ? 1 : 0}",
+     "content": "${local.ssh_config}",
+     "filename": "${pathexpand(local.git_private_ssh_key_config)}",
+     "file_permission": "0600"
+    }
+   }
+  },
+  {
+   "id": "__declared__.null_resource.append_string_block",
+   "cfg": "null_resource.append_string_block",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_user.gitops"
+   ],
+   "values": {
+    "type": "null_resource",
+    "name": "append_string_block",
+    "gated": true,
+    "gate": "local.ssh_key_basepath == \"/home/ec2-user/.ssh\" ? 0 : 1",
+    "properties": {
+     "count": "${local.ssh_key_basepath == \"/home/ec2-user/.ssh\" ? 0 : 1}",
+     "triggers": {
+      "always_run": "${timestamp()}",
+      "file": "${pathexpand(local.git_private_ssh_key_config)}"
+     },
+     "provisioner": [
+      {
+       "local-exec": {
+        "when": [
+         "${create}"
+        ],
+        "command": [
+         "      start_marker=\"### START BLOCK AWS Workshop ###\"\n      end_marker=\"### END BLOCK AWS Workshop ###\"\n      block=\"$start_marker\\n${local.ssh_config}\\n$end_marker\"\n      file=\"${self.triggers.file}\"\n\n      if ! grep -q \"$start_marker\" \"$file\"; then\n        echo \"$block\" >> \"$file\"\n      fi"
+        ]
+       }
+      },
+      {
+       "local-exec": {
+        "when": [
+         "${destroy}"
+        ],
+        "command": [
+         "      start_marker=\"### START BLOCK AWS Workshop ###\"\n      end_marker=\"### END BLOCK AWS Workshop ###\"\n      file=\"${self.triggers.file}\"\n\n      if grep -q \"$start_marker\" \"$file\"; then\n        sed -i '' \"/$start_marker/,/$end_marker/d\" \"$file\"\n      fi"
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.data.aws_iam_policy_document.gitops_access",
+   "cfg": "data.aws_iam_policy_document.gitops_access",
+   "type": "__declared__",
+   "refs": [
+    "aws_codecommit_repository.addons",
+    "aws_codecommit_repository.platform",
+    "aws_codecommit_repository.workloads"
+   ],
+   "values": {
+    "type": "data.aws_iam_policy_document",
+    "name": "gitops_access",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "statement": [
+      {
+       "sid": "",
+       "actions": [
+        "codecommit:GitPull",
+        "codecommit:GitPush"
+       ],
+       "effect": "Allow",
+       "resources": [
+        "${aws_codecommit_repository.workloads.arn}",
+        "${aws_codecommit_repository.platform.arn}",
+        "${aws_codecommit_repository.addons.arn}"
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_policy.gitops_access",
+   "cfg": "aws_iam_policy.gitops_access",
+   "type": "__declared__",
+   "refs": [
+    "data.aws_iam_policy_document.gitops_access"
+   ],
+   "values": {
+    "type": "aws_iam_policy",
+    "name": "gitops_access",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "${local.context_prefix}-gitops",
+     "path": "/",
+     "policy": "${data.aws_iam_policy_document.gitops_access.json}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_user_policy_attachment.gitops_access",
+   "cfg": "aws_iam_user_policy_attachment.gitops_access",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_policy.gitops_access",
+    "aws_iam_user.gitops"
+   ],
+   "values": {
+    "type": "aws_iam_user_policy_attachment",
+    "name": "gitops_access",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "user": "${aws_iam_user.gitops.name}",
+     "policy_arn": "${aws_iam_policy.gitops_access.arn}"
+    }
+   }
+  }
+ ]
+}

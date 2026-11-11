@@ -1,0 +1,871 @@
+{
+ "lang": "tf",
+ "row_number": 353,
+ "source_hash": {
+  "gt": "df854b54088c279b1c2306ee327500d9881ca75136eca9b01c385f5dc8b56ee2",
+  "prompt": "84329670886b1a8c32300b659987c111b65edff5d497e403c65ec873e0c13489"
+ },
+ "selectors": {},
+ "checks": [
+  {
+   "id": "vpc_cidr",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_vpc"
+    ],
+    "where": [
+     {
+      "path": "cidr_block",
+      "op": "eq",
+      "value": "10.0.0.0/16"
+     }
+    ]
+   },
+   "tier": "core",
+   "quote": "creates a VPC named \"swe-vpc\" with CIDR block 10.0.0.0/16"
+  },
+  {
+   "id": "vpc_name",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_vpc"
+    ],
+    "where": [
+     {
+      "path": "cidr_block",
+      "op": "eq",
+      "value": "10.0.0.0/16"
+     }
+    ]
+   },
+   "cond": {
+    "path": "tags.Name",
+    "op": "eq",
+    "value": "swe-vpc"
+   },
+   "tier": "core",
+   "quote": "creates a VPC named \"swe-vpc\""
+  },
+  {
+   "id": "vpc_tenancy",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_vpc"
+    ],
+    "where": [
+     {
+      "path": "cidr_block",
+      "op": "eq",
+      "value": "10.0.0.0/16"
+     }
+    ]
+   },
+   "cond": {
+    "path": "instance_tenancy",
+    "op": "eq",
+    "value": "default"
+   },
+   "tier": "detail",
+   "quote": "default instance tenancy"
+  },
+  {
+   "id": "vpc_dns_support",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_vpc"
+    ],
+    "where": [
+     {
+      "path": "cidr_block",
+      "op": "eq",
+      "value": "10.0.0.0/16"
+     }
+    ]
+   },
+   "cond": {
+    "path": "enable_dns_support",
+    "op": "truthy"
+   },
+   "tier": "core",
+   "quote": "DNS support and DNS hostnames enabled"
+  },
+  {
+   "id": "vpc_dns_hostnames",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_vpc"
+    ],
+    "where": [
+     {
+      "path": "cidr_block",
+      "op": "eq",
+      "value": "10.0.0.0/16"
+     }
+    ]
+   },
+   "cond": {
+    "path": "enable_dns_hostnames",
+    "op": "truthy"
+   },
+   "tier": "core",
+   "quote": "DNS support and DNS hostnames enabled"
+  },
+  {
+   "id": "vpc_resource_group_tag",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_vpc"
+    ],
+    "where": [
+     {
+      "path": "cidr_block",
+      "op": "eq",
+      "value": "10.0.0.0/16"
+     }
+    ]
+   },
+   "cond": {
+    "path": "tags.ResourceGroup",
+    "op": "eq",
+    "value": "default"
+   },
+   "tier": "detail",
+   "quote": "tagged with a ResourceGroup tag of \"default\""
+  },
+  {
+   "id": "default_acl_exists",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_default_network_acl"
+    ],
+    "where": []
+   },
+   "tier": "core",
+   "quote": "take over the VPC's default network ACL"
+  },
+  {
+   "id": "default_acl_name",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_default_network_acl"
+    ],
+    "where": []
+   },
+   "cond": {
+    "path": "tags.Name",
+    "op": "eq",
+    "value": "swe-vpc-default_acl"
+   },
+   "tier": "detail",
+   "quote": "naming it \"swe-vpc-default_acl\""
+  },
+  {
+   "id": "acl_allow_all_ingress",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "allows all traffic to and from the VPC's own CIDR",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_default_network_acl"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": "ingress.*",
+      "op": "match",
+      "value": [
+       {
+        "path": "action",
+        "op": "eq",
+        "value": "allow"
+       },
+       {
+        "path": "protocol",
+        "op": "in",
+        "value": [
+         "-1",
+         "all"
+        ]
+       },
+       {
+        "path": "cidr_block",
+        "op": "eq",
+        "value": "10.0.0.0/16"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_default_network_acl"
+       }
+      ]
+     },
+     "cond": {
+      "path": "properties.ingress.*",
+      "op": "match",
+      "value": [
+       {
+        "path": "action",
+        "op": "eq",
+        "value": "allow"
+       },
+       {
+        "path": "protocol",
+        "op": "regex",
+        "value": "^(\\$\\{)?(-1|all)\\}?$"
+       },
+       {
+        "path": "cidr_block",
+        "op": "regex",
+        "value": "(?i)^(10\\.0\\.0\\.0/16|\\$\\{[^}]*cidr[^}]*\\})$"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_network_acl_rule"
+      ],
+      "where": [
+       {
+        "path": "egress",
+        "op": "eq",
+        "value": "false"
+       },
+       {
+        "path": "rule_action",
+        "op": "eq",
+        "value": "allow"
+       },
+       {
+        "path": "protocol",
+        "op": "in",
+        "value": [
+         "-1",
+         "all"
+        ]
+       },
+       {
+        "path": "cidr_block",
+        "op": "eq",
+        "value": "10.0.0.0/16"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_default_network_acl",
+       "aws_vpc"
+      ],
+      "where": []
+     }
+    }
+   ],
+   "justify": "'to and from' means one inbound and one outbound rule; the egress flag selects the direction; own CIDR is the stated 10.0.0.0/16"
+  },
+  {
+   "id": "acl_allow_all_egress",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "allows all traffic to and from the VPC's own CIDR",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_default_network_acl"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": "egress.*",
+      "op": "match",
+      "value": [
+       {
+        "path": "action",
+        "op": "eq",
+        "value": "allow"
+       },
+       {
+        "path": "protocol",
+        "op": "in",
+        "value": [
+         "-1",
+         "all"
+        ]
+       },
+       {
+        "path": "cidr_block",
+        "op": "eq",
+        "value": "10.0.0.0/16"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_default_network_acl"
+       }
+      ]
+     },
+     "cond": {
+      "path": "properties.egress.*",
+      "op": "match",
+      "value": [
+       {
+        "path": "action",
+        "op": "eq",
+        "value": "allow"
+       },
+       {
+        "path": "protocol",
+        "op": "regex",
+        "value": "^(\\$\\{)?(-1|all)\\}?$"
+       },
+       {
+        "path": "cidr_block",
+        "op": "regex",
+        "value": "(?i)^(10\\.0\\.0\\.0/16|\\$\\{[^}]*cidr[^}]*\\})$"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_network_acl_rule"
+      ],
+      "where": [
+       {
+        "path": "egress",
+        "op": "eq",
+        "value": "true"
+       },
+       {
+        "path": "rule_action",
+        "op": "eq",
+        "value": "allow"
+       },
+       {
+        "path": "protocol",
+        "op": "in",
+        "value": [
+         "-1",
+         "all"
+        ]
+       },
+       {
+        "path": "cidr_block",
+        "op": "eq",
+        "value": "10.0.0.0/16"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_default_network_acl",
+       "aws_vpc"
+      ],
+      "where": []
+     }
+    }
+   ],
+   "justify": "'to and from' means one inbound and one outbound rule; the egress flag selects the direction; own CIDR is the stated 10.0.0.0/16"
+  },
+  {
+   "id": "acl_deny_ssh",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "explicitly denies inbound SSH (port 22)",
+   "justify": "SSH is TCP port 22 and any external address means 0.0.0.0/0",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_default_network_acl"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": "ingress.*",
+      "op": "match",
+      "value": [
+       {
+        "path": "action",
+        "op": "eq",
+        "value": "deny"
+       },
+       {
+        "path": "protocol",
+        "op": "in",
+        "value": [
+         "tcp",
+         "6",
+         "-1",
+         "all"
+        ]
+       },
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 22
+       },
+       {
+        "path": "cidr_block",
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_network_acl_rule"
+      ],
+      "where": [
+       {
+        "path": "egress",
+        "op": "falsy"
+       },
+       {
+        "path": "rule_action",
+        "op": "eq",
+        "value": "deny"
+       },
+       {
+        "path": "protocol",
+        "op": "in",
+        "value": [
+         "tcp",
+         "6",
+         "-1",
+         "all"
+        ]
+       },
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 22
+       },
+       {
+        "path": "cidr_block",
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_default_network_acl",
+       "aws_vpc"
+      ],
+      "where": []
+     }
+    }
+   ]
+  },
+  {
+   "id": "acl_deny_rdp",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "RDP (port 3389) from any external address",
+   "justify": "RDP is TCP port 3389 and any external address means 0.0.0.0/0",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_default_network_acl"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": "ingress.*",
+      "op": "match",
+      "value": [
+       {
+        "path": "action",
+        "op": "eq",
+        "value": "deny"
+       },
+       {
+        "path": "protocol",
+        "op": "in",
+        "value": [
+         "tcp",
+         "6",
+         "-1",
+         "all"
+        ]
+       },
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 3389
+       },
+       {
+        "path": "cidr_block",
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_network_acl_rule"
+      ],
+      "where": [
+       {
+        "path": "egress",
+        "op": "falsy"
+       },
+       {
+        "path": "rule_action",
+        "op": "eq",
+        "value": "deny"
+       },
+       {
+        "path": "protocol",
+        "op": "in",
+        "value": [
+         "tcp",
+         "6",
+         "-1",
+         "all"
+        ]
+       },
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 3389
+       },
+       {
+        "path": "cidr_block",
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_default_network_acl",
+       "aws_vpc"
+      ],
+      "where": []
+     }
+    }
+   ]
+  },
+  {
+   "id": "default_sg_exists",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_default_security_group"
+    ],
+    "where": []
+   },
+   "tier": "core",
+   "quote": "manage the VPC's default security group"
+  },
+  {
+   "id": "default_sg_name",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_default_security_group"
+    ],
+    "where": []
+   },
+   "cond": {
+    "path": "tags.Name",
+    "op": "eq",
+    "value": "swe-vpc-default_sg"
+   },
+   "tier": "detail",
+   "quote": "naming it \"swe-vpc-default_sg\""
+  },
+  {
+   "id": "default_sg_no_ingress",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_default_security_group"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": "ingress",
+      "op": "absent"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_default_security_group"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": "ingress",
+      "op": "len_eq",
+      "value": 0
+     }
+    }
+   ],
+   "tier": "core",
+   "quote": "with no rules of its own"
+  },
+  {
+   "id": "default_sg_no_egress",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_default_security_group"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": "egress",
+      "op": "absent"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_default_security_group"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": "egress",
+      "op": "len_eq",
+      "value": 0
+     }
+    }
+   ],
+   "tier": "core",
+   "quote": "with no rules of its own"
+  },
+  {
+   "id": "sg_allow_icmp_echo",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "allow ICMP echo (ping)",
+   "justify": "ICMP echo (ping) is ICMP type 8 (or all ICMP types, -1); from anywhere is 0.0.0.0/0",
+   "checks": [
+    {
+     "kind": "ref",
+     "to": {
+      "types": [
+       "aws_default_security_group",
+       "aws_vpc"
+      ],
+      "where": []
+     },
+     "from": {
+      "types": [
+       "aws_security_group_rule"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "ingress"
+       },
+       {
+        "path": "protocol",
+        "op": "in",
+        "value": [
+         "icmp",
+         "1"
+        ]
+       },
+       {
+        "path": "from_port",
+        "op": "in",
+        "value": [
+         "8",
+         "-1"
+        ]
+       },
+       {
+        "path": "cidr_blocks.*",
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "to": {
+      "types": [
+       "aws_default_security_group",
+       "aws_vpc"
+      ],
+      "where": []
+     },
+     "from": {
+      "types": [
+       "aws_vpc_security_group_ingress_rule"
+      ],
+      "where": [
+       {
+        "path": "ip_protocol",
+        "op": "in",
+        "value": [
+         "icmp",
+         "1"
+        ]
+       },
+       {
+        "path": "from_port",
+        "op": "in",
+        "value": [
+         "8",
+         "-1"
+        ]
+       },
+       {
+        "path": "cidr_ipv4",
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "sg_allow_http",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "HTTP on port 80 from anywhere",
+   "justify": "HTTP is TCP; from anywhere is 0.0.0.0/0",
+   "checks": [
+    {
+     "kind": "ref",
+     "to": {
+      "types": [
+       "aws_default_security_group",
+       "aws_vpc"
+      ],
+      "where": []
+     },
+     "from": {
+      "types": [
+       "aws_security_group_rule"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "ingress"
+       },
+       {
+        "path": "protocol",
+        "op": "in",
+        "value": [
+         "tcp",
+         "6"
+        ]
+       },
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 80
+       },
+       {
+        "path": "cidr_blocks.*",
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "to": {
+      "types": [
+       "aws_default_security_group",
+       "aws_vpc"
+      ],
+      "where": []
+     },
+     "from": {
+      "types": [
+       "aws_vpc_security_group_ingress_rule"
+      ],
+      "where": [
+       {
+        "path": "ip_protocol",
+        "op": "in",
+        "value": [
+         "tcp",
+         "6"
+        ]
+       },
+       {
+        "path": "",
+        "op": "port_covers",
+        "value": 80
+       },
+       {
+        "path": "cidr_ipv4",
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     }
+    }
+   ]
+  }
+ ],
+ "notes": "Rule numbers/ordering not tested. The NACL allow-all rules must use the VPC CIDR; when the CIDR comes from a reference that is unknown at plan, the declared expression is accepted if it is the literal or a reference naming a cidr. The ICMP and HTTP rules must be separate rule resources attached to the default security group (directly or via the VPC's default_security_group_id). The VPC name is core (primary resource); the ACL and SG Name tags are secondary, so detail."
+}

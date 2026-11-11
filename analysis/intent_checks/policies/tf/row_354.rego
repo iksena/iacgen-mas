@@ -1,0 +1,1419 @@
+package intent.tf.row_354
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {},
+ "checks": [
+  {
+   "id": "vpc_dev_cidr",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_vpc"
+    ],
+    "where": [
+     {
+      "path": [
+       "cidr_block"
+      ],
+      "op": "eq",
+      "value": "10.16.0.0/16"
+     }
+    ]
+   },
+   "tier": "core",
+   "quote": "\"vpc_dev\" with CIDR 10.16.0.0/16"
+  },
+  {
+   "id": "vpc_rec_cidr",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_vpc"
+    ],
+    "where": [
+     {
+      "path": [
+       "cidr_block"
+      ],
+      "op": "eq",
+      "value": "10.32.0.0/16"
+     }
+    ]
+   },
+   "tier": "core",
+   "quote": "\"vpc_rec\" with CIDR 10.32.0.0/16"
+  },
+  {
+   "id": "vpc_dev_name",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_vpc"
+    ],
+    "where": [
+     {
+      "path": [
+       "cidr_block"
+      ],
+      "op": "eq",
+      "value": "10.16.0.0/16"
+     }
+    ]
+   },
+   "cond": {
+    "path": [
+     "tags",
+     "Name"
+    ],
+    "op": "eq",
+    "value": "vpc_dev"
+   },
+   "tier": "core",
+   "quote": "\"vpc_dev\" with CIDR 10.16.0.0/16"
+  },
+  {
+   "id": "vpc_rec_name",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_vpc"
+    ],
+    "where": [
+     {
+      "path": [
+       "cidr_block"
+      ],
+      "op": "eq",
+      "value": "10.32.0.0/16"
+     }
+    ]
+   },
+   "cond": {
+    "path": [
+     "tags",
+     "Name"
+    ],
+    "op": "eq",
+    "value": "vpc_rec"
+   },
+   "tier": "core",
+   "quote": "\"vpc_rec\" with CIDR 10.32.0.0/16"
+  },
+  {
+   "id": "dev_subnet_cidrs",
+   "kind": "all_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "10.16.12.0/24"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_vpc"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "10.16.0.0/16"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "10.16.11.0/24"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_vpc"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "10.16.0.0/16"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "10.16.1.0/24"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_vpc"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "10.16.0.0/16"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "10.16.2.0/24"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_vpc"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "10.16.0.0/16"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "10.16.5.0/24"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_vpc"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "10.16.0.0/16"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "10.16.6.0/24"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_vpc"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "10.16.0.0/16"
+       }
+      ]
+     }
+    }
+   ],
+   "tier": "core",
+   "quote": "Each VPC should contain six subnets split evenly across the first two availability zones in the region, organized as a public pair (x.12.0/24 in the first zone and x.11.0/24 in the second), an internal pair (x.1.0/24 and x.2.0/24), and an external pair (x.5.0/24 and x.6.0/24), where x is 10.16 for dev and 10.32 for rec",
+   "justify": "x=10.16 so x.12.0/24 is 10.16.12.0/24"
+  },
+  {
+   "id": "rec_subnet_cidrs",
+   "kind": "all_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "10.32.12.0/24"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_vpc"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "10.32.0.0/16"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "10.32.11.0/24"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_vpc"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "10.32.0.0/16"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "10.32.1.0/24"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_vpc"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "10.32.0.0/16"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "10.32.2.0/24"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_vpc"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "10.32.0.0/16"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "10.32.5.0/24"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_vpc"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "10.32.0.0/16"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "10.32.6.0/24"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_vpc"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "10.32.0.0/16"
+       }
+      ]
+     }
+    }
+   ],
+   "tier": "core",
+   "quote": "Each VPC should contain six subnets split evenly across the first two availability zones in the region, organized as a public pair (x.12.0/24 in the first zone and x.11.0/24 in the second), an internal pair (x.1.0/24 and x.2.0/24), and an external pair (x.5.0/24 and x.6.0/24), where x is 10.16 for dev and 10.32 for rec",
+   "justify": "x=10.32 so x.12.0/24 is 10.32.12.0/24"
+  },
+  {
+   "id": "dev_subnets_two_azs",
+   "kind": "all_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "in",
+        "value": [
+         "10.16.12.0/24",
+         "10.16.11.0/24"
+        ]
+       }
+      ]
+     },
+     "distinct_path": [
+      "availability_zone"
+     ],
+     "min": 2
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "in",
+        "value": [
+         "10.16.1.0/24",
+         "10.16.2.0/24"
+        ]
+       }
+      ]
+     },
+     "distinct_path": [
+      "availability_zone"
+     ],
+     "min": 2
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "in",
+        "value": [
+         "10.16.5.0/24",
+         "10.16.6.0/24"
+        ]
+       }
+      ]
+     },
+     "distinct_path": [
+      "availability_zone"
+     ],
+     "min": 2
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "regex",
+        "value": "^10\\.16\\."
+       }
+      ]
+     },
+     "distinct_path": [
+      "availability_zone"
+     ],
+     "min": 2,
+     "max": 2
+    }
+   ],
+   "tier": "core",
+   "quote": "six subnets split evenly across the first two availability zones in the region",
+   "justify": "split evenly across two AZs: each pair (public x.12/x.11, internal x.1/x.2, external x.5/x.6) spans the two zones, and only two zones are used"
+  },
+  {
+   "id": "rec_subnets_two_azs",
+   "kind": "all_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "in",
+        "value": [
+         "10.32.12.0/24",
+         "10.32.11.0/24"
+        ]
+       }
+      ]
+     },
+     "distinct_path": [
+      "availability_zone"
+     ],
+     "min": 2
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "in",
+        "value": [
+         "10.32.1.0/24",
+         "10.32.2.0/24"
+        ]
+       }
+      ]
+     },
+     "distinct_path": [
+      "availability_zone"
+     ],
+     "min": 2
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "in",
+        "value": [
+         "10.32.5.0/24",
+         "10.32.6.0/24"
+        ]
+       }
+      ]
+     },
+     "distinct_path": [
+      "availability_zone"
+     ],
+     "min": 2
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "regex",
+        "value": "^10\\.32\\."
+       }
+      ]
+     },
+     "distinct_path": [
+      "availability_zone"
+     ],
+     "min": 2,
+     "max": 2
+    }
+   ],
+   "tier": "core",
+   "quote": "six subnets split evenly across the first two availability zones in the region",
+   "justify": "split evenly across two AZs: each pair (public x.12/x.11, internal x.1/x.2, external x.5/x.6) spans the two zones, and only two zones are used"
+  },
+  {
+   "id": "dev_subnet_names",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_subnet"
+    ],
+    "where": [
+     {
+      "path": [
+       "tags",
+       "Name"
+      ],
+      "op": "regex",
+      "value": "^subnet_dev_(public|internal|external)_[ab]$"
+     }
+    ]
+   },
+   "tier": "detail",
+   "min": 6,
+   "quote": "subnet names following the pattern \"subnet_dev_public_a\" and \"subnet_rec_internal_b\"",
+   "justify": "six subnets per VPC each named per the pattern"
+  },
+  {
+   "id": "rec_subnet_names",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_subnet"
+    ],
+    "where": [
+     {
+      "path": [
+       "tags",
+       "Name"
+      ],
+      "op": "regex",
+      "value": "^subnet_rec_(public|internal|external)_[ab]$"
+     }
+    ]
+   },
+   "tier": "detail",
+   "min": 6,
+   "quote": "subnet names following the pattern \"subnet_dev_public_a\" and \"subnet_rec_internal_b\"",
+   "justify": "six subnets per VPC each named per the pattern"
+  },
+  {
+   "id": "igw_dev_named",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_internet_gateway"
+    ],
+    "where": [
+     {
+      "path": [
+       "tags",
+       "Name"
+      ],
+      "op": "eq",
+      "value": "gatway_dev"
+     }
+    ]
+   },
+   "tier": "detail",
+   "quote": "an internet gateway named \"gatway_dev\" or \"gatway_rec\" to each VPC"
+  },
+  {
+   "id": "igw_rec_named",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_internet_gateway"
+    ],
+    "where": [
+     {
+      "path": [
+       "tags",
+       "Name"
+      ],
+      "op": "eq",
+      "value": "gatway_rec"
+     }
+    ]
+   },
+   "tier": "detail",
+   "quote": "an internet gateway named \"gatway_dev\" or \"gatway_rec\" to each VPC"
+  },
+  {
+   "id": "igw_dev_attached",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_internet_gateway"
+      ],
+      "where": [
+       {
+        "path": [
+         "tags",
+         "Name"
+        ],
+        "op": "eq",
+        "value": "gatway_dev"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_vpc"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "10.16.0.0/16"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_internet_gateway_attachment"
+      ],
+      "where": []
+     },
+     "to": {
+      "types": [
+       "aws_vpc"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "10.16.0.0/16"
+       }
+      ]
+     }
+    }
+   ],
+   "tier": "core",
+   "quote": "Attach an internet gateway named \"gatway_dev\" or \"gatway_rec\" to each VPC"
+  },
+  {
+   "id": "igw_rec_attached",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_internet_gateway"
+      ],
+      "where": [
+       {
+        "path": [
+         "tags",
+         "Name"
+        ],
+        "op": "eq",
+        "value": "gatway_rec"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_vpc"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "10.32.0.0/16"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_internet_gateway_attachment"
+      ],
+      "where": []
+     },
+     "to": {
+      "types": [
+       "aws_vpc"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "10.32.0.0/16"
+       }
+      ]
+     }
+    }
+   ],
+   "tier": "core",
+   "quote": "Attach an internet gateway named \"gatway_dev\" or \"gatway_rec\" to each VPC"
+  },
+  {
+   "id": "dev_route_v4",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route"
+      ],
+      "where": [
+       {
+        "path": [
+         "destination_cidr_block"
+        ],
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_internet_gateway"
+      ],
+      "where": [
+       {
+        "path": [
+         "tags",
+         "Name"
+        ],
+        "op": "eq",
+        "value": "gatway_dev"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_default_route_table"
+      ],
+      "where": [
+       {
+        "path": [
+         "route",
+         "*",
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_internet_gateway"
+      ],
+      "where": [
+       {
+        "path": [
+         "tags",
+         "Name"
+        ],
+        "op": "eq",
+        "value": "gatway_dev"
+       }
+      ]
+     }
+    }
+   ],
+   "tier": "core",
+   "quote": "add a default internet route (IPv4 and IPv6) through that gateway",
+   "justify": "default IPv4 route is 0.0.0.0/0"
+  },
+  {
+   "id": "dev_route_v6",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route"
+      ],
+      "where": [
+       {
+        "path": [
+         "destination_ipv6_cidr_block"
+        ],
+        "op": "eq",
+        "value": "::/0"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_internet_gateway"
+      ],
+      "where": [
+       {
+        "path": [
+         "tags",
+         "Name"
+        ],
+        "op": "eq",
+        "value": "gatway_dev"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_default_route_table"
+      ],
+      "where": [
+       {
+        "path": [
+         "route",
+         "*",
+         "ipv6_cidr_block"
+        ],
+        "op": "eq",
+        "value": "::/0"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_internet_gateway"
+      ],
+      "where": [
+       {
+        "path": [
+         "tags",
+         "Name"
+        ],
+        "op": "eq",
+        "value": "gatway_dev"
+       }
+      ]
+     }
+    }
+   ],
+   "tier": "core",
+   "quote": "add a default internet route (IPv4 and IPv6) through that gateway",
+   "justify": "default IPv6 route is ::/0"
+  },
+  {
+   "id": "rec_route_v4",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route"
+      ],
+      "where": [
+       {
+        "path": [
+         "destination_cidr_block"
+        ],
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_internet_gateway"
+      ],
+      "where": [
+       {
+        "path": [
+         "tags",
+         "Name"
+        ],
+        "op": "eq",
+        "value": "gatway_rec"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_default_route_table"
+      ],
+      "where": [
+       {
+        "path": [
+         "route",
+         "*",
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_internet_gateway"
+      ],
+      "where": [
+       {
+        "path": [
+         "tags",
+         "Name"
+        ],
+        "op": "eq",
+        "value": "gatway_rec"
+       }
+      ]
+     }
+    }
+   ],
+   "tier": "core",
+   "quote": "add a default internet route (IPv4 and IPv6) through that gateway",
+   "justify": "default IPv4 route is 0.0.0.0/0"
+  },
+  {
+   "id": "rec_route_v6",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route"
+      ],
+      "where": [
+       {
+        "path": [
+         "destination_ipv6_cidr_block"
+        ],
+        "op": "eq",
+        "value": "::/0"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_internet_gateway"
+      ],
+      "where": [
+       {
+        "path": [
+         "tags",
+         "Name"
+        ],
+        "op": "eq",
+        "value": "gatway_rec"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_default_route_table"
+      ],
+      "where": [
+       {
+        "path": [
+         "route",
+         "*",
+         "ipv6_cidr_block"
+        ],
+        "op": "eq",
+        "value": "::/0"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_internet_gateway"
+      ],
+      "where": [
+       {
+        "path": [
+         "tags",
+         "Name"
+        ],
+        "op": "eq",
+        "value": "gatway_rec"
+       }
+      ]
+     }
+    }
+   ],
+   "tier": "core",
+   "quote": "add a default internet route (IPv4 and IPv6) through that gateway",
+   "justify": "default IPv6 route is ::/0"
+  },
+  {
+   "id": "dev_route_main_table",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route"
+      ],
+      "where": [
+       {
+        "path": [
+         "destination_cidr_block"
+        ],
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_vpc"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "10.16.0.0/16"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_default_route_table"
+      ],
+      "where": [
+       {
+        "path": [
+         "route",
+         "*",
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_vpc"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "10.16.0.0/16"
+       }
+      ]
+     }
+    }
+   ],
+   "tier": "detail",
+   "quote": "on each VPC's main route table",
+   "justify": "default internet route is 0.0.0.0/0"
+  },
+  {
+   "id": "rec_route_main_table",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route"
+      ],
+      "where": [
+       {
+        "path": [
+         "destination_cidr_block"
+        ],
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_vpc"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "10.32.0.0/16"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_default_route_table"
+      ],
+      "where": [
+       {
+        "path": [
+         "route",
+         "*",
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "0.0.0.0/0"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_vpc"
+      ],
+      "where": [
+       {
+        "path": [
+         "cidr_block"
+        ],
+        "op": "eq",
+        "value": "10.32.0.0/16"
+       }
+      ]
+     }
+    }
+   ],
+   "tier": "detail",
+   "quote": "on each VPC's main route table",
+   "justify": "default internet route is 0.0.0.0/0"
+  },
+  {
+   "id": "output_dev_vpc_id",
+   "kind": "ref",
+   "from": {
+    "types": [
+     "__output__"
+    ],
+    "where": []
+   },
+   "to": {
+    "types": [
+     "aws_vpc"
+    ],
+    "where": [
+     {
+      "path": [
+       "cidr_block"
+      ],
+      "op": "eq",
+      "value": "10.16.0.0/16"
+     }
+    ]
+   },
+   "tier": "detail",
+   "quote": "output both VPC IDs"
+  },
+  {
+   "id": "output_rec_vpc_id",
+   "kind": "ref",
+   "from": {
+    "types": [
+     "__output__"
+    ],
+    "where": []
+   },
+   "to": {
+    "types": [
+     "aws_vpc"
+    ],
+    "where": [
+     {
+      "path": [
+       "cidr_block"
+      ],
+      "op": "eq",
+      "value": "10.32.0.0/16"
+     }
+    ]
+   },
+   "tier": "detail",
+   "quote": "output both VPC IDs"
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

@@ -1,0 +1,1236 @@
+{
+  "lang": "tf",
+  "row_number": 360,
+  "source_hash": {
+    "gt": "e476280a54e2b306b9ac115d19fbdbd8234c99295cdd2eb8ae29d8d3c05da9b0",
+    "prompt": "e29da1dfe97f0aa5f7bc77455d08fba1de82b91c2ac9039046b9ffe22603b11a"
+  },
+  "selectors": {
+    "role_full": {
+      "types": [
+        "aws_iam_role"
+      ],
+      "where": [
+        {
+          "path": "name",
+          "op": "eq",
+          "value": "billing-full-access"
+        }
+      ]
+    },
+    "pol_full": {
+      "types": [
+        "aws_iam_policy"
+      ],
+      "where": [
+        {
+          "path": "name",
+          "op": "eq",
+          "value": "billing-full-access"
+        }
+      ]
+    },
+    "grp_full": {
+      "types": [
+        "aws_iam_group"
+      ],
+      "where": [
+        {
+          "path": "name",
+          "op": "eq",
+          "value": "billing-full-access"
+        }
+      ]
+    },
+    "gpol_full": {
+      "types": [
+        "aws_iam_policy",
+        "aws_iam_group_policy"
+      ],
+      "where": [
+        {
+          "path": "name",
+          "op": "eq",
+          "value": "billing-full-access-assume-role"
+        }
+      ]
+    },
+    "role_view": {
+      "types": [
+        "aws_iam_role"
+      ],
+      "where": [
+        {
+          "path": "name",
+          "op": "eq",
+          "value": "billing-view-access"
+        }
+      ]
+    },
+    "pol_view": {
+      "types": [
+        "aws_iam_policy"
+      ],
+      "where": [
+        {
+          "path": "name",
+          "op": "eq",
+          "value": "billing-view-access"
+        }
+      ]
+    },
+    "grp_view": {
+      "types": [
+        "aws_iam_group"
+      ],
+      "where": [
+        {
+          "path": "name",
+          "op": "eq",
+          "value": "billing-view-access"
+        }
+      ]
+    },
+    "gpol_view": {
+      "types": [
+        "aws_iam_policy",
+        "aws_iam_group_policy"
+      ],
+      "where": [
+        {
+          "path": "name",
+          "op": "eq",
+          "value": "billing-view-access-assume-role"
+        }
+      ]
+    }
+  },
+  "checks": [
+    {
+      "id": "role_full",
+      "kind": "exists",
+      "tier": "core",
+      "select": "role_full",
+      "quote": "Create two roles, \"billing-full-access\" and \"billing-view-access\""
+    },
+    {
+      "id": "mfa_full",
+      "kind": "any_of",
+      "tier": "core",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "role_full",
+          "cond": {
+            "path": "assume_role_policy",
+            "op": "regex",
+            "value": "(?is)(multifactorauthpresent.{0,40}true|true.{0,40}multifactorauthpresent)"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "eq",
+                "value": "aws_iam_role"
+              },
+              {
+                "path": "properties.name",
+                "op": "eq",
+                "value": "billing-full-access"
+              }
+            ]
+          },
+          "cond": {
+            "path": "properties.assume_role_policy",
+            "op": "regex",
+            "value": "(?is)(multifactorauthpresent.{0,40}true|true.{0,40}multifactorauthpresent)"
+          }
+        },
+        {
+          "kind": "ref",
+          "from": "role_full",
+          "to": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "eq",
+                "value": "data.aws_iam_policy_document"
+              },
+              {
+                "path": "properties",
+                "op": "regex",
+                "value": "(?is)(multifactorauthpresent.{0,40}true|true.{0,40}multifactorauthpresent)"
+              }
+            ]
+          }
+        }
+      ],
+      "quote": "each assumable by principals in the current account only when MFA is present",
+      "justify": "MFA present is the aws:MultiFactorAuthPresent condition key set to true"
+    },
+    {
+      "id": "principal_full",
+      "kind": "any_of",
+      "tier": "core",
+      "quote": "each assumable by principals in the current account",
+      "justify": "the current account is this stack's account id, which the plan resolves to 000000000000",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "role_full",
+          "cond": {
+            "path": "assume_role_policy",
+            "op": "regex",
+            "value": "(?i)\"aws\"\\s*:\\s*\\[?\\s*\"(arn:aws:iam::)?000000000000(:root)?\""
+          }
+        },
+        {
+          "kind": "ref",
+          "from": "role_full",
+          "to": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "eq",
+                "value": "data.aws_iam_policy_document"
+              },
+              {
+                "path": "properties",
+                "op": "regex",
+                "value": "(?is)principals.{0,200}(caller_identity|account_id)"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "pol_full",
+      "kind": "exists",
+      "tier": "core",
+      "select": "pol_full",
+      "quote": "a customer-managed policy named \"billing-full-access\""
+    },
+    {
+      "id": "pol_attached_full",
+      "kind": "any_of",
+      "tier": "core",
+      "checks": [
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "aws_iam_role_policy_attachment"
+            ],
+            "where": [
+              {
+                "path": "role",
+                "op": "eq",
+                "value": "billing-full-access"
+              }
+            ]
+          },
+          "to": "pol_full"
+        },
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "aws_iam_policy_attachment"
+            ],
+            "where": [
+              {
+                "path": "roles.*",
+                "op": "eq",
+                "value": "billing-full-access"
+              }
+            ]
+          },
+          "to": "pol_full"
+        },
+        {
+          "kind": "ref",
+          "from": "role_full",
+          "to": "pol_full"
+        }
+      ],
+      "quote": "the full-access role gets a customer-managed policy named \"billing-full-access\""
+    },
+    {
+      "id": "grp_full",
+      "kind": "exists",
+      "tier": "core",
+      "select": "grp_full",
+      "quote": "create two IAM groups at path \"/\", \"billing-full-access\" and \"billing-view-access\""
+    },
+    {
+      "id": "grp_path_full",
+      "kind": "attr",
+      "tier": "detail",
+      "select": "grp_full",
+      "cond": {
+        "path": "path",
+        "op": "eq",
+        "value": "/"
+      },
+      "quote": "create two IAM groups at path \"/\""
+    },
+    {
+      "id": "gpol_full",
+      "kind": "exists",
+      "tier": "core",
+      "select": "gpol_full",
+      "quote": "(named \"billing-full-access-assume-role\" and \"billing-view-access-assume-role\" respectively)"
+    },
+    {
+      "id": "gpol_attached_full",
+      "kind": "any_of",
+      "tier": "core",
+      "checks": [
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "aws_iam_group_policy_attachment"
+            ],
+            "where": [
+              {
+                "path": "group",
+                "op": "eq",
+                "value": "billing-full-access"
+              }
+            ]
+          },
+          "to": "gpol_full"
+        },
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "aws_iam_policy_attachment"
+            ],
+            "where": [
+              {
+                "path": "groups.*",
+                "op": "eq",
+                "value": "billing-full-access"
+              }
+            ]
+          },
+          "to": "gpol_full"
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "aws_iam_group_policy"
+            ],
+            "where": [
+              {
+                "path": "name",
+                "op": "eq",
+                "value": "billing-full-access-assume-role"
+              },
+              {
+                "path": "group",
+                "op": "eq",
+                "value": "billing-full-access"
+              }
+            ]
+          }
+        }
+      ],
+      "quote": "each with an attached policy"
+    },
+    {
+      "id": "gpol_assume_full",
+      "kind": "any_of",
+      "tier": "core",
+      "checks": [
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "data.aws_iam_policy_document"
+            ],
+            "where": [
+              {
+                "path": "statement.*.actions.*",
+                "op": "glob_covers",
+                "value": "sts:AssumeRole"
+              }
+            ]
+          },
+          "to": "role_full"
+        },
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "in",
+                "value": [
+                  "aws_iam_policy",
+                  "aws_iam_group_policy"
+                ]
+              },
+              {
+                "path": "properties.name",
+                "op": "eq",
+                "value": "billing-full-access-assume-role"
+              },
+              {
+                "path": "properties",
+                "op": "regex",
+                "value": "(?i)sts:(assumerole|\\*)"
+              }
+            ]
+          },
+          "to": "role_full"
+        },
+        {
+          "kind": "attr",
+          "select": "gpol_full",
+          "cond": {
+            "path": "policy",
+            "op": "regex",
+            "value": "(?is)(sts:(assumerole|\\*).{0,300}role/billing-full-access|role/billing-full-access.{0,300}sts:(assumerole|\\*))"
+          }
+        }
+      ],
+      "quote": "that allows members to assume the matching role",
+      "justify": "assuming a role is sts:AssumeRole on that role"
+    },
+    {
+      "id": "out_role_full",
+      "kind": "ref",
+      "tier": "detail",
+      "from": {
+        "types": [
+          "__output__"
+        ]
+      },
+      "to": "role_full",
+      "quote": "Output the ARNs of both roles and both groups."
+    },
+    {
+      "id": "out_grp_full",
+      "kind": "ref",
+      "tier": "detail",
+      "from": {
+        "types": [
+          "__output__"
+        ]
+      },
+      "to": "grp_full",
+      "quote": "Output the ARNs of both roles and both groups."
+    },
+    {
+      "id": "role_view",
+      "kind": "exists",
+      "tier": "core",
+      "select": "role_view",
+      "quote": "Create two roles, \"billing-full-access\" and \"billing-view-access\""
+    },
+    {
+      "id": "mfa_view",
+      "kind": "any_of",
+      "tier": "core",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "role_view",
+          "cond": {
+            "path": "assume_role_policy",
+            "op": "regex",
+            "value": "(?is)(multifactorauthpresent.{0,40}true|true.{0,40}multifactorauthpresent)"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "eq",
+                "value": "aws_iam_role"
+              },
+              {
+                "path": "properties.name",
+                "op": "eq",
+                "value": "billing-view-access"
+              }
+            ]
+          },
+          "cond": {
+            "path": "properties.assume_role_policy",
+            "op": "regex",
+            "value": "(?is)(multifactorauthpresent.{0,40}true|true.{0,40}multifactorauthpresent)"
+          }
+        },
+        {
+          "kind": "ref",
+          "from": "role_view",
+          "to": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "eq",
+                "value": "data.aws_iam_policy_document"
+              },
+              {
+                "path": "properties",
+                "op": "regex",
+                "value": "(?is)(multifactorauthpresent.{0,40}true|true.{0,40}multifactorauthpresent)"
+              }
+            ]
+          }
+        }
+      ],
+      "quote": "each assumable by principals in the current account only when MFA is present",
+      "justify": "MFA present is the aws:MultiFactorAuthPresent condition key set to true"
+    },
+    {
+      "id": "principal_view",
+      "kind": "any_of",
+      "tier": "core",
+      "quote": "each assumable by principals in the current account",
+      "justify": "the current account is this stack's account id, which the plan resolves to 000000000000",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "role_view",
+          "cond": {
+            "path": "assume_role_policy",
+            "op": "regex",
+            "value": "(?i)\"aws\"\\s*:\\s*\\[?\\s*\"(arn:aws:iam::)?000000000000(:root)?\""
+          }
+        },
+        {
+          "kind": "ref",
+          "from": "role_view",
+          "to": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "eq",
+                "value": "data.aws_iam_policy_document"
+              },
+              {
+                "path": "properties",
+                "op": "regex",
+                "value": "(?is)principals.{0,200}(caller_identity|account_id)"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "pol_view",
+      "kind": "exists",
+      "tier": "core",
+      "select": "pol_view",
+      "quote": "a customer-managed policy named \"billing-view-access\""
+    },
+    {
+      "id": "pol_attached_view",
+      "kind": "any_of",
+      "tier": "core",
+      "checks": [
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "aws_iam_role_policy_attachment"
+            ],
+            "where": [
+              {
+                "path": "role",
+                "op": "eq",
+                "value": "billing-view-access"
+              }
+            ]
+          },
+          "to": "pol_view"
+        },
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "aws_iam_policy_attachment"
+            ],
+            "where": [
+              {
+                "path": "roles.*",
+                "op": "eq",
+                "value": "billing-view-access"
+              }
+            ]
+          },
+          "to": "pol_view"
+        },
+        {
+          "kind": "ref",
+          "from": "role_view",
+          "to": "pol_view"
+        }
+      ],
+      "quote": "the view-access role gets a customer-managed policy named \"billing-view-access\""
+    },
+    {
+      "id": "grp_view",
+      "kind": "exists",
+      "tier": "core",
+      "select": "grp_view",
+      "quote": "create two IAM groups at path \"/\", \"billing-full-access\" and \"billing-view-access\""
+    },
+    {
+      "id": "grp_path_view",
+      "kind": "attr",
+      "tier": "detail",
+      "select": "grp_view",
+      "cond": {
+        "path": "path",
+        "op": "eq",
+        "value": "/"
+      },
+      "quote": "create two IAM groups at path \"/\""
+    },
+    {
+      "id": "gpol_view",
+      "kind": "exists",
+      "tier": "core",
+      "select": "gpol_view",
+      "quote": "(named \"billing-full-access-assume-role\" and \"billing-view-access-assume-role\" respectively)"
+    },
+    {
+      "id": "gpol_attached_view",
+      "kind": "any_of",
+      "tier": "core",
+      "checks": [
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "aws_iam_group_policy_attachment"
+            ],
+            "where": [
+              {
+                "path": "group",
+                "op": "eq",
+                "value": "billing-view-access"
+              }
+            ]
+          },
+          "to": "gpol_view"
+        },
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "aws_iam_policy_attachment"
+            ],
+            "where": [
+              {
+                "path": "groups.*",
+                "op": "eq",
+                "value": "billing-view-access"
+              }
+            ]
+          },
+          "to": "gpol_view"
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "aws_iam_group_policy"
+            ],
+            "where": [
+              {
+                "path": "name",
+                "op": "eq",
+                "value": "billing-view-access-assume-role"
+              },
+              {
+                "path": "group",
+                "op": "eq",
+                "value": "billing-view-access"
+              }
+            ]
+          }
+        }
+      ],
+      "quote": "each with an attached policy"
+    },
+    {
+      "id": "gpol_assume_view",
+      "kind": "any_of",
+      "tier": "core",
+      "checks": [
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "data.aws_iam_policy_document"
+            ],
+            "where": [
+              {
+                "path": "statement.*.actions.*",
+                "op": "glob_covers",
+                "value": "sts:AssumeRole"
+              }
+            ]
+          },
+          "to": "role_view"
+        },
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "in",
+                "value": [
+                  "aws_iam_policy",
+                  "aws_iam_group_policy"
+                ]
+              },
+              {
+                "path": "properties.name",
+                "op": "eq",
+                "value": "billing-view-access-assume-role"
+              },
+              {
+                "path": "properties",
+                "op": "regex",
+                "value": "(?i)sts:(assumerole|\\*)"
+              }
+            ]
+          },
+          "to": "role_view"
+        },
+        {
+          "kind": "attr",
+          "select": "gpol_view",
+          "cond": {
+            "path": "policy",
+            "op": "regex",
+            "value": "(?is)(sts:(assumerole|\\*).{0,300}role/billing-view-access|role/billing-view-access.{0,300}sts:(assumerole|\\*))"
+          }
+        }
+      ],
+      "quote": "that allows members to assume the matching role",
+      "justify": "assuming a role is sts:AssumeRole on that role"
+    },
+    {
+      "id": "out_role_view",
+      "kind": "ref",
+      "tier": "detail",
+      "from": {
+        "types": [
+          "__output__"
+        ]
+      },
+      "to": "role_view",
+      "quote": "Output the ARNs of both roles and both groups."
+    },
+    {
+      "id": "out_grp_view",
+      "kind": "ref",
+      "tier": "detail",
+      "from": {
+        "types": [
+          "__output__"
+        ]
+      },
+      "to": "grp_view",
+      "quote": "Output the ARNs of both roles and both groups."
+    },
+    {
+      "id": "full_manage",
+      "kind": "any_of",
+      "tier": "core",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "pol_full",
+          "cond": {
+            "path": "policy",
+            "op": "regex",
+            "value": "(?i)([\"'][a-z0-9-]+:(\\*[a-z]*|[a-z]*(modify|manage|create|update|delete|put|cancel)[a-z*]*)[\"']|\"action\"\\s*:\\s*\\[?\\s*\"\\*\")"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "properties",
+                "op": "regex",
+                "value": "(?i)([\"'][a-z0-9-]+:(\\*[a-z]*|[a-z]*(modify|manage|create|update|delete|put|cancel)[a-z*]*)[\"']|\"action\"\\s*:\\s*\\[?\\s*\"\\*\")"
+              },
+              {
+                "path": "properties.name",
+                "op": "eq",
+                "value": "billing-full-access"
+              }
+            ]
+          },
+          "cond": {
+            "path": "type",
+            "op": "regex",
+            "value": "iam_policy$"
+          }
+        }
+      ],
+      "quote": "allowing all billing, usage, payment-method, and budget management actions",
+      "justify": "all management actions means wildcard or modify-style actions"
+    },
+    {
+      "id": "full_billing",
+      "kind": "any_of",
+      "tier": "detail",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "pol_full",
+          "cond": {
+            "path": "policy",
+            "op": "regex",
+            "value": "(?i)(aws-portal:[a-z*]*billing|aws-portal:\\*[\"']|\\bbilling:|\"action\"\\s*:\\s*\\[?\\s*\"\\*\")"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "properties",
+                "op": "regex",
+                "value": "(?i)(aws-portal:[a-z*]*billing|aws-portal:\\*[\"']|\\bbilling:|\"action\"\\s*:\\s*\\[?\\s*\"\\*\")"
+              },
+              {
+                "path": "properties.name",
+                "op": "eq",
+                "value": "billing-full-access"
+              }
+            ]
+          },
+          "cond": {
+            "path": "type",
+            "op": "regex",
+            "value": "iam_policy$"
+          }
+        }
+      ],
+      "quote": "allowing all billing, usage, payment-method, and budget management actions",
+      "justify": "billing actions are aws-portal billing or billing: actions"
+    },
+    {
+      "id": "full_usage",
+      "kind": "any_of",
+      "tier": "detail",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "pol_full",
+          "cond": {
+            "path": "policy",
+            "op": "regex",
+            "value": "(?i)(aws-portal:[a-z*]*usage|aws-portal:\\*[\"']|\\bce:|\\bcur:|\"action\"\\s*:\\s*\\[?\\s*\"\\*\")"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "properties",
+                "op": "regex",
+                "value": "(?i)(aws-portal:[a-z*]*usage|aws-portal:\\*[\"']|\\bce:|\\bcur:|\"action\"\\s*:\\s*\\[?\\s*\"\\*\")"
+              },
+              {
+                "path": "properties.name",
+                "op": "eq",
+                "value": "billing-full-access"
+              }
+            ]
+          },
+          "cond": {
+            "path": "type",
+            "op": "regex",
+            "value": "iam_policy$"
+          }
+        }
+      ],
+      "quote": "allowing all billing, usage, payment-method, and budget management actions",
+      "justify": "usage actions"
+    },
+    {
+      "id": "full_payment",
+      "kind": "any_of",
+      "tier": "detail",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "pol_full",
+          "cond": {
+            "path": "policy",
+            "op": "regex",
+            "value": "(?i)(aws-portal:[a-z*]*payment|aws-portal:\\*[\"']|\\bpayments:|\"action\"\\s*:\\s*\\[?\\s*\"\\*\")"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "properties",
+                "op": "regex",
+                "value": "(?i)(aws-portal:[a-z*]*payment|aws-portal:\\*[\"']|\\bpayments:|\"action\"\\s*:\\s*\\[?\\s*\"\\*\")"
+              },
+              {
+                "path": "properties.name",
+                "op": "eq",
+                "value": "billing-full-access"
+              }
+            ]
+          },
+          "cond": {
+            "path": "type",
+            "op": "regex",
+            "value": "iam_policy$"
+          }
+        }
+      ],
+      "quote": "allowing all billing, usage, payment-method, and budget management actions",
+      "justify": "payment-method actions"
+    },
+    {
+      "id": "full_budgets",
+      "kind": "any_of",
+      "tier": "detail",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "pol_full",
+          "cond": {
+            "path": "policy",
+            "op": "regex",
+            "value": "(?i)budgets:"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "properties",
+                "op": "regex",
+                "value": "(?i)budgets:"
+              },
+              {
+                "path": "properties.name",
+                "op": "eq",
+                "value": "billing-full-access"
+              }
+            ]
+          },
+          "cond": {
+            "path": "type",
+            "op": "regex",
+            "value": "iam_policy$"
+          }
+        }
+      ],
+      "quote": "allowing all billing, usage, payment-method, and budget management actions",
+      "justify": "budget actions are budgets: actions"
+    },
+    {
+      "id": "view_billing",
+      "kind": "any_of",
+      "tier": "core",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "pol_view",
+          "cond": {
+            "path": "policy",
+            "op": "regex",
+            "value": "(?i)(aws-portal:(view|get)([a-z]*billing|\\*)|\\bbilling:(get|view|list))"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "properties",
+                "op": "regex",
+                "value": "(?i)(aws-portal:(view|get)([a-z]*billing|\\*)|\\bbilling:(get|view|list))"
+              },
+              {
+                "path": "properties.name",
+                "op": "eq",
+                "value": "billing-view-access"
+              }
+            ]
+          },
+          "cond": {
+            "path": "type",
+            "op": "regex",
+            "value": "iam_policy$"
+          }
+        }
+      ],
+      "quote": "allowing only viewing of billing, usage, account, payment methods, and budgets",
+      "justify": "viewing billing"
+    },
+    {
+      "id": "view_usage",
+      "kind": "any_of",
+      "tier": "detail",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "pol_view",
+          "cond": {
+            "path": "policy",
+            "op": "regex",
+            "value": "(?i)(aws-portal:view([a-z]*usage|\\*)|\\bce:(get|describe|list)|\\bcur:(describe|get))"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "properties",
+                "op": "regex",
+                "value": "(?i)(aws-portal:view([a-z]*usage|\\*)|\\bce:(get|describe|list)|\\bcur:(describe|get))"
+              },
+              {
+                "path": "properties.name",
+                "op": "eq",
+                "value": "billing-view-access"
+              }
+            ]
+          },
+          "cond": {
+            "path": "type",
+            "op": "regex",
+            "value": "iam_policy$"
+          }
+        }
+      ],
+      "quote": "allowing only viewing of billing, usage, account, payment methods, and budgets",
+      "justify": "viewing usage"
+    },
+    {
+      "id": "view_account",
+      "kind": "any_of",
+      "tier": "detail",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "pol_view",
+          "cond": {
+            "path": "policy",
+            "op": "regex",
+            "value": "(?i)(aws-portal:view([a-z]*account|\\*)|\\baccount:(get|list))"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "properties",
+                "op": "regex",
+                "value": "(?i)(aws-portal:view([a-z]*account|\\*)|\\baccount:(get|list))"
+              },
+              {
+                "path": "properties.name",
+                "op": "eq",
+                "value": "billing-view-access"
+              }
+            ]
+          },
+          "cond": {
+            "path": "type",
+            "op": "regex",
+            "value": "iam_policy$"
+          }
+        }
+      ],
+      "quote": "allowing only viewing of billing, usage, account, payment methods, and budgets",
+      "justify": "viewing account"
+    },
+    {
+      "id": "view_payment",
+      "kind": "any_of",
+      "tier": "detail",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "pol_view",
+          "cond": {
+            "path": "policy",
+            "op": "regex",
+            "value": "(?i)(aws-portal:view([a-z]*payment|\\*)|\\bpayments:(get|list))"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "properties",
+                "op": "regex",
+                "value": "(?i)(aws-portal:view([a-z]*payment|\\*)|\\bpayments:(get|list))"
+              },
+              {
+                "path": "properties.name",
+                "op": "eq",
+                "value": "billing-view-access"
+              }
+            ]
+          },
+          "cond": {
+            "path": "type",
+            "op": "regex",
+            "value": "iam_policy$"
+          }
+        }
+      ],
+      "quote": "allowing only viewing of billing, usage, account, payment methods, and budgets",
+      "justify": "viewing payment methods"
+    },
+    {
+      "id": "view_budgets",
+      "kind": "any_of",
+      "tier": "detail",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "pol_view",
+          "cond": {
+            "path": "policy",
+            "op": "regex",
+            "value": "(?i)budgets:(view|describe|get)"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "properties",
+                "op": "regex",
+                "value": "(?i)budgets:(view|describe|get)"
+              },
+              {
+                "path": "properties.name",
+                "op": "eq",
+                "value": "billing-view-access"
+              }
+            ]
+          },
+          "cond": {
+            "path": "type",
+            "op": "regex",
+            "value": "iam_policy$"
+          }
+        }
+      ],
+      "quote": "allowing only viewing of billing, usage, account, payment methods, and budgets",
+      "justify": "viewing budgets"
+    },
+    {
+      "id": "memberships_configurable",
+      "kind": "exists",
+      "tier": "detail",
+      "quote": "group user memberships are configurable but empty by default, so no memberships are created",
+      "select": {
+        "types": [
+          "__declared__"
+        ],
+        "where": [
+          {
+            "path": "type",
+            "op": "in",
+            "value": [
+              "aws_iam_group_membership",
+              "aws_iam_user_group_membership"
+            ]
+          },
+          {
+            "path": "gated",
+            "op": "truthy"
+          }
+        ]
+      }
+    }
+  ],
+  "notes": "'only viewing' (no write actions in the view policy) is not expressed: the policy is usually a JSON string (jsonencode/heredoc), and a regex cannot assert that no action is a write action; a negative over data.aws_iam_policy_document actions alone would reject the jsonencode form. No-membership default is checked as a gated (count/for_each) membership block. Principal 'current account' uses the plan-resolved account id 000000000000."
+}

@@ -117,6 +117,18 @@ def cmd_validate(a):
         write_manifest(_infos())
 
 
+def cmd_extras(a):
+    for i in _infos(a.lang, a.rows):
+        sp = ic.spec_path(i['lang'], i['row_number'])
+        if not sp.exists():
+            continue
+        spec = json.loads(sp.read_text())
+        added = ic.add_extra_type_checks(spec, json.loads(ic.fixture_path(i['lang'], i['row_number']).read_text()))
+        if added:
+            sp.write_text(json.dumps(spec, indent=2, ensure_ascii=False) + '\n')
+            print(f"{ic.tag(i['lang'], i['row_number'])}: +{len(added)} {added[:8]}")
+
+
 def cmd_explain(a):
     res = pd.read_csv(a.result_csv)
     row = res[(res['lang'] == a.lang) & (res['row_number'] == a.row)]
@@ -172,6 +184,8 @@ def main():
     s = sub.add_parser('validate'); s.add_argument('--lang'); s.add_argument('--rows', type=int, nargs='*')
     s.add_argument('--no-cross', action='store_true'); s.set_defaults(fn=cmd_validate)
     s = sub.add_parser('status'); s.set_defaults(fn=cmd_status)
+    s = sub.add_parser('extras'); s.add_argument('--lang'); s.add_argument('--rows', type=int, nargs='*')
+    s.set_defaults(fn=cmd_extras)
     s = sub.add_parser('explain'); s.add_argument('lang', choices=ic.LANGS); s.add_argument('row', type=int)
     s.add_argument('--result-csv', required=True); s.add_argument('--width', type=int, default=700)
     s.set_defaults(fn=cmd_explain)

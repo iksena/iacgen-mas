@@ -1,0 +1,1643 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "c3d139786bdbd6ea2c11b3ab236ab39a2668d95802318987a537a2bf0a798d25",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "LambdaExecutionRole",
+   "cfg": "LambdaExecutionRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "RoleName": "lambda-movies-role-dev",
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "lambda.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+    ],
+    "Policies": [
+     {
+      "PolicyName": "lambda-dynamodb-policy",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "dynamodb:GetItem",
+          "dynamodb:PutItem",
+          "dynamodb:UpdateItem",
+          "dynamodb:DeleteItem"
+         ],
+         "Resource": {
+          "ref": "MoviesTable",
+          "attr": "Arn"
+         }
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": [
+    "MoviesTable"
+   ]
+  },
+  {
+   "id": "MoviesTable",
+   "cfg": "MoviesTable",
+   "type": "AWS::DynamoDB::Table",
+   "values": {
+    "TableName": "movies",
+    "BillingMode": "PAY_PER_REQUEST",
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "title",
+      "AttributeType": "S"
+     }
+    ],
+    "KeySchema": [
+     {
+      "AttributeName": "title",
+      "KeyType": "HASH"
+     }
+    ],
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "movies-table"
+     },
+     {
+      "Key": "Environment",
+      "Value": "dev"
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "CreateMovieLogGroup",
+   "cfg": "CreateMovieLogGroup",
+   "type": "AWS::Logs::LogGroup",
+   "values": {
+    "LogGroupName": "/aws/lambda/create_movie",
+    "RetentionInDays": 1
+   },
+   "refs": []
+  },
+  {
+   "id": "GetMovieLogGroup",
+   "cfg": "GetMovieLogGroup",
+   "type": "AWS::Logs::LogGroup",
+   "values": {
+    "LogGroupName": "/aws/lambda/get_movie",
+    "RetentionInDays": 1
+   },
+   "refs": []
+  },
+  {
+   "id": "UpdateMovieLogGroup",
+   "cfg": "UpdateMovieLogGroup",
+   "type": "AWS::Logs::LogGroup",
+   "values": {
+    "LogGroupName": "/aws/lambda/update_movie",
+    "RetentionInDays": 1
+   },
+   "refs": []
+  },
+  {
+   "id": "DeleteMovieLogGroup",
+   "cfg": "DeleteMovieLogGroup",
+   "type": "AWS::Logs::LogGroup",
+   "values": {
+    "LogGroupName": "/aws/lambda/delete_movie",
+    "RetentionInDays": 1
+   },
+   "refs": []
+  },
+  {
+   "id": "CreateMovieFunction",
+   "cfg": "CreateMovieFunction",
+   "type": "AWS::Lambda::Function",
+   "values": {
+    "FunctionName": "create_movie",
+    "Role": {
+     "ref": "LambdaExecutionRole",
+     "attr": "Arn"
+    },
+    "Runtime": "python3.12",
+    "Timeout": 30,
+    "MemorySize": 128,
+    "Handler": "index.lambda_handler",
+    "Environment": {
+     "Variables": {
+      "TABLE_NAME": {
+       "ref": "MoviesTable"
+      }
+     }
+    },
+    "Code": {
+     "ZipFile": "import boto3\n\ndynamodb = boto3.resource('dynamodb')\ntable = dynamodb.Table('movies')\n\ndef lambda_handler(event, context):\n    year   = event['year']   if event.get('year')   else '0'\n    title  = event['title']  if event.get('title')  else ''\n    actors = event['actors'] if event.get('actors') else ''\n\n    response = table.put_item(\n        Item={\n            'year': year,\n            'title': title,\n            'info': {\n                'actors': actors\n            }\n        }\n    )\n\n    return {\n        'statusCode': 200,\n        'headers': {'Content-Type': 'application/json'},\n        'body': str(response)\n    }\n"
+    },
+    "__resource__": {
+     "DependsOn": [
+      "CreateMovieLogGroup"
+     ]
+    }
+   },
+   "refs": [
+    "LambdaExecutionRole",
+    "MoviesTable"
+   ]
+  },
+  {
+   "id": "GetMovieFunction",
+   "cfg": "GetMovieFunction",
+   "type": "AWS::Lambda::Function",
+   "values": {
+    "FunctionName": "get_movie",
+    "Role": {
+     "ref": "LambdaExecutionRole",
+     "attr": "Arn"
+    },
+    "Runtime": "python3.12",
+    "Timeout": 30,
+    "MemorySize": 128,
+    "Handler": "index.lambda_handler",
+    "Environment": {
+     "Variables": {
+      "TABLE_NAME": {
+       "ref": "MoviesTable"
+      }
+     }
+    },
+    "Code": {
+     "ZipFile": "import boto3\nimport json\n\ndynamodb = boto3.resource('dynamodb')\ntable = dynamodb.Table('movies')\n\ndef lambda_handler(event, context):\n    title = event['title']\n    response = table.get_item(Key={'title': title})\n    return {\n        'statusCode': 200,\n        'headers': {'Content-Type': 'application/json'},\n        'body': json.dumps(response.get('Item', {}), default=str)\n    }\n"
+    },
+    "__resource__": {
+     "DependsOn": [
+      "GetMovieLogGroup"
+     ]
+    }
+   },
+   "refs": [
+    "LambdaExecutionRole",
+    "MoviesTable"
+   ]
+  },
+  {
+   "id": "UpdateMovieFunction",
+   "cfg": "UpdateMovieFunction",
+   "type": "AWS::Lambda::Function",
+   "values": {
+    "FunctionName": "update_movie",
+    "Role": {
+     "ref": "LambdaExecutionRole",
+     "attr": "Arn"
+    },
+    "Runtime": "python3.12",
+    "Timeout": 30,
+    "MemorySize": 128,
+    "Handler": "index.lambda_handler",
+    "Environment": {
+     "Variables": {
+      "TABLE_NAME": {
+       "ref": "MoviesTable"
+      }
+     }
+    },
+    "Code": {
+     "ZipFile": "import boto3\nfrom decimal import Decimal\n\ndynamodb = boto3.resource('dynamodb')\ntable = dynamodb.Table('movies')\n\ndef lambda_handler(event, context):\n    title  = event['title']  if event.get('title')  else ''\n    rating = event['rating'] if event.get('rating') else '0.0'\n    plot   = event['plot']   if event.get('plot')   else ''\n\n    response = table.update_item(\n        Key={'title': title},\n        UpdateExpression='set info.rating=:r, info.plot=:p',\n        ExpressionAttributeValues={\n            ':r': Decimal(str(rating)),\n            ':p': plot\n        },\n        ReturnValues='UPDATED_NEW'\n    )\n    return {\n        'statusCode': 200,\n        'headers': {'Content-Type': 'application/json'},\n        'body': str(response)\n    }\n"
+    },
+    "__resource__": {
+     "DependsOn": [
+      "UpdateMovieLogGroup"
+     ]
+    }
+   },
+   "refs": [
+    "LambdaExecutionRole",
+    "MoviesTable"
+   ]
+  },
+  {
+   "id": "DeleteMovieFunction",
+   "cfg": "DeleteMovieFunction",
+   "type": "AWS::Lambda::Function",
+   "values": {
+    "FunctionName": "delete_movie",
+    "Role": {
+     "ref": "LambdaExecutionRole",
+     "attr": "Arn"
+    },
+    "Runtime": "python3.12",
+    "Timeout": 30,
+    "MemorySize": 128,
+    "Handler": "index.lambda_handler",
+    "Environment": {
+     "Variables": {
+      "TABLE_NAME": {
+       "ref": "MoviesTable"
+      }
+     }
+    },
+    "Code": {
+     "ZipFile": "import boto3\n\ndynamodb = boto3.resource('dynamodb')\ntable = dynamodb.Table('movies')\n\ndef lambda_handler(event, context):\n    title = event['title']\n    response = table.delete_item(\n        Key={'title': title},\n        ConditionExpression='attribute_exists(info.actors)',\n        ReturnValues='ALL_OLD'\n    )\n    return {\n        'statusCode': 200,\n        'headers': {'Content-Type': 'application/json'},\n        'body': str(response)\n    }\n"
+    },
+    "__resource__": {
+     "DependsOn": [
+      "DeleteMovieLogGroup"
+     ]
+    }
+   },
+   "refs": [
+    "LambdaExecutionRole",
+    "MoviesTable"
+   ]
+  },
+  {
+   "id": "MoviesApi",
+   "cfg": "MoviesApi",
+   "type": "AWS::ApiGateway::RestApi",
+   "values": {
+    "Name": "Movies API",
+    "Description": "Movies API \u2014 connects HTTP endpoints to Lambda functions",
+    "EndpointConfiguration": {
+     "Types": [
+      "REGIONAL"
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "MoviesResource",
+   "cfg": "MoviesResource",
+   "type": "AWS::ApiGateway::Resource",
+   "values": {
+    "RestApiId": {
+     "ref": "MoviesApi"
+    },
+    "ParentId": {
+     "ref": "MoviesApi",
+     "attr": "RootResourceId"
+    },
+    "PathPart": "Movies"
+   },
+   "refs": [
+    "MoviesApi"
+   ]
+  },
+  {
+   "id": "MoviesTitleResource",
+   "cfg": "MoviesTitleResource",
+   "type": "AWS::ApiGateway::Resource",
+   "values": {
+    "RestApiId": {
+     "ref": "MoviesApi"
+    },
+    "ParentId": {
+     "ref": "MoviesResource"
+    },
+    "PathPart": "{title}"
+   },
+   "refs": [
+    "MoviesApi",
+    "MoviesResource"
+   ]
+  },
+  {
+   "id": "PostMoviesMethod",
+   "cfg": "PostMoviesMethod",
+   "type": "AWS::ApiGateway::Method",
+   "values": {
+    "RestApiId": {
+     "ref": "MoviesApi"
+    },
+    "ResourceId": {
+     "ref": "MoviesResource"
+    },
+    "HttpMethod": "POST",
+    "AuthorizationType": "NONE",
+    "Integration": {
+     "Type": "AWS",
+     "IntegrationHttpMethod": "POST",
+     "Uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/${CreateMovieFunction.Arn}/invocations",
+     "PassthroughBehavior": "WHEN_NO_MATCH",
+     "IntegrationResponses": [
+      {
+       "StatusCode": "200",
+       "ResponseTemplates": {
+        "application/json": ""
+       }
+      }
+     ]
+    },
+    "MethodResponses": [
+     {
+      "StatusCode": "200",
+      "ResponseModels": {
+       "application/json": "Empty"
+      }
+     }
+    ]
+   },
+   "refs": [
+    "CreateMovieFunction",
+    "MoviesApi",
+    "MoviesResource"
+   ]
+  },
+  {
+   "id": "PutMoviesMethod",
+   "cfg": "PutMoviesMethod",
+   "type": "AWS::ApiGateway::Method",
+   "values": {
+    "RestApiId": {
+     "ref": "MoviesApi"
+    },
+    "ResourceId": {
+     "ref": "MoviesResource"
+    },
+    "HttpMethod": "PUT",
+    "AuthorizationType": "NONE",
+    "Integration": {
+     "Type": "AWS",
+     "IntegrationHttpMethod": "POST",
+     "Uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/${UpdateMovieFunction.Arn}/invocations",
+     "PassthroughBehavior": "WHEN_NO_MATCH",
+     "IntegrationResponses": [
+      {
+       "StatusCode": "200",
+       "ResponseTemplates": {
+        "application/json": ""
+       }
+      }
+     ]
+    },
+    "MethodResponses": [
+     {
+      "StatusCode": "200",
+      "ResponseModels": {
+       "application/json": "Empty"
+      }
+     }
+    ]
+   },
+   "refs": [
+    "MoviesApi",
+    "MoviesResource",
+    "UpdateMovieFunction"
+   ]
+  },
+  {
+   "id": "DeleteMoviesMethod",
+   "cfg": "DeleteMoviesMethod",
+   "type": "AWS::ApiGateway::Method",
+   "values": {
+    "RestApiId": {
+     "ref": "MoviesApi"
+    },
+    "ResourceId": {
+     "ref": "MoviesResource"
+    },
+    "HttpMethod": "DELETE",
+    "AuthorizationType": "NONE",
+    "Integration": {
+     "Type": "AWS",
+     "IntegrationHttpMethod": "POST",
+     "Uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/${DeleteMovieFunction.Arn}/invocations",
+     "PassthroughBehavior": "WHEN_NO_MATCH",
+     "IntegrationResponses": [
+      {
+       "StatusCode": "200",
+       "ResponseTemplates": {
+        "application/json": ""
+       }
+      }
+     ]
+    },
+    "MethodResponses": [
+     {
+      "StatusCode": "200",
+      "ResponseModels": {
+       "application/json": "Empty"
+      }
+     }
+    ]
+   },
+   "refs": [
+    "DeleteMovieFunction",
+    "MoviesApi",
+    "MoviesResource"
+   ]
+  },
+  {
+   "id": "OptionsMoviesMethod",
+   "cfg": "OptionsMoviesMethod",
+   "type": "AWS::ApiGateway::Method",
+   "values": {
+    "RestApiId": {
+     "ref": "MoviesApi"
+    },
+    "ResourceId": {
+     "ref": "MoviesResource"
+    },
+    "HttpMethod": "OPTIONS",
+    "AuthorizationType": "NONE",
+    "Integration": {
+     "Type": "MOCK",
+     "RequestTemplates": {
+      "application/json": "{\"statusCode\": 200}"
+     },
+     "IntegrationResponses": [
+      {
+       "StatusCode": "200",
+       "ResponseParameters": {
+        "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'",
+        "method.response.header.Access-Control-Allow-Methods": "'DELETE,GET,OPTIONS,POST,PUT'",
+        "method.response.header.Access-Control-Allow-Origin": "'*'"
+       },
+       "ResponseTemplates": {
+        "application/json": ""
+       }
+      }
+     ]
+    },
+    "MethodResponses": [
+     {
+      "StatusCode": "200",
+      "ResponseParameters": {
+       "method.response.header.Access-Control-Allow-Headers": true,
+       "method.response.header.Access-Control-Allow-Methods": true,
+       "method.response.header.Access-Control-Allow-Origin": true
+      }
+     }
+    ]
+   },
+   "refs": [
+    "MoviesApi",
+    "MoviesResource"
+   ]
+  },
+  {
+   "id": "GetMovieTitleMethod",
+   "cfg": "GetMovieTitleMethod",
+   "type": "AWS::ApiGateway::Method",
+   "values": {
+    "RestApiId": {
+     "ref": "MoviesApi"
+    },
+    "ResourceId": {
+     "ref": "MoviesTitleResource"
+    },
+    "HttpMethod": "GET",
+    "AuthorizationType": "NONE",
+    "RequestParameters": {
+     "method.request.path.title": true
+    },
+    "Integration": {
+     "Type": "AWS",
+     "IntegrationHttpMethod": "POST",
+     "Uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/${GetMovieFunction.Arn}/invocations",
+     "PassthroughBehavior": "WHEN_NO_MATCH",
+     "RequestTemplates": {
+      "application/json": "{\n  \"title\": \"$input.params('title')\"\n}\n"
+     },
+     "IntegrationResponses": [
+      {
+       "StatusCode": "200",
+       "ResponseTemplates": {
+        "application/json": ""
+       }
+      }
+     ]
+    },
+    "MethodResponses": [
+     {
+      "StatusCode": "200",
+      "ResponseModels": {
+       "application/json": "Empty"
+      }
+     }
+    ]
+   },
+   "refs": [
+    "GetMovieFunction",
+    "MoviesApi",
+    "MoviesTitleResource"
+   ]
+  },
+  {
+   "id": "OptionsMoviesTitleMethod",
+   "cfg": "OptionsMoviesTitleMethod",
+   "type": "AWS::ApiGateway::Method",
+   "values": {
+    "RestApiId": {
+     "ref": "MoviesApi"
+    },
+    "ResourceId": {
+     "ref": "MoviesTitleResource"
+    },
+    "HttpMethod": "OPTIONS",
+    "AuthorizationType": "NONE",
+    "RequestParameters": {
+     "method.request.path.title": true
+    },
+    "Integration": {
+     "Type": "MOCK",
+     "RequestTemplates": {
+      "application/json": "{\"statusCode\": 200}"
+     },
+     "IntegrationResponses": [
+      {
+       "StatusCode": "200",
+       "ResponseParameters": {
+        "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'",
+        "method.response.header.Access-Control-Allow-Methods": "'DELETE,GET,OPTIONS,POST,PUT'",
+        "method.response.header.Access-Control-Allow-Origin": "'*'"
+       },
+       "ResponseTemplates": {
+        "application/json": ""
+       }
+      }
+     ]
+    },
+    "MethodResponses": [
+     {
+      "StatusCode": "200",
+      "ResponseParameters": {
+       "method.response.header.Access-Control-Allow-Headers": true,
+       "method.response.header.Access-Control-Allow-Methods": true,
+       "method.response.header.Access-Control-Allow-Origin": true
+      }
+     }
+    ]
+   },
+   "refs": [
+    "MoviesApi",
+    "MoviesTitleResource"
+   ]
+  },
+  {
+   "id": "MoviesApiDeployment",
+   "cfg": "MoviesApiDeployment",
+   "type": "AWS::ApiGateway::Deployment",
+   "values": {
+    "RestApiId": {
+     "ref": "MoviesApi"
+    },
+    "__resource__": {
+     "DependsOn": [
+      "PostMoviesMethod",
+      "PutMoviesMethod",
+      "DeleteMoviesMethod",
+      "OptionsMoviesMethod",
+      "GetMovieTitleMethod",
+      "OptionsMoviesTitleMethod"
+     ]
+    }
+   },
+   "refs": [
+    "MoviesApi"
+   ]
+  },
+  {
+   "id": "MoviesApiStage",
+   "cfg": "MoviesApiStage",
+   "type": "AWS::ApiGateway::Stage",
+   "values": {
+    "RestApiId": {
+     "ref": "MoviesApi"
+    },
+    "DeploymentId": {
+     "ref": "MoviesApiDeployment"
+    },
+    "StageName": "dev",
+    "Description": "Movies API - dev stage"
+   },
+   "refs": [
+    "MoviesApi",
+    "MoviesApiDeployment"
+   ]
+  },
+  {
+   "id": "CreateMoviePermission",
+   "cfg": "CreateMoviePermission",
+   "type": "AWS::Lambda::Permission",
+   "values": {
+    "FunctionName": {
+     "ref": "CreateMovieFunction"
+    },
+    "Action": "lambda:InvokeFunction",
+    "Principal": "apigateway.amazonaws.com",
+    "SourceArn": "arn:aws:execute-api:us-east-1:123456789012:${MoviesApi}/*/*"
+   },
+   "refs": [
+    "CreateMovieFunction",
+    "MoviesApi"
+   ]
+  },
+  {
+   "id": "GetMoviePermission",
+   "cfg": "GetMoviePermission",
+   "type": "AWS::Lambda::Permission",
+   "values": {
+    "FunctionName": {
+     "ref": "GetMovieFunction"
+    },
+    "Action": "lambda:InvokeFunction",
+    "Principal": "apigateway.amazonaws.com",
+    "SourceArn": "arn:aws:execute-api:us-east-1:123456789012:${MoviesApi}/*/*"
+   },
+   "refs": [
+    "GetMovieFunction",
+    "MoviesApi"
+   ]
+  },
+  {
+   "id": "UpdateMoviePermission",
+   "cfg": "UpdateMoviePermission",
+   "type": "AWS::Lambda::Permission",
+   "values": {
+    "FunctionName": {
+     "ref": "UpdateMovieFunction"
+    },
+    "Action": "lambda:InvokeFunction",
+    "Principal": "apigateway.amazonaws.com",
+    "SourceArn": "arn:aws:execute-api:us-east-1:123456789012:${MoviesApi}/*/*"
+   },
+   "refs": [
+    "MoviesApi",
+    "UpdateMovieFunction"
+   ]
+  },
+  {
+   "id": "DeleteMoviePermission",
+   "cfg": "DeleteMoviePermission",
+   "type": "AWS::Lambda::Permission",
+   "values": {
+    "FunctionName": {
+     "ref": "DeleteMovieFunction"
+    },
+    "Action": "lambda:InvokeFunction",
+    "Principal": "apigateway.amazonaws.com",
+    "SourceArn": "arn:aws:execute-api:us-east-1:123456789012:${MoviesApi}/*/*"
+   },
+   "refs": [
+    "DeleteMovieFunction",
+    "MoviesApi"
+   ]
+  },
+  {
+   "id": "__parameter__.Environment",
+   "cfg": "__parameter__.Environment",
+   "type": "__parameter__",
+   "values": {
+    "name": "Environment",
+    "type": "String",
+    "default": "dev",
+    "allowed_values": [
+     "dev",
+     "staging",
+     "prod"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.ApiUrl",
+   "cfg": "__output__.ApiUrl",
+   "type": "__output__",
+   "values": {
+    "name": "ApiUrl",
+    "value": "https://${MoviesApi}.execute-api.us-east-1.amazonaws.com/dev/",
+    "description": "API Gateway endpoint URL",
+    "export": "stack-ApiUrl"
+   },
+   "refs": [
+    "MoviesApi"
+   ]
+  },
+  {
+   "id": "__output__.MoviesTableName",
+   "cfg": "__output__.MoviesTableName",
+   "type": "__output__",
+   "values": {
+    "name": "MoviesTableName",
+    "value": {
+     "ref": "MoviesTable"
+    },
+    "description": "DynamoDB table name",
+    "export": "stack-TableName"
+   },
+   "refs": [
+    "MoviesTable"
+   ]
+  },
+  {
+   "id": "__output__.CreateMovieFunctionArn",
+   "cfg": "__output__.CreateMovieFunctionArn",
+   "type": "__output__",
+   "values": {
+    "name": "CreateMovieFunctionArn",
+    "value": {
+     "ref": "CreateMovieFunction",
+     "attr": "Arn"
+    },
+    "description": "Create Movie Lambda Function ARN",
+    "export": null
+   },
+   "refs": [
+    "CreateMovieFunction"
+   ]
+  },
+  {
+   "id": "__output__.GetMovieFunctionArn",
+   "cfg": "__output__.GetMovieFunctionArn",
+   "type": "__output__",
+   "values": {
+    "name": "GetMovieFunctionArn",
+    "value": {
+     "ref": "GetMovieFunction",
+     "attr": "Arn"
+    },
+    "description": "Get Movie Lambda Function ARN",
+    "export": null
+   },
+   "refs": [
+    "GetMovieFunction"
+   ]
+  },
+  {
+   "id": "__output__.UpdateMovieFunctionArn",
+   "cfg": "__output__.UpdateMovieFunctionArn",
+   "type": "__output__",
+   "values": {
+    "name": "UpdateMovieFunctionArn",
+    "value": {
+     "ref": "UpdateMovieFunction",
+     "attr": "Arn"
+    },
+    "description": "Update Movie Lambda Function ARN",
+    "export": null
+   },
+   "refs": [
+    "UpdateMovieFunction"
+   ]
+  },
+  {
+   "id": "__output__.DeleteMovieFunctionArn",
+   "cfg": "__output__.DeleteMovieFunctionArn",
+   "type": "__output__",
+   "values": {
+    "name": "DeleteMovieFunctionArn",
+    "value": {
+     "ref": "DeleteMovieFunction",
+     "attr": "Arn"
+    },
+    "description": "Delete Movie Lambda Function ARN",
+    "export": null
+   },
+   "refs": [
+    "DeleteMovieFunction"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.LambdaExecutionRole",
+   "cfg": "LambdaExecutionRole",
+   "type": "__declared__",
+   "refs": [
+    "MoviesTable"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "LambdaExecutionRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RoleName": "lambda-movies-role-dev",
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "lambda.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+     ],
+     "Policies": [
+      {
+       "PolicyName": "lambda-dynamodb-policy",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "dynamodb:GetItem",
+           "dynamodb:PutItem",
+           "dynamodb:UpdateItem",
+           "dynamodb:DeleteItem"
+          ],
+          "Resource": {
+           "ref": "MoviesTable",
+           "attr": "Arn"
+          }
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::DynamoDB::Table.MoviesTable",
+   "cfg": "MoviesTable",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::DynamoDB::Table",
+    "name": "MoviesTable",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "TableName": "movies",
+     "BillingMode": "PAY_PER_REQUEST",
+     "AttributeDefinitions": [
+      {
+       "AttributeName": "title",
+       "AttributeType": "S"
+      }
+     ],
+     "KeySchema": [
+      {
+       "AttributeName": "title",
+       "KeyType": "HASH"
+      }
+     ],
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "movies-table"
+      },
+      {
+       "Key": "Environment",
+       "Value": "dev"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::LogGroup.CreateMovieLogGroup",
+   "cfg": "CreateMovieLogGroup",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Logs::LogGroup",
+    "name": "CreateMovieLogGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "LogGroupName": "/aws/lambda/create_movie",
+     "RetentionInDays": 1
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::LogGroup.GetMovieLogGroup",
+   "cfg": "GetMovieLogGroup",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Logs::LogGroup",
+    "name": "GetMovieLogGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "LogGroupName": "/aws/lambda/get_movie",
+     "RetentionInDays": 1
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::LogGroup.UpdateMovieLogGroup",
+   "cfg": "UpdateMovieLogGroup",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Logs::LogGroup",
+    "name": "UpdateMovieLogGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "LogGroupName": "/aws/lambda/update_movie",
+     "RetentionInDays": 1
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::LogGroup.DeleteMovieLogGroup",
+   "cfg": "DeleteMovieLogGroup",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::Logs::LogGroup",
+    "name": "DeleteMovieLogGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "LogGroupName": "/aws/lambda/delete_movie",
+     "RetentionInDays": 1
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Function.CreateMovieFunction",
+   "cfg": "CreateMovieFunction",
+   "type": "__declared__",
+   "refs": [
+    "LambdaExecutionRole",
+    "MoviesTable"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Function",
+    "name": "CreateMovieFunction",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "FunctionName": "create_movie",
+     "Role": {
+      "ref": "LambdaExecutionRole",
+      "attr": "Arn"
+     },
+     "Runtime": "python3.12",
+     "Timeout": 30,
+     "MemorySize": 128,
+     "Handler": "index.lambda_handler",
+     "Environment": {
+      "Variables": {
+       "TABLE_NAME": {
+        "ref": "MoviesTable"
+       }
+      }
+     },
+     "Code": {
+      "ZipFile": "import boto3\n\ndynamodb = boto3.resource('dynamodb')\ntable = dynamodb.Table('movies')\n\ndef lambda_handler(event, context):\n    year   = event['year']   if event.get('year')   else '0'\n    title  = event['title']  if event.get('title')  else ''\n    actors = event['actors'] if event.get('actors') else ''\n\n    response = table.put_item(\n        Item={\n            'year': year,\n            'title': title,\n            'info': {\n                'actors': actors\n            }\n        }\n    )\n\n    return {\n        'statusCode': 200,\n        'headers': {'Content-Type': 'application/json'},\n        'body': str(response)\n    }\n"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Function.GetMovieFunction",
+   "cfg": "GetMovieFunction",
+   "type": "__declared__",
+   "refs": [
+    "LambdaExecutionRole",
+    "MoviesTable"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Function",
+    "name": "GetMovieFunction",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "FunctionName": "get_movie",
+     "Role": {
+      "ref": "LambdaExecutionRole",
+      "attr": "Arn"
+     },
+     "Runtime": "python3.12",
+     "Timeout": 30,
+     "MemorySize": 128,
+     "Handler": "index.lambda_handler",
+     "Environment": {
+      "Variables": {
+       "TABLE_NAME": {
+        "ref": "MoviesTable"
+       }
+      }
+     },
+     "Code": {
+      "ZipFile": "import boto3\nimport json\n\ndynamodb = boto3.resource('dynamodb')\ntable = dynamodb.Table('movies')\n\ndef lambda_handler(event, context):\n    title = event['title']\n    response = table.get_item(Key={'title': title})\n    return {\n        'statusCode': 200,\n        'headers': {'Content-Type': 'application/json'},\n        'body': json.dumps(response.get('Item', {}), default=str)\n    }\n"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Function.UpdateMovieFunction",
+   "cfg": "UpdateMovieFunction",
+   "type": "__declared__",
+   "refs": [
+    "LambdaExecutionRole",
+    "MoviesTable"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Function",
+    "name": "UpdateMovieFunction",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "FunctionName": "update_movie",
+     "Role": {
+      "ref": "LambdaExecutionRole",
+      "attr": "Arn"
+     },
+     "Runtime": "python3.12",
+     "Timeout": 30,
+     "MemorySize": 128,
+     "Handler": "index.lambda_handler",
+     "Environment": {
+      "Variables": {
+       "TABLE_NAME": {
+        "ref": "MoviesTable"
+       }
+      }
+     },
+     "Code": {
+      "ZipFile": "import boto3\nfrom decimal import Decimal\n\ndynamodb = boto3.resource('dynamodb')\ntable = dynamodb.Table('movies')\n\ndef lambda_handler(event, context):\n    title  = event['title']  if event.get('title')  else ''\n    rating = event['rating'] if event.get('rating') else '0.0'\n    plot   = event['plot']   if event.get('plot')   else ''\n\n    response = table.update_item(\n        Key={'title': title},\n        UpdateExpression='set info.rating=:r, info.plot=:p',\n        ExpressionAttributeValues={\n            ':r': Decimal(str(rating)),\n            ':p': plot\n        },\n        ReturnValues='UPDATED_NEW'\n    )\n    return {\n        'statusCode': 200,\n        'headers': {'Content-Type': 'application/json'},\n        'body': str(response)\n    }\n"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Function.DeleteMovieFunction",
+   "cfg": "DeleteMovieFunction",
+   "type": "__declared__",
+   "refs": [
+    "LambdaExecutionRole",
+    "MoviesTable"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Function",
+    "name": "DeleteMovieFunction",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "FunctionName": "delete_movie",
+     "Role": {
+      "ref": "LambdaExecutionRole",
+      "attr": "Arn"
+     },
+     "Runtime": "python3.12",
+     "Timeout": 30,
+     "MemorySize": 128,
+     "Handler": "index.lambda_handler",
+     "Environment": {
+      "Variables": {
+       "TABLE_NAME": {
+        "ref": "MoviesTable"
+       }
+      }
+     },
+     "Code": {
+      "ZipFile": "import boto3\n\ndynamodb = boto3.resource('dynamodb')\ntable = dynamodb.Table('movies')\n\ndef lambda_handler(event, context):\n    title = event['title']\n    response = table.delete_item(\n        Key={'title': title},\n        ConditionExpression='attribute_exists(info.actors)',\n        ReturnValues='ALL_OLD'\n    )\n    return {\n        'statusCode': 200,\n        'headers': {'Content-Type': 'application/json'},\n        'body': str(response)\n    }\n"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::RestApi.MoviesApi",
+   "cfg": "MoviesApi",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::ApiGateway::RestApi",
+    "name": "MoviesApi",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Name": "Movies API",
+     "Description": "Movies API \u2014 connects HTTP endpoints to Lambda functions",
+     "EndpointConfiguration": {
+      "Types": [
+       "REGIONAL"
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::Resource.MoviesResource",
+   "cfg": "MoviesResource",
+   "type": "__declared__",
+   "refs": [
+    "MoviesApi"
+   ],
+   "values": {
+    "type": "AWS::ApiGateway::Resource",
+    "name": "MoviesResource",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RestApiId": {
+      "ref": "MoviesApi"
+     },
+     "ParentId": {
+      "ref": "MoviesApi",
+      "attr": "RootResourceId"
+     },
+     "PathPart": "Movies"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::Resource.MoviesTitleResource",
+   "cfg": "MoviesTitleResource",
+   "type": "__declared__",
+   "refs": [
+    "MoviesApi",
+    "MoviesResource"
+   ],
+   "values": {
+    "type": "AWS::ApiGateway::Resource",
+    "name": "MoviesTitleResource",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RestApiId": {
+      "ref": "MoviesApi"
+     },
+     "ParentId": {
+      "ref": "MoviesResource"
+     },
+     "PathPart": "{title}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::Method.PostMoviesMethod",
+   "cfg": "PostMoviesMethod",
+   "type": "__declared__",
+   "refs": [
+    "CreateMovieFunction",
+    "MoviesApi",
+    "MoviesResource"
+   ],
+   "values": {
+    "type": "AWS::ApiGateway::Method",
+    "name": "PostMoviesMethod",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RestApiId": {
+      "ref": "MoviesApi"
+     },
+     "ResourceId": {
+      "ref": "MoviesResource"
+     },
+     "HttpMethod": "POST",
+     "AuthorizationType": "NONE",
+     "Integration": {
+      "Type": "AWS",
+      "IntegrationHttpMethod": "POST",
+      "Uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/${CreateMovieFunction.Arn}/invocations",
+      "PassthroughBehavior": "WHEN_NO_MATCH",
+      "IntegrationResponses": [
+       {
+        "StatusCode": "200",
+        "ResponseTemplates": {
+         "application/json": ""
+        }
+       }
+      ]
+     },
+     "MethodResponses": [
+      {
+       "StatusCode": "200",
+       "ResponseModels": {
+        "application/json": "Empty"
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::Method.PutMoviesMethod",
+   "cfg": "PutMoviesMethod",
+   "type": "__declared__",
+   "refs": [
+    "MoviesApi",
+    "MoviesResource",
+    "UpdateMovieFunction"
+   ],
+   "values": {
+    "type": "AWS::ApiGateway::Method",
+    "name": "PutMoviesMethod",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RestApiId": {
+      "ref": "MoviesApi"
+     },
+     "ResourceId": {
+      "ref": "MoviesResource"
+     },
+     "HttpMethod": "PUT",
+     "AuthorizationType": "NONE",
+     "Integration": {
+      "Type": "AWS",
+      "IntegrationHttpMethod": "POST",
+      "Uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/${UpdateMovieFunction.Arn}/invocations",
+      "PassthroughBehavior": "WHEN_NO_MATCH",
+      "IntegrationResponses": [
+       {
+        "StatusCode": "200",
+        "ResponseTemplates": {
+         "application/json": ""
+        }
+       }
+      ]
+     },
+     "MethodResponses": [
+      {
+       "StatusCode": "200",
+       "ResponseModels": {
+        "application/json": "Empty"
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::Method.DeleteMoviesMethod",
+   "cfg": "DeleteMoviesMethod",
+   "type": "__declared__",
+   "refs": [
+    "DeleteMovieFunction",
+    "MoviesApi",
+    "MoviesResource"
+   ],
+   "values": {
+    "type": "AWS::ApiGateway::Method",
+    "name": "DeleteMoviesMethod",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RestApiId": {
+      "ref": "MoviesApi"
+     },
+     "ResourceId": {
+      "ref": "MoviesResource"
+     },
+     "HttpMethod": "DELETE",
+     "AuthorizationType": "NONE",
+     "Integration": {
+      "Type": "AWS",
+      "IntegrationHttpMethod": "POST",
+      "Uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/${DeleteMovieFunction.Arn}/invocations",
+      "PassthroughBehavior": "WHEN_NO_MATCH",
+      "IntegrationResponses": [
+       {
+        "StatusCode": "200",
+        "ResponseTemplates": {
+         "application/json": ""
+        }
+       }
+      ]
+     },
+     "MethodResponses": [
+      {
+       "StatusCode": "200",
+       "ResponseModels": {
+        "application/json": "Empty"
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::Method.OptionsMoviesMethod",
+   "cfg": "OptionsMoviesMethod",
+   "type": "__declared__",
+   "refs": [
+    "MoviesApi",
+    "MoviesResource"
+   ],
+   "values": {
+    "type": "AWS::ApiGateway::Method",
+    "name": "OptionsMoviesMethod",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RestApiId": {
+      "ref": "MoviesApi"
+     },
+     "ResourceId": {
+      "ref": "MoviesResource"
+     },
+     "HttpMethod": "OPTIONS",
+     "AuthorizationType": "NONE",
+     "Integration": {
+      "Type": "MOCK",
+      "RequestTemplates": {
+       "application/json": "{\"statusCode\": 200}"
+      },
+      "IntegrationResponses": [
+       {
+        "StatusCode": "200",
+        "ResponseParameters": {
+         "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'",
+         "method.response.header.Access-Control-Allow-Methods": "'DELETE,GET,OPTIONS,POST,PUT'",
+         "method.response.header.Access-Control-Allow-Origin": "'*'"
+        },
+        "ResponseTemplates": {
+         "application/json": ""
+        }
+       }
+      ]
+     },
+     "MethodResponses": [
+      {
+       "StatusCode": "200",
+       "ResponseParameters": {
+        "method.response.header.Access-Control-Allow-Headers": true,
+        "method.response.header.Access-Control-Allow-Methods": true,
+        "method.response.header.Access-Control-Allow-Origin": true
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::Method.GetMovieTitleMethod",
+   "cfg": "GetMovieTitleMethod",
+   "type": "__declared__",
+   "refs": [
+    "GetMovieFunction",
+    "MoviesApi",
+    "MoviesTitleResource"
+   ],
+   "values": {
+    "type": "AWS::ApiGateway::Method",
+    "name": "GetMovieTitleMethod",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RestApiId": {
+      "ref": "MoviesApi"
+     },
+     "ResourceId": {
+      "ref": "MoviesTitleResource"
+     },
+     "HttpMethod": "GET",
+     "AuthorizationType": "NONE",
+     "RequestParameters": {
+      "method.request.path.title": true
+     },
+     "Integration": {
+      "Type": "AWS",
+      "IntegrationHttpMethod": "POST",
+      "Uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/${GetMovieFunction.Arn}/invocations",
+      "PassthroughBehavior": "WHEN_NO_MATCH",
+      "RequestTemplates": {
+       "application/json": "{\n  \"title\": \"$input.params('title')\"\n}\n"
+      },
+      "IntegrationResponses": [
+       {
+        "StatusCode": "200",
+        "ResponseTemplates": {
+         "application/json": ""
+        }
+       }
+      ]
+     },
+     "MethodResponses": [
+      {
+       "StatusCode": "200",
+       "ResponseModels": {
+        "application/json": "Empty"
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::Method.OptionsMoviesTitleMethod",
+   "cfg": "OptionsMoviesTitleMethod",
+   "type": "__declared__",
+   "refs": [
+    "MoviesApi",
+    "MoviesTitleResource"
+   ],
+   "values": {
+    "type": "AWS::ApiGateway::Method",
+    "name": "OptionsMoviesTitleMethod",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RestApiId": {
+      "ref": "MoviesApi"
+     },
+     "ResourceId": {
+      "ref": "MoviesTitleResource"
+     },
+     "HttpMethod": "OPTIONS",
+     "AuthorizationType": "NONE",
+     "RequestParameters": {
+      "method.request.path.title": true
+     },
+     "Integration": {
+      "Type": "MOCK",
+      "RequestTemplates": {
+       "application/json": "{\"statusCode\": 200}"
+      },
+      "IntegrationResponses": [
+       {
+        "StatusCode": "200",
+        "ResponseParameters": {
+         "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'",
+         "method.response.header.Access-Control-Allow-Methods": "'DELETE,GET,OPTIONS,POST,PUT'",
+         "method.response.header.Access-Control-Allow-Origin": "'*'"
+        },
+        "ResponseTemplates": {
+         "application/json": ""
+        }
+       }
+      ]
+     },
+     "MethodResponses": [
+      {
+       "StatusCode": "200",
+       "ResponseParameters": {
+        "method.response.header.Access-Control-Allow-Headers": true,
+        "method.response.header.Access-Control-Allow-Methods": true,
+        "method.response.header.Access-Control-Allow-Origin": true
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::Deployment.MoviesApiDeployment",
+   "cfg": "MoviesApiDeployment",
+   "type": "__declared__",
+   "refs": [
+    "MoviesApi"
+   ],
+   "values": {
+    "type": "AWS::ApiGateway::Deployment",
+    "name": "MoviesApiDeployment",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RestApiId": {
+      "ref": "MoviesApi"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ApiGateway::Stage.MoviesApiStage",
+   "cfg": "MoviesApiStage",
+   "type": "__declared__",
+   "refs": [
+    "MoviesApi",
+    "MoviesApiDeployment"
+   ],
+   "values": {
+    "type": "AWS::ApiGateway::Stage",
+    "name": "MoviesApiStage",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RestApiId": {
+      "ref": "MoviesApi"
+     },
+     "DeploymentId": {
+      "ref": "MoviesApiDeployment"
+     },
+     "StageName": "dev",
+     "Description": "Movies API - dev stage"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Permission.CreateMoviePermission",
+   "cfg": "CreateMoviePermission",
+   "type": "__declared__",
+   "refs": [
+    "CreateMovieFunction",
+    "MoviesApi"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Permission",
+    "name": "CreateMoviePermission",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "FunctionName": {
+      "ref": "CreateMovieFunction"
+     },
+     "Action": "lambda:InvokeFunction",
+     "Principal": "apigateway.amazonaws.com",
+     "SourceArn": "arn:aws:execute-api:us-east-1:123456789012:${MoviesApi}/*/*"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Permission.GetMoviePermission",
+   "cfg": "GetMoviePermission",
+   "type": "__declared__",
+   "refs": [
+    "GetMovieFunction",
+    "MoviesApi"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Permission",
+    "name": "GetMoviePermission",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "FunctionName": {
+      "ref": "GetMovieFunction"
+     },
+     "Action": "lambda:InvokeFunction",
+     "Principal": "apigateway.amazonaws.com",
+     "SourceArn": "arn:aws:execute-api:us-east-1:123456789012:${MoviesApi}/*/*"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Permission.UpdateMoviePermission",
+   "cfg": "UpdateMoviePermission",
+   "type": "__declared__",
+   "refs": [
+    "MoviesApi",
+    "UpdateMovieFunction"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Permission",
+    "name": "UpdateMoviePermission",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "FunctionName": {
+      "ref": "UpdateMovieFunction"
+     },
+     "Action": "lambda:InvokeFunction",
+     "Principal": "apigateway.amazonaws.com",
+     "SourceArn": "arn:aws:execute-api:us-east-1:123456789012:${MoviesApi}/*/*"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Lambda::Permission.DeleteMoviePermission",
+   "cfg": "DeleteMoviePermission",
+   "type": "__declared__",
+   "refs": [
+    "DeleteMovieFunction",
+    "MoviesApi"
+   ],
+   "values": {
+    "type": "AWS::Lambda::Permission",
+    "name": "DeleteMoviePermission",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "FunctionName": {
+      "ref": "DeleteMovieFunction"
+     },
+     "Action": "lambda:InvokeFunction",
+     "Principal": "apigateway.amazonaws.com",
+     "SourceArn": "arn:aws:execute-api:us-east-1:123456789012:${MoviesApi}/*/*"
+    }
+   }
+  }
+ ]
+}

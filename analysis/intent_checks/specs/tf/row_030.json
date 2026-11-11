@@ -1,0 +1,375 @@
+{
+ "lang": "tf",
+ "row_number": 30,
+ "source_hash": {
+  "gt": "f537fc4590b1d69df376049693b8004ebde831844785cac4d9c7b98a92fd62c3",
+  "prompt": "32a0cf720fae002f80316c1898d086771fbace283964cdd000d261333ec15f83"
+ },
+ "selectors": {},
+ "checks": [
+  {
+   "id": "queue_1",
+   "tier": "core",
+   "quote": "two Amazon SQS queues named \"test-sqs\"",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_sqs_queue"
+    ],
+    "where": [
+     {
+      "path": "name",
+      "op": "eq",
+      "value": "test-sqs"
+     }
+    ]
+   }
+  },
+  {
+   "id": "queue_2",
+   "tier": "core",
+   "quote": "\"test-sqs1\"",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_sqs_queue"
+    ],
+    "where": [
+     {
+      "path": "name",
+      "op": "eq",
+      "value": "test-sqs1"
+     }
+    ]
+   }
+  },
+  {
+   "id": "delay",
+   "tier": "core",
+   "quote": "a message delivery delay of 90 seconds",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_sqs_queue"
+    ],
+    "where": [
+     {
+      "path": "name",
+      "op": "in",
+      "value": [
+       "test-sqs",
+       "test-sqs1"
+      ]
+     }
+    ]
+   },
+   "cond": {
+    "path": "delay_seconds",
+    "op": "eq",
+    "value": 90
+   },
+   "quantifier": "all"
+  },
+  {
+   "id": "max_size",
+   "tier": "core",
+   "quote": "a maximum message size of 2048 bytes",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_sqs_queue"
+    ],
+    "where": [
+     {
+      "path": "name",
+      "op": "in",
+      "value": [
+       "test-sqs",
+       "test-sqs1"
+      ]
+     }
+    ]
+   },
+   "cond": {
+    "path": "max_message_size",
+    "op": "eq",
+    "value": 2048
+   },
+   "quantifier": "all"
+  },
+  {
+   "id": "retention",
+   "tier": "core",
+   "quote": "a message retention period of 86400 seconds",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_sqs_queue"
+    ],
+    "where": [
+     {
+      "path": "name",
+      "op": "in",
+      "value": [
+       "test-sqs",
+       "test-sqs1"
+      ]
+     }
+    ]
+   },
+   "cond": {
+    "path": "message_retention_seconds",
+    "op": "eq",
+    "value": 86400
+   },
+   "quantifier": "all"
+  },
+  {
+   "id": "wait",
+   "tier": "core",
+   "quote": "a receive wait time of 10 seconds",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_sqs_queue"
+    ],
+    "where": [
+     {
+      "path": "name",
+      "op": "in",
+      "value": [
+       "test-sqs",
+       "test-sqs1"
+      ]
+     }
+    ]
+   },
+   "cond": {
+    "path": "receive_wait_time_seconds",
+    "op": "eq",
+    "value": 10
+   },
+   "quantifier": "all"
+  },
+  {
+   "id": "env_tag",
+   "tier": "detail",
+   "quote": "an Environment tag set to \"production\"",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_sqs_queue"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "in",
+        "value": [
+         "test-sqs",
+         "test-sqs1"
+        ]
+       }
+      ]
+     },
+     "cond": {
+      "path": "tags.Environment",
+      "op": "eq",
+      "value": "production"
+     },
+     "quantifier": "all"
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_sqs_queue"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "in",
+        "value": [
+         "test-sqs",
+         "test-sqs1"
+        ]
+       }
+      ]
+     },
+     "cond": {
+      "path": "tags_all.Environment",
+      "op": "eq",
+      "value": "production"
+     },
+     "quantifier": "all"
+    }
+   ]
+  },
+  {
+   "id": "kms_key",
+   "tier": "core",
+   "quote": "a dedicated customer-managed KMS key",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_kms_key"
+    ]
+   }
+  },
+  {
+   "id": "kms_rotation",
+   "tier": "core",
+   "quote": "a dedicated customer-managed KMS key with automatic key rotation enabled",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_sqs_queue"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "in",
+        "value": [
+         "test-sqs",
+         "test-sqs1"
+        ]
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_kms_key"
+      ],
+      "where": [
+       {
+        "path": "enable_key_rotation",
+        "op": "truthy"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_kms_alias"
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_kms_key"
+      ],
+      "where": [
+       {
+        "path": "enable_key_rotation",
+        "op": "truthy"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "kms_queue_1",
+   "tier": "core",
+   "quote": "server-side encryption using a dedicated customer-managed KMS key",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_sqs_queue"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "eq",
+        "value": "test-sqs"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_kms_key"
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_sqs_queue"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "eq",
+        "value": "test-sqs"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_kms_alias"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "kms_queue_2",
+   "tier": "core",
+   "quote": "server-side encryption using a dedicated customer-managed KMS key",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_sqs_queue"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "eq",
+        "value": "test-sqs1"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_kms_key"
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_sqs_queue"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "eq",
+        "value": "test-sqs1"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_kms_alias"
+      ]
+     }
+    }
+   ]
+  }
+ ],
+ "notes": "kms_rotation binds rotation to the key a named queue uses (directly, or through the alias the queue uses; kms_queue_1/2 require the queue to reference the key or an alias)."
+}

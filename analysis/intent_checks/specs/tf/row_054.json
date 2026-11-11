@@ -1,0 +1,202 @@
+{
+  "lang": "tf",
+  "row_number": 54,
+  "source_hash": {
+    "gt": "14d414c54609046dcdb27c2581d33f34c321ca90dfeca643864b82d560f858b7",
+    "prompt": "bfff4189d295bc2d588d679670e45c11934488aceef7ffb0d2659cbc4e8c53d0"
+  },
+  "selectors": {
+    "q": {
+      "types": [
+        "aws_sqs_queue"
+      ]
+    },
+    "qp": {
+      "types": [
+        "__declared__"
+      ],
+      "where": [
+        {
+          "path": "type",
+          "op": "in",
+          "value": [
+            "aws_sqs_queue_policy"
+          ]
+        }
+      ]
+    }
+  },
+  "checks": [
+    {
+      "id": "sqs_queue",
+      "tier": "core",
+      "quote": "creates an Amazon SQS queue",
+      "kind": "exists",
+      "select": "q"
+    },
+    {
+      "id": "fifo_optional",
+      "tier": "core",
+      "quote": "optional FIFO queue support",
+      "kind": "all_of",
+      "checks": [
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "eq",
+                "value": "aws_sqs_queue"
+              },
+              {
+                "path": "properties",
+                "op": "regex",
+                "value": "fifo_queue"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "__parameter__"
+            ],
+            "where": [
+              {
+                "path": "name",
+                "op": "regex",
+                "value": "(?i)fifo"
+              },
+              {
+                "path": "default",
+                "op": "in",
+                "value": [
+                  false
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "access_policy",
+      "tier": "core",
+      "quote": "an optional access policy",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "ref",
+          "from": "qp",
+          "to": {
+            "types": [
+              "aws_sqs_queue"
+            ]
+          }
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "in",
+                "value": [
+                  "aws_sqs_queue"
+                ]
+              },
+              {
+                "path": "properties",
+                "op": "regex",
+                "value": "[{ ]\"policy\": "
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "policy_send_message",
+      "tier": "core",
+      "quote": "permission to send messages to the queue",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "in",
+                "value": [
+                  "data.aws_iam_policy_document",
+                  "aws_sqs_queue_policy",
+                  "aws_sqs_queue"
+                ]
+              },
+              {
+                "path": "properties",
+                "op": "regex",
+                "value": "(?i)sqs:(SendMessage|\\*)"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "__parameter__"
+            ],
+            "where": [
+              {
+                "path": "default",
+                "op": "regex",
+                "value": "(?i)sqs:(SendMessage|\\*)"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "policy_principal",
+      "tier": "detail",
+      "quote": "grant a specified AWS principal permission",
+      "kind": "exists",
+      "select": {
+        "types": [
+          "__declared__"
+        ],
+        "where": [
+          {
+            "path": "type",
+            "op": "in",
+            "value": [
+              "data.aws_iam_policy_document",
+              "aws_sqs_queue_policy",
+              "aws_sqs_queue"
+            ]
+          },
+          {
+            "path": "properties",
+            "op": "regex",
+            "value": "(?i)principal"
+          }
+        ]
+      }
+    }
+  ],
+  "notes": "The 'standard naming and tagging module' is not observable in plan or declared resources (the label module declares no resources). Optional FIFO: the declared queue sets fifo_queue and a FIFO toggle variable defaults to off (declared values show variable defaults, so the toggle is only visible as the variable)."
+}

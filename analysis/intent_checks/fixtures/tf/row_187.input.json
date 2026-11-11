@@ -1,0 +1,2119 @@
+{
+ "meta": {
+  "lang": "tf",
+  "mode": "plan",
+  "warnings": [],
+  "gt_hash": "dd40d222977f861aaeeb0d5c7639a273f820b137414d4572fefa6121c026f0ff",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "data.aws_security_groups.eks_security_group",
+   "cfg": "data.aws_security_groups.eks_security_group",
+   "type": "data.aws_security_groups",
+   "values": {
+    "filter": [
+     {
+      "name": "description",
+      "values": [
+       "EKS created security group applied to ENI that is attached to EKS Control Plane master nodes, as well as any managed workloads."
+      ]
+     },
+     {
+      "name": "vpc-id",
+      "values": [
+       null
+      ]
+     }
+    ],
+    "timeouts": null
+   },
+   "refs": [
+    "aws_eks_cluster.eks_cluster",
+    "aws_vpc.vpc"
+   ]
+  },
+  {
+   "id": "aws_db_subnet_group.private_subnet_group",
+   "cfg": "aws_db_subnet_group.private_subnet_group",
+   "type": "aws_db_subnet_group",
+   "values": {
+    "description": "Managed by Terraform",
+    "name": "md-k8s-private-subnet-group",
+    "region": "us-east-1",
+    "tags": null
+   },
+   "refs": [
+    "aws_subnet.priv_subnet"
+   ]
+  },
+  {
+   "id": "aws_eip.nat_eip",
+   "cfg": "aws_eip.nat_eip",
+   "type": "aws_eip",
+   "values": {
+    "address": null,
+    "associate_with_private_ip": null,
+    "customer_owned_ipv4_pool": null,
+    "region": "us-east-1",
+    "tags": {
+     "Name": "terraform-md-k8s-cluster/NATIP"
+    },
+    "tags_all": {
+     "Name": "terraform-md-k8s-cluster/NATIP"
+    },
+    "timeouts": null
+   },
+   "refs": []
+  },
+  {
+   "id": "aws_eks_cluster.eks_cluster",
+   "cfg": "aws_eks_cluster.eks_cluster",
+   "type": "aws_eks_cluster",
+   "values": {
+    "bootstrap_self_managed_addons": true,
+    "enabled_cluster_log_types": null,
+    "encryption_config": [
+     {
+      "provider": [
+       {}
+      ],
+      "resources": [
+       "secrets"
+      ]
+     }
+    ],
+    "force_update_version": null,
+    "name": "md-k8s",
+    "outpost_config": [],
+    "region": "us-east-1",
+    "remote_network_config": [],
+    "tags": {
+     "Name": "terraform-md-k8s-cluster/ControlPlane"
+    },
+    "tags_all": {
+     "Name": "terraform-md-k8s-cluster/ControlPlane"
+    },
+    "timeouts": null,
+    "vpc_config": [
+     {
+      "endpoint_private_access": true,
+      "endpoint_public_access": false
+     }
+    ],
+    "zonal_shift_config": []
+   },
+   "refs": [
+    "aws_iam_role.eks_cluster",
+    "aws_iam_role_policy_attachment.AmazonEKSClusterPolicy",
+    "aws_iam_role_policy_attachment.AmazonEKSVPCResourceController",
+    "aws_iam_role_policy_attachment.PolicyCloudWatchMetrics",
+    "aws_iam_role_policy_attachment.PolicyELBPermissions",
+    "aws_kms_key.eks_cluster_secrets",
+    "aws_security_group.ControlPlaneSecurityGroup",
+    "aws_subnet.priv_subnet",
+    "aws_subnet.pub_subnet"
+   ]
+  },
+  {
+   "id": "aws_iam_policy.PolicyCloudWatchMetrics",
+   "cfg": "aws_iam_policy.PolicyCloudWatchMetrics",
+   "type": "aws_iam_policy",
+   "values": {
+    "delay_after_policy_creation_in_ms": null,
+    "description": null,
+    "name": "terraform-md-k8s-cluster-PolicyCloudWatchMetrics",
+    "path": "/",
+    "policy": "{\"Statement\":[{\"Action\":[\"cloudwatch:PutMetricData\"],\"Effect\":\"Allow\",\"Resource\":\"*\"}],\"Version\":\"2012-10-17\"}",
+    "tags": null
+   },
+   "refs": []
+  },
+  {
+   "id": "aws_iam_policy.PolicyELBPermissions",
+   "cfg": "aws_iam_policy.PolicyELBPermissions",
+   "type": "aws_iam_policy",
+   "values": {
+    "delay_after_policy_creation_in_ms": null,
+    "description": null,
+    "name": "terraform-md-k8s-cluster-PolicyELBPermissions",
+    "path": "/",
+    "policy": "{\"Statement\":[{\"Action\":[\"ec2:DescribeAccountAttributes\",\"ec2:DescribeAddresses\",\"ec2:DescribeInternetGateways\"],\"Effect\":\"Allow\",\"Resource\":\"*\"}],\"Version\":\"2012-10-17\"}",
+    "tags": null
+   },
+   "refs": []
+  },
+  {
+   "id": "aws_iam_role.eks_cluster",
+   "cfg": "aws_iam_role.eks_cluster",
+   "type": "aws_iam_role",
+   "values": {
+    "assume_role_policy": "{\"Statement\":[{\"Action\":\"sts:AssumeRole\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"eks.amazonaws.com\"}}],\"Version\":\"2012-10-17\"}",
+    "description": null,
+    "force_detach_policies": false,
+    "max_session_duration": 3600,
+    "name": "terraform-md-k8s-cluster-ServiceRole",
+    "path": "/",
+    "permissions_boundary": null,
+    "tags": null
+   },
+   "refs": []
+  },
+  {
+   "id": "aws_iam_role_policy_attachment.AmazonEKSClusterPolicy",
+   "cfg": "aws_iam_role_policy_attachment.AmazonEKSClusterPolicy",
+   "type": "aws_iam_role_policy_attachment",
+   "values": {
+    "policy_arn": "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy",
+    "role": "terraform-md-k8s-cluster-ServiceRole"
+   },
+   "refs": [
+    "aws_iam_role.eks_cluster"
+   ]
+  },
+  {
+   "id": "aws_iam_role_policy_attachment.AmazonEKSVPCResourceController",
+   "cfg": "aws_iam_role_policy_attachment.AmazonEKSVPCResourceController",
+   "type": "aws_iam_role_policy_attachment",
+   "values": {
+    "policy_arn": "arn:aws:iam::aws:policy/AmazonEKSVPCResourceController",
+    "role": "terraform-md-k8s-cluster-ServiceRole"
+   },
+   "refs": [
+    "aws_iam_role.eks_cluster"
+   ]
+  },
+  {
+   "id": "aws_iam_role_policy_attachment.PolicyCloudWatchMetrics",
+   "cfg": "aws_iam_role_policy_attachment.PolicyCloudWatchMetrics",
+   "type": "aws_iam_role_policy_attachment",
+   "values": {
+    "role": "terraform-md-k8s-cluster-ServiceRole"
+   },
+   "refs": [
+    "aws_iam_policy.PolicyCloudWatchMetrics",
+    "aws_iam_role.eks_cluster"
+   ]
+  },
+  {
+   "id": "aws_iam_role_policy_attachment.PolicyELBPermissions",
+   "cfg": "aws_iam_role_policy_attachment.PolicyELBPermissions",
+   "type": "aws_iam_role_policy_attachment",
+   "values": {
+    "role": "terraform-md-k8s-cluster-ServiceRole"
+   },
+   "refs": [
+    "aws_iam_policy.PolicyELBPermissions",
+    "aws_iam_role.eks_cluster"
+   ]
+  },
+  {
+   "id": "aws_internet_gateway.ig",
+   "cfg": "aws_internet_gateway.ig",
+   "type": "aws_internet_gateway",
+   "values": {
+    "region": "us-east-1",
+    "tags": {
+     "Name": "terraform-md-k8s-cluster/InternetGateway"
+    },
+    "tags_all": {
+     "Name": "terraform-md-k8s-cluster/InternetGateway"
+    },
+    "timeouts": null
+   },
+   "refs": [
+    "aws_vpc.vpc"
+   ]
+  },
+  {
+   "id": "aws_kms_key.eks_cluster_secrets",
+   "cfg": "aws_kms_key.eks_cluster_secrets",
+   "type": "aws_kms_key",
+   "values": {
+    "bypass_policy_lockout_safety_check": false,
+    "custom_key_store_id": null,
+    "customer_master_key_spec": "SYMMETRIC_DEFAULT",
+    "deletion_window_in_days": 7,
+    "description": "CMK for EKS cluster secrets envelope encryption",
+    "enable_key_rotation": true,
+    "is_enabled": true,
+    "key_usage": "ENCRYPT_DECRYPT",
+    "region": "us-east-1",
+    "tags": null,
+    "timeouts": null,
+    "xks_key_id": null
+   },
+   "refs": []
+  },
+  {
+   "id": "aws_nat_gateway.nat",
+   "cfg": "aws_nat_gateway.nat",
+   "type": "aws_nat_gateway",
+   "values": {
+    "availability_zone_address": [],
+    "connectivity_type": "public",
+    "region": "us-east-1",
+    "tags": {
+     "Name": "terraform-md-k8s-cluster/NATGateway"
+    },
+    "tags_all": {
+     "Name": "terraform-md-k8s-cluster/NATGateway"
+    },
+    "timeouts": null
+   },
+   "refs": [
+    "aws_eip.nat_eip",
+    "aws_internet_gateway.ig",
+    "aws_subnet.pub_subnet"
+   ]
+  },
+  {
+   "id": "aws_route_table.private",
+   "cfg": "aws_route_table.private",
+   "type": "aws_route_table",
+   "values": {
+    "region": "us-east-1",
+    "route": [
+     {
+      "carrier_gateway_id": "",
+      "cidr_block": "0.0.0.0/0",
+      "core_network_arn": "",
+      "destination_prefix_list_id": "",
+      "egress_only_gateway_id": "",
+      "gateway_id": "",
+      "ipv6_cidr_block": "",
+      "local_gateway_id": "",
+      "network_interface_id": "",
+      "odb_network_arn": "",
+      "transit_gateway_id": "",
+      "vpc_endpoint_id": "",
+      "vpc_peering_connection_id": ""
+     }
+    ],
+    "tags": {
+     "Name": "terraform-md-k8s-cluster/PrivateRouteTable"
+    },
+    "tags_all": {
+     "Name": "terraform-md-k8s-cluster/PrivateRouteTable"
+    },
+    "timeouts": null
+   },
+   "refs": [
+    "aws_nat_gateway.nat",
+    "aws_vpc.vpc"
+   ]
+  },
+  {
+   "id": "aws_route_table.public",
+   "cfg": "aws_route_table.public",
+   "type": "aws_route_table",
+   "values": {
+    "region": "us-east-1",
+    "route": [
+     {
+      "carrier_gateway_id": "",
+      "cidr_block": "0.0.0.0/0",
+      "core_network_arn": "",
+      "destination_prefix_list_id": "",
+      "egress_only_gateway_id": "",
+      "ipv6_cidr_block": "",
+      "local_gateway_id": "",
+      "nat_gateway_id": "",
+      "network_interface_id": "",
+      "odb_network_arn": "",
+      "transit_gateway_id": "",
+      "vpc_endpoint_id": "",
+      "vpc_peering_connection_id": ""
+     }
+    ],
+    "tags": {
+     "Name": "terraform-md-k8s-cluster/PublicRouteTable"
+    },
+    "tags_all": {
+     "Name": "terraform-md-k8s-cluster/PublicRouteTable"
+    },
+    "timeouts": null
+   },
+   "refs": [
+    "aws_internet_gateway.ig",
+    "aws_vpc.vpc"
+   ]
+  },
+  {
+   "id": "aws_route_table_association.private[0]",
+   "cfg": "aws_route_table_association.private",
+   "type": "aws_route_table_association",
+   "values": {
+    "gateway_id": null,
+    "region": "us-east-1",
+    "timeouts": null
+   },
+   "refs": [
+    "aws_route_table.private",
+    "aws_subnet.priv_subnet",
+    "data.aws_availability_zones.all"
+   ]
+  },
+  {
+   "id": "aws_route_table_association.private[1]",
+   "cfg": "aws_route_table_association.private",
+   "type": "aws_route_table_association",
+   "values": {
+    "gateway_id": null,
+    "region": "us-east-1",
+    "timeouts": null
+   },
+   "refs": [
+    "aws_route_table.private",
+    "aws_subnet.priv_subnet",
+    "data.aws_availability_zones.all"
+   ]
+  },
+  {
+   "id": "aws_route_table_association.private[2]",
+   "cfg": "aws_route_table_association.private",
+   "type": "aws_route_table_association",
+   "values": {
+    "gateway_id": null,
+    "region": "us-east-1",
+    "timeouts": null
+   },
+   "refs": [
+    "aws_route_table.private",
+    "aws_subnet.priv_subnet",
+    "data.aws_availability_zones.all"
+   ]
+  },
+  {
+   "id": "aws_route_table_association.private[3]",
+   "cfg": "aws_route_table_association.private",
+   "type": "aws_route_table_association",
+   "values": {
+    "gateway_id": null,
+    "region": "us-east-1",
+    "timeouts": null
+   },
+   "refs": [
+    "aws_route_table.private",
+    "aws_subnet.priv_subnet",
+    "data.aws_availability_zones.all"
+   ]
+  },
+  {
+   "id": "aws_route_table_association.private[4]",
+   "cfg": "aws_route_table_association.private",
+   "type": "aws_route_table_association",
+   "values": {
+    "gateway_id": null,
+    "region": "us-east-1",
+    "timeouts": null
+   },
+   "refs": [
+    "aws_route_table.private",
+    "aws_subnet.priv_subnet",
+    "data.aws_availability_zones.all"
+   ]
+  },
+  {
+   "id": "aws_route_table_association.private[5]",
+   "cfg": "aws_route_table_association.private",
+   "type": "aws_route_table_association",
+   "values": {
+    "gateway_id": null,
+    "region": "us-east-1",
+    "timeouts": null
+   },
+   "refs": [
+    "aws_route_table.private",
+    "aws_subnet.priv_subnet",
+    "data.aws_availability_zones.all"
+   ]
+  },
+  {
+   "id": "aws_route_table_association.public[0]",
+   "cfg": "aws_route_table_association.public",
+   "type": "aws_route_table_association",
+   "values": {
+    "gateway_id": null,
+    "region": "us-east-1",
+    "timeouts": null
+   },
+   "refs": [
+    "aws_route_table.public",
+    "aws_subnet.pub_subnet",
+    "data.aws_availability_zones.all"
+   ]
+  },
+  {
+   "id": "aws_route_table_association.public[1]",
+   "cfg": "aws_route_table_association.public",
+   "type": "aws_route_table_association",
+   "values": {
+    "gateway_id": null,
+    "region": "us-east-1",
+    "timeouts": null
+   },
+   "refs": [
+    "aws_route_table.public",
+    "aws_subnet.pub_subnet",
+    "data.aws_availability_zones.all"
+   ]
+  },
+  {
+   "id": "aws_route_table_association.public[2]",
+   "cfg": "aws_route_table_association.public",
+   "type": "aws_route_table_association",
+   "values": {
+    "gateway_id": null,
+    "region": "us-east-1",
+    "timeouts": null
+   },
+   "refs": [
+    "aws_route_table.public",
+    "aws_subnet.pub_subnet",
+    "data.aws_availability_zones.all"
+   ]
+  },
+  {
+   "id": "aws_route_table_association.public[3]",
+   "cfg": "aws_route_table_association.public",
+   "type": "aws_route_table_association",
+   "values": {
+    "gateway_id": null,
+    "region": "us-east-1",
+    "timeouts": null
+   },
+   "refs": [
+    "aws_route_table.public",
+    "aws_subnet.pub_subnet",
+    "data.aws_availability_zones.all"
+   ]
+  },
+  {
+   "id": "aws_route_table_association.public[4]",
+   "cfg": "aws_route_table_association.public",
+   "type": "aws_route_table_association",
+   "values": {
+    "gateway_id": null,
+    "region": "us-east-1",
+    "timeouts": null
+   },
+   "refs": [
+    "aws_route_table.public",
+    "aws_subnet.pub_subnet",
+    "data.aws_availability_zones.all"
+   ]
+  },
+  {
+   "id": "aws_route_table_association.public[5]",
+   "cfg": "aws_route_table_association.public",
+   "type": "aws_route_table_association",
+   "values": {
+    "gateway_id": null,
+    "region": "us-east-1",
+    "timeouts": null
+   },
+   "refs": [
+    "aws_route_table.public",
+    "aws_subnet.pub_subnet",
+    "data.aws_availability_zones.all"
+   ]
+  },
+  {
+   "id": "aws_security_group.ClusterSharedNodeSecurityGroup",
+   "cfg": "aws_security_group.ClusterSharedNodeSecurityGroup",
+   "type": "aws_security_group",
+   "values": {
+    "description": "Communication between all nodes in the cluster",
+    "egress": [
+     {
+      "cidr_blocks": [
+       "192.168.0.0/16"
+      ],
+      "description": "",
+      "from_port": 0,
+      "ipv6_cidr_blocks": [],
+      "prefix_list_ids": [],
+      "protocol": "-1",
+      "security_groups": [],
+      "self": false,
+      "to_port": 0
+     }
+    ],
+    "ingress": [
+     {
+      "cidr_blocks": [],
+      "description": "Allow managed and unmanaged nodes to communicate with each other (all ports)",
+      "from_port": 0,
+      "ipv6_cidr_blocks": [],
+      "prefix_list_ids": [],
+      "protocol": "-1",
+      "self": false,
+      "to_port": 0
+     },
+     {
+      "cidr_blocks": [],
+      "description": "Allow nodes to communicate with each other (all ports)",
+      "from_port": 0,
+      "ipv6_cidr_blocks": [],
+      "prefix_list_ids": [],
+      "protocol": "-1",
+      "security_groups": [],
+      "self": true,
+      "to_port": 0
+     }
+    ],
+    "name": "terraform-md-k8s-cluster-ClusterSharedNodeSecurityGroup",
+    "region": "us-east-1",
+    "revoke_rules_on_delete": false,
+    "tags": null,
+    "timeouts": null
+   },
+   "refs": [
+    "aws_vpc.vpc",
+    "data.aws_security_groups.eks_security_group"
+   ]
+  },
+  {
+   "id": "aws_security_group.ControlPlaneSecurityGroup",
+   "cfg": "aws_security_group.ControlPlaneSecurityGroup",
+   "type": "aws_security_group",
+   "values": {
+    "description": "Communication between the control plane and worker nodegroups",
+    "egress": [
+     {
+      "cidr_blocks": [
+       "192.168.0.0/16"
+      ],
+      "description": "",
+      "from_port": 0,
+      "ipv6_cidr_blocks": [],
+      "prefix_list_ids": [],
+      "protocol": "-1",
+      "security_groups": [],
+      "self": false,
+      "to_port": 0
+     }
+    ],
+    "name": "terraform-md-k8s-cluster-ControlPlaneSecurityGroup",
+    "region": "us-east-1",
+    "revoke_rules_on_delete": false,
+    "tags": null,
+    "timeouts": null
+   },
+   "refs": [
+    "aws_vpc.vpc"
+   ]
+  },
+  {
+   "id": "aws_security_group_rule.IngressNodeToDefaultClusterSG",
+   "cfg": "aws_security_group_rule.IngressNodeToDefaultClusterSG",
+   "type": "aws_security_group_rule",
+   "values": {
+    "cidr_blocks": null,
+    "description": "Allow unmanaged nodes to communicate with control plane (all ports)",
+    "from_port": 0,
+    "ipv6_cidr_blocks": null,
+    "prefix_list_ids": null,
+    "protocol": "-1",
+    "region": "us-east-1",
+    "self": false,
+    "timeouts": null,
+    "to_port": 0,
+    "type": "ingress"
+   },
+   "refs": [
+    "aws_security_group.ClusterSharedNodeSecurityGroup",
+    "data.aws_security_groups.eks_security_group"
+   ]
+  },
+  {
+   "id": "aws_subnet.priv_subnet[0]",
+   "cfg": "aws_subnet.priv_subnet",
+   "type": "aws_subnet",
+   "values": {
+    "assign_ipv6_address_on_creation": false,
+    "availability_zone": "us-east-1a",
+    "cidr_block": "192.168.96.0/19",
+    "customer_owned_ipv4_pool": null,
+    "enable_dns64": false,
+    "enable_lni_at_device_index": null,
+    "enable_resource_name_dns_a_record_on_launch": false,
+    "enable_resource_name_dns_aaaa_record_on_launch": false,
+    "ipv4_ipam_pool_id": null,
+    "ipv4_netmask_length": null,
+    "ipv6_ipam_pool_id": null,
+    "ipv6_native": false,
+    "ipv6_netmask_length": null,
+    "map_customer_owned_ip_on_launch": null,
+    "map_public_ip_on_launch": false,
+    "outpost_arn": null,
+    "region": "us-east-1",
+    "tags": {
+     "Environment": "default",
+     "Name": "terraform-md-k8s-cluster/SubnetPrivateus-east-1a",
+     "kubernetes.io/cluster/md-k8s": "shared",
+     "kubernetes.io/role/internal-elb": "1"
+    },
+    "tags_all": {
+     "Environment": "default",
+     "Name": "terraform-md-k8s-cluster/SubnetPrivateus-east-1a",
+     "kubernetes.io/cluster/md-k8s": "shared",
+     "kubernetes.io/role/internal-elb": "1"
+    },
+    "timeouts": null
+   },
+   "refs": [
+    "aws_vpc.vpc",
+    "data.aws_availability_zones.all"
+   ]
+  },
+  {
+   "id": "aws_subnet.priv_subnet[1]",
+   "cfg": "aws_subnet.priv_subnet",
+   "type": "aws_subnet",
+   "values": {
+    "assign_ipv6_address_on_creation": false,
+    "availability_zone": "us-east-1b",
+    "cidr_block": "192.168.128.0/19",
+    "customer_owned_ipv4_pool": null,
+    "enable_dns64": false,
+    "enable_lni_at_device_index": null,
+    "enable_resource_name_dns_a_record_on_launch": false,
+    "enable_resource_name_dns_aaaa_record_on_launch": false,
+    "ipv4_ipam_pool_id": null,
+    "ipv4_netmask_length": null,
+    "ipv6_ipam_pool_id": null,
+    "ipv6_native": false,
+    "ipv6_netmask_length": null,
+    "map_customer_owned_ip_on_launch": null,
+    "map_public_ip_on_launch": false,
+    "outpost_arn": null,
+    "region": "us-east-1",
+    "tags": {
+     "Environment": "default",
+     "Name": "terraform-md-k8s-cluster/SubnetPrivateus-east-1b",
+     "kubernetes.io/cluster/md-k8s": "shared",
+     "kubernetes.io/role/internal-elb": "1"
+    },
+    "tags_all": {
+     "Environment": "default",
+     "Name": "terraform-md-k8s-cluster/SubnetPrivateus-east-1b",
+     "kubernetes.io/cluster/md-k8s": "shared",
+     "kubernetes.io/role/internal-elb": "1"
+    },
+    "timeouts": null
+   },
+   "refs": [
+    "aws_vpc.vpc",
+    "data.aws_availability_zones.all"
+   ]
+  },
+  {
+   "id": "aws_subnet.priv_subnet[2]",
+   "cfg": "aws_subnet.priv_subnet",
+   "type": "aws_subnet",
+   "values": {
+    "assign_ipv6_address_on_creation": false,
+    "availability_zone": "us-east-1c",
+    "cidr_block": "192.168.160.0/19",
+    "customer_owned_ipv4_pool": null,
+    "enable_dns64": false,
+    "enable_lni_at_device_index": null,
+    "enable_resource_name_dns_a_record_on_launch": false,
+    "enable_resource_name_dns_aaaa_record_on_launch": false,
+    "ipv4_ipam_pool_id": null,
+    "ipv4_netmask_length": null,
+    "ipv6_ipam_pool_id": null,
+    "ipv6_native": false,
+    "ipv6_netmask_length": null,
+    "map_customer_owned_ip_on_launch": null,
+    "map_public_ip_on_launch": false,
+    "outpost_arn": null,
+    "region": "us-east-1",
+    "tags": {
+     "Environment": "default",
+     "Name": "terraform-md-k8s-cluster/SubnetPrivateus-east-1c",
+     "kubernetes.io/cluster/md-k8s": "shared",
+     "kubernetes.io/role/internal-elb": "1"
+    },
+    "tags_all": {
+     "Environment": "default",
+     "Name": "terraform-md-k8s-cluster/SubnetPrivateus-east-1c",
+     "kubernetes.io/cluster/md-k8s": "shared",
+     "kubernetes.io/role/internal-elb": "1"
+    },
+    "timeouts": null
+   },
+   "refs": [
+    "aws_vpc.vpc",
+    "data.aws_availability_zones.all"
+   ]
+  },
+  {
+   "id": "aws_subnet.pub_subnet[0]",
+   "cfg": "aws_subnet.pub_subnet",
+   "type": "aws_subnet",
+   "values": {
+    "assign_ipv6_address_on_creation": false,
+    "availability_zone": "us-east-1a",
+    "cidr_block": "192.168.0.0/19",
+    "customer_owned_ipv4_pool": null,
+    "enable_dns64": false,
+    "enable_lni_at_device_index": null,
+    "enable_resource_name_dns_a_record_on_launch": false,
+    "enable_resource_name_dns_aaaa_record_on_launch": false,
+    "ipv4_ipam_pool_id": null,
+    "ipv4_netmask_length": null,
+    "ipv6_ipam_pool_id": null,
+    "ipv6_native": false,
+    "ipv6_netmask_length": null,
+    "map_customer_owned_ip_on_launch": null,
+    "map_public_ip_on_launch": false,
+    "outpost_arn": null,
+    "region": "us-east-1",
+    "tags": {
+     "Environment": "default",
+     "Name": "terraform-md-k8s-cluster/SubnetPublicus-east-1a",
+     "kubernetes.io/cluster/md-k8s": "shared",
+     "kubernetes.io/role/elb": "1"
+    },
+    "tags_all": {
+     "Environment": "default",
+     "Name": "terraform-md-k8s-cluster/SubnetPublicus-east-1a",
+     "kubernetes.io/cluster/md-k8s": "shared",
+     "kubernetes.io/role/elb": "1"
+    },
+    "timeouts": null
+   },
+   "refs": [
+    "aws_vpc.vpc",
+    "data.aws_availability_zones.all"
+   ]
+  },
+  {
+   "id": "aws_subnet.pub_subnet[1]",
+   "cfg": "aws_subnet.pub_subnet",
+   "type": "aws_subnet",
+   "values": {
+    "assign_ipv6_address_on_creation": false,
+    "availability_zone": "us-east-1b",
+    "cidr_block": "192.168.32.0/19",
+    "customer_owned_ipv4_pool": null,
+    "enable_dns64": false,
+    "enable_lni_at_device_index": null,
+    "enable_resource_name_dns_a_record_on_launch": false,
+    "enable_resource_name_dns_aaaa_record_on_launch": false,
+    "ipv4_ipam_pool_id": null,
+    "ipv4_netmask_length": null,
+    "ipv6_ipam_pool_id": null,
+    "ipv6_native": false,
+    "ipv6_netmask_length": null,
+    "map_customer_owned_ip_on_launch": null,
+    "map_public_ip_on_launch": false,
+    "outpost_arn": null,
+    "region": "us-east-1",
+    "tags": {
+     "Environment": "default",
+     "Name": "terraform-md-k8s-cluster/SubnetPublicus-east-1b",
+     "kubernetes.io/cluster/md-k8s": "shared",
+     "kubernetes.io/role/elb": "1"
+    },
+    "tags_all": {
+     "Environment": "default",
+     "Name": "terraform-md-k8s-cluster/SubnetPublicus-east-1b",
+     "kubernetes.io/cluster/md-k8s": "shared",
+     "kubernetes.io/role/elb": "1"
+    },
+    "timeouts": null
+   },
+   "refs": [
+    "aws_vpc.vpc",
+    "data.aws_availability_zones.all"
+   ]
+  },
+  {
+   "id": "aws_subnet.pub_subnet[2]",
+   "cfg": "aws_subnet.pub_subnet",
+   "type": "aws_subnet",
+   "values": {
+    "assign_ipv6_address_on_creation": false,
+    "availability_zone": "us-east-1c",
+    "cidr_block": "192.168.64.0/19",
+    "customer_owned_ipv4_pool": null,
+    "enable_dns64": false,
+    "enable_lni_at_device_index": null,
+    "enable_resource_name_dns_a_record_on_launch": false,
+    "enable_resource_name_dns_aaaa_record_on_launch": false,
+    "ipv4_ipam_pool_id": null,
+    "ipv4_netmask_length": null,
+    "ipv6_ipam_pool_id": null,
+    "ipv6_native": false,
+    "ipv6_netmask_length": null,
+    "map_customer_owned_ip_on_launch": null,
+    "map_public_ip_on_launch": false,
+    "outpost_arn": null,
+    "region": "us-east-1",
+    "tags": {
+     "Environment": "default",
+     "Name": "terraform-md-k8s-cluster/SubnetPublicus-east-1c",
+     "kubernetes.io/cluster/md-k8s": "shared",
+     "kubernetes.io/role/elb": "1"
+    },
+    "tags_all": {
+     "Environment": "default",
+     "Name": "terraform-md-k8s-cluster/SubnetPublicus-east-1c",
+     "kubernetes.io/cluster/md-k8s": "shared",
+     "kubernetes.io/role/elb": "1"
+    },
+    "timeouts": null
+   },
+   "refs": [
+    "aws_vpc.vpc",
+    "data.aws_availability_zones.all"
+   ]
+  },
+  {
+   "id": "aws_vpc.vpc",
+   "cfg": "aws_vpc.vpc",
+   "type": "aws_vpc",
+   "values": {
+    "assign_generated_ipv6_cidr_block": null,
+    "cidr_block": "192.168.0.0/16",
+    "enable_dns_hostnames": true,
+    "enable_dns_support": true,
+    "instance_tenancy": "default",
+    "ipv4_ipam_pool_id": null,
+    "ipv4_netmask_length": null,
+    "ipv6_ipam_pool_id": null,
+    "ipv6_netmask_length": null,
+    "region": "us-east-1",
+    "tags": {
+     "Environment": "default",
+     "Name": "terraform-md-k8s-cluster/VPC"
+    },
+    "tags_all": {
+     "Environment": "default",
+     "Name": "terraform-md-k8s-cluster/VPC"
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.ACCESS_KEY_ID",
+   "cfg": "__parameter__.ACCESS_KEY_ID",
+   "type": "__parameter__",
+   "values": {
+    "name": "ACCESS_KEY_ID",
+    "default": ""
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.DEPLOY_FARGATE_NODES",
+   "cfg": "__parameter__.DEPLOY_FARGATE_NODES",
+   "type": "__parameter__",
+   "values": {
+    "name": "DEPLOY_FARGATE_NODES",
+    "default": false
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.MD_CLUSTER_NAME",
+   "cfg": "__parameter__.MD_CLUSTER_NAME",
+   "type": "__parameter__",
+   "values": {
+    "name": "MD_CLUSTER_NAME",
+    "default": "md-k8s"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.MD_CLUSTER_REGION",
+   "cfg": "__parameter__.MD_CLUSTER_REGION",
+   "type": "__parameter__",
+   "values": {
+    "name": "MD_CLUSTER_REGION",
+    "default": "eu-central-1"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.PERSISTENT_DEPLOYMENT",
+   "cfg": "__parameter__.PERSISTENT_DEPLOYMENT",
+   "type": "__parameter__",
+   "values": {
+    "name": "PERSISTENT_DEPLOYMENT",
+    "default": false
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.SECRET_ACCESS_KEY",
+   "cfg": "__parameter__.SECRET_ACCESS_KEY",
+   "type": "__parameter__",
+   "values": {
+    "name": "SECRET_ACCESS_KEY",
+    "default": ""
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.eks_cluster_oicd_url",
+   "cfg": "__output__.eks_cluster_oicd_url",
+   "type": "__output__",
+   "values": {
+    "name": "eks_cluster_oicd_url",
+    "value": null,
+    "description": null
+   },
+   "refs": [
+    "aws_eks_cluster.eks_cluster"
+   ]
+  },
+  {
+   "id": "__output__.private_subnets",
+   "cfg": "__output__.private_subnets",
+   "type": "__output__",
+   "values": {
+    "name": "private_subnets",
+    "value": null,
+    "description": null
+   },
+   "refs": [
+    "aws_subnet.priv_subnet"
+   ]
+  },
+  {
+   "id": "__output__.public_subnets",
+   "cfg": "__output__.public_subnets",
+   "type": "__output__",
+   "values": {
+    "name": "public_subnets",
+    "value": null,
+    "description": null
+   },
+   "refs": [
+    "aws_subnet.pub_subnet"
+   ]
+  },
+  {
+   "id": "__output__.subnet_group_id",
+   "cfg": "__output__.subnet_group_id",
+   "type": "__output__",
+   "values": {
+    "name": "subnet_group_id",
+    "value": null,
+    "description": null
+   },
+   "refs": [
+    "aws_db_subnet_group.private_subnet_group"
+   ]
+  },
+  {
+   "id": "__output__.vpc_cidr",
+   "cfg": "__output__.vpc_cidr",
+   "type": "__output__",
+   "values": {
+    "name": "vpc_cidr",
+    "value": "192.168.0.0/16",
+    "description": null
+   },
+   "refs": [
+    "aws_vpc.vpc"
+   ]
+  },
+  {
+   "id": "__output__.vpc_id",
+   "cfg": "__output__.vpc_id",
+   "type": "__output__",
+   "values": {
+    "name": "vpc_id",
+    "value": null,
+    "description": null
+   },
+   "refs": [
+    "aws_vpc.vpc"
+   ]
+  },
+  {
+   "id": "__declared__.data.external.os",
+   "cfg": "data.external.os",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "data.external",
+    "name": "os",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "working_dir": "${path.module}",
+     "program": [
+      "printf",
+      "{\\\"os\\\": \\\"Linux\\\"}"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_vpc.vpc",
+   "cfg": "aws_vpc.vpc",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_vpc",
+    "name": "vpc",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "cidr_block": "192.168.0.0/16",
+     "enable_dns_hostnames": true,
+     "tags": {
+      "Name": "terraform-${var.MD_CLUSTER_NAME}-cluster/VPC",
+      "Environment": "${terraform.workspace}"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.data.aws_availability_zones.all",
+   "cfg": "data.aws_availability_zones.all",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "data.aws_availability_zones",
+    "name": "all",
+    "gated": false,
+    "gate": null,
+    "properties": {}
+   }
+  },
+  {
+   "id": "__declared__.aws_subnet.pub_subnet",
+   "cfg": "aws_subnet.pub_subnet",
+   "type": "__declared__",
+   "refs": [
+    "aws_vpc.vpc",
+    "data.aws_availability_zones.all"
+   ],
+   "values": {
+    "type": "aws_subnet",
+    "name": "pub_subnet",
+    "gated": true,
+    "gate": "min(3,length(data.aws_availability_zones.all.names))",
+    "properties": {
+     "count": "${min(3,length(data.aws_availability_zones.all.names))}",
+     "vpc_id": "${aws_vpc.vpc.id}",
+     "cidr_block": "${cidrsubnet(aws_vpc.vpc.cidr_block,3,count.index)}",
+     "availability_zone": "${data.aws_availability_zones.all.names[count.index]}",
+     "map_public_ip_on_launch": false,
+     "tags": {
+      "Name": "terraform-${var.MD_CLUSTER_NAME}-cluster/SubnetPublic${data.aws_availability_zones.all.names[count.index]}",
+      "kubernetes.io/cluster/${var.MD_CLUSTER_NAME}": "shared",
+      "kubernetes.io/role/elb": 1,
+      "Environment": "${terraform.workspace}"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_subnet.priv_subnet",
+   "cfg": "aws_subnet.priv_subnet",
+   "type": "__declared__",
+   "refs": [
+    "aws_vpc.vpc",
+    "data.aws_availability_zones.all"
+   ],
+   "values": {
+    "type": "aws_subnet",
+    "name": "priv_subnet",
+    "gated": true,
+    "gate": "min(3,length(data.aws_availability_zones.all.names))",
+    "properties": {
+     "count": "${min(3,length(data.aws_availability_zones.all.names))}",
+     "vpc_id": "${aws_vpc.vpc.id}",
+     "cidr_block": "${cidrsubnet(aws_vpc.vpc.cidr_block,3,count.index + min(3,length(data.aws_availability_zones.all.names)))}",
+     "availability_zone": "${data.aws_availability_zones.all.names[count.index]}",
+     "map_public_ip_on_launch": false,
+     "tags": {
+      "Name": "terraform-${var.MD_CLUSTER_NAME}-cluster/SubnetPrivate${data.aws_availability_zones.all.names[count.index]}",
+      "kubernetes.io/cluster/${var.MD_CLUSTER_NAME}": "shared",
+      "kubernetes.io/role/internal-elb": 1,
+      "Environment": "${terraform.workspace}"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_internet_gateway.ig",
+   "cfg": "aws_internet_gateway.ig",
+   "type": "__declared__",
+   "refs": [
+    "aws_vpc.vpc"
+   ],
+   "values": {
+    "type": "aws_internet_gateway",
+    "name": "ig",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "vpc_id": "${aws_vpc.vpc.id}",
+     "tags": {
+      "Name": "terraform-${var.MD_CLUSTER_NAME}-cluster/InternetGateway"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_eip.nat_eip",
+   "cfg": "aws_eip.nat_eip",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_eip",
+    "name": "nat_eip",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "tags": {
+      "Name": "terraform-${var.MD_CLUSTER_NAME}-cluster/NATIP"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_nat_gateway.nat",
+   "cfg": "aws_nat_gateway.nat",
+   "type": "__declared__",
+   "refs": [
+    "aws_eip.nat_eip",
+    "aws_internet_gateway.ig",
+    "aws_subnet.pub_subnet"
+   ],
+   "values": {
+    "type": "aws_nat_gateway",
+    "name": "nat",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "allocation_id": "${aws_eip.nat_eip.id}",
+     "subnet_id": "${aws_subnet.pub_subnet[0].id}",
+     "tags": {
+      "Name": "terraform-${var.MD_CLUSTER_NAME}-cluster/NATGateway"
+     },
+     "depends_on": [
+      "${aws_internet_gateway.ig}"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_route_table.public",
+   "cfg": "aws_route_table.public",
+   "type": "__declared__",
+   "refs": [
+    "aws_internet_gateway.ig",
+    "aws_vpc.vpc"
+   ],
+   "values": {
+    "type": "aws_route_table",
+    "name": "public",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "vpc_id": "${aws_vpc.vpc.id}",
+     "route": [
+      {
+       "cidr_block": "0.0.0.0/0",
+       "gateway_id": "${aws_internet_gateway.ig.id}"
+      }
+     ],
+     "tags": {
+      "Name": "terraform-${var.MD_CLUSTER_NAME}-cluster/PublicRouteTable"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_route_table.private",
+   "cfg": "aws_route_table.private",
+   "type": "__declared__",
+   "refs": [
+    "aws_nat_gateway.nat",
+    "aws_vpc.vpc"
+   ],
+   "values": {
+    "type": "aws_route_table",
+    "name": "private",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "vpc_id": "${aws_vpc.vpc.id}",
+     "route": [
+      {
+       "cidr_block": "0.0.0.0/0",
+       "nat_gateway_id": "${aws_nat_gateway.nat.id}"
+      }
+     ],
+     "tags": {
+      "Name": "terraform-${var.MD_CLUSTER_NAME}-cluster/PrivateRouteTable"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_route_table_association.public",
+   "cfg": "aws_route_table_association.public",
+   "type": "__declared__",
+   "refs": [
+    "aws_route_table.public",
+    "aws_subnet.pub_subnet",
+    "data.aws_availability_zones.all"
+   ],
+   "values": {
+    "type": "aws_route_table_association",
+    "name": "public",
+    "gated": true,
+    "gate": "length(data.aws_availability_zones.all.names)",
+    "properties": {
+     "count": "${length(data.aws_availability_zones.all.names)}",
+     "subnet_id": "${element(aws_subnet.pub_subnet.*.id,count.index)}",
+     "route_table_id": "${aws_route_table.public.id}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_route_table_association.private",
+   "cfg": "aws_route_table_association.private",
+   "type": "__declared__",
+   "refs": [
+    "aws_route_table.private",
+    "aws_subnet.priv_subnet",
+    "data.aws_availability_zones.all"
+   ],
+   "values": {
+    "type": "aws_route_table_association",
+    "name": "private",
+    "gated": true,
+    "gate": "length(data.aws_availability_zones.all.names)",
+    "properties": {
+     "count": "${length(data.aws_availability_zones.all.names)}",
+     "subnet_id": "${element(aws_subnet.priv_subnet.*.id,count.index)}",
+     "route_table_id": "${aws_route_table.private.id}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.data.aws_security_groups.eks_security_group",
+   "cfg": "data.aws_security_groups.eks_security_group",
+   "type": "__declared__",
+   "refs": [
+    "aws_eks_cluster.eks_cluster",
+    "aws_vpc.vpc"
+   ],
+   "values": {
+    "type": "data.aws_security_groups",
+    "name": "eks_security_group",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "filter": [
+      {
+       "name": "vpc-id",
+       "values": [
+        "${aws_vpc.vpc.id}"
+       ]
+      },
+      {
+       "name": "description",
+       "values": [
+        "EKS created security group applied to ENI that is attached to EKS Control Plane master nodes, as well as any managed workloads."
+       ]
+      }
+     ],
+     "depends_on": [
+      "${aws_eks_cluster.eks_cluster}"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_security_group.ClusterSharedNodeSecurityGroup",
+   "cfg": "aws_security_group.ClusterSharedNodeSecurityGroup",
+   "type": "__declared__",
+   "refs": [
+    "aws_vpc.vpc",
+    "data.aws_security_groups.eks_security_group"
+   ],
+   "values": {
+    "type": "aws_security_group",
+    "name": "ClusterSharedNodeSecurityGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "terraform-${var.MD_CLUSTER_NAME}-cluster-ClusterSharedNodeSecurityGroup",
+     "description": "Communication between all nodes in the cluster",
+     "vpc_id": "${aws_vpc.vpc.id}",
+     "ingress": [
+      {
+       "description": "Allow managed and unmanaged nodes to communicate with each other (all ports)",
+       "protocol": "all",
+       "from_port": 0,
+       "to_port": 0,
+       "security_groups": [
+        "${data.aws_security_groups.eks_security_group.ids[0]}"
+       ]
+      },
+      {
+       "description": "Allow nodes to communicate with each other (all ports)",
+       "protocol": "all",
+       "from_port": 0,
+       "to_port": 0,
+       "self": true
+      }
+     ],
+     "egress": [
+      {
+       "protocol": "all",
+       "from_port": 0,
+       "to_port": 0,
+       "cidr_blocks": [
+        "${aws_vpc.vpc.cidr_block}"
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_security_group.ControlPlaneSecurityGroup",
+   "cfg": "aws_security_group.ControlPlaneSecurityGroup",
+   "type": "__declared__",
+   "refs": [
+    "aws_vpc.vpc"
+   ],
+   "values": {
+    "type": "aws_security_group",
+    "name": "ControlPlaneSecurityGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "terraform-${var.MD_CLUSTER_NAME}-cluster-ControlPlaneSecurityGroup",
+     "description": "Communication between the control plane and worker nodegroups",
+     "vpc_id": "${aws_vpc.vpc.id}",
+     "egress": [
+      {
+       "protocol": "all",
+       "from_port": 0,
+       "to_port": 0,
+       "cidr_blocks": [
+        "${aws_vpc.vpc.cidr_block}"
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_security_group_rule.IngressNodeToDefaultClusterSG",
+   "cfg": "aws_security_group_rule.IngressNodeToDefaultClusterSG",
+   "type": "__declared__",
+   "refs": [
+    "aws_security_group.ClusterSharedNodeSecurityGroup",
+    "data.aws_security_groups.eks_security_group"
+   ],
+   "values": {
+    "type": "aws_security_group_rule",
+    "name": "IngressNodeToDefaultClusterSG",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "security_group_id": "${data.aws_security_groups.eks_security_group.ids[0]}",
+     "type": "ingress",
+     "protocol": "all",
+     "to_port": 0,
+     "from_port": 0,
+     "source_security_group_id": "${aws_security_group.ClusterSharedNodeSecurityGroup.id}",
+     "description": "Allow unmanaged nodes to communicate with control plane (all ports)"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_security_group.NodeGroupRemoteAccessSecurityGroup",
+   "cfg": "aws_security_group.NodeGroupRemoteAccessSecurityGroup",
+   "type": "__declared__",
+   "refs": [
+    "aws_vpc.vpc"
+   ],
+   "values": {
+    "type": "aws_security_group",
+    "name": "NodeGroupRemoteAccessSecurityGroup",
+    "gated": true,
+    "gate": "var.PERSISTENT_DEPLOYMENT ? 1 : 0",
+    "properties": {
+     "count": "${var.PERSISTENT_DEPLOYMENT ? 1 : 0}",
+     "name": "terraform-${var.MD_CLUSTER_NAME}-nodegroup-remoteAccess",
+     "description": "Allow SSH access",
+     "vpc_id": "${aws_vpc.vpc.id}",
+     "ingress": [
+      {
+       "description": "Allow SSH access to managed worker nodes in group terraform-${var.MD_CLUSTER_NAME}-nodegroup",
+       "protocol": "tcp",
+       "from_port": 22,
+       "to_port": 22,
+       "cidr_blocks": [
+        "${aws_vpc.vpc.cidr_block}",
+        "10.0.0.0/8",
+        "172.16.0.0/12"
+       ]
+      }
+     ],
+     "egress": [
+      {
+       "protocol": "all",
+       "from_port": 0,
+       "to_port": 0,
+       "cidr_blocks": [
+        "0.0.0.0/0"
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role.eks_cluster",
+   "cfg": "aws_iam_role.eks_cluster",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_iam_role",
+    "name": "eks_cluster",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "terraform-${var.MD_CLUSTER_NAME}-cluster-ServiceRole",
+     "assume_role_policy": "${jsonencode({'Version': '2012-10-17', 'Statement': [{'Effect': 'Allow', 'Principal': {'Service': 'eks.amazonaws.com'}, 'Action': 'sts:AssumeRole'}]})}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_policy.PolicyELBPermissions",
+   "cfg": "aws_iam_policy.PolicyELBPermissions",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_iam_policy",
+    "name": "PolicyELBPermissions",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "terraform-${var.MD_CLUSTER_NAME}-cluster-PolicyELBPermissions",
+     "policy": "${jsonencode({'Version': '2012-10-17', 'Statement': [{'Action': ['ec2:DescribeAccountAttributes', 'ec2:DescribeAddresses', 'ec2:DescribeInternetGateways'], 'Resource': '*', 'Effect': 'Allow'}]})}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_policy.PolicyCloudWatchMetrics",
+   "cfg": "aws_iam_policy.PolicyCloudWatchMetrics",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_iam_policy",
+    "name": "PolicyCloudWatchMetrics",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "terraform-${var.MD_CLUSTER_NAME}-cluster-PolicyCloudWatchMetrics",
+     "policy": "${jsonencode({'Version': '2012-10-17', 'Statement': [{'Action': ['cloudwatch:PutMetricData'], 'Resource': '*', 'Effect': 'Allow'}]})}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role_policy_attachment.AmazonEKSClusterPolicy",
+   "cfg": "aws_iam_role_policy_attachment.AmazonEKSClusterPolicy",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_role.eks_cluster"
+   ],
+   "values": {
+    "type": "aws_iam_role_policy_attachment",
+    "name": "AmazonEKSClusterPolicy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "policy_arn": "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy",
+     "role": "${aws_iam_role.eks_cluster.name}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role_policy_attachment.AmazonEKSVPCResourceController",
+   "cfg": "aws_iam_role_policy_attachment.AmazonEKSVPCResourceController",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_role.eks_cluster"
+   ],
+   "values": {
+    "type": "aws_iam_role_policy_attachment",
+    "name": "AmazonEKSVPCResourceController",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "policy_arn": "arn:aws:iam::aws:policy/AmazonEKSVPCResourceController",
+     "role": "${aws_iam_role.eks_cluster.name}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role_policy_attachment.PolicyELBPermissions",
+   "cfg": "aws_iam_role_policy_attachment.PolicyELBPermissions",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_policy.PolicyELBPermissions",
+    "aws_iam_role.eks_cluster"
+   ],
+   "values": {
+    "type": "aws_iam_role_policy_attachment",
+    "name": "PolicyELBPermissions",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "policy_arn": "${aws_iam_policy.PolicyELBPermissions.arn}",
+     "role": "${aws_iam_role.eks_cluster.name}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role_policy_attachment.PolicyCloudWatchMetrics",
+   "cfg": "aws_iam_role_policy_attachment.PolicyCloudWatchMetrics",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_policy.PolicyCloudWatchMetrics",
+    "aws_iam_role.eks_cluster"
+   ],
+   "values": {
+    "type": "aws_iam_role_policy_attachment",
+    "name": "PolicyCloudWatchMetrics",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "policy_arn": "${aws_iam_policy.PolicyCloudWatchMetrics.arn}",
+     "role": "${aws_iam_role.eks_cluster.name}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role.fargate_pod_execution_role",
+   "cfg": "aws_iam_role.fargate_pod_execution_role",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_iam_role",
+    "name": "fargate_pod_execution_role",
+    "gated": true,
+    "gate": "var.DEPLOY_FARGATE_NODES ? 1 : 0",
+    "properties": {
+     "count": "${var.DEPLOY_FARGATE_NODES ? 1 : 0}",
+     "name": "terraform-${var.MD_CLUSTER_NAME}-cluster-FargatePodExecutionRole",
+     "assume_role_policy": "${jsonencode({'Version': '2012-10-17', 'Statement': [{'Effect': 'Allow', 'Principal': {'Service': 'eks-fargate-pods.amazonaws.com'}, 'Action': 'sts:AssumeRole'}]})}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role_policy_attachment.AmazonEKSFargatePodExecutionRolePolicy",
+   "cfg": "aws_iam_role_policy_attachment.AmazonEKSFargatePodExecutionRolePolicy",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_role.fargate_pod_execution_role"
+   ],
+   "values": {
+    "type": "aws_iam_role_policy_attachment",
+    "name": "AmazonEKSFargatePodExecutionRolePolicy",
+    "gated": true,
+    "gate": "var.DEPLOY_FARGATE_NODES ? 1 : 0",
+    "properties": {
+     "count": "${var.DEPLOY_FARGATE_NODES ? 1 : 0}",
+     "policy_arn": "arn:aws:iam::aws:policy/AmazonEKSFargatePodExecutionRolePolicy",
+     "role": "${aws_iam_role.fargate_pod_execution_role[0].name}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role.eks_nodes_role",
+   "cfg": "aws_iam_role.eks_nodes_role",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_iam_role",
+    "name": "eks_nodes_role",
+    "gated": true,
+    "gate": "var.PERSISTENT_DEPLOYMENT ? 1 : 0",
+    "properties": {
+     "count": "${var.PERSISTENT_DEPLOYMENT ? 1 : 0}",
+     "name": "terraform-${var.MD_CLUSTER_NAME}-nodegroup-NodeInstanceRole",
+     "assume_role_policy": "${jsonencode({'Version': '2012-10-17', 'Statement': [{'Effect': 'Allow', 'Principal': {'Service': 'ec2.amazonaws.com'}, 'Action': 'sts:AssumeRole'}]})}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_policy.PolicyAWSLoadBalancerController",
+   "cfg": "aws_iam_policy.PolicyAWSLoadBalancerController",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_iam_policy",
+    "name": "PolicyAWSLoadBalancerController",
+    "gated": true,
+    "gate": "var.PERSISTENT_DEPLOYMENT ? 1 : 0",
+    "properties": {
+     "count": "${var.PERSISTENT_DEPLOYMENT ? 1 : 0}",
+     "name": "terraform-${var.MD_CLUSTER_NAME}-nodegroup-PolicyAWSLoadBalancerController",
+     "policy": "${jsonencode({'Version': '2012-10-17', 'Statement': [{'Condition': {'StringEquals': {'ec2:CreateAction': 'CreateSecurityGroup'}, 'Null': {'aws:RequestTag/elbv2.k8s.aws/cluster': 'false'}}, 'Action': ['ec2:CreateTags'], 'Resource': 'arn:aws:ec2:*:*:security-group/*', 'Effect': 'Allow'}, {'Condition': {'Null': {'aws:RequestTag/elbv2.k8s.aws/cluster': 'true', 'aws:ResourceTag/elbv2.k8s.aws/cluster': 'false'}}, 'Action': ['ec2:CreateTags', 'ec2:DeleteTags'], 'Resource': 'arn:aws:ec2:*:*:security-group/*', 'Effect': 'Allow'}, {'Condition': {'Null': {'aws:RequestTag/elbv2.k8s.aws/cluster': 'false'}}, 'Action': ['elasticloadbalancing:CreateLoadBalancer', 'elasticloadbalancing:CreateTargetGroup'], 'Resource': '*', 'Effect': 'Allow'}, {'Action': ['elasticloadbalancing:AddTags', 'elasticloadbalancing:RemoveTags'], 'Resource': ['arn:aws:elasticloadbalancing:*:*:targetgroup/*/*', 'arn:aws:elasticloadbalancing:*:*:loadbalancer/net/*/*', 'arn:aws:elasticloadbalancing:*:*:loadbalancer/app/*/*'], 'Effect': 'Allow'}, {'Action': ['elasticloadbalancing:AddTags', 'elasticloadbalancing:RemoveTags'], 'Resource': ['arn:aws:elasticloadbalancing:*:*:listener/net/*/*/*', 'arn:aws:elasticloadbalancing:*:*:listener/app/*/*/*', 'arn:aws:elasticloadbalancing:*:*:listener-rule/net/*/*/*', 'arn:aws:elasticloadbalancing:*:*:listener-rule/app/*/*/*'], 'Effect': 'Allow'}, {'Condition': {'Null': {'aws:ResourceTag/elbv2.k8s.aws/cluster': 'false'}}, 'Action': ['ec2:AuthorizeSecurityGroupIngress', 'ec2:RevokeSecurityGroupIngress', 'ec2:DeleteSecurityGroup', 'elasticloadbalancing:ModifyLoadBalancerAttributes', 'elasticloadbalancing:SetIpAddressType', 'elasticloadbalancing:SetSecurityGroups', 'elasticloadbalancing:SetSubnets', 'elasticloadbalancing:DeleteLoadBalancer', 'elasticloadbalancing:ModifyTargetGroup', 'elasticloadbalancing:ModifyTargetGroupAttributes', 'elasticloadbalancing:DeleteTargetGroup'], 'Resource': '*', 'Effect': 'Allow'}, {'Action': ['elasticloadbalancing:RegisterTargets', 'elasticloadbalancing:DeregisterTargets'], 'Resource': 'arn:aws:elasticloadbalancing:*:*:targetgroup/*/*', 'Effect': 'Allow'}, {'Action': ['iam:CreateServiceLinkedRole', 'ec2:DescribeAccountAttributes', 'ec2:DescribeAddresses', 'ec2:DescribeAvailabilityZones', 'ec2:DescribeInternetGateways', 'ec2:DescribeVpcs', 'ec2:DescribeSubnets', 'ec2:DescribeSecurityGroups', 'ec2:DescribeInstances', 'ec2:DescribeNetworkInterfaces', 'ec2:DescribeTags', 'ec2:DescribeVpcPeeringConnections', 'elasticloadbalancing:DescribeLoadBalancers', 'elasticloadbalancing:DescribeLoadBalancerAttributes', 'elasticloadbalancing:DescribeListeners', 'elasticloadbalancing:DescribeListenerCertificates', 'elasticloadbalancing:DescribeSSLPolicies', 'elasticloadbalancing:DescribeRules', 'elasticloadbalancing:DescribeTargetGroups', 'elasticloadbalancing:DescribeTargetGroupAttributes', 'elasticloadbalancing:DescribeTargetHealth', 'elasticloadbalancing:DescribeTags', 'cognito-idp:DescribeUserPoolClient', 'acm:ListCertificates', 'acm:DescribeCertificate', 'iam:ListServerCertificates', 'iam:GetServerCertificate', 'waf-regional:GetWebACL', 'waf-regional:GetWebACLForResource', 'waf-regional:AssociateWebACL', 'waf-regional:DisassociateWebACL', 'wafv2:GetWebACL', 'wafv2:GetWebACLForResource', 'wafv2:AssociateWebACL', 'wafv2:DisassociateWebACL', 'shield:GetSubscriptionState', 'shield:DescribeProtection', 'shield:CreateProtection', 'shield:DeleteProtection', 'ec2:AuthorizeSecurityGroupIngress', 'ec2:RevokeSecurityGroupIngress', 'ec2:CreateSecurityGroup', 'elasticloadbalancing:CreateListener', 'elasticloadbalancing:DeleteListener', 'elasticloadbalancing:CreateRule', 'elasticloadbalancing:DeleteRule', 'elasticloadbalancing:SetWebAcl', 'elasticloadbalancing:ModifyListener', 'elasticloadbalancing:AddListenerCertificates', 'elasticloadbalancing:RemoveListenerCertificates', 'elasticloadbalancing:ModifyRule'], 'Resource': '*', 'Effect': 'Allow'}]})}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role_policy_attachment.AmazonEKSWorkerNodePolicy",
+   "cfg": "aws_iam_role_policy_attachment.AmazonEKSWorkerNodePolicy",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_role.eks_nodes_role"
+   ],
+   "values": {
+    "type": "aws_iam_role_policy_attachment",
+    "name": "AmazonEKSWorkerNodePolicy",
+    "gated": true,
+    "gate": "var.PERSISTENT_DEPLOYMENT ? 1 : 0",
+    "properties": {
+     "count": "${var.PERSISTENT_DEPLOYMENT ? 1 : 0}",
+     "policy_arn": "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy",
+     "role": "${aws_iam_role.eks_nodes_role[0].name}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role_policy_attachment.AmazonEC2ContainerRegistryReadOnly",
+   "cfg": "aws_iam_role_policy_attachment.AmazonEC2ContainerRegistryReadOnly",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_role.eks_nodes_role"
+   ],
+   "values": {
+    "type": "aws_iam_role_policy_attachment",
+    "name": "AmazonEC2ContainerRegistryReadOnly",
+    "gated": true,
+    "gate": "var.PERSISTENT_DEPLOYMENT ? 1 : 0",
+    "properties": {
+     "count": "${var.PERSISTENT_DEPLOYMENT ? 1 : 0}",
+     "policy_arn": "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly",
+     "role": "${aws_iam_role.eks_nodes_role[0].name}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role_policy_attachment.AmazonSSMManagedInstanceCore",
+   "cfg": "aws_iam_role_policy_attachment.AmazonSSMManagedInstanceCore",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_role.eks_nodes_role"
+   ],
+   "values": {
+    "type": "aws_iam_role_policy_attachment",
+    "name": "AmazonSSMManagedInstanceCore",
+    "gated": true,
+    "gate": "var.PERSISTENT_DEPLOYMENT ? 1 : 0",
+    "properties": {
+     "count": "${var.PERSISTENT_DEPLOYMENT ? 1 : 0}",
+     "policy_arn": "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore",
+     "role": "${aws_iam_role.eks_nodes_role[0].name}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role_policy_attachment.PolicyAWSLoadBalancerController",
+   "cfg": "aws_iam_role_policy_attachment.PolicyAWSLoadBalancerController",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_policy.PolicyAWSLoadBalancerController",
+    "aws_iam_role.eks_nodes_role"
+   ],
+   "values": {
+    "type": "aws_iam_role_policy_attachment",
+    "name": "PolicyAWSLoadBalancerController",
+    "gated": true,
+    "gate": "var.PERSISTENT_DEPLOYMENT ? 1 : 0",
+    "properties": {
+     "count": "${var.PERSISTENT_DEPLOYMENT ? 1 : 0}",
+     "policy_arn": "${aws_iam_policy.PolicyAWSLoadBalancerController[0].arn}",
+     "role": "${aws_iam_role.eks_nodes_role[0].name}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role_policy_attachment.AmazonEKS_CNI_Policy",
+   "cfg": "aws_iam_role_policy_attachment.AmazonEKS_CNI_Policy",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_role.eks_nodes_role"
+   ],
+   "values": {
+    "type": "aws_iam_role_policy_attachment",
+    "name": "AmazonEKS_CNI_Policy",
+    "gated": true,
+    "gate": "var.PERSISTENT_DEPLOYMENT ? 1 : 0",
+    "properties": {
+     "count": "${var.PERSISTENT_DEPLOYMENT ? 1 : 0}",
+     "policy_arn": "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy",
+     "role": "${aws_iam_role.eks_nodes_role[0].name}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.tls_private_key.private_key",
+   "cfg": "tls_private_key.private_key",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "tls_private_key",
+    "name": "private_key",
+    "gated": true,
+    "gate": "var.PERSISTENT_DEPLOYMENT ? 1 : 0",
+    "properties": {
+     "count": "${var.PERSISTENT_DEPLOYMENT ? 1 : 0}",
+     "algorithm": "RSA",
+     "rsa_bits": 4096
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_key_pair.key_pair",
+   "cfg": "aws_key_pair.key_pair",
+   "type": "__declared__",
+   "refs": [
+    "tls_private_key.private_key"
+   ],
+   "values": {
+    "type": "aws_key_pair",
+    "name": "key_pair",
+    "gated": true,
+    "gate": "var.PERSISTENT_DEPLOYMENT ? 1 : 0",
+    "properties": {
+     "count": "${var.PERSISTENT_DEPLOYMENT ? 1 : 0}",
+     "key_name": "md-k8s",
+     "public_key": "${tls_private_key.private_key[0].public_key_openssh}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_kms_key.eks_cluster_secrets",
+   "cfg": "aws_kms_key.eks_cluster_secrets",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_kms_key",
+    "name": "eks_cluster_secrets",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "description": "CMK for EKS cluster secrets envelope encryption",
+     "deletion_window_in_days": 7,
+     "enable_key_rotation": true
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_eks_cluster.eks_cluster",
+   "cfg": "aws_eks_cluster.eks_cluster",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_role.eks_cluster",
+    "aws_iam_role_policy_attachment.AmazonEKSClusterPolicy",
+    "aws_iam_role_policy_attachment.AmazonEKSVPCResourceController",
+    "aws_iam_role_policy_attachment.PolicyCloudWatchMetrics",
+    "aws_iam_role_policy_attachment.PolicyELBPermissions",
+    "aws_kms_key.eks_cluster_secrets",
+    "aws_security_group.ControlPlaneSecurityGroup",
+    "aws_subnet.priv_subnet",
+    "aws_subnet.pub_subnet"
+   ],
+   "values": {
+    "type": "aws_eks_cluster",
+    "name": "eks_cluster",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "md-k8s",
+     "role_arn": "${aws_iam_role.eks_cluster.arn}",
+     "vpc_config": [
+      {
+       "subnet_ids": "${concat(aws_subnet.pub_subnet.*.id,aws_subnet.priv_subnet.*.id)}",
+       "security_group_ids": [
+        "${aws_security_group.ControlPlaneSecurityGroup.id}"
+       ],
+       "endpoint_public_access": false,
+       "endpoint_private_access": true
+      }
+     ],
+     "encryption_config": [
+      {
+       "resources": [
+        "secrets"
+       ],
+       "provider": [
+        {
+         "key_arn": "${aws_kms_key.eks_cluster_secrets.arn}"
+        }
+       ]
+      }
+     ],
+     "tags": {
+      "Name": "terraform-${var.MD_CLUSTER_NAME}-cluster/ControlPlane"
+     },
+     "depends_on": [
+      "${aws_iam_role_policy_attachment.AmazonEKSClusterPolicy}",
+      "${aws_iam_role_policy_attachment.AmazonEKSVPCResourceController}",
+      "${aws_iam_role_policy_attachment.PolicyELBPermissions}",
+      "${aws_iam_role_policy_attachment.PolicyCloudWatchMetrics}"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_eks_fargate_profile.fargate_profile",
+   "cfg": "aws_eks_fargate_profile.fargate_profile",
+   "type": "__declared__",
+   "refs": [
+    "aws_eks_cluster.eks_cluster",
+    "aws_iam_role.fargate_pod_execution_role",
+    "aws_subnet.priv_subnet"
+   ],
+   "values": {
+    "type": "aws_eks_fargate_profile",
+    "name": "fargate_profile",
+    "gated": true,
+    "gate": "var.DEPLOY_FARGATE_NODES ? 1 : 0",
+    "properties": {
+     "count": "${var.DEPLOY_FARGATE_NODES ? 1 : 0}",
+     "cluster_name": "${aws_eks_cluster.eks_cluster.name}",
+     "fargate_profile_name": "${var.PERSISTENT_DEPLOYMENT ? \"fp-${var.MD_CLUSTER_NAME}\" : \"fp-default\"}",
+     "pod_execution_role_arn": "${aws_iam_role.fargate_pod_execution_role[0].arn}",
+     "subnet_ids": "${aws_subnet.priv_subnet.*.id}",
+     "selector": [
+      {
+       "namespace": "default",
+       "labels": {
+        "aws-type": "fargate"
+       }
+      }
+     ],
+     "dynamic": {
+      "selector": {
+       "for_each": "${var.PERSISTENT_DEPLOYMENT ? [] : [{}]}",
+       "content": [
+        {
+         "namespace": "kube-system"
+        }
+       ]
+      }
+     },
+     "depends_on": [
+      "${aws_eks_cluster.eks_cluster}"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.data.aws_eks_cluster_auth.eks_cluster_auth",
+   "cfg": "data.aws_eks_cluster_auth.eks_cluster_auth",
+   "type": "__declared__",
+   "refs": [
+    "aws_eks_cluster.eks_cluster"
+   ],
+   "values": {
+    "type": "data.aws_eks_cluster_auth",
+    "name": "eks_cluster_auth",
+    "gated": true,
+    "gate": "var.PERSISTENT_DEPLOYMENT || !var.DEPLOY_FARGATE_NODES ? 0 : 1",
+    "properties": {
+     "count": "${var.PERSISTENT_DEPLOYMENT || !var.DEPLOY_FARGATE_NODES ? 0 : 1}",
+     "name": "${aws_eks_cluster.eks_cluster.name}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.local_file.kubeconfig",
+   "cfg": "local_file.kubeconfig",
+   "type": "__declared__",
+   "refs": [
+    "aws_eks_cluster.eks_cluster",
+    "data.aws_eks_cluster_auth.eks_cluster_auth"
+   ],
+   "values": {
+    "type": "local_file",
+    "name": "kubeconfig",
+    "gated": true,
+    "gate": "var.PERSISTENT_DEPLOYMENT || !var.DEPLOY_FARGATE_NODES ? 0 : 1",
+    "properties": {
+     "count": "${var.PERSISTENT_DEPLOYMENT || !var.DEPLOY_FARGATE_NODES ? 0 : 1}",
+     "filename": "${path.module}/.kubeconfig",
+     "content": "${local.kubeconfig}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.null_resource.update_coredns_annotations",
+   "cfg": "null_resource.update_coredns_annotations",
+   "type": "__declared__",
+   "refs": [
+    "aws_eks_cluster.eks_cluster",
+    "aws_eks_fargate_profile.fargate_profile",
+    "local_file.kubeconfig"
+   ],
+   "values": {
+    "type": "null_resource",
+    "name": "update_coredns_annotations",
+    "gated": true,
+    "gate": "var.PERSISTENT_DEPLOYMENT || !var.DEPLOY_FARGATE_NODES ? 0 : 1",
+    "properties": {
+     "count": "${var.PERSISTENT_DEPLOYMENT || !var.DEPLOY_FARGATE_NODES ? 0 : 1}",
+     "provisioner": {
+      "local-exec": {
+       "interpreter": [
+        [
+         "${local.os == \"Linux\" ? \"/bin/bash\" : \"PowerShell\"}",
+         "${local.os == \"Linux\" ? \"-c\" : \"-Command\"}"
+        ]
+       ],
+       "environment": [
+        {
+         "KUBECONFIG": "${base64encode(local_file.kubeconfig[0].content)}"
+        }
+       ],
+       "command": [
+        "kubectl \\\n  -n kube-system \\\n  --kubeconfig <(echo $KUBECONFIG | base64 --decode) \\\n  patch deployment coredns \\\n  --type json \\\n  -p='[{\"op\": \"remove\", \"path\": \"/spec/template/metadata/annotations/eks.amazonaws.com~1compute-type\"}]'"
+       ]
+      }
+     },
+     "depends_on": [
+      "${aws_eks_cluster.eks_cluster}",
+      "${aws_eks_fargate_profile.fargate_profile}"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_launch_template.launch_template",
+   "cfg": "aws_launch_template.launch_template",
+   "type": "__declared__",
+   "refs": [
+    "aws_key_pair.key_pair",
+    "aws_security_group.NodeGroupRemoteAccessSecurityGroup",
+    "data.aws_security_groups.eks_security_group"
+   ],
+   "values": {
+    "type": "aws_launch_template",
+    "name": "launch_template",
+    "gated": true,
+    "gate": "var.PERSISTENT_DEPLOYMENT ? 1 : 0",
+    "properties": {
+     "count": "${var.PERSISTENT_DEPLOYMENT ? 1 : 0}",
+     "name": "terraform-${var.MD_CLUSTER_NAME}-nodegroup",
+     "vpc_security_group_ids": [
+      "${data.aws_security_groups.eks_security_group.ids[0]}",
+      "${aws_security_group.NodeGroupRemoteAccessSecurityGroup[0].id}"
+     ],
+     "key_name": "${aws_key_pair.key_pair[0].key_name}",
+     "block_device_mappings": [
+      {
+       "device_name": "/dev/xvda",
+       "ebs": [
+        {
+         "volume_size": 80,
+         "volume_type": "gp3",
+         "throughput": 125,
+         "iops": 3000
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_eks_node_group.node_group",
+   "cfg": "aws_eks_node_group.node_group",
+   "type": "__declared__",
+   "refs": [
+    "aws_eks_cluster.eks_cluster",
+    "aws_iam_role.eks_nodes_role",
+    "aws_iam_role_policy_attachment.AmazonEC2ContainerRegistryReadOnly",
+    "aws_iam_role_policy_attachment.AmazonEKSWorkerNodePolicy",
+    "aws_iam_role_policy_attachment.AmazonEKS_CNI_Policy",
+    "aws_iam_role_policy_attachment.AmazonSSMManagedInstanceCore",
+    "aws_iam_role_policy_attachment.PolicyAWSLoadBalancerController",
+    "aws_launch_template.launch_template",
+    "aws_subnet.pub_subnet"
+   ],
+   "values": {
+    "type": "aws_eks_node_group",
+    "name": "node_group",
+    "gated": true,
+    "gate": "var.PERSISTENT_DEPLOYMENT ? 1 : 0",
+    "properties": {
+     "count": "${var.PERSISTENT_DEPLOYMENT ? 1 : 0}",
+     "cluster_name": "md-k8s",
+     "node_group_name": "terraform-${var.MD_CLUSTER_NAME}-nodegroup",
+     "node_role_arn": "${aws_iam_role.eks_nodes_role[0].arn}",
+     "subnet_ids": "${aws_subnet.pub_subnet.*.id}",
+     "instance_types": [
+      "c5.2xlarge"
+     ],
+     "labels": {
+      "type": "ec2-db-node"
+     },
+     "scaling_config": [
+      {
+       "desired_size": 2,
+       "max_size": 2,
+       "min_size": 2
+      }
+     ],
+     "launch_template": [
+      {
+       "id": "${aws_launch_template.launch_template[0].id}",
+       "version": "${aws_launch_template.launch_template[0].latest_version}"
+      }
+     ],
+     "depends_on": [
+      "${aws_iam_role_policy_attachment.AmazonEKSWorkerNodePolicy}",
+      "${aws_iam_role_policy_attachment.AmazonEC2ContainerRegistryReadOnly}",
+      "${aws_iam_role_policy_attachment.AmazonSSMManagedInstanceCore}",
+      "${aws_iam_role_policy_attachment.PolicyAWSLoadBalancerController}",
+      "${aws_iam_role_policy_attachment.AmazonEKS_CNI_Policy}",
+      "${aws_eks_cluster.eks_cluster}"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_db_subnet_group.private_subnet_group",
+   "cfg": "aws_db_subnet_group.private_subnet_group",
+   "type": "__declared__",
+   "refs": [
+    "aws_subnet.priv_subnet"
+   ],
+   "values": {
+    "type": "aws_db_subnet_group",
+    "name": "private_subnet_group",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "${var.MD_CLUSTER_NAME}-private-subnet-group",
+     "subnet_ids": "${[for subnet in aws_subnet.priv_subnet : subnet.id]}"
+    }
+   }
+  }
+ ]
+}

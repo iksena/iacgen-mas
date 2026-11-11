@@ -1,0 +1,1071 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "e1c01300bc231c56e8086b9fb6d428697e31f1c0d625d3c19b640b4012797d20",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "BeanstalkVpc",
+   "cfg": "BeanstalkVpc",
+   "type": "AWS::EC2::VPC",
+   "values": {
+    "CidrBlock": "10.98.0.0/16",
+    "EnableDnsSupport": true,
+    "EnableDnsHostnames": true,
+    "__resource__": {
+     "Condition": "CreateNewBeanstalkEnv"
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "BeanstalkInternetGateway",
+   "cfg": "BeanstalkInternetGateway",
+   "type": "AWS::EC2::InternetGateway",
+   "values": {
+    "__resource__": {
+     "Condition": "CreateNewBeanstalkEnv"
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "BeanstalkVpcGatewayAttachment",
+   "cfg": "BeanstalkVpcGatewayAttachment",
+   "type": "AWS::EC2::VPCGatewayAttachment",
+   "values": {
+    "VpcId": {
+     "ref": "BeanstalkVpc"
+    },
+    "InternetGatewayId": {
+     "ref": "BeanstalkInternetGateway"
+    },
+    "__resource__": {
+     "Condition": "CreateNewBeanstalkEnv"
+    }
+   },
+   "refs": [
+    "BeanstalkInternetGateway",
+    "BeanstalkVpc"
+   ]
+  },
+  {
+   "id": "BeanstalkPublicSubnet1",
+   "cfg": "BeanstalkPublicSubnet1",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "VpcId": {
+     "ref": "BeanstalkVpc"
+    },
+    "CidrBlock": "10.98.0.0/24",
+    "AvailabilityZone": "us-east-1a",
+    "__resource__": {
+     "Condition": "CreateNewBeanstalkEnv"
+    }
+   },
+   "refs": [
+    "BeanstalkVpc"
+   ]
+  },
+  {
+   "id": "BeanstalkPublicSubnet2",
+   "cfg": "BeanstalkPublicSubnet2",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "VpcId": {
+     "ref": "BeanstalkVpc"
+    },
+    "CidrBlock": "10.98.1.0/24",
+    "AvailabilityZone": "us-east-1b",
+    "__resource__": {
+     "Condition": "CreateNewBeanstalkEnv"
+    }
+   },
+   "refs": [
+    "BeanstalkVpc"
+   ]
+  },
+  {
+   "id": "BeanstalkRouteTable",
+   "cfg": "BeanstalkRouteTable",
+   "type": "AWS::EC2::RouteTable",
+   "values": {
+    "VpcId": {
+     "ref": "BeanstalkVpc"
+    },
+    "__resource__": {
+     "Condition": "CreateNewBeanstalkEnv"
+    }
+   },
+   "refs": [
+    "BeanstalkVpc"
+   ]
+  },
+  {
+   "id": "BeanstalkDefaultRoute",
+   "cfg": "BeanstalkDefaultRoute",
+   "type": "AWS::EC2::Route",
+   "values": {
+    "RouteTableId": {
+     "ref": "BeanstalkRouteTable"
+    },
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "GatewayId": {
+     "ref": "BeanstalkInternetGateway"
+    },
+    "__resource__": {
+     "Condition": "CreateNewBeanstalkEnv",
+     "DependsOn": [
+      "BeanstalkVpcGatewayAttachment"
+     ]
+    }
+   },
+   "refs": [
+    "BeanstalkInternetGateway",
+    "BeanstalkRouteTable"
+   ]
+  },
+  {
+   "id": "BeanstalkSubnet1RouteTableAssociation",
+   "cfg": "BeanstalkSubnet1RouteTableAssociation",
+   "type": "AWS::EC2::SubnetRouteTableAssociation",
+   "values": {
+    "SubnetId": {
+     "ref": "BeanstalkPublicSubnet1"
+    },
+    "RouteTableId": {
+     "ref": "BeanstalkRouteTable"
+    },
+    "__resource__": {
+     "Condition": "CreateNewBeanstalkEnv"
+    }
+   },
+   "refs": [
+    "BeanstalkPublicSubnet1",
+    "BeanstalkRouteTable"
+   ]
+  },
+  {
+   "id": "BeanstalkSubnet2RouteTableAssociation",
+   "cfg": "BeanstalkSubnet2RouteTableAssociation",
+   "type": "AWS::EC2::SubnetRouteTableAssociation",
+   "values": {
+    "SubnetId": {
+     "ref": "BeanstalkPublicSubnet2"
+    },
+    "RouteTableId": {
+     "ref": "BeanstalkRouteTable"
+    },
+    "__resource__": {
+     "Condition": "CreateNewBeanstalkEnv"
+    }
+   },
+   "refs": [
+    "BeanstalkPublicSubnet2",
+    "BeanstalkRouteTable"
+   ]
+  },
+  {
+   "id": "BeanstalkAppVersion",
+   "cfg": "BeanstalkAppVersion",
+   "type": "AWS::ElasticBeanstalk::ApplicationVersion",
+   "values": {
+    "ApplicationName": {
+     "ref": "BeanstalkApplication"
+    },
+    "Description": "my sample version",
+    "SourceBundle": {
+     "S3Bucket": "elasticbeanstalk-samples-us-east-1",
+     "S3Key": "php-sample.zip"
+    },
+    "__resource__": {
+     "Condition": "CreateNewBeanstalkEnv"
+    }
+   },
+   "refs": [
+    "BeanstalkApplication"
+   ]
+  },
+  {
+   "id": "BeanstalkApplication",
+   "cfg": "BeanstalkApplication",
+   "type": "AWS::ElasticBeanstalk::Application",
+   "values": {
+    "ApplicationName": "BlueGreenBeanstalkApplication",
+    "Description": "AWS Elastic Beanstalk PHP Sample Application",
+    "__resource__": {
+     "Condition": "CreateNewBeanstalkApp"
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "BeanstalkEnvironment",
+   "cfg": "BeanstalkEnvironment",
+   "type": "AWS::ElasticBeanstalk::Environment",
+   "values": {
+    "ApplicationName": {
+     "ref": "BeanstalkApplication"
+    },
+    "Description": "AWS Elastic Beanstalk Environment running PHP Sample Application",
+    "EnvironmentName": "BlueEnvironment",
+    "OptionSettings": [
+     {
+      "Namespace": "aws:autoscaling:launchconfiguration",
+      "OptionName": "IamInstanceProfile",
+      "Value": {
+       "ref": "BeanstalkInstanceProfile"
+      }
+     },
+     {
+      "Namespace": "aws:elasticbeanstalk:environment",
+      "OptionName": "ServiceRole",
+      "Value": {
+       "ref": "BeanstalkServiceRole"
+      }
+     },
+     {
+      "Namespace": "aws:ec2:vpc",
+      "OptionName": "VPCId",
+      "Value": {
+       "ref": "BeanstalkVpc"
+      }
+     },
+     {
+      "Namespace": "aws:ec2:vpc",
+      "OptionName": "Subnets",
+      "Value": {
+       "Fn::Join": [
+        ",",
+        [
+         {
+          "ref": "BeanstalkPublicSubnet1"
+         },
+         {
+          "ref": "BeanstalkPublicSubnet2"
+         }
+        ]
+       ]
+      }
+     },
+     {
+      "Namespace": "aws:ec2:vpc",
+      "OptionName": "ELBSubnets",
+      "Value": {
+       "Fn::Join": [
+        ",",
+        [
+         {
+          "ref": "BeanstalkPublicSubnet1"
+         },
+         {
+          "ref": "BeanstalkPublicSubnet2"
+         }
+        ]
+       ]
+      }
+     },
+     {
+      "Namespace": "aws:ec2:vpc",
+      "OptionName": "AssociatePublicIpAddress",
+      "Value": "true"
+     }
+    ],
+    "SolutionStackName": "64bit Amazon Linux 2023 v4.13.8 running PHP 8.3",
+    "VersionLabel": {
+     "ref": "BeanstalkAppVersion"
+    },
+    "__resource__": {
+     "Condition": "CreateNewBeanstalkEnv"
+    }
+   },
+   "refs": [
+    "BeanstalkAppVersion",
+    "BeanstalkApplication",
+    "BeanstalkInstanceProfile",
+    "BeanstalkPublicSubnet1",
+    "BeanstalkPublicSubnet2",
+    "BeanstalkServiceRole",
+    "BeanstalkVpc"
+   ]
+  },
+  {
+   "id": "BeanstalkInstanceProfile",
+   "cfg": "BeanstalkInstanceProfile",
+   "type": "AWS::IAM::InstanceProfile",
+   "values": {
+    "Path": "/",
+    "Roles": [
+     {
+      "ref": "BeanstalkInstanceProfileRole"
+     }
+    ],
+    "__resource__": {
+     "Condition": "CreateNewBeanstalkEnv"
+    }
+   },
+   "refs": [
+    "BeanstalkInstanceProfileRole"
+   ]
+  },
+  {
+   "id": "BeanstalkInstanceProfileRole",
+   "cfg": "BeanstalkInstanceProfileRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "ec2.amazonaws.com"
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "Path": "/",
+    "Policies": [
+     {
+      "PolicyDocument": {
+       "Statement": [
+        {
+         "Action": [
+          "s3:Get*",
+          "s3:List*",
+          "s3:PutObject"
+         ],
+         "Effect": "Allow",
+         "Resource": [
+          "arn:aws:s3:::elasticbeanstalk-*-123456789012",
+          "arn:aws:s3:::elasticbeanstalk-*-123456789012/*",
+          "arn:aws:s3:::elasticbeanstalk-*-123456789012-*",
+          "arn:aws:s3:::elasticbeanstalk-*-123456789012-*/*"
+         ],
+         "Sid": "BucketAccess"
+        },
+        {
+         "Action": [
+          "cloudwatch:PutMetricData"
+         ],
+         "Effect": "Allow",
+         "Resource": [
+          "*"
+         ],
+         "Sid": "MetricsAccess"
+        },
+        {
+         "Action": [
+          "logs:PutLogEvents",
+          "logs:CreateLogStream",
+          "logs:DescribeLogStreams",
+          "logs:DescribeLogGroups"
+         ],
+         "Effect": "Allow",
+         "Resource": [
+          "arn:aws:logs:*:*:log-group:/aws/elasticbeanstalk*"
+         ],
+         "Sid": "CloudWatchLogsAccess"
+        }
+       ],
+       "Version": "2012-10-17"
+      },
+      "PolicyName": "root"
+     }
+    ],
+    "__resource__": {
+     "Condition": "CreateNewBeanstalkEnv"
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "BeanstalkServiceRole",
+   "cfg": "BeanstalkServiceRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "sts:AssumeRole"
+       ],
+       "Condition": {
+        "StringEquals": {
+         "sts:ExternalId": "elasticbeanstalk"
+        }
+       },
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "elasticbeanstalk.amazonaws.com"
+        ]
+       },
+       "Sid": ""
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "Path": "/",
+    "Policies": [
+     {
+      "PolicyDocument": {
+       "Statement": [
+        {
+         "Action": [
+          "elasticloadbalancing:DescribeInstanceHealth",
+          "ec2:DescribeInstances",
+          "ec2:DescribeInstanceStatus",
+          "ec2:GetConsoleOutput",
+          "ec2:AssociateAddress",
+          "ec2:DescribeAddresses",
+          "ec2:DescribeSecurityGroups",
+          "sqs:GetQueueAttributes",
+          "sqs:GetQueueUrl",
+          "autoscaling:DescribeAutoScalingGroups",
+          "autoscaling:DescribeAutoScalingInstances",
+          "autoscaling:DescribeScalingActivities",
+          "autoscaling:DescribeNotificationConfigurations"
+         ],
+         "Effect": "Allow",
+         "Resource": [
+          "*"
+         ]
+        }
+       ],
+       "Version": "2012-10-17"
+      },
+      "PolicyName": "root"
+     }
+    ],
+    "__resource__": {
+     "Condition": "CreateNewBeanstalkEnv"
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.AppPackageS3Bucket",
+   "cfg": "__parameter__.AppPackageS3Bucket",
+   "type": "__parameter__",
+   "values": {
+    "name": "AppPackageS3Bucket",
+    "type": "String",
+    "default": "elasticbeanstalk-samples",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.AppPackageS3key",
+   "cfg": "__parameter__.AppPackageS3key",
+   "type": "__parameter__",
+   "values": {
+    "name": "AppPackageS3key",
+    "type": "String",
+    "default": "php-sample.zip",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.ExistingBeanstalkApplicationName",
+   "cfg": "__parameter__.ExistingBeanstalkApplicationName",
+   "type": "__parameter__",
+   "values": {
+    "name": "ExistingBeanstalkApplicationName",
+    "type": "String",
+    "default": "",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.ExistingBlueEnvironmentName",
+   "cfg": "__parameter__.ExistingBlueEnvironmentName",
+   "type": "__parameter__",
+   "values": {
+    "name": "ExistingBlueEnvironmentName",
+    "type": "String",
+    "default": "",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.GreenEnvironmentName",
+   "cfg": "__parameter__.GreenEnvironmentName",
+   "type": "__parameter__",
+   "values": {
+    "name": "GreenEnvironmentName",
+    "type": "String",
+    "default": "GreenEnvironment",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.NewBeanstalkApplicationName",
+   "cfg": "__parameter__.NewBeanstalkApplicationName",
+   "type": "__parameter__",
+   "values": {
+    "name": "NewBeanstalkApplicationName",
+    "type": "String",
+    "default": "BlueGreenBeanstalkApplication",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.NewBlueEnvironmentName",
+   "cfg": "__parameter__.NewBlueEnvironmentName",
+   "type": "__parameter__",
+   "values": {
+    "name": "NewBlueEnvironmentName",
+    "type": "String",
+    "default": "BlueEnvironment",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.SolutionStackForNewBeanstalkEnv",
+   "cfg": "__parameter__.SolutionStackForNewBeanstalkEnv",
+   "type": "__parameter__",
+   "values": {
+    "name": "SolutionStackForNewBeanstalkEnv",
+    "type": "String",
+    "default": "64bit Amazon Linux 2023 v4.13.8 running PHP 8.3",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.BeanstalkEnvironment",
+   "cfg": "__output__.BeanstalkEnvironment",
+   "type": "__output__",
+   "values": {
+    "name": "BeanstalkEnvironment",
+    "value": {
+     "ref": "BeanstalkEnvironment"
+    },
+    "description": null,
+    "export": null
+   },
+   "refs": [
+    "BeanstalkEnvironment"
+   ]
+  },
+  {
+   "id": "__output__.BeanstalkEnvEndPointUrl",
+   "cfg": "__output__.BeanstalkEnvEndPointUrl",
+   "type": "__output__",
+   "values": {
+    "name": "BeanstalkEnvEndPointUrl",
+    "value": {
+     "ref": "BeanstalkEnvironment",
+     "attr": "EndpointURL"
+    },
+    "description": "New Beanstalk Environment Endpoint URL",
+    "export": null
+   },
+   "refs": [
+    "BeanstalkEnvironment"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPC.BeanstalkVpc",
+   "cfg": "BeanstalkVpc",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::VPC",
+    "name": "BeanstalkVpc",
+    "gated": true,
+    "gate": "CreateNewBeanstalkEnv",
+    "properties": {
+     "CidrBlock": "10.98.0.0/16",
+     "EnableDnsSupport": true,
+     "EnableDnsHostnames": true
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::InternetGateway.BeanstalkInternetGateway",
+   "cfg": "BeanstalkInternetGateway",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::InternetGateway",
+    "name": "BeanstalkInternetGateway",
+    "gated": true,
+    "gate": "CreateNewBeanstalkEnv",
+    "properties": {}
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCGatewayAttachment.BeanstalkVpcGatewayAttachment",
+   "cfg": "BeanstalkVpcGatewayAttachment",
+   "type": "__declared__",
+   "refs": [
+    "BeanstalkInternetGateway",
+    "BeanstalkVpc"
+   ],
+   "values": {
+    "type": "AWS::EC2::VPCGatewayAttachment",
+    "name": "BeanstalkVpcGatewayAttachment",
+    "gated": true,
+    "gate": "CreateNewBeanstalkEnv",
+    "properties": {
+     "VpcId": {
+      "ref": "BeanstalkVpc"
+     },
+     "InternetGatewayId": {
+      "ref": "BeanstalkInternetGateway"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.BeanstalkPublicSubnet1",
+   "cfg": "BeanstalkPublicSubnet1",
+   "type": "__declared__",
+   "refs": [
+    "BeanstalkVpc"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "BeanstalkPublicSubnet1",
+    "gated": true,
+    "gate": "CreateNewBeanstalkEnv",
+    "properties": {
+     "VpcId": {
+      "ref": "BeanstalkVpc"
+     },
+     "CidrBlock": "10.98.0.0/24",
+     "AvailabilityZone": "us-east-1a"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.BeanstalkPublicSubnet2",
+   "cfg": "BeanstalkPublicSubnet2",
+   "type": "__declared__",
+   "refs": [
+    "BeanstalkVpc"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "BeanstalkPublicSubnet2",
+    "gated": true,
+    "gate": "CreateNewBeanstalkEnv",
+    "properties": {
+     "VpcId": {
+      "ref": "BeanstalkVpc"
+     },
+     "CidrBlock": "10.98.1.0/24",
+     "AvailabilityZone": "us-east-1b"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::RouteTable.BeanstalkRouteTable",
+   "cfg": "BeanstalkRouteTable",
+   "type": "__declared__",
+   "refs": [
+    "BeanstalkVpc"
+   ],
+   "values": {
+    "type": "AWS::EC2::RouteTable",
+    "name": "BeanstalkRouteTable",
+    "gated": true,
+    "gate": "CreateNewBeanstalkEnv",
+    "properties": {
+     "VpcId": {
+      "ref": "BeanstalkVpc"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Route.BeanstalkDefaultRoute",
+   "cfg": "BeanstalkDefaultRoute",
+   "type": "__declared__",
+   "refs": [
+    "BeanstalkInternetGateway",
+    "BeanstalkRouteTable"
+   ],
+   "values": {
+    "type": "AWS::EC2::Route",
+    "name": "BeanstalkDefaultRoute",
+    "gated": true,
+    "gate": "CreateNewBeanstalkEnv",
+    "properties": {
+     "RouteTableId": {
+      "ref": "BeanstalkRouteTable"
+     },
+     "DestinationCidrBlock": "0.0.0.0/0",
+     "GatewayId": {
+      "ref": "BeanstalkInternetGateway"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetRouteTableAssociation.BeanstalkSubnet1RouteTableAssociation",
+   "cfg": "BeanstalkSubnet1RouteTableAssociation",
+   "type": "__declared__",
+   "refs": [
+    "BeanstalkPublicSubnet1",
+    "BeanstalkRouteTable"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetRouteTableAssociation",
+    "name": "BeanstalkSubnet1RouteTableAssociation",
+    "gated": true,
+    "gate": "CreateNewBeanstalkEnv",
+    "properties": {
+     "SubnetId": {
+      "ref": "BeanstalkPublicSubnet1"
+     },
+     "RouteTableId": {
+      "ref": "BeanstalkRouteTable"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetRouteTableAssociation.BeanstalkSubnet2RouteTableAssociation",
+   "cfg": "BeanstalkSubnet2RouteTableAssociation",
+   "type": "__declared__",
+   "refs": [
+    "BeanstalkPublicSubnet2",
+    "BeanstalkRouteTable"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetRouteTableAssociation",
+    "name": "BeanstalkSubnet2RouteTableAssociation",
+    "gated": true,
+    "gate": "CreateNewBeanstalkEnv",
+    "properties": {
+     "SubnetId": {
+      "ref": "BeanstalkPublicSubnet2"
+     },
+     "RouteTableId": {
+      "ref": "BeanstalkRouteTable"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ElasticBeanstalk::ApplicationVersion.BeanstalkAppVersion",
+   "cfg": "BeanstalkAppVersion",
+   "type": "__declared__",
+   "refs": [
+    "BeanstalkApplication"
+   ],
+   "values": {
+    "type": "AWS::ElasticBeanstalk::ApplicationVersion",
+    "name": "BeanstalkAppVersion",
+    "gated": true,
+    "gate": "CreateNewBeanstalkEnv",
+    "properties": {
+     "ApplicationName": {
+      "ref": "BeanstalkApplication"
+     },
+     "Description": "my sample version",
+     "SourceBundle": {
+      "S3Bucket": "elasticbeanstalk-samples-us-east-1",
+      "S3Key": "php-sample.zip"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ElasticBeanstalk::Application.BeanstalkApplication",
+   "cfg": "BeanstalkApplication",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::ElasticBeanstalk::Application",
+    "name": "BeanstalkApplication",
+    "gated": true,
+    "gate": "CreateNewBeanstalkApp",
+    "properties": {
+     "ApplicationName": "BlueGreenBeanstalkApplication",
+     "Description": "AWS Elastic Beanstalk PHP Sample Application"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ElasticBeanstalk::Environment.BeanstalkEnvironment",
+   "cfg": "BeanstalkEnvironment",
+   "type": "__declared__",
+   "refs": [
+    "BeanstalkAppVersion",
+    "BeanstalkApplication",
+    "BeanstalkInstanceProfile",
+    "BeanstalkPublicSubnet1",
+    "BeanstalkPublicSubnet2",
+    "BeanstalkServiceRole",
+    "BeanstalkVpc"
+   ],
+   "values": {
+    "type": "AWS::ElasticBeanstalk::Environment",
+    "name": "BeanstalkEnvironment",
+    "gated": true,
+    "gate": "CreateNewBeanstalkEnv",
+    "properties": {
+     "ApplicationName": {
+      "ref": "BeanstalkApplication"
+     },
+     "Description": "AWS Elastic Beanstalk Environment running PHP Sample Application",
+     "EnvironmentName": "BlueEnvironment",
+     "OptionSettings": [
+      {
+       "Namespace": "aws:autoscaling:launchconfiguration",
+       "OptionName": "IamInstanceProfile",
+       "Value": {
+        "ref": "BeanstalkInstanceProfile"
+       }
+      },
+      {
+       "Namespace": "aws:elasticbeanstalk:environment",
+       "OptionName": "ServiceRole",
+       "Value": {
+        "ref": "BeanstalkServiceRole"
+       }
+      },
+      {
+       "Namespace": "aws:ec2:vpc",
+       "OptionName": "VPCId",
+       "Value": {
+        "ref": "BeanstalkVpc"
+       }
+      },
+      {
+       "Namespace": "aws:ec2:vpc",
+       "OptionName": "Subnets",
+       "Value": {
+        "Fn::Join": [
+         ",",
+         [
+          {
+           "ref": "BeanstalkPublicSubnet1"
+          },
+          {
+           "ref": "BeanstalkPublicSubnet2"
+          }
+         ]
+        ]
+       }
+      },
+      {
+       "Namespace": "aws:ec2:vpc",
+       "OptionName": "ELBSubnets",
+       "Value": {
+        "Fn::Join": [
+         ",",
+         [
+          {
+           "ref": "BeanstalkPublicSubnet1"
+          },
+          {
+           "ref": "BeanstalkPublicSubnet2"
+          }
+         ]
+        ]
+       }
+      },
+      {
+       "Namespace": "aws:ec2:vpc",
+       "OptionName": "AssociatePublicIpAddress",
+       "Value": "true"
+      }
+     ],
+     "SolutionStackName": "64bit Amazon Linux 2023 v4.13.8 running PHP 8.3",
+     "VersionLabel": {
+      "ref": "BeanstalkAppVersion"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::InstanceProfile.BeanstalkInstanceProfile",
+   "cfg": "BeanstalkInstanceProfile",
+   "type": "__declared__",
+   "refs": [
+    "BeanstalkInstanceProfileRole"
+   ],
+   "values": {
+    "type": "AWS::IAM::InstanceProfile",
+    "name": "BeanstalkInstanceProfile",
+    "gated": true,
+    "gate": "CreateNewBeanstalkEnv",
+    "properties": {
+     "Path": "/",
+     "Roles": [
+      {
+       "ref": "BeanstalkInstanceProfileRole"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.BeanstalkInstanceProfileRole",
+   "cfg": "BeanstalkInstanceProfileRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "BeanstalkInstanceProfileRole",
+    "gated": true,
+    "gate": "CreateNewBeanstalkEnv",
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "ec2.amazonaws.com"
+         ]
+        }
+       }
+      ],
+      "Version": "2012-10-17"
+     },
+     "Path": "/",
+     "Policies": [
+      {
+       "PolicyDocument": {
+        "Statement": [
+         {
+          "Action": [
+           "s3:Get*",
+           "s3:List*",
+           "s3:PutObject"
+          ],
+          "Effect": "Allow",
+          "Resource": [
+           "arn:aws:s3:::elasticbeanstalk-*-123456789012",
+           "arn:aws:s3:::elasticbeanstalk-*-123456789012/*",
+           "arn:aws:s3:::elasticbeanstalk-*-123456789012-*",
+           "arn:aws:s3:::elasticbeanstalk-*-123456789012-*/*"
+          ],
+          "Sid": "BucketAccess"
+         },
+         {
+          "Action": [
+           "cloudwatch:PutMetricData"
+          ],
+          "Effect": "Allow",
+          "Resource": [
+           "*"
+          ],
+          "Sid": "MetricsAccess"
+         },
+         {
+          "Action": [
+           "logs:PutLogEvents",
+           "logs:CreateLogStream",
+           "logs:DescribeLogStreams",
+           "logs:DescribeLogGroups"
+          ],
+          "Effect": "Allow",
+          "Resource": [
+           "arn:aws:logs:*:*:log-group:/aws/elasticbeanstalk*"
+          ],
+          "Sid": "CloudWatchLogsAccess"
+         }
+        ],
+        "Version": "2012-10-17"
+       },
+       "PolicyName": "root"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.BeanstalkServiceRole",
+   "cfg": "BeanstalkServiceRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "BeanstalkServiceRole",
+    "gated": true,
+    "gate": "CreateNewBeanstalkEnv",
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Statement": [
+       {
+        "Action": [
+         "sts:AssumeRole"
+        ],
+        "Condition": {
+         "StringEquals": {
+          "sts:ExternalId": "elasticbeanstalk"
+         }
+        },
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "elasticbeanstalk.amazonaws.com"
+         ]
+        },
+        "Sid": ""
+       }
+      ],
+      "Version": "2012-10-17"
+     },
+     "Path": "/",
+     "Policies": [
+      {
+       "PolicyDocument": {
+        "Statement": [
+         {
+          "Action": [
+           "elasticloadbalancing:DescribeInstanceHealth",
+           "ec2:DescribeInstances",
+           "ec2:DescribeInstanceStatus",
+           "ec2:GetConsoleOutput",
+           "ec2:AssociateAddress",
+           "ec2:DescribeAddresses",
+           "ec2:DescribeSecurityGroups",
+           "sqs:GetQueueAttributes",
+           "sqs:GetQueueUrl",
+           "autoscaling:DescribeAutoScalingGroups",
+           "autoscaling:DescribeAutoScalingInstances",
+           "autoscaling:DescribeScalingActivities",
+           "autoscaling:DescribeNotificationConfigurations"
+          ],
+          "Effect": "Allow",
+          "Resource": [
+           "*"
+          ]
+         }
+        ],
+        "Version": "2012-10-17"
+       },
+       "PolicyName": "root"
+      }
+     ]
+    }
+   }
+  }
+ ]
+}

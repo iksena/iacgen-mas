@@ -1,0 +1,257 @@
+{
+ "meta": {
+  "lang": "tf",
+  "mode": "plan",
+  "warnings": [],
+  "gt_hash": "d458f483041d0284723a6e49f459e663fb43150d4ec48852de4d818e7491bc0f",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "aws_iam_openid_connect_provider.this[\"oidc_provider\"]",
+   "cfg": "aws_iam_openid_connect_provider.this",
+   "type": "aws_iam_openid_connect_provider",
+   "values": {
+    "client_id_list": [
+     "sts.amazonaws.com"
+    ],
+    "tags": {
+     "Name": "github.com"
+    },
+    "tags_all": {
+     "Name": "github.com"
+    },
+    "thumbprint_list": [
+     "1c58a3a8518e8759bf075b76b750d4f2df264fcd",
+     "6938fd4d98bab03faadb97b34396831e3780aea1",
+     "ab9d0263244dd0326eb67015705a667e79cfe998",
+     "cbcfd09ce3cd22d99d94e58f92e9898fbee51a5e"
+    ],
+    "url": "https://token.actions.githubusercontent.com"
+   },
+   "refs": [
+    "data.tls_certificate.this"
+   ]
+  },
+  {
+   "id": "__parameter__.create_oidc_provider",
+   "cfg": "__parameter__.create_oidc_provider",
+   "type": "__parameter__",
+   "values": {
+    "name": "create_oidc_provider",
+    "default": true
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.github_oidc_audience",
+   "cfg": "__parameter__.github_oidc_audience",
+   "type": "__parameter__",
+   "values": {
+    "name": "github_oidc_audience",
+    "default": "sts.amazonaws.com"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.github_oidc_domain",
+   "cfg": "__parameter__.github_oidc_domain",
+   "type": "__parameter__",
+   "values": {
+    "name": "github_oidc_domain",
+    "default": "token.actions.githubusercontent.com"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.github_oidc_thumbprints",
+   "cfg": "__parameter__.github_oidc_thumbprints",
+   "type": "__parameter__",
+   "values": {
+    "name": "github_oidc_thumbprints",
+    "default": [
+     "6938fd4d98bab03faadb97b34396831e3780aea1",
+     "1c58a3a8518e8759bf075b76b750d4f2df264fcd"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.iam_roles",
+   "cfg": "__parameter__.iam_roles",
+   "type": "__parameter__",
+   "values": {
+    "name": "iam_roles",
+    "default": {}
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.tags",
+   "cfg": "__parameter__.tags",
+   "type": "__parameter__",
+   "values": {
+    "name": "tags",
+    "default": {}
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.oidc_iam_roles",
+   "cfg": "__output__.oidc_iam_roles",
+   "type": "__output__",
+   "values": {
+    "name": "oidc_iam_roles",
+    "value": {},
+    "description": null
+   },
+   "refs": [
+    "aws_iam_role.this"
+   ]
+  },
+  {
+   "id": "__output__.oidc_provider",
+   "cfg": "__output__.oidc_provider",
+   "type": "__output__",
+   "values": {
+    "name": "oidc_provider",
+    "value": null,
+    "description": null
+   },
+   "refs": [
+    "aws_iam_openid_connect_provider.this",
+    "data.aws_iam_openid_connect_provider.this",
+    "data.aws_iam_openid_connect_provider.this[\"oidc_provider\"]"
+   ]
+  },
+  {
+   "id": "__declared__.data.tls_certificate.this",
+   "cfg": "data.tls_certificate.this",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "data.tls_certificate",
+    "name": "this",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "url": "https://${var.github_oidc_domain}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.data.aws_iam_openid_connect_provider.this",
+   "cfg": "data.aws_iam_openid_connect_provider.this",
+   "type": "__declared__",
+   "refs": [
+    "data.tls_certificate.this"
+   ],
+   "values": {
+    "type": "data.aws_iam_openid_connect_provider",
+    "name": "this",
+    "gated": true,
+    "gate": "var.create_oidc_provider ? {} : { oidc_provider = false }",
+    "properties": {
+     "for_each": "${var.create_oidc_provider ? {} : {'oidc_provider': False}}",
+     "url": "${data.tls_certificate.this.url}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_openid_connect_provider.this",
+   "cfg": "aws_iam_openid_connect_provider.this",
+   "type": "__declared__",
+   "refs": [
+    "data.tls_certificate.this"
+   ],
+   "values": {
+    "type": "aws_iam_openid_connect_provider",
+    "name": "this",
+    "gated": true,
+    "gate": "var.create_oidc_provider ? { oidc_provider = true } : {}",
+    "properties": {
+     "for_each": "${var.create_oidc_provider ? {'oidc_provider': True} : {}}",
+     "url": "${data.tls_certificate.this.url}",
+     "client_id_list": [
+      "sts.amazonaws.com"
+     ],
+     "thumbprint_list": "${local.github_thumbprints}",
+     "tags": "${merge(var.tags,{'Name': 'github.com'})}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.data.aws_iam_policy_document.this_assume_role_policy",
+   "cfg": "data.aws_iam_policy_document.this_assume_role_policy",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_openid_connect_provider.this",
+    "data.aws_iam_openid_connect_provider.this"
+   ],
+   "values": {
+    "type": "data.aws_iam_policy_document",
+    "name": "this_assume_role_policy",
+    "gated": true,
+    "gate": "var.iam_roles",
+    "properties": {
+     "for_each": [
+      {}
+     ],
+     "statement": [
+      {
+       "effect": "Allow",
+       "principals": [
+        {
+         "type": "Federated",
+         "identifiers": [
+          "${local.aws_iam_openid_connect_provider.arn}"
+         ]
+        }
+       ],
+       "actions": [
+        "sts:AssumeRoleWithWebIdentity"
+       ],
+       "condition": [
+        {
+         "test": "StringEquals",
+         "variable": "${var.github_oidc_domain}:aud",
+         "values": [
+          "sts.amazonaws.com"
+         ]
+        },
+        {
+         "test": "StringLike",
+         "variable": "${var.github_oidc_domain}:sub",
+         "values": "${each.value.oidc_claims}"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role.this",
+   "cfg": "aws_iam_role.this",
+   "type": "__declared__",
+   "refs": [
+    "data.aws_iam_policy_document.this_assume_role_policy"
+   ],
+   "values": {
+    "type": "aws_iam_role",
+    "name": "this",
+    "gated": true,
+    "gate": "var.iam_roles",
+    "properties": {
+     "for_each": [
+      {}
+     ],
+     "name": "${each.key}",
+     "assume_role_policy": "${data.aws_iam_policy_document.this_assume_role_policy[each.key].json}",
+     "managed_policy_arns": "${each.value.policy_arns}",
+     "tags": "${merge(var.tags,{'Name': '${each.key}'})}"
+    }
+   }
+  }
+ ]
+}

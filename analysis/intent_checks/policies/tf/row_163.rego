@@ -1,0 +1,998 @@
+package intent.tf.row_163
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {
+  "private_rt": {
+   "types": [
+    "__declared__"
+   ],
+   "where": [
+    {
+     "path": [
+      "type"
+     ],
+     "op": "eq",
+     "value": "aws_route_table"
+    },
+    {
+     "path": [
+      "gated"
+     ],
+     "op": "truthy"
+    },
+    {
+     "path": [
+      "properties",
+      "route",
+      "*"
+     ],
+     "op": "absent"
+    }
+   ]
+  },
+  "public_rt": {
+   "types": [
+    "__declared__"
+   ],
+   "where": [
+    {
+     "path": [
+      "type"
+     ],
+     "op": "eq",
+     "value": "aws_route_table"
+    },
+    {
+     "path": [
+      "properties",
+      "route"
+     ],
+     "op": "regex",
+     "value": "aws_internet_gateway"
+    }
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "vpc",
+   "tier": "core",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "aws_vpc"
+    ],
+    "where": []
+   },
+   "quote": "creates a customizable, multi-tier VPC environment"
+  },
+  {
+   "id": "vpc_cidr",
+   "tier": "core",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_vpc"
+    ],
+    "where": []
+   },
+   "cond": {
+    "path": [
+     "cidr_block"
+    ],
+    "op": "eq",
+    "value": "10.16.0.0/16"
+   },
+   "quote": "the VPC CIDR defaults to 10.16.0.0/16"
+  },
+  {
+   "id": "vpc_dns_hostnames",
+   "tier": "core",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_vpc"
+    ],
+    "where": []
+   },
+   "cond": {
+    "path": [
+     "enable_dns_hostnames"
+    ],
+    "op": "truthy"
+   },
+   "quote": "with DNS hostnames and DNS support enabled"
+  },
+  {
+   "id": "vpc_dns_support",
+   "tier": "core",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "aws_vpc"
+    ],
+    "where": []
+   },
+   "cond": {
+    "path": [
+     "enable_dns_support"
+    ],
+    "op": "truthy"
+   },
+   "quote": "with DNS hostnames and DNS support enabled"
+  },
+  {
+   "id": "random_int",
+   "tier": "core",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "random_integer"
+    ],
+    "where": []
+   },
+   "cond": {
+    "path": [
+     "min"
+    ],
+    "op": "eq",
+    "value": 1
+   },
+   "quote": "a random integer between 1 and 100"
+  },
+  {
+   "id": "random_int_max",
+   "tier": "core",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "random_integer"
+    ],
+    "where": []
+   },
+   "cond": {
+    "path": [
+     "max"
+    ],
+    "op": "eq",
+    "value": 100
+   },
+   "quote": "a random integer between 1 and 100"
+  },
+  {
+   "id": "random_in_name",
+   "tier": "core",
+   "kind": "ref",
+   "from": {
+    "types": [
+     "aws_vpc"
+    ],
+    "where": []
+   },
+   "to": {
+    "types": [
+     "random_integer"
+    ],
+    "where": []
+   },
+   "quote": "appended to the VPC name tag prefix"
+  },
+  {
+   "id": "name_prefix_default",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_vpc"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "tags"
+      ],
+      "op": "regex",
+      "value": "tf-project"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "default"
+      ],
+      "op": "eq",
+      "value": "tf-project"
+     }
+    }
+   ],
+   "quote": "prefix which defaults to \"tf-project\""
+  },
+  {
+   "id": "az_shuffle",
+   "tier": "core",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "random_shuffle"
+    ],
+    "where": []
+   },
+   "quote": "randomly shuffled availability zones"
+  },
+  {
+   "id": "az_data",
+   "tier": "detail",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": [
+       "type"
+      ],
+      "op": "eq",
+      "value": "data.aws_availability_zones"
+     }
+    ]
+   },
+   "quote": "dynamically selected from the target region"
+  },
+  {
+   "id": "shuffle_uses_az_data",
+   "tier": "detail",
+   "kind": "ref",
+   "from": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": [
+       "type"
+      ],
+      "op": "eq",
+      "value": "random_shuffle"
+     }
+    ]
+   },
+   "to": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": [
+       "type"
+      ],
+      "op": "eq",
+      "value": "data.aws_availability_zones"
+     }
+    ]
+   },
+   "quote": "dynamically selected from the target region"
+  },
+  {
+   "id": "subnets_declared",
+   "tier": "core",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": [
+       "type"
+      ],
+      "op": "eq",
+      "value": "aws_subnet"
+     }
+    ]
+   },
+   "quote": "web, application, database, and reserved subnets"
+  },
+  {
+   "id": "subnets_four_tiers",
+   "tier": "detail",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": [
+       "type"
+      ],
+      "op": "eq",
+      "value": "aws_subnet"
+     }
+    ]
+   },
+   "min": 4,
+   "quote": "web, application, database, and reserved subnets",
+   "justify": "four named tiers"
+  },
+  {
+   "id": "subnet_cidr_lists",
+   "tier": "detail",
+   "kind": "all_of",
+   "quote": "configurable CIDR block lists and counts",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_subnet"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "cidr_block"
+      ],
+      "op": "regex",
+      "value": "\\$\\{",
+      "every": true
+     },
+     "quantifier": "all"
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_subnet"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "gated"
+      ],
+      "op": "truthy"
+     },
+     "quantifier": "all"
+    }
+   ]
+  },
+  {
+   "id": "subnets_on_shuffle",
+   "tier": "core",
+   "kind": "ref",
+   "from": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": [
+       "type"
+      ],
+      "op": "eq",
+      "value": "aws_subnet"
+     }
+    ]
+   },
+   "to": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": [
+       "type"
+      ],
+      "op": "eq",
+      "value": "random_shuffle"
+     }
+    ]
+   },
+   "quote": "Subnets should automatically map to a set of randomly shuffled availability zones"
+  },
+  {
+   "id": "web_public_ip",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_subnet"
+       },
+       {
+        "path": [
+         "properties",
+         "map_public_ip_on_launch"
+        ],
+        "op": "truthy"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "type"
+      ],
+      "op": "eq",
+      "value": "aws_subnet"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "map_public_ip_on_launch"
+      ],
+      "op": "truthy"
+     }
+    }
+   ],
+   "quote": "web subnets mapping public IPs on launch"
+  },
+  {
+   "id": "igw",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_internet_gateway"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "gated"
+      ],
+      "op": "truthy"
+     }
+    }
+   ],
+   "quote": "a conditionally created internet gateway"
+  },
+  {
+   "id": "public_rt_igw",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "in",
+        "value": [
+         "aws_route_table",
+         "aws_route"
+        ]
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_internet_gateway"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_route_table",
+       "aws_route"
+      ],
+      "where": []
+     },
+     "to": {
+      "types": [
+       "aws_internet_gateway"
+      ],
+      "where": []
+     }
+    }
+   ],
+   "quote": "routing traffic through a conditionally created internet gateway via a dedicated public route table"
+  },
+  {
+   "id": "public_assoc",
+   "tier": "detail",
+   "kind": "ref",
+   "quote": "via a dedicated public route table",
+   "from": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": [
+       "type"
+      ],
+      "op": "eq",
+      "value": "aws_route_table_association"
+     }
+    ]
+   },
+   "to": "public_rt"
+  },
+  {
+   "id": "route_tables",
+   "tier": "core",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": [
+       "type"
+      ],
+      "op": "eq",
+      "value": "aws_route_table"
+     }
+    ]
+   },
+   "min": 2,
+   "quote": "a dedicated public route table. All private subnet tiers (app, database, and reserved) must associate with a single shared private route table",
+   "justify": "one public plus one shared private route table"
+  },
+  {
+   "id": "private_rt_gated",
+   "tier": "detail",
+   "kind": "exists",
+   "select": "private_rt",
+   "min": 1,
+   "max": 1,
+   "quote": "a single shared private route table when any private subnets are provisioned",
+   "justify": "'a single shared' table means exactly one"
+  },
+  {
+   "id": "private_assoc",
+   "tier": "detail",
+   "kind": "ref",
+   "from": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": [
+       "type"
+      ],
+      "op": "eq",
+      "value": "aws_route_table_association"
+     }
+    ]
+   },
+   "to": "private_rt",
+   "quote": "All private subnet tiers (app, database, and reserved) must associate with a single shared private route table"
+  },
+  {
+   "id": "interface_endpoint",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_vpc_endpoint"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "for_each"
+      ],
+      "op": "present"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_vpc_endpoint"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "dynamic"
+      ],
+      "op": "present"
+     }
+    }
+   ],
+   "quote": "optional interface VPC endpoints using a dynamic map configuration"
+  },
+  {
+   "id": "two_endpoints",
+   "tier": "core",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": [
+       "type"
+      ],
+      "op": "eq",
+      "value": "aws_vpc_endpoint"
+     }
+    ]
+   },
+   "min": 2,
+   "quote": "optional interface VPC endpoints using a dynamic map configuration as well as an optional gateway VPC endpoint",
+   "justify": "interface and gateway endpoints"
+  },
+  {
+   "id": "gateway_endpoint",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_vpc_endpoint"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "vpc_endpoint_type"
+      ],
+      "op": "regex",
+      "value": "(?i)gateway"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": []
+     },
+     "cond": {
+      "path": [
+       "default"
+      ],
+      "op": "eq",
+      "value": "Gateway"
+     }
+    }
+   ],
+   "quote": "an optional gateway VPC endpoint"
+  },
+  {
+   "id": "gateway_assoc",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_vpc_endpoint_route_table_association"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_vpc_endpoint"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "properties",
+       "route_table_ids"
+      ],
+      "op": "present"
+     }
+    }
+   ],
+   "quote": "automatically associates with the private route table"
+  },
+  {
+   "id": "gateway_assoc_rt",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_vpc_endpoint_route_table_association"
+       }
+      ]
+     },
+     "to": "private_rt"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_vpc_endpoint"
+       },
+       {
+        "path": [
+         "properties",
+         "vpc_endpoint_type"
+        ],
+        "op": "regex",
+        "value": "(?i)gateway"
+       }
+      ]
+     },
+     "to": "private_rt"
+    }
+   ],
+   "quote": "automatically associates with the private route table"
+  },
+  {
+   "id": "gateway_assoc_gated",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_vpc_endpoint_route_table_association"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "gated"
+      ],
+      "op": "truthy"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "aws_vpc_endpoint"
+       },
+       {
+        "path": [
+         "properties",
+         "vpc_endpoint_type"
+        ],
+        "op": "regex",
+        "value": "(?i)gateway"
+       }
+      ]
+     },
+     "cond": {
+      "path": [
+       "gated"
+      ],
+      "op": "truthy"
+     }
+    }
+   ],
+   "quote": "when a service name is specified"
+  },
+  {
+   "id": "x_lifecycle",
+   "tier": "extra",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": [
+       "type"
+      ],
+      "op": "eq",
+      "value": "aws_vpc"
+     }
+    ]
+   },
+   "cond": {
+    "path": [
+     "properties",
+     "lifecycle"
+    ],
+    "op": "present"
+   }
+  },
+  {
+   "id": "x_iface_dns",
+   "tier": "extra",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": [
+       "type"
+      ],
+      "op": "eq",
+      "value": "aws_vpc_endpoint"
+     }
+    ]
+   },
+   "cond": {
+    "path": [
+     "properties",
+     "private_dns_enabled"
+    ],
+    "op": "truthy"
+   }
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

@@ -1,0 +1,172 @@
+{
+ "lang": "tf",
+ "row_number": 197,
+ "source_hash": {
+  "gt": "a0b5882b22d7b895df4033667f9d80d7135b033e8edbe62f7a3014fde226fd19",
+  "prompt": "d6cc1539bbd64c51f3ede145a90e2a701df26289d73e9c4b9554a0ee3ffb5835"
+ },
+ "selectors": {
+  "enc": {
+   "types": [
+    "aws_ebs_encryption_by_default"
+   ]
+  },
+  "blk": {
+   "types": [
+    "aws_ebs_snapshot_block_public_access"
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "enc",
+   "kind": "exists",
+   "select": "enc",
+   "tier": "core",
+   "quote": "enable default EBS encryption for the region"
+  },
+  {
+   "id": "enc_on",
+   "kind": "attr",
+   "select": "enc",
+   "cond": {
+    "path": "enabled",
+    "op": "truthy"
+   },
+   "tier": "core",
+   "quote": "enable default EBS encryption for the region (defaulting to true)"
+  },
+  {
+   "id": "blk",
+   "kind": "exists",
+   "select": "blk",
+   "tier": "core",
+   "quote": "block public access to EBS snapshots"
+  },
+  {
+   "id": "blk_state",
+   "kind": "attr",
+   "select": "blk",
+   "cond": {
+    "path": "state",
+    "op": "eq",
+    "value": "block-all-sharing"
+   },
+   "tier": "core",
+   "quote": "a default state of \"block-all-sharing\""
+  },
+  {
+   "id": "params_true",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": "default",
+      "op": "eq",
+      "value": true
+     }
+    ]
+   },
+   "tier": "detail",
+   "min": 3,
+   "quote": "a global enabling flag that defaults to true",
+   "justify": "the global flag and the two specific controls all default to true"
+  },
+  {
+   "id": "param_state",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": "default",
+      "op": "eq",
+      "value": "block-all-sharing"
+     }
+    ]
+   },
+   "tier": "detail",
+   "quote": "a default state of \"block-all-sharing\""
+  },
+  {
+   "id": "param_region",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "regex",
+        "value": "(?i)region"
+       },
+       {
+        "path": "default",
+        "op": "absent"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "regex",
+        "value": "(?i)region"
+       },
+       {
+        "path": "default",
+        "op": "eq",
+        "value": ""
+       }
+      ]
+     }
+    }
+   ],
+   "tier": "detail",
+   "quote": "unless an optional region variable is explicitly supplied",
+   "justify": "an optional override variable has no value by default (null or empty)"
+  },
+  {
+   "id": "gated",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": "type",
+      "op": "in",
+      "value": [
+       "aws_ebs_encryption_by_default",
+       "aws_ebs_snapshot_block_public_access"
+      ]
+     }
+    ]
+   },
+   "cond": {
+    "path": "gated",
+    "op": "truthy"
+   },
+   "tier": "detail",
+   "quantifier": "all",
+   "quote": "a global enabling flag that defaults to true"
+  }
+ ],
+ "notes": "Region defaulting to the provider current region is not separately checked: the plan always resolves a region; the optional region variable must have no default value (null or empty) so it does not override the provider region. The two-flag gating is checked only as 'gated' because gates are often held in locals, which are invisible."
+}

@@ -1,0 +1,1167 @@
+{
+ "lang": "cfn",
+ "row_number": 134,
+ "source_hash": {
+  "gt": "ee613afeeba386ceb9e63582db65c8ed82d3d8a0a303fa50317f5d3eed6b6656",
+  "prompt": "12ef6dd2b3a92e579ccd69191efda62535a8ca7153dccdbde6062da40dc30d7d"
+ },
+ "selectors": {
+  "lroles": {
+   "types": [
+    "AWS::IAM::Role"
+   ],
+   "where": [
+    {
+     "path": "AssumeRolePolicyDocument",
+     "op": "contains",
+     "value": "lambda.amazonaws.com"
+    }
+   ]
+  },
+  "agent": {
+   "types": [
+    "AWS::IAM::Role"
+   ],
+   "where": [
+    {
+     "path": "AssumeRolePolicyDocument",
+     "op": "regex",
+     "value": "(?i)bedrock"
+    }
+   ]
+  },
+  "roles": {
+   "types": [
+    "AWS::IAM::Role"
+   ]
+  },
+  "secrets": {
+   "types": [
+    "AWS::SecretsManager::Secret"
+   ]
+  },
+  "pols": {
+   "types": [
+    "AWS::IAM::Policy",
+    "AWS::IAM::ManagedPolicy"
+   ]
+  },
+  "pols_attached": {
+   "types": [
+    "AWS::IAM::Policy",
+    "AWS::IAM::ManagedPolicy"
+   ],
+   "where": [
+    {
+     "path": "Roles.*",
+     "op": "present"
+    }
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "project_default",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": "default",
+        "op": "eq",
+        "value": "hospitality-insights"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "roles",
+     "cond": {
+      "path": "Tags.*",
+      "op": "has_kv",
+      "value": {
+       "key": "Project",
+       "value": "hospitality-insights"
+      }
+     }
+    }
+   ],
+   "tier": "core",
+   "quote": "using the project name \"hospitality-insights\" and environment \"prod\" as defaults"
+  },
+  {
+   "id": "environment_default",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": "default",
+        "op": "eq",
+        "value": "prod"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "roles",
+     "cond": {
+      "path": "Tags.*",
+      "op": "has_kv",
+      "value": {
+       "key": "Environment",
+       "value": "prod"
+      }
+     }
+    }
+   ],
+   "tier": "core",
+   "quote": "environment \"prod\" as defaults"
+  },
+  {
+   "id": "six_lambda_roles",
+   "kind": "exists",
+   "select": "lroles",
+   "min": 6,
+   "tier": "core",
+   "quote": "separate Lambda execution roles for scraper, analysis, alerts, API, admin, and archival microservices",
+   "justify": "six microservices are listed"
+  },
+  {
+   "id": "lambda_roles_managed_policies",
+   "kind": "attr",
+   "select": "lroles",
+   "cond": {
+    "path": "ManagedPolicyArns",
+    "op": "present"
+   },
+   "quantifier": "all",
+   "tier": "core",
+   "quote": "each with appropriate managed policies"
+  },
+  {
+   "id": "basic_execution_policy",
+   "kind": "attr",
+   "select": "lroles",
+   "cond": {
+    "path": "ManagedPolicyArns.*",
+    "op": "regex",
+    "value": "(?i)AWSLambdaBasicExecutionRole$"
+   },
+   "tier": "detail",
+   "quote": "AWSLambdaBasicExecutionRole"
+  },
+  {
+   "id": "xray_policy",
+   "kind": "attr",
+   "select": "lroles",
+   "cond": {
+    "path": "ManagedPolicyArns.*",
+    "op": "regex",
+    "value": "(?i)AWSXRayDaemonWriteAccess$"
+   },
+   "tier": "detail",
+   "quote": "AWSXRayDaemonWriteAccess"
+  },
+  {
+   "id": "lambda_roles_inline_policies",
+   "tier": "core",
+   "quote": "custom inline policies granting least-privilege access",
+   "justify": "one custom policy per microservice role",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "lroles",
+     "cond": {
+      "path": "Policies",
+      "op": "present"
+     },
+     "quantifier": "all"
+    },
+    {
+     "kind": "exists",
+     "select": "pols_attached",
+     "min": 6
+    },
+    {
+     "kind": "attr",
+     "select": "lroles",
+     "cond": {
+      "path": "ManagedPolicyArns.*.ref",
+      "op": "present"
+     },
+     "quantifier": "all"
+    }
+   ]
+  },
+  {
+   "id": "least_privilege_no_wildcards",
+   "tier": "detail",
+   "quote": "least-privilege access",
+   "justify": "least privilege rules out a full wildcard or a whole-service wildcard action",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "lroles",
+     "quantifier": "all",
+     "cond": {
+      "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+      "op": "regex",
+      "value": "^[A-Za-z0-9-]+:[A-Za-z]",
+      "every": true
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "pols",
+     "quantifier": "all",
+     "cond": {
+      "path": "PolicyDocument.Statement.*.Action.*",
+      "op": "regex",
+      "value": "^[A-Za-z0-9-]+:[A-Za-z]",
+      "every": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "grants_dynamodb",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "lroles",
+     "cond": {
+      "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+      "op": "glob_covers",
+      "value": "dynamodb:GetItem"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy"
+      ],
+      "where": [
+       {
+        "path": "PolicyDocument.Statement.*.Action.*",
+        "op": "glob_covers",
+        "value": "dynamodb:GetItem"
+       }
+      ]
+     },
+     "to": "lroles",
+     "bidirectional": true
+    },
+    {
+     "kind": "attr",
+     "select": "lroles",
+     "cond": {
+      "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+      "op": "glob_covers",
+      "value": "dynamodb:Query"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy"
+      ],
+      "where": [
+       {
+        "path": "PolicyDocument.Statement.*.Action.*",
+        "op": "glob_covers",
+        "value": "dynamodb:Query"
+       }
+      ]
+     },
+     "to": "lroles",
+     "bidirectional": true
+    },
+    {
+     "kind": "attr",
+     "select": "lroles",
+     "cond": {
+      "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+      "op": "glob_covers",
+      "value": "dynamodb:PutItem"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy"
+      ],
+      "where": [
+       {
+        "path": "PolicyDocument.Statement.*.Action.*",
+        "op": "glob_covers",
+        "value": "dynamodb:PutItem"
+       }
+      ]
+     },
+     "to": "lroles",
+     "bidirectional": true
+    }
+   ],
+   "tier": "core",
+   "quote": "least-privilege access to the DynamoDB tables",
+   "justify": "service named in the prompt; any common data-access action of it counts"
+  },
+  {
+   "id": "grants_sqs",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "lroles",
+     "cond": {
+      "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+      "op": "glob_covers",
+      "value": "sqs:SendMessage"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy"
+      ],
+      "where": [
+       {
+        "path": "PolicyDocument.Statement.*.Action.*",
+        "op": "glob_covers",
+        "value": "sqs:SendMessage"
+       }
+      ]
+     },
+     "to": "lroles",
+     "bidirectional": true
+    },
+    {
+     "kind": "attr",
+     "select": "lroles",
+     "cond": {
+      "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+      "op": "glob_covers",
+      "value": "sqs:ReceiveMessage"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy"
+      ],
+      "where": [
+       {
+        "path": "PolicyDocument.Statement.*.Action.*",
+        "op": "glob_covers",
+        "value": "sqs:ReceiveMessage"
+       }
+      ]
+     },
+     "to": "lroles",
+     "bidirectional": true
+    }
+   ],
+   "tier": "core",
+   "quote": "SQS queues",
+   "justify": "service named in the prompt; any common data-access action of it counts"
+  },
+  {
+   "id": "grants_sns",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "lroles",
+     "cond": {
+      "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+      "op": "glob_covers",
+      "value": "sns:Publish"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy"
+      ],
+      "where": [
+       {
+        "path": "PolicyDocument.Statement.*.Action.*",
+        "op": "glob_covers",
+        "value": "sns:Publish"
+       }
+      ]
+     },
+     "to": "lroles",
+     "bidirectional": true
+    }
+   ],
+   "tier": "core",
+   "quote": "SNS topics",
+   "justify": "service named in the prompt; any common data-access action of it counts"
+  },
+  {
+   "id": "grants_comprehend",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "lroles",
+     "cond": {
+      "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+      "op": "glob_covers",
+      "value": "comprehend:DetectSentiment"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy"
+      ],
+      "where": [
+       {
+        "path": "PolicyDocument.Statement.*.Action.*",
+        "op": "glob_covers",
+        "value": "comprehend:DetectSentiment"
+       }
+      ]
+     },
+     "to": "lroles",
+     "bidirectional": true
+    },
+    {
+     "kind": "attr",
+     "select": "lroles",
+     "cond": {
+      "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+      "op": "glob_covers",
+      "value": "comprehend:DetectEntities"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy"
+      ],
+      "where": [
+       {
+        "path": "PolicyDocument.Statement.*.Action.*",
+        "op": "glob_covers",
+        "value": "comprehend:DetectEntities"
+       }
+      ]
+     },
+     "to": "lroles",
+     "bidirectional": true
+    }
+   ],
+   "tier": "core",
+   "quote": "Comprehend",
+   "justify": "service named in the prompt; any common data-access action of it counts"
+  },
+  {
+   "id": "grants_bedrock",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "lroles",
+     "cond": {
+      "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+      "op": "glob_covers",
+      "value": "bedrock:InvokeModel"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy"
+      ],
+      "where": [
+       {
+        "path": "PolicyDocument.Statement.*.Action.*",
+        "op": "glob_covers",
+        "value": "bedrock:InvokeModel"
+       }
+      ]
+     },
+     "to": "lroles",
+     "bidirectional": true
+    }
+   ],
+   "tier": "core",
+   "quote": "Bedrock",
+   "justify": "service named in the prompt; any common data-access action of it counts"
+  },
+  {
+   "id": "grants_stepfunctions",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "lroles",
+     "cond": {
+      "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+      "op": "glob_covers",
+      "value": "states:StartExecution"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy"
+      ],
+      "where": [
+       {
+        "path": "PolicyDocument.Statement.*.Action.*",
+        "op": "glob_covers",
+        "value": "states:StartExecution"
+       }
+      ]
+     },
+     "to": "lroles",
+     "bidirectional": true
+    }
+   ],
+   "tier": "core",
+   "quote": "Step Functions",
+   "justify": "service named in the prompt; any common data-access action of it counts"
+  },
+  {
+   "id": "grants_s3",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "lroles",
+     "cond": {
+      "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+      "op": "glob_covers",
+      "value": "s3:GetObject"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy"
+      ],
+      "where": [
+       {
+        "path": "PolicyDocument.Statement.*.Action.*",
+        "op": "glob_covers",
+        "value": "s3:GetObject"
+       }
+      ]
+     },
+     "to": "lroles",
+     "bidirectional": true
+    },
+    {
+     "kind": "attr",
+     "select": "lroles",
+     "cond": {
+      "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+      "op": "glob_covers",
+      "value": "s3:PutObject"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy"
+      ],
+      "where": [
+       {
+        "path": "PolicyDocument.Statement.*.Action.*",
+        "op": "glob_covers",
+        "value": "s3:PutObject"
+       }
+      ]
+     },
+     "to": "lroles",
+     "bidirectional": true
+    }
+   ],
+   "tier": "core",
+   "quote": "S3 buckets",
+   "justify": "service named in the prompt; any common data-access action of it counts"
+  },
+  {
+   "id": "grants_secrets",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "lroles",
+     "cond": {
+      "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+      "op": "glob_covers",
+      "value": "secretsmanager:GetSecretValue"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy"
+      ],
+      "where": [
+       {
+        "path": "PolicyDocument.Statement.*.Action.*",
+        "op": "glob_covers",
+        "value": "secretsmanager:GetSecretValue"
+       }
+      ]
+     },
+     "to": "lroles",
+     "bidirectional": true
+    }
+   ],
+   "tier": "core",
+   "quote": "Secrets Manager secrets that follow the naming convention",
+   "justify": "service named in the prompt; any common data-access action of it counts"
+  },
+  {
+   "id": "secrets_naming_convention",
+   "tier": "core",
+   "quote": "hospitality-insights/${Environment}/*",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "lroles",
+     "cond": {
+      "path": "Policies.*.PolicyDocument.Statement.*",
+      "op": "match",
+      "value": [
+       {
+        "path": "Action.*",
+        "op": "glob_covers",
+        "value": "secretsmanager:GetSecretValue"
+       },
+       {
+        "path": "Resource.*",
+        "op": "regex",
+        "value": "hospitality-insights/(prod|\\$\\{Environment\\})/\\*"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "bidirectional": true,
+     "to": "lroles",
+     "from": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy"
+      ],
+      "where": [
+       {
+        "path": "PolicyDocument.Statement.*",
+        "op": "match",
+        "value": [
+         {
+          "path": "Action.*",
+          "op": "glob_covers",
+          "value": "secretsmanager:GetSecretValue"
+         },
+         {
+          "path": "Resource.*",
+          "op": "regex",
+          "value": "hospitality-insights/(prod|\\$\\{Environment\\})/\\*"
+         }
+        ]
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "agentcore_role",
+   "kind": "exists",
+   "select": "agent",
+   "tier": "core",
+   "quote": "an IAM role for Bedrock AgentCore runtime"
+  },
+  {
+   "id": "agentcore_invoke_models",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "agent",
+     "cond": {
+      "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+      "op": "glob_covers",
+      "value": "bedrock:InvokeModel"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy"
+      ],
+      "where": [
+       {
+        "path": "PolicyDocument.Statement.*.Action.*",
+        "op": "glob_covers",
+        "value": "bedrock:InvokeModel"
+       }
+      ]
+     },
+     "to": "agent",
+     "bidirectional": true
+    }
+   ],
+   "tier": "core",
+   "quote": "permissions to invoke models"
+  },
+  {
+   "id": "agentcore_sessions",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "agent",
+     "cond": {
+      "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+      "op": "regex",
+      "value": "(?i)^bedrock(-agentcore)?:.*(session|invocation|invokeagent)"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy"
+      ],
+      "where": [
+       {
+        "path": "PolicyDocument.Statement.*.Action.*",
+        "op": "regex",
+        "value": "(?i)^bedrock(-agentcore)?:.*(session|invocation|invokeagent)"
+       }
+      ]
+     },
+     "to": "agent",
+     "bidirectional": true
+    },
+    {
+     "kind": "attr",
+     "select": "agent",
+     "cond": {
+      "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+      "op": "glob_covers",
+      "value": "bedrock-agentcore:CreateSession"
+     }
+    },
+    {
+     "kind": "ref",
+     "bidirectional": true,
+     "to": "agent",
+     "from": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy"
+      ],
+      "where": [
+       {
+        "path": "PolicyDocument.Statement.*.Action.*",
+        "op": "glob_covers",
+        "value": "bedrock-agentcore:CreateSession"
+       }
+      ]
+     }
+    }
+   ],
+   "tier": "core",
+   "quote": "manage agent sessions",
+   "justify": "agent sessions are managed through session or agent-invocation actions"
+  },
+  {
+   "id": "agentcore_dynamodb_read",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "agent",
+     "cond": {
+      "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+      "op": "glob_covers",
+      "value": "dynamodb:GetItem"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy"
+      ],
+      "where": [
+       {
+        "path": "PolicyDocument.Statement.*.Action.*",
+        "op": "glob_covers",
+        "value": "dynamodb:GetItem"
+       }
+      ]
+     },
+     "to": "agent",
+     "bidirectional": true
+    },
+    {
+     "kind": "attr",
+     "select": "agent",
+     "cond": {
+      "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+      "op": "glob_covers",
+      "value": "dynamodb:Query"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy"
+      ],
+      "where": [
+       {
+        "path": "PolicyDocument.Statement.*.Action.*",
+        "op": "glob_covers",
+        "value": "dynamodb:Query"
+       }
+      ]
+     },
+     "to": "agent",
+     "bidirectional": true
+    }
+   ],
+   "tier": "core",
+   "quote": "read from the relevant DynamoDB tables",
+   "justify": "read implies get/query"
+  },
+  {
+   "id": "agentcore_s3_read",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "agent",
+     "cond": {
+      "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+      "op": "glob_covers",
+      "value": "s3:GetObject"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy"
+      ],
+      "where": [
+       {
+        "path": "PolicyDocument.Statement.*.Action.*",
+        "op": "glob_covers",
+        "value": "s3:GetObject"
+       }
+      ]
+     },
+     "to": "agent",
+     "bidirectional": true
+    }
+   ],
+   "tier": "core",
+   "quote": "and S3",
+   "justify": "reading S3 implies GetObject"
+  },
+  {
+   "id": "two_secrets",
+   "kind": "exists",
+   "select": "secrets",
+   "min": 2,
+   "tier": "core",
+   "quote": "two placeholder Secrets Manager secrets"
+  },
+  {
+   "id": "scrapingbee_secret",
+   "tier": "detail",
+   "quote": "one for the ScrapingBee API key",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "secrets",
+     "cond": {
+      "path": "Name",
+      "op": "regex",
+      "value": "(?i)scrapingbee"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "secrets",
+     "cond": {
+      "path": "Description",
+      "op": "regex",
+      "value": "(?i)scrapingbee"
+     }
+    }
+   ]
+  },
+  {
+   "id": "prefix_secret_naming",
+   "kind": "attr",
+   "select": "secrets",
+   "cond": {
+    "path": "Name",
+    "op": "regex",
+    "value": "hospitality-insights/(prod|\\$\\{Environment\\})/"
+   },
+   "tier": "detail",
+   "quote": "one to establish the naming prefix"
+  },
+  {
+   "id": "tags_project_environment",
+   "kind": "all_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "roles",
+     "cond": {
+      "path": "Tags.*.Key",
+      "op": "eq",
+      "value": "Project"
+     },
+     "quantifier": "all"
+    },
+    {
+     "kind": "attr",
+     "select": "roles",
+     "cond": {
+      "path": "Tags.*.Key",
+      "op": "eq",
+      "value": "Environment"
+     },
+     "quantifier": "all"
+    },
+    {
+     "kind": "attr",
+     "select": "secrets",
+     "cond": {
+      "path": "Tags.*.Key",
+      "op": "eq",
+      "value": "Project"
+     },
+     "quantifier": "all"
+    },
+    {
+     "kind": "attr",
+     "select": "secrets",
+     "cond": {
+      "path": "Tags.*.Key",
+      "op": "eq",
+      "value": "Environment"
+     },
+     "quantifier": "all"
+    }
+   ],
+   "tier": "detail",
+   "quote": "All resources must be tagged with Project and Environment tags"
+  },
+  {
+   "id": "outputs_present",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__output__"
+    ],
+    "where": [
+     {
+      "path": "value",
+      "op": "regex",
+      "value": "(?i)arn"
+     }
+    ]
+   },
+   "min": 6,
+   "tier": "detail",
+   "quote": "expose the ARNs of all Lambda roles",
+   "justify": "six Lambda roles are listed, each with an ARN output"
+  },
+  {
+   "id": "outputs_reference_roles",
+   "kind": "ref",
+   "from": {
+    "types": [
+     "__output__"
+    ]
+   },
+   "to": "lroles",
+   "tier": "detail",
+   "quote": "expose the ARNs of all Lambda roles"
+  },
+  {
+   "id": "output_references_secret",
+   "kind": "ref",
+   "from": {
+    "types": [
+     "__output__"
+    ]
+   },
+   "to": "secrets",
+   "tier": "detail",
+   "quote": "the Secrets Manager prefix secret"
+  },
+  {
+   "id": "x_admin_cognito",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "lroles",
+     "cond": {
+      "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+      "op": "glob_covers",
+      "value": "cognito-idp:AdminCreateUser"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy"
+      ],
+      "where": [
+       {
+        "path": "PolicyDocument.Statement.*.Action.*",
+        "op": "glob_covers",
+        "value": "cognito-idp:AdminCreateUser"
+       }
+      ]
+     },
+     "to": "lroles",
+     "bidirectional": true
+    }
+   ],
+   "tier": "extra"
+  },
+  {
+   "id": "x_scraper_invoke_lambda",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "lroles",
+     "cond": {
+      "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+      "op": "glob_covers",
+      "value": "lambda:InvokeFunction"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy"
+      ],
+      "where": [
+       {
+        "path": "PolicyDocument.Statement.*.Action.*",
+        "op": "glob_covers",
+        "value": "lambda:InvokeFunction"
+       }
+      ]
+     },
+     "to": "lroles",
+     "bidirectional": true
+    }
+   ],
+   "tier": "extra"
+  },
+  {
+   "id": "x_logs",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "lroles",
+     "cond": {
+      "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+      "op": "glob_covers",
+      "value": "logs:PutLogEvents"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy"
+      ],
+      "where": [
+       {
+        "path": "PolicyDocument.Statement.*.Action.*",
+        "op": "glob_covers",
+        "value": "logs:PutLogEvents"
+       }
+      ]
+     },
+     "to": "lroles",
+     "bidirectional": true
+    }
+   ],
+   "tier": "extra"
+  }
+ ],
+ "notes": "Role names are not stated, so the six microservices are matched by count of Lambda-trusted roles, and the per-service grants are checked across those roles rather than per microservice. AgentCore role is matched by a bedrock service-principal trust (bedrock-agentcore or bedrock, as real templates wrote). Separate IAM::Policy or ManagedPolicy attachments are accepted in either reference direction. Core share is above the norm because the prompt is about IAM permissions: each named service grant is a primary requirement. A role set mixing inline and separate policies across roles fails lambda_roles_inline_policies and least_privilege_no_wildcards; kept as a rare form."
+}

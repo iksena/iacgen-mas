@@ -1,0 +1,615 @@
+package intent.cfn.row_179
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {
+  "lg": {
+   "types": [
+    "AWS::Logs::LogGroup"
+   ],
+   "where": []
+  },
+  "mf": {
+   "types": [
+    "AWS::Logs::MetricFilter"
+   ],
+   "where": []
+  },
+  "outs": {
+   "types": [
+    "__output__"
+   ],
+   "where": []
+  },
+  "java": {
+   "types": [
+    "AWS::Logs::MetricFilter"
+   ],
+   "where": [
+    {
+     "path": [
+      "FilterPattern"
+     ],
+     "op": "regex",
+     "value": "(?i)java"
+    }
+   ]
+  },
+  "dotnet": {
+   "types": [
+    "AWS::Logs::MetricFilter"
+   ],
+   "where": [
+    {
+     "path": [
+      "FilterPattern"
+     ],
+     "op": "regex",
+     "value": "(?i:dotnet|\\.net|csharp|c#|(^|[^a-z])net([^a-z]|$))"
+    }
+   ]
+  },
+  "python": {
+   "types": [
+    "AWS::Logs::MetricFilter"
+   ],
+   "where": [
+    {
+     "path": [
+      "FilterPattern"
+     ],
+     "op": "regex",
+     "value": "(?i)python"
+    }
+   ]
+  },
+  "go": {
+   "types": [
+    "AWS::Logs::MetricFilter"
+   ],
+   "where": [
+    {
+     "path": [
+      "FilterPattern"
+     ],
+     "op": "regex",
+     "value": "(?i:golang|\\bgo\\b)"
+    }
+   ]
+  },
+  "rust": {
+   "types": [
+    "AWS::Logs::MetricFilter"
+   ],
+   "where": [
+    {
+     "path": [
+      "FilterPattern"
+     ],
+     "op": "regex",
+     "value": "(?i)rust"
+    }
+   ]
+  },
+  "ratio": {
+   "types": [
+    "AWS::Logs::MetricFilter"
+   ],
+   "where": [
+    {
+     "path": [
+      "MetricTransformations"
+     ],
+     "op": "regex",
+     "value": "(?i)(efficien|ratio([^a-z]|$))"
+    }
+   ]
+  },
+  "peak": {
+   "types": [
+    "AWS::Logs::MetricFilter"
+   ],
+   "where": [
+    {
+     "path": [
+      "MetricTransformations"
+     ],
+     "op": "regex",
+     "value": "(?i)(peak|memory.?(usage|mb))"
+    }
+   ]
+  },
+  "memtest": {
+   "types": [
+    "AWS::Logs::MetricFilter"
+   ],
+   "where": [
+    {
+     "path": [
+      "FilterPattern"
+     ],
+     "op": "regex",
+     "value": "(?i)memory"
+    }
+   ]
+  },
+  "tput": {
+   "types": [
+    "AWS::Logs::MetricFilter"
+   ],
+   "where": [
+    {
+     "path": [
+      "FilterPattern"
+     ],
+     "op": "regex",
+     "value": "(?i)throughput"
+    }
+   ]
+  },
+  "conc": {
+   "types": [
+    "AWS::Logs::MetricFilter"
+   ],
+   "where": [
+    {
+     "path": [
+      "FilterPattern"
+     ],
+     "op": "regex",
+     "value": "(?i)concurren"
+    }
+   ]
+  },
+  "p50": {
+   "types": [
+    "AWS::Logs::MetricFilter"
+   ],
+   "where": [
+    {
+     "path": [
+      "MetricTransformations"
+     ],
+     "op": "regex",
+     "value": "(?i)p50"
+    }
+   ]
+  },
+  "p95": {
+   "types": [
+    "AWS::Logs::MetricFilter"
+   ],
+   "where": [
+    {
+     "path": [
+      "MetricTransformations"
+     ],
+     "op": "regex",
+     "value": "(?i)p95"
+    }
+   ]
+  },
+  "p99": {
+   "types": [
+    "AWS::Logs::MetricFilter"
+   ],
+   "where": [
+    {
+     "path": [
+      "MetricTransformations"
+     ],
+     "op": "regex",
+     "value": "(?i)p99"
+    }
+   ]
+  },
+  "latency": {
+   "types": [
+    "AWS::Logs::MetricFilter"
+   ],
+   "where": [
+    {
+     "path": [
+      "MetricTransformations"
+     ],
+     "op": "regex",
+     "value": "(?i)latency"
+    }
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "log_group",
+   "kind": "exists",
+   "select": "lg",
+   "tier": "core",
+   "quote": "create a CloudWatch Logs log group"
+  },
+  {
+   "id": "retention_30",
+   "kind": "attr",
+   "select": "lg",
+   "cond": {
+    "path": [
+     "RetentionInDays"
+    ],
+    "op": "eq",
+    "value": 30
+   },
+   "tier": "detail",
+   "quote": "a 30 day retention period"
+  },
+  {
+   "id": "configurable_name",
+   "kind": "join",
+   "tier": "detail",
+   "quote": "a configurable name defaulting to a benchmarks-specific name",
+   "from": "lg",
+   "from_path": [
+    "LogGroupName"
+   ],
+   "to": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": [
+       "default"
+      ],
+      "op": "regex",
+      "value": "(?i)benchmark"
+     }
+    ]
+   },
+   "to_path": [
+    "default"
+   ]
+  },
+  {
+   "id": "json_patterns",
+   "kind": "attr",
+   "select": "mf",
+   "cond": {
+    "path": [
+     "FilterPattern"
+    ],
+    "op": "regex",
+    "value": "(?s)\\{.*\\$\\."
+   },
+   "tier": "detail",
+   "quote": "receives structured JSON benchmark result events",
+   "quantifier": "all"
+  },
+  {
+   "id": "metric_values_extracted",
+   "kind": "attr",
+   "select": "mf",
+   "cond": {
+    "path": [
+     "MetricTransformations",
+     "*",
+     "MetricValue"
+    ],
+    "op": "regex",
+    "value": "^\\$"
+   },
+   "tier": "core",
+   "quote": "create filters that extract",
+   "quantifier": "all"
+  },
+  {
+   "id": "filters_on_group",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "mf",
+     "to": "lg"
+    },
+    {
+     "kind": "join",
+     "from": "mf",
+     "from_path": [
+      "LogGroupName"
+     ],
+     "to": "lg",
+     "to_path": [
+      "LogGroupName"
+     ]
+    }
+   ],
+   "tier": "core",
+   "quote": "on top of it a comprehensive set of CloudWatch Logs metric filters"
+  },
+  {
+   "id": "java_filters",
+   "kind": "exists",
+   "select": "java",
+   "tier": "core",
+   "quote": "covering five programming languages: Java, .NET, Python, Go, and Rust",
+   "justify": "each language needs 2 memory metrics + 3 throughput + 3 concurrency percentiles = 8 filters",
+   "min": 8
+  },
+  {
+   "id": "dotnet_filters",
+   "kind": "exists",
+   "select": "dotnet",
+   "tier": "core",
+   "quote": "covering five programming languages: Java, .NET, Python, Go, and Rust",
+   "justify": "each language needs 2 memory metrics + 3 throughput + 3 concurrency percentiles = 8 filters",
+   "min": 8
+  },
+  {
+   "id": "python_filters",
+   "kind": "exists",
+   "select": "python",
+   "tier": "core",
+   "quote": "covering five programming languages: Java, .NET, Python, Go, and Rust",
+   "justify": "each language needs 2 memory metrics + 3 throughput + 3 concurrency percentiles = 8 filters",
+   "min": 8
+  },
+  {
+   "id": "go_filters",
+   "kind": "exists",
+   "select": "go",
+   "tier": "core",
+   "quote": "covering five programming languages: Java, .NET, Python, Go, and Rust",
+   "justify": "each language needs 2 memory metrics + 3 throughput + 3 concurrency percentiles = 8 filters",
+   "min": 8
+  },
+  {
+   "id": "rust_filters",
+   "kind": "exists",
+   "select": "rust",
+   "tier": "core",
+   "quote": "covering five programming languages: Java, .NET, Python, Go, and Rust",
+   "justify": "each language needs 2 memory metrics + 3 throughput + 3 concurrency percentiles = 8 filters",
+   "min": 8
+  },
+  {
+   "id": "memory_ratio_filters",
+   "kind": "exists",
+   "select": "ratio",
+   "tier": "core",
+   "quote": "extract a memory efficiency ratio and peak memory usage from memory test results",
+   "justify": "one ratio filter per language, five languages",
+   "min": 5
+  },
+  {
+   "id": "peak_memory_filters",
+   "kind": "exists",
+   "select": "peak",
+   "tier": "core",
+   "quote": "extract a memory efficiency ratio and peak memory usage from memory test results",
+   "justify": "one peak-memory filter per language, five languages",
+   "min": 5
+  },
+  {
+   "id": "memory_test_filters",
+   "kind": "exists",
+   "select": "memtest",
+   "tier": "core",
+   "quote": "from memory test results",
+   "justify": "two memory metrics per language, five languages",
+   "min": 10
+  },
+  {
+   "id": "throughput_filters",
+   "kind": "exists",
+   "select": "tput",
+   "tier": "core",
+   "quote": "extract p50, p95, and p99 latency from throughput test results at a specific data size",
+   "justify": "three percentiles per language, five languages",
+   "min": 15
+  },
+  {
+   "id": "concurrency_filters",
+   "kind": "exists",
+   "select": "conc",
+   "tier": "core",
+   "quote": "extract p50, p95, and p99 latency from concurrency test results",
+   "justify": "three percentiles per language, five languages",
+   "min": 15
+  },
+  {
+   "id": "p50_filters",
+   "kind": "exists",
+   "select": "p50",
+   "tier": "core",
+   "quote": "extract p50, p95, and p99 latency",
+   "justify": "p50 for throughput and concurrency, five languages",
+   "min": 10
+  },
+  {
+   "id": "p95_filters",
+   "kind": "exists",
+   "select": "p95",
+   "tier": "core",
+   "quote": "extract p50, p95, and p99 latency",
+   "justify": "p95 for throughput and concurrency, five languages",
+   "min": 10
+  },
+  {
+   "id": "p99_filters",
+   "kind": "exists",
+   "select": "p99",
+   "tier": "core",
+   "quote": "extract p50, p95, and p99 latency",
+   "justify": "p99 for throughput and concurrency, five languages",
+   "min": 10
+  },
+  {
+   "id": "language_namespaces",
+   "kind": "exists",
+   "select": "mf",
+   "tier": "core",
+   "quote": "publishing each metric into a language-specific CloudWatch namespace",
+   "justify": "one namespace per language, five languages",
+   "min": 5,
+   "distinct_path": [
+    "MetricTransformations",
+    0,
+    "MetricNamespace"
+   ]
+  },
+  {
+   "id": "language_dimension",
+   "kind": "attr",
+   "select": "mf",
+   "cond": {
+    "path": [
+     "MetricTransformations",
+     "*",
+     "Dimensions"
+    ],
+    "op": "regex",
+    "value": "(?i)(lang|java|\\.net|dotnet|python|golang|\\bgo\\b|rust)"
+   },
+   "tier": "detail",
+   "quote": "with a dimension identifying the language",
+   "quantifier": "all"
+  },
+  {
+   "id": "output_log_group_name",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__output__"
+      ],
+      "where": [
+       {
+        "path": [
+         "value",
+         "attr"
+        ],
+        "op": "absent"
+       }
+      ]
+     },
+     "to": "lg"
+    },
+    {
+     "kind": "join",
+     "from": "outs",
+     "from_path": [
+      "value"
+     ],
+     "to": "lg",
+     "to_path": [
+      "LogGroupName"
+     ]
+    }
+   ],
+   "tier": "detail",
+   "quote": "Output the log group name"
+  },
+  {
+   "id": "output_namespaces",
+   "kind": "all_of",
+   "tier": "detail",
+   "quote": "the list of per-language metric namespaces created",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "outs",
+     "cond": {
+      "path": [
+       "value"
+      ],
+      "op": "regex",
+      "value": "(?i)java"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "outs",
+     "cond": {
+      "path": [
+       "value"
+      ],
+      "op": "regex",
+      "value": "(?i:dotnet|\\.net|csharp|c#)|Net[A-Z]"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "outs",
+     "cond": {
+      "path": [
+       "value"
+      ],
+      "op": "regex",
+      "value": "(?i)python"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "outs",
+     "cond": {
+      "path": [
+       "value"
+      ],
+      "op": "regex",
+      "value": "(?i:golang|\\bgo\\b)|Go[A-Z]"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "outs",
+     "cond": {
+      "path": [
+       "value"
+      ],
+      "op": "regex",
+      "value": "(?i)rust"
+     }
+    }
+   ],
+   "justify": "Go is one of the five languages the prompt names; Go[A-Z] accepts a namespace written like GoBenchmarks"
+  },
+  {
+   "id": "x_latency_ms",
+   "kind": "attr",
+   "select": "latency",
+   "cond": {
+    "path": [
+     "MetricTransformations",
+     "*",
+     "Unit"
+    ],
+    "op": "eq",
+    "value": "Milliseconds"
+   },
+   "tier": "extra",
+   "quantifier": "all"
+  },
+  {
+   "id": "x_peak_mb",
+   "kind": "attr",
+   "select": "peak",
+   "cond": {
+    "path": [
+     "MetricTransformations",
+     "*",
+     "Unit"
+    ],
+    "op": "eq",
+    "value": "Megabytes"
+   },
+   "tier": "extra",
+   "quantifier": "all"
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

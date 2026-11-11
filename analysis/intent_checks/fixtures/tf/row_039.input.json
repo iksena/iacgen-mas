@@ -1,0 +1,161 @@
+{
+ "meta": {
+  "lang": "tf",
+  "mode": "plan",
+  "warnings": [],
+  "gt_hash": "2622035efd1c00558261f99a626637d1f023103d7f9854cec50ab2a66e1dd0e9",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "aws_kms_alias.cmk",
+   "cfg": "aws_kms_alias.cmk",
+   "type": "aws_kms_alias",
+   "values": {
+    "name": "alias/kms-cmk-example"
+   },
+   "refs": [
+    "aws_kms_key.cmk"
+   ]
+  },
+  {
+   "id": "aws_kms_key.cmk",
+   "cfg": "aws_kms_key.cmk",
+   "type": "aws_kms_key",
+   "values": {
+    "bypass_policy_lockout_safety_check": false,
+    "custom_key_store_id": null,
+    "customer_master_key_spec": "SYMMETRIC_DEFAULT",
+    "deletion_window_in_days": 7,
+    "enable_key_rotation": false,
+    "is_enabled": true,
+    "key_usage": "ENCRYPT_DECRYPT",
+    "policy": "{\"Statement\":[{\"Action\":\"kms:*\",\"Effect\":\"Allow\",\"Principal\":{\"AWS\":\"arn:aws:iam::000000000000:root\"},\"Resource\":\"*\",\"Sid\":\"\"}],\"Version\":\"2012-10-17\"}",
+    "tags": null
+   },
+   "refs": [
+    "data.aws_iam_policy_document.cmk_admin_policy"
+   ]
+  },
+  {
+   "id": "__parameter__.alias",
+   "cfg": "__parameter__.alias",
+   "type": "__parameter__",
+   "values": {
+    "name": "alias",
+    "default": "kms-cmk-example"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.cmk_alias",
+   "cfg": "__output__.cmk_alias",
+   "type": "__output__",
+   "values": {
+    "name": "cmk_alias",
+    "value": "alias/kms-cmk-example",
+    "description": "The alias of the CMK"
+   },
+   "refs": [
+    "aws_kms_alias.cmk"
+   ]
+  },
+  {
+   "id": "__output__.cmk_arn",
+   "cfg": "__output__.cmk_arn",
+   "type": "__output__",
+   "values": {
+    "name": "cmk_arn",
+    "value": null,
+    "description": "The ARN of the CMK"
+   },
+   "refs": [
+    "aws_kms_key.cmk"
+   ]
+  },
+  {
+   "id": "__declared__.aws_kms_key.cmk",
+   "cfg": "aws_kms_key.cmk",
+   "type": "__declared__",
+   "refs": [
+    "data.aws_iam_policy_document.cmk_admin_policy"
+   ],
+   "values": {
+    "type": "aws_kms_key",
+    "name": "cmk",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "policy": "${data.aws_iam_policy_document.cmk_admin_policy.json}",
+     "deletion_window_in_days": 7
+    }
+   }
+  },
+  {
+   "id": "__declared__.data.aws_iam_policy_document.cmk_admin_policy",
+   "cfg": "data.aws_iam_policy_document.cmk_admin_policy",
+   "type": "__declared__",
+   "refs": [
+    "data.aws_caller_identity.self"
+   ],
+   "values": {
+    "type": "data.aws_iam_policy_document",
+    "name": "cmk_admin_policy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "statement": [
+      {
+       "effect": "Allow",
+       "resources": [
+        "*"
+       ],
+       "actions": [
+        "kms:*"
+       ],
+       "principals": [
+        {
+         "type": "AWS",
+         "identifiers": [
+          "${data.aws_caller_identity.self.arn}"
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.data.aws_caller_identity.self",
+   "cfg": "data.aws_caller_identity.self",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "data.aws_caller_identity",
+    "name": "self",
+    "gated": false,
+    "gate": null,
+    "properties": {}
+   }
+  },
+  {
+   "id": "__declared__.aws_kms_alias.cmk",
+   "cfg": "aws_kms_alias.cmk",
+   "type": "__declared__",
+   "refs": [
+    "aws_kms_key.cmk"
+   ],
+   "values": {
+    "type": "aws_kms_alias",
+    "name": "cmk",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "alias/${var.alias}",
+     "target_key_id": "${aws_kms_key.cmk.id}"
+    }
+   }
+  }
+ ]
+}

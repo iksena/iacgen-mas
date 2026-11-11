@@ -1,0 +1,619 @@
+package intent.cfn.row_058
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {
+  "mesh": {
+   "types": [
+    "AWS::AppMesh::Mesh"
+   ],
+   "where": []
+  },
+  "gw": {
+   "types": [
+    "AWS::AppMesh::VirtualGateway"
+   ],
+   "where": []
+  },
+  "vs": {
+   "types": [
+    "AWS::AppMesh::VirtualService"
+   ],
+   "where": []
+  },
+  "vr": {
+   "types": [
+    "AWS::AppMesh::VirtualRouter"
+   ],
+   "where": []
+  },
+  "route": {
+   "types": [
+    "AWS::AppMesh::Route"
+   ],
+   "where": []
+  },
+  "nodes": {
+   "types": [
+    "AWS::AppMesh::VirtualNode"
+   ],
+   "where": [
+    {
+     "path": [
+      "VirtualNodeName"
+     ],
+     "op": "regex",
+     "value": "^colorteller-(blue|green)-node$"
+    }
+   ]
+  },
+  "blue": {
+   "types": [
+    "AWS::AppMesh::VirtualNode"
+   ],
+   "where": [
+    {
+     "path": [
+      "VirtualNodeName"
+     ],
+     "op": "eq",
+     "value": "colorteller-blue-node"
+    }
+   ]
+  },
+  "green": {
+   "types": [
+    "AWS::AppMesh::VirtualNode"
+   ],
+   "where": [
+    {
+     "path": [
+      "VirtualNodeName"
+     ],
+     "op": "eq",
+     "value": "colorteller-green-node"
+    }
+   ]
+  },
+  "cm_service": {
+   "types": [
+    "AWS::ServiceDiscovery::Service"
+   ],
+   "where": [
+    {
+     "path": [
+      "Name"
+     ],
+     "op": "eq",
+     "value": "colorteller"
+    }
+   ]
+  },
+  "cs_svc": {
+   "types": [
+    "AWS::AppMesh::VirtualService"
+   ],
+   "where": [
+    {
+     "path": [
+      "VirtualServiceName"
+     ],
+     "op": "regex",
+     "value": "(?i)colorteller"
+    }
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "mesh",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "a basic App Mesh setup",
+   "select": "mesh"
+  },
+  {
+   "id": "mesh_name",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "a mesh using the stack name",
+   "justify": "stack name pseudo-parameter resolves to stack",
+   "select": "mesh",
+   "cond": {
+    "path": [
+     "MeshName"
+    ],
+    "op": "eq",
+    "value": "stack"
+   }
+  },
+  {
+   "id": "gateway",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "a virtual gateway named colorgateway",
+   "select": {
+    "types": [
+     "AWS::AppMesh::VirtualGateway"
+    ],
+    "where": [
+     {
+      "path": [
+       "VirtualGatewayName"
+      ],
+      "op": "eq",
+      "value": "colorgateway"
+     }
+    ]
+   }
+  },
+  {
+   "id": "gateway_port",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "listening on port 9080",
+   "select": "gw",
+   "cond": {
+    "path": [
+     "Spec",
+     "Listeners",
+     "*",
+     "PortMapping",
+     "Port"
+    ],
+    "op": "eq",
+    "value": 9080
+   }
+  },
+  {
+   "id": "gateway_health",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "an http health check on path /ping using a healthy/unhealthy threshold of 2, a 2000ms timeout, and a 5000ms interval",
+   "select": "gw",
+   "cond": {
+    "path": [
+     "Spec",
+     "Listeners",
+     "*"
+    ],
+    "op": "match",
+    "value": [
+     {
+      "path": [
+       "HealthCheck",
+       "Protocol"
+      ],
+      "op": "eq",
+      "value": "http"
+     },
+     {
+      "path": [
+       "HealthCheck",
+       "Path"
+      ],
+      "op": "eq",
+      "value": "/ping"
+     },
+     {
+      "path": [
+       "HealthCheck",
+       "HealthyThreshold"
+      ],
+      "op": "eq",
+      "value": 2
+     },
+     {
+      "path": [
+       "HealthCheck",
+       "UnhealthyThreshold"
+      ],
+      "op": "eq",
+      "value": 2
+     },
+     {
+      "path": [
+       "HealthCheck",
+       "TimeoutMillis"
+      ],
+      "op": "eq",
+      "value": 2000
+     },
+     {
+      "path": [
+       "HealthCheck",
+       "IntervalMillis"
+      ],
+      "op": "eq",
+      "value": 5000
+     }
+    ]
+   }
+  },
+  {
+   "id": "virtual_service",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "a virtual service colorteller",
+   "select": "cs_svc"
+  },
+  {
+   "id": "service_router",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "routes through a virtual router",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "cs_svc",
+     "to": "vr"
+    },
+    {
+     "kind": "join",
+     "from": "cs_svc",
+     "from_path": [
+      "Spec",
+      "Provider",
+      "VirtualRouter",
+      "VirtualRouterName"
+     ],
+     "to": "vr",
+     "to_path": [
+      "VirtualRouterName"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "router",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "a virtual router",
+   "select": "vr"
+  },
+  {
+   "id": "blue_node",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "two virtual nodes named colorteller-blue-node",
+   "select": "blue"
+  },
+  {
+   "id": "green_node",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "colorteller-green-node",
+   "select": "green"
+  },
+  {
+   "id": "nodes_port",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "each listening on port 9080",
+   "select": "nodes",
+   "quantifier": "all",
+   "cond": {
+    "path": [
+     "Spec",
+     "Listeners",
+     "*",
+     "PortMapping",
+     "Port"
+    ],
+    "op": "eq",
+    "value": 9080
+   }
+  },
+  {
+   "id": "nodes_health",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "with the same /ping health check settings",
+   "select": "nodes",
+   "quantifier": "all",
+   "cond": {
+    "path": [
+     "Spec",
+     "Listeners",
+     "*"
+    ],
+    "op": "match",
+    "value": [
+     {
+      "path": [
+       "HealthCheck",
+       "Protocol"
+      ],
+      "op": "eq",
+      "value": "http"
+     },
+     {
+      "path": [
+       "HealthCheck",
+       "Path"
+      ],
+      "op": "eq",
+      "value": "/ping"
+     },
+     {
+      "path": [
+       "HealthCheck",
+       "HealthyThreshold"
+      ],
+      "op": "eq",
+      "value": 2
+     },
+     {
+      "path": [
+       "HealthCheck",
+       "UnhealthyThreshold"
+      ],
+      "op": "eq",
+      "value": 2
+     },
+     {
+      "path": [
+       "HealthCheck",
+       "TimeoutMillis"
+      ],
+      "op": "eq",
+      "value": 2000
+     },
+     {
+      "path": [
+       "HealthCheck",
+       "IntervalMillis"
+      ],
+      "op": "eq",
+      "value": 5000
+     }
+    ]
+   }
+  },
+  {
+   "id": "nodes_cloudmap_service",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "discovered via AWS Cloud Map using a namespace named after the stack name with a .local suffix and service name colorteller",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "nodes",
+     "quantifier": "all",
+     "cond": {
+      "path": [
+       "Spec",
+       "ServiceDiscovery",
+       "AWSCloudMap",
+       "ServiceName"
+      ],
+      "op": "eq",
+      "value": "colorteller"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": "nodes",
+     "to": "cm_service"
+    }
+   ]
+  },
+  {
+   "id": "nodes_cloudmap_namespace",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "a namespace named after the stack name with a .local suffix",
+   "justify": "stack name resolves to stack, plus .local",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "nodes",
+     "quantifier": "all",
+     "cond": {
+      "path": [
+       "Spec",
+       "ServiceDiscovery",
+       "AWSCloudMap",
+       "NamespaceName"
+      ],
+      "op": "eq",
+      "value": "stack.local"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": "nodes",
+     "to": {
+      "types": [
+       "AWS::ServiceDiscovery::PrivateDnsNamespace",
+       "AWS::ServiceDiscovery::PublicDnsNamespace",
+       "AWS::ServiceDiscovery::HttpNamespace"
+      ],
+      "where": [
+       {
+        "path": [
+         "Name"
+        ],
+        "op": "eq",
+        "value": "stack.local"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "route",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "routing set to split traffic 50/50 between the blue and green nodes",
+   "select": "route"
+  },
+  {
+   "id": "route_on_router",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "routes through a virtual router to two virtual nodes",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "route",
+     "to": "vr"
+    },
+    {
+     "kind": "join",
+     "from": "route",
+     "from_path": [
+      "VirtualRouterName"
+     ],
+     "to": "vr",
+     "to_path": [
+      "VirtualRouterName"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "route_weights",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "split traffic 50/50",
+   "justify": "equal weights split traffic 50/50; 1:1 is also an even split",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "route",
+     "cond": {
+      "path": [
+       "Spec",
+       "*",
+       "Action",
+       "WeightedTargets",
+       "*",
+       "Weight"
+      ],
+      "op": "eq",
+      "value": 50,
+      "every": true
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "route",
+     "cond": {
+      "path": [
+       "Spec",
+       "*",
+       "Action",
+       "WeightedTargets",
+       "*",
+       "Weight"
+      ],
+      "op": "eq",
+      "value": 1,
+      "every": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "route_blue",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "between the blue and green nodes",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "route",
+     "cond": {
+      "path": [
+       "Spec"
+      ],
+      "op": "contains",
+      "value": "colorteller-blue-node"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": "route",
+     "to": "blue"
+    }
+   ]
+  },
+  {
+   "id": "route_green",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "between the blue and green nodes",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "route",
+     "cond": {
+      "path": [
+       "Spec"
+      ],
+      "op": "contains",
+      "value": "colorteller-green-node"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": "route",
+     "to": "green"
+    }
+   ]
+  },
+  {
+   "id": "x_router_port",
+   "kind": "attr",
+   "tier": "extra",
+   "select": "vr",
+   "cond": {
+    "path": [
+     "Spec",
+     "Listeners",
+     "*",
+     "PortMapping",
+     "Port"
+    ],
+    "op": "eq",
+    "value": 9080
+   }
+  },
+  {
+   "id": "x_route_prefix",
+   "kind": "attr",
+   "tier": "extra",
+   "select": "route",
+   "cond": {
+    "path": [
+     "Spec",
+     "*",
+     "Match",
+     "Prefix"
+    ],
+    "op": "eq",
+    "value": "/"
+   }
+  },
+  {
+   "id": "extra_type_aws_appmesh_gatewayroute",
+   "kind": "exists",
+   "tier": "extra",
+   "select": {
+    "types": [
+     "AWS::AppMesh::GatewayRoute"
+    ],
+    "where": []
+   }
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

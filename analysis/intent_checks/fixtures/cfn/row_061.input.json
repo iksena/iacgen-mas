@@ -1,0 +1,349 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "sam_expanded",
+  "warnings": [],
+  "gt_hash": "ee609566a67884b6118f690aa0dd5e18548254c6e7610c11f57920850c239d35",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "RuleAssumeRole",
+   "cfg": "RuleAssumeRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "events.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Path": "/",
+    "Policies": [
+     {
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Action": [
+          "iam:PassRole"
+         ],
+         "Resource": [
+          {
+           "ref": "AutomationAssumeRole",
+           "attr": "Arn"
+          }
+         ],
+         "Effect": "Allow"
+        }
+       ]
+      },
+      "PolicyName": "PassRolePolicy"
+     },
+     {
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Action": [
+          "ssm:StartAutomationExecution"
+         ],
+         "Resource": [
+          "arn:aws:ssm:us-east-1::automation-definition/AWSSupport-ConfigureEC2Metadata:$DEFAULT"
+         ],
+         "Effect": "Allow"
+        }
+       ]
+      },
+      "PolicyName": "StartAutomationPolicy"
+     }
+    ]
+   },
+   "refs": [
+    "AutomationAssumeRole"
+   ]
+  },
+  {
+   "id": "AutomationAssumeRole",
+   "cfg": "AutomationAssumeRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "ssm.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Path": "/",
+    "Policies": [
+     {
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Action": [
+          "ec2:DescribeInstances",
+          "ec2:ModifyInstanceMetadataOptions",
+          "ssm:GetAutomationExecution",
+          "ssm:StartAutomationExecution"
+         ],
+         "Resource": [
+          "*"
+         ],
+         "Effect": "Allow"
+        }
+       ]
+      },
+      "PolicyName": "ConfigureEC2MetadataPolicy"
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "EventBridgeRule",
+   "cfg": "EventBridgeRule",
+   "type": "AWS::Events::Rule",
+   "values": {
+    "Description": "Trigger AWSSupport-ConfigureEC2Metadata document to disable IMDSv1 when an EC2 Instance is started.",
+    "EventPattern": {
+     "source": [
+      "aws.ec2"
+     ],
+     "detail-type": [
+      "EC2 Instance State-change Notification"
+     ],
+     "detail": {
+      "state": [
+       "running"
+      ]
+     }
+    },
+    "Targets": [
+     {
+      "Arn": "arn:aws:ssm:us-east-1::automation-definition/AWSSupport-ConfigureEC2Metadata",
+      "Id": "DisableIMDSv1Rule",
+      "RoleArn": {
+       "ref": "RuleAssumeRole",
+       "attr": "Arn"
+      },
+      "InputTransformer": {
+       "InputPathsMap": {
+        "instance": "$.detail.instance-id"
+       },
+       "InputTemplate": "{\n  \"InstanceId\": [\"<instance>\"],\n  \"HttpPutResponseHopLimit\": [\"1\"],\n  \"EnforceIMDSv2\": [\"required\"],\n  \"MetadataAccess\": [\"enabled\"],\n  \"AutomationAssumeRole\": [\"${AutomationAssumeRole.Arn}\"]\n}"
+      }
+     }
+    ]
+   },
+   "refs": [
+    "AutomationAssumeRole",
+    "RuleAssumeRole"
+   ]
+  },
+  {
+   "id": "__parameter__.MetadataHttpPutResponseHopLimit",
+   "cfg": "__parameter__.MetadataHttpPutResponseHopLimit",
+   "type": "__parameter__",
+   "values": {
+    "name": "MetadataHttpPutResponseHopLimit",
+    "type": "Number",
+    "default": 1,
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.RuleAssumeRole",
+   "cfg": "RuleAssumeRole",
+   "type": "__declared__",
+   "refs": [
+    "AutomationAssumeRole"
+   ],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "RuleAssumeRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "events.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Path": "/",
+     "Policies": [
+      {
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Action": [
+           "iam:PassRole"
+          ],
+          "Resource": [
+           {
+            "ref": "AutomationAssumeRole",
+            "attr": "Arn"
+           }
+          ],
+          "Effect": "Allow"
+         }
+        ]
+       },
+       "PolicyName": "PassRolePolicy"
+      },
+      {
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Action": [
+           "ssm:StartAutomationExecution"
+          ],
+          "Resource": [
+           "arn:aws:ssm:us-east-1::automation-definition/AWSSupport-ConfigureEC2Metadata:$DEFAULT"
+          ],
+          "Effect": "Allow"
+         }
+        ]
+       },
+       "PolicyName": "StartAutomationPolicy"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.AutomationAssumeRole",
+   "cfg": "AutomationAssumeRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "AutomationAssumeRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "ssm.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Path": "/",
+     "Policies": [
+      {
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Action": [
+           "ec2:DescribeInstances",
+           "ec2:ModifyInstanceMetadataOptions",
+           "ssm:GetAutomationExecution",
+           "ssm:StartAutomationExecution"
+          ],
+          "Resource": [
+           "*"
+          ],
+          "Effect": "Allow"
+         }
+        ]
+       },
+       "PolicyName": "ConfigureEC2MetadataPolicy"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Events::Rule.EventBridgeRule",
+   "cfg": "EventBridgeRule",
+   "type": "__declared__",
+   "refs": [
+    "AutomationAssumeRole",
+    "RuleAssumeRole"
+   ],
+   "values": {
+    "type": "AWS::Events::Rule",
+    "name": "EventBridgeRule",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Description": "Trigger AWSSupport-ConfigureEC2Metadata document to disable IMDSv1 when an EC2 Instance is started.",
+     "EventPattern": {
+      "source": [
+       "aws.ec2"
+      ],
+      "detail-type": [
+       "EC2 Instance State-change Notification"
+      ],
+      "detail": {
+       "state": [
+        "running"
+       ]
+      }
+     },
+     "Targets": [
+      {
+       "Arn": "arn:aws:ssm:us-east-1::automation-definition/AWSSupport-ConfigureEC2Metadata",
+       "Id": "DisableIMDSv1Rule",
+       "RoleArn": {
+        "ref": "RuleAssumeRole",
+        "attr": "Arn"
+       },
+       "InputTransformer": {
+        "InputPathsMap": {
+         "instance": "$.detail.instance-id"
+        },
+        "InputTemplate": "{\n  \"InstanceId\": [\"<instance>\"],\n  \"HttpPutResponseHopLimit\": [\"1\"],\n  \"EnforceIMDSv2\": [\"required\"],\n  \"MetadataAccess\": [\"enabled\"],\n  \"AutomationAssumeRole\": [\"${AutomationAssumeRole.Arn}\"]\n}"
+       }
+      }
+     ]
+    }
+   }
+  }
+ ]
+}

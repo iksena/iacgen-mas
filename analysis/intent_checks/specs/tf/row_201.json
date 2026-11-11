@@ -1,0 +1,2441 @@
+{
+  "lang": "tf",
+  "row_number": 201,
+  "source_hash": {
+    "gt": "073f5c035b483f0111d2558fc307bae40c0a9fe50962d4579ac9d4b4e1949742",
+    "prompt": "44dd3199de6843118e4f624f0afd2d239207eadc09c5b082aecacf869daa66f5"
+  },
+  "selectors": {},
+  "checks": [
+    {
+      "id": "vpc",
+      "tier": "core",
+      "kind": "exists",
+      "select": {
+        "types": [
+          "aws_vpc"
+        ]
+      },
+      "quote": "a new VPC"
+    },
+    {
+      "id": "four_subnets",
+      "tier": "core",
+      "kind": "exists",
+      "select": {
+        "types": [
+          "aws_subnet"
+        ]
+      },
+      "min": 4,
+      "quote": "two public and two private subnets"
+    },
+    {
+      "id": "two_azs",
+      "tier": "detail",
+      "kind": "exists",
+      "select": {
+        "types": [
+          "aws_subnet"
+        ]
+      },
+      "distinct_path": "availability_zone",
+      "min": 2,
+      "quote": "across two availability zones"
+    },
+    {
+      "id": "igw",
+      "tier": "core",
+      "kind": "exists",
+      "select": {
+        "types": [
+          "aws_internet_gateway"
+        ]
+      },
+      "quote": "an internet gateway"
+    },
+    {
+      "id": "two_route_tables",
+      "tier": "detail",
+      "kind": "exists",
+      "select": {
+        "types": [
+          "aws_route_table"
+        ]
+      },
+      "min": 2,
+      "quote": "separate route tables for the public and private subnets",
+      "justify": "separate public and private route tables are two"
+    },
+    {
+      "id": "public_default_route",
+      "tier": "detail",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "aws_route"
+            ],
+            "where": [
+              {
+                "path": "destination_cidr_block",
+                "op": "eq",
+                "value": "0.0.0.0/0"
+              }
+            ]
+          },
+          "to": {
+            "types": [
+              "aws_internet_gateway"
+            ]
+          }
+        },
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "aws_route_table"
+            ]
+          },
+          "to": {
+            "types": [
+              "aws_internet_gateway"
+            ]
+          }
+        }
+      ],
+      "quote": "separate route tables for the public and private subnets",
+      "justify": "public subnets reach the internet through the gateway default route"
+    },
+    {
+      "id": "alb",
+      "tier": "core",
+      "kind": "attr",
+      "select": {
+        "types": [
+          "aws_lb",
+          "aws_alb"
+        ]
+      },
+      "cond": {
+        "path": "load_balancer_type",
+        "op": "eq",
+        "value": "application"
+      },
+      "quote": "an internal Application Load Balancer"
+    },
+    {
+      "id": "alb_internal",
+      "tier": "core",
+      "kind": "attr",
+      "select": {
+        "types": [
+          "aws_lb",
+          "aws_alb"
+        ]
+      },
+      "cond": {
+        "path": "internal",
+        "op": "truthy"
+      },
+      "quote": "internal Application Load Balancer"
+    },
+    {
+      "id": "alb_drop_headers",
+      "tier": "detail",
+      "kind": "attr",
+      "select": {
+        "types": [
+          "aws_lb",
+          "aws_alb"
+        ]
+      },
+      "cond": {
+        "path": "drop_invalid_header_fields",
+        "op": "truthy"
+      },
+      "quote": "drops invalid header fields"
+    },
+    {
+      "id": "https_listener",
+      "tier": "core",
+      "kind": "exists",
+      "select": {
+        "types": [
+          "aws_lb_listener",
+          "aws_alb_listener"
+        ],
+        "where": [
+          {
+            "path": "port",
+            "op": "eq",
+            "value": 443
+          },
+          {
+            "path": "protocol",
+            "op": "eq",
+            "value": "HTTPS"
+          }
+        ]
+      },
+      "quote": "an HTTPS listener on port 443"
+    },
+    {
+      "id": "https_forward_tg",
+      "tier": "core",
+      "kind": "ref",
+      "from": {
+        "types": [
+          "aws_lb_listener",
+          "aws_alb_listener"
+        ],
+        "where": [
+          {
+            "path": "port",
+            "op": "eq",
+            "value": 443
+          }
+        ]
+      },
+      "to": {
+        "types": [
+          "aws_lb_target_group",
+          "aws_alb_target_group"
+        ]
+      },
+      "quote": "forwarding to a target group"
+    },
+    {
+      "id": "acm_cert",
+      "tier": "core",
+      "kind": "attr",
+      "select": {
+        "types": [
+          "aws_acm_certificate"
+        ]
+      },
+      "quote": "self-signed certificate imported into ACM",
+      "cond": {
+        "path": "validation_method",
+        "op": "absent"
+      }
+    },
+    {
+      "id": "self_signed",
+      "tier": "detail",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "tls_self_signed_cert"
+            ]
+          }
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "eq",
+                "value": "tls_self_signed_cert"
+              }
+            ]
+          }
+        }
+      ],
+      "quote": "self-signed certificate"
+    },
+    {
+      "id": "http_redirect",
+      "tier": "core",
+      "kind": "exists",
+      "select": {
+        "types": [
+          "aws_lb_listener",
+          "aws_alb_listener"
+        ],
+        "where": [
+          {
+            "path": "port",
+            "op": "eq",
+            "value": 80
+          },
+          {
+            "path": "default_action.*.type",
+            "op": "eq",
+            "value": "redirect"
+          },
+          {
+            "path": "default_action.*.redirect.*.protocol",
+            "op": "eq",
+            "value": "HTTPS"
+          }
+        ]
+      },
+      "quote": "an HTTP listener on port 80 redirecting to HTTPS"
+    },
+    {
+      "id": "health_check_path",
+      "tier": "detail",
+      "kind": "attr",
+      "select": {
+        "types": [
+          "aws_lb_target_group",
+          "aws_alb_target_group"
+        ]
+      },
+      "cond": {
+        "path": "health_check.*.path",
+        "op": "present"
+      },
+      "quote": "health checks against a configurable health-check path"
+    },
+    {
+      "id": "service",
+      "tier": "core",
+      "kind": "exists",
+      "select": {
+        "types": [
+          "aws_ecs_service"
+        ]
+      },
+      "quote": "backed by an ECS Fargate service"
+    },
+    {
+      "id": "capacity_providers",
+      "tier": "core",
+      "kind": "all_of",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "aws_ecs_service"
+            ]
+          },
+          "cond": {
+            "path": "capacity_provider_strategy.*.capacity_provider",
+            "op": "eq",
+            "value": "FARGATE"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "aws_ecs_service"
+            ]
+          },
+          "cond": {
+            "path": "capacity_provider_strategy.*.capacity_provider",
+            "op": "eq",
+            "value": "FARGATE_SPOT"
+          }
+        }
+      ],
+      "quote": "split roughly 20 percent on-demand Fargate and 80 percent Fargate Spot capacity"
+    },
+    {
+      "id": "capacity_weights",
+      "kind": "any_of",
+      "tier": "detail",
+      "quote": "20 percent on-demand Fargate and 80 percent Fargate Spot",
+      "checks": [
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "aws_ecs_service"
+            ],
+            "where": [
+              {
+                "path": "capacity_provider_strategy.*",
+                "op": "match",
+                "value": [
+                  {
+                    "path": "capacity_provider",
+                    "op": "eq",
+                    "value": "FARGATE"
+                  },
+                  {
+                    "path": "weight",
+                    "op": "eq",
+                    "value": 1
+                  }
+                ]
+              },
+              {
+                "path": "capacity_provider_strategy.*",
+                "op": "match",
+                "value": [
+                  {
+                    "path": "capacity_provider",
+                    "op": "eq",
+                    "value": "FARGATE_SPOT"
+                  },
+                  {
+                    "path": "weight",
+                    "op": "eq",
+                    "value": 4
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "aws_ecs_service"
+            ],
+            "where": [
+              {
+                "path": "capacity_provider_strategy.*",
+                "op": "match",
+                "value": [
+                  {
+                    "path": "capacity_provider",
+                    "op": "eq",
+                    "value": "FARGATE"
+                  },
+                  {
+                    "path": "weight",
+                    "op": "eq",
+                    "value": 2
+                  }
+                ]
+              },
+              {
+                "path": "capacity_provider_strategy.*",
+                "op": "match",
+                "value": [
+                  {
+                    "path": "capacity_provider",
+                    "op": "eq",
+                    "value": "FARGATE_SPOT"
+                  },
+                  {
+                    "path": "weight",
+                    "op": "eq",
+                    "value": 8
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "aws_ecs_service"
+            ],
+            "where": [
+              {
+                "path": "capacity_provider_strategy.*",
+                "op": "match",
+                "value": [
+                  {
+                    "path": "capacity_provider",
+                    "op": "eq",
+                    "value": "FARGATE"
+                  },
+                  {
+                    "path": "weight",
+                    "op": "eq",
+                    "value": 10
+                  }
+                ]
+              },
+              {
+                "path": "capacity_provider_strategy.*",
+                "op": "match",
+                "value": [
+                  {
+                    "path": "capacity_provider",
+                    "op": "eq",
+                    "value": "FARGATE_SPOT"
+                  },
+                  {
+                    "path": "weight",
+                    "op": "eq",
+                    "value": 40
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "aws_ecs_service"
+            ],
+            "where": [
+              {
+                "path": "capacity_provider_strategy.*",
+                "op": "match",
+                "value": [
+                  {
+                    "path": "capacity_provider",
+                    "op": "eq",
+                    "value": "FARGATE"
+                  },
+                  {
+                    "path": "weight",
+                    "op": "eq",
+                    "value": 20
+                  }
+                ]
+              },
+              {
+                "path": "capacity_provider_strategy.*",
+                "op": "match",
+                "value": [
+                  {
+                    "path": "capacity_provider",
+                    "op": "eq",
+                    "value": "FARGATE_SPOT"
+                  },
+                  {
+                    "path": "weight",
+                    "op": "eq",
+                    "value": 80
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "justify": "20/80 percent split on one service; equivalent weight ratios 1:4, 2:8, 10:40"
+    },
+    {
+      "id": "circuit_breaker",
+      "tier": "core",
+      "kind": "all_of",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "aws_ecs_service"
+            ]
+          },
+          "cond": {
+            "path": "deployment_circuit_breaker.*.enable",
+            "op": "truthy"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "aws_ecs_service"
+            ]
+          },
+          "cond": {
+            "path": "deployment_circuit_breaker.*.rollback",
+            "op": "truthy"
+          }
+        }
+      ],
+      "quote": "running with a deployment circuit breaker and automatic rollback enabled"
+    },
+    {
+      "id": "scaling_bounds",
+      "tier": "core",
+      "kind": "attr",
+      "select": {
+        "types": [
+          "aws_appautoscaling_target"
+        ]
+      },
+      "cond": {
+        "path": "",
+        "op": "match",
+        "value": [
+          {
+            "path": "min_capacity",
+            "op": "eq",
+            "value": 2
+          },
+          {
+            "path": "max_capacity",
+            "op": "eq",
+            "value": 4
+          }
+        ]
+      },
+      "quote": "keeping the service between 2 and 4 running tasks"
+    },
+    {
+      "id": "scaling_cpu",
+      "tier": "core",
+      "kind": "exists",
+      "select": {
+        "types": [
+          "aws_appautoscaling_policy"
+        ],
+        "where": [
+          {
+            "path": "policy_type",
+            "op": "eq",
+            "value": "TargetTrackingScaling"
+          },
+          {
+            "path": "target_tracking_scaling_policy_configuration.*.predefined_metric_specification.*.predefined_metric_type",
+            "op": "eq",
+            "value": "ECSServiceAverageCPUUtilization"
+          }
+        ]
+      },
+      "quote": "target tracking auto-scaling on both average CPU"
+    },
+    {
+      "id": "scaling_memory",
+      "tier": "core",
+      "kind": "exists",
+      "select": {
+        "types": [
+          "aws_appautoscaling_policy"
+        ],
+        "where": [
+          {
+            "path": "policy_type",
+            "op": "eq",
+            "value": "TargetTrackingScaling"
+          },
+          {
+            "path": "target_tracking_scaling_policy_configuration.*.predefined_metric_specification.*.predefined_metric_type",
+            "op": "eq",
+            "value": "ECSServiceAverageMemoryUtilization"
+          }
+        ]
+      },
+      "quote": "and memory utilization"
+    },
+    {
+      "id": "task_fargate",
+      "tier": "core",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "aws_ecs_task_definition"
+            ]
+          },
+          "cond": {
+            "path": "requires_compatibilities.*",
+            "op": "eq",
+            "value": "FARGATE"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "eq",
+                "value": "aws_ecs_task_definition"
+              }
+            ]
+          },
+          "cond": {
+            "path": "properties.requires_compatibilities.*",
+            "op": "eq",
+            "value": "FARGATE"
+          }
+        }
+      ],
+      "quote": "The task should initially run"
+    },
+    {
+      "id": "nginx_image",
+      "tier": "core",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "aws_ecs_task_definition"
+            ]
+          },
+          "cond": {
+            "path": "container_definitions",
+            "op": "regex",
+            "value": "(?i)nginx"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "eq",
+                "value": "aws_ecs_task_definition"
+              }
+            ]
+          },
+          "cond": {
+            "path": "properties.container_definitions",
+            "op": "regex",
+            "value": "(?i)nginx"
+          }
+        }
+      ],
+      "quote": "a placeholder public nginx container image"
+    },
+    {
+      "id": "app_port",
+      "tier": "detail",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "__parameter__"
+            ],
+            "where": [
+              {
+                "path": "name",
+                "op": "regex",
+                "value": "(?i)port"
+              }
+            ]
+          },
+          "cond": {
+            "path": "default",
+            "op": "eq",
+            "value": 80
+          }
+        }
+      ],
+      "quote": "exposing a configurable application port (default 80)"
+    },
+    {
+      "id": "db_env",
+      "tier": "detail",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "eq",
+                "value": "aws_ecs_task_definition"
+              },
+              {
+                "path": "properties.container_definitions",
+                "op": "regex",
+                "value": "(?i)environment"
+              }
+            ]
+          },
+          "to": {
+            "types": [
+              "aws_db_instance"
+            ]
+          }
+        },
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "aws_ecs_task_definition"
+            ],
+            "where": [
+              {
+                "path": "container_definitions",
+                "op": "regex",
+                "value": "(?i)environment"
+              }
+            ]
+          },
+          "to": {
+            "types": [
+              "aws_db_instance"
+            ]
+          }
+        }
+      ],
+      "quote": "read its PostgreSQL connection string from environment variables"
+    },
+    {
+      "id": "rds_postgres",
+      "tier": "core",
+      "kind": "attr",
+      "select": {
+        "types": [
+          "aws_db_instance"
+        ]
+      },
+      "cond": {
+        "path": "engine",
+        "op": "eq",
+        "value": "postgres"
+      },
+      "quote": "a companion RDS PostgreSQL database"
+    },
+    {
+      "id": "rds_small",
+      "tier": "detail",
+      "kind": "attr",
+      "select": {
+        "types": [
+          "aws_db_instance"
+        ]
+      },
+      "cond": {
+        "path": "instance_class",
+        "op": "regex",
+        "value": "^db\\.t"
+      },
+      "quote": "a small",
+      "justify": "a small instance is a burstable db.t class"
+    },
+    {
+      "id": "rds_single_az",
+      "tier": "core",
+      "kind": "attr",
+      "select": {
+        "types": [
+          "aws_db_instance"
+        ]
+      },
+      "cond": {
+        "path": "multi_az",
+        "op": "none_eq",
+        "value": "true"
+      },
+      "quote": "single-AZ instance",
+      "justify": "single-AZ means multi_az is not true"
+    },
+    {
+      "id": "rds_encrypted",
+      "tier": "core",
+      "kind": "attr",
+      "select": {
+        "types": [
+          "aws_db_instance"
+        ]
+      },
+      "cond": {
+        "path": "storage_encrypted",
+        "op": "truthy"
+      },
+      "quote": "encrypted storage"
+    },
+    {
+      "id": "rds_in_private_subnets",
+      "tier": "core",
+      "kind": "all_of",
+      "checks": [
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "aws_db_instance"
+            ]
+          },
+          "to": {
+            "types": [
+              "aws_db_subnet_group"
+            ]
+          }
+        },
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "aws_db_subnet_group"
+            ]
+          },
+          "to": {
+            "types": [
+              "aws_subnet"
+            ]
+          }
+        }
+      ],
+      "quote": "placed in the private subnets"
+    },
+    {
+      "id": "rds_credentials",
+      "tier": "detail",
+      "kind": "all_of",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "aws_db_instance"
+            ]
+          },
+          "cond": {
+            "path": "username",
+            "op": "eq",
+            "value": "postgres"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "aws_db_instance"
+            ]
+          },
+          "cond": {
+            "path": "password",
+            "op": "eq",
+            "value": "postgres"
+          }
+        }
+      ],
+      "quote": "a default username and password of \"postgres\""
+    },
+    {
+      "id": "rds_db_name",
+      "tier": "detail",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "aws_db_instance"
+            ]
+          },
+          "cond": {
+            "path": "db_name",
+            "op": "eq",
+            "value": "mydb"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "aws_db_instance"
+            ]
+          },
+          "cond": {
+            "path": "name",
+            "op": "eq",
+            "value": "mydb"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "aws_ecs_task_definition"
+            ]
+          },
+          "cond": {
+            "path": "container_definitions",
+            "op": "regex",
+            "value": "mydb"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "eq",
+                "value": "aws_ecs_task_definition"
+              }
+            ]
+          },
+          "cond": {
+            "path": "properties.container_definitions",
+            "op": "regex",
+            "value": "mydb"
+          }
+        }
+      ],
+      "quote": "a database named \"mydb\""
+    },
+    {
+      "id": "ecr_repo",
+      "tier": "core",
+      "kind": "exists",
+      "select": {
+        "types": [
+          "aws_ecr_repository"
+        ]
+      },
+      "quote": "A dedicated container registry repository"
+    },
+    {
+      "id": "ecr_immutable",
+      "tier": "core",
+      "kind": "attr",
+      "select": {
+        "types": [
+          "aws_ecr_repository"
+        ]
+      },
+      "cond": {
+        "path": "image_tag_mutability",
+        "op": "eq",
+        "value": "IMMUTABLE"
+      },
+      "quote": "immutable image tags"
+    },
+    {
+      "id": "ecr_scan",
+      "tier": "core",
+      "kind": "attr",
+      "select": {
+        "types": [
+          "aws_ecr_repository"
+        ]
+      },
+      "cond": {
+        "path": "image_scanning_configuration.*.scan_on_push",
+        "op": "truthy"
+      },
+      "quote": "scan-on-push"
+    },
+    {
+      "id": "ecr_lifecycle",
+      "tier": "detail",
+      "kind": "exists",
+      "select": {
+        "types": [
+          "aws_ecr_lifecycle_policy"
+        ]
+      },
+      "quote": "a lifecycle rule"
+    },
+    {
+      "id": "ecr_lifecycle_untagged_14",
+      "tier": "detail",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "aws_ecr_lifecycle_policy"
+            ]
+          },
+          "cond": {
+            "path": "policy",
+            "op": "regex",
+            "value": "(?s)(countNumber\"?\\s*:\\s*14([^0-9]|$).*untagged|untagged.*countNumber\"?\\s*:\\s*14([^0-9]|$))"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "eq",
+                "value": "aws_ecr_lifecycle_policy"
+              }
+            ]
+          },
+          "cond": {
+            "path": "properties.policy",
+            "op": "regex",
+            "value": "(?s)(countNumber\"?\\s*:\\s*14([^0-9]|$).*untagged|untagged.*countNumber\"?\\s*:\\s*14([^0-9]|$))"
+          }
+        }
+      ],
+      "quote": "automatically expires untagged images after 14 days"
+    },
+    {
+      "id": "oidc_provider",
+      "tier": "core",
+      "kind": "attr",
+      "select": {
+        "types": [
+          "aws_iam_openid_connect_provider"
+        ]
+      },
+      "cond": {
+        "path": "url",
+        "op": "regex",
+        "value": "token\\.actions\\.githubusercontent\\.com"
+      },
+      "quote": "an IAM OpenID Connect identity provider trusting GitHub Actions' token issuer",
+      "justify": "GitHub Actions token issuer host"
+    },
+    {
+      "id": "gh_role_web_identity",
+      "tier": "core",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "aws_iam_role"
+            ]
+          },
+          "cond": {
+            "path": "assume_role_policy",
+            "op": "regex",
+            "value": "AssumeRoleWithWebIdentity"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "eq",
+                "value": "aws_iam_role"
+              }
+            ]
+          },
+          "cond": {
+            "path": "properties.assume_role_policy",
+            "op": "regex",
+            "value": "AssumeRoleWithWebIdentity"
+          }
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "data.aws_iam_policy_document"
+            ],
+            "where": [
+              {
+                "path": "statement.*.actions.*",
+                "op": "eq",
+                "value": "sts:AssumeRoleWithWebIdentity"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "eq",
+                "value": "data.aws_iam_policy_document"
+              },
+              {
+                "path": "properties.statement",
+                "op": "regex",
+                "value": "AssumeRoleWithWebIdentity"
+              }
+            ]
+          }
+        }
+      ],
+      "quote": "an assumable role restricted to workflows from a given GitHub organization or account",
+      "justify": "OIDC federation uses sts:AssumeRoleWithWebIdentity"
+    },
+    {
+      "id": "gh_role_sub",
+      "tier": "core",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "aws_iam_role"
+            ]
+          },
+          "cond": {
+            "path": "assume_role_policy",
+            "op": "regex",
+            "value": "githubusercontent\\.com:sub"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "eq",
+                "value": "aws_iam_role"
+              }
+            ]
+          },
+          "cond": {
+            "path": "properties.assume_role_policy",
+            "op": "regex",
+            "value": "githubusercontent\\.com:sub"
+          }
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "data.aws_iam_policy_document"
+            ],
+            "where": [
+              {
+                "path": "statement.*.condition.*.variable",
+                "op": "regex",
+                "value": "githubusercontent\\.com:sub"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "eq",
+                "value": "data.aws_iam_policy_document"
+              },
+              {
+                "path": "properties.statement",
+                "op": "regex",
+                "value": "githubusercontent\\.com:sub"
+              }
+            ]
+          }
+        }
+      ],
+      "quote": "restricted to workflows from a given GitHub organization or account",
+      "justify": "the sub claim identifies the GitHub org/repo"
+    },
+    {
+      "id": "gh_account_param",
+      "tier": "detail",
+      "kind": "any_of",
+      "quote": "restricted to workflows from a given GitHub organization or account (accepted as an input parameter)",
+      "checks": [
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "eq",
+                "value": "aws_iam_role"
+              },
+              {
+                "path": "properties.assume_role_policy",
+                "op": "regex",
+                "value": "(?is)(githubusercontent\\.com:sub.{0,300}\\$\\{(var\\.|local\\.[a-z_]*(github|org|account|owner)))|(\\$\\{(var\\.|local\\.[a-z_]*(github|org|account|owner))[^}]*\\}.{0,300}githubusercontent\\.com:sub)"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "eq",
+                "value": "data.aws_iam_policy_document"
+              },
+              {
+                "path": "properties.statement",
+                "op": "regex",
+                "value": "(?is)(githubusercontent\\.com:sub.{0,300}\\$\\{(var\\.|local\\.[a-z_]*(github|org|account|owner)))|(\\$\\{(var\\.|local\\.[a-z_]*(github|org|account|owner))[^}]*\\}.{0,300}githubusercontent\\.com:sub)"
+              }
+            ]
+          }
+        }
+      ],
+      "justify": "the sub-claim condition takes the organization from an input variable"
+    },
+    {
+      "id": "gh_ecr_push",
+      "tier": "core",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "aws_iam_role_policy_attachment"
+            ],
+            "where": [
+              {
+                "path": "policy_arn",
+                "op": "regex",
+                "value": "(?i)(ContainerRegistryPowerUser|ContainerRegistryFullAccess|ECRContainerBuilds|ElasticContainerRegistryPublicPowerUser)"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "eq",
+                "value": "aws_iam_role_policy_attachment"
+              },
+              {
+                "path": "properties.policy_arn",
+                "op": "regex",
+                "value": "(?i)(ContainerRegistryPowerUser|ContainerRegistryFullAccess|ECRContainerBuilds|ElasticContainerRegistryPublicPowerUser)"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "data.aws_iam_policy_document"
+            ],
+            "where": [
+              {
+                "path": "statement.*.actions.*",
+                "op": "glob_covers",
+                "value": "ecr:PutImage"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "aws_iam_role_policy",
+              "aws_iam_policy"
+            ],
+            "where": [
+              {
+                "path": "policy",
+                "op": "regex",
+                "value": "(?i)ecr:(PutImage|\\*)"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "eq",
+                "value": "data.aws_iam_policy_document"
+              },
+              {
+                "path": "properties.statement",
+                "op": "regex",
+                "value": "(?i)ecr:(PutImage|\\*)"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "eq",
+                "value": "aws_iam_role_policy"
+              },
+              {
+                "path": "properties.policy",
+                "op": "regex",
+                "value": "(?i)ecr:(PutImage|\\*)"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "eq",
+                "value": "aws_iam_policy"
+              },
+              {
+                "path": "properties.policy",
+                "op": "regex",
+                "value": "(?i)ecr:(PutImage|\\*)"
+              }
+            ]
+          }
+        }
+      ],
+      "quote": "permitted to build and push container images",
+      "justify": "managed policies that permit pushing images"
+    },
+    {
+      "id": "gh_register_taskdef",
+      "tier": "core",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "data.aws_iam_policy_document"
+            ],
+            "where": [
+              {
+                "path": "statement.*.actions.*",
+                "op": "glob_covers",
+                "value": "ecs:RegisterTaskDefinition"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "aws_iam_role_policy",
+              "aws_iam_policy"
+            ],
+            "where": [
+              {
+                "path": "policy",
+                "op": "regex",
+                "value": "(?i)ecs:(RegisterTaskDefinition|\\*)"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "eq",
+                "value": "data.aws_iam_policy_document"
+              },
+              {
+                "path": "properties.statement",
+                "op": "regex",
+                "value": "(?i)ecs:(RegisterTaskDefinition|\\*)"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "eq",
+                "value": "aws_iam_role_policy"
+              },
+              {
+                "path": "properties.policy",
+                "op": "regex",
+                "value": "(?i)ecs:(RegisterTaskDefinition|\\*)"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "eq",
+                "value": "aws_iam_policy"
+              },
+              {
+                "path": "properties.policy",
+                "op": "regex",
+                "value": "(?i)ecs:(RegisterTaskDefinition|\\*)"
+              }
+            ]
+          }
+        }
+      ],
+      "quote": "register new ECS task definitions"
+    },
+    {
+      "id": "gh_passrole",
+      "tier": "core",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "data.aws_iam_policy_document"
+            ],
+            "where": [
+              {
+                "path": "statement.*.actions.*",
+                "op": "glob_covers",
+                "value": "iam:PassRole"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "aws_iam_role_policy",
+              "aws_iam_policy"
+            ],
+            "where": [
+              {
+                "path": "policy",
+                "op": "regex",
+                "value": "(?i)iam:(PassRole|\\*)"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "eq",
+                "value": "data.aws_iam_policy_document"
+              },
+              {
+                "path": "properties.statement",
+                "op": "regex",
+                "value": "(?i)iam:(PassRole|\\*)"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "eq",
+                "value": "aws_iam_role_policy"
+              },
+              {
+                "path": "properties.policy",
+                "op": "regex",
+                "value": "(?i)iam:(PassRole|\\*)"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "eq",
+                "value": "aws_iam_policy"
+              },
+              {
+                "path": "properties.policy",
+                "op": "regex",
+                "value": "(?i)iam:(PassRole|\\*)"
+              }
+            ]
+          }
+        }
+      ],
+      "quote": "pass the task's own IAM roles"
+    },
+    {
+      "id": "gh_update_service",
+      "tier": "core",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "data.aws_iam_policy_document"
+            ],
+            "where": [
+              {
+                "path": "statement.*.actions.*",
+                "op": "glob_covers",
+                "value": "ecs:UpdateService"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "aws_iam_role_policy",
+              "aws_iam_policy"
+            ],
+            "where": [
+              {
+                "path": "policy",
+                "op": "regex",
+                "value": "(?i)ecs:(UpdateService|\\*)"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "eq",
+                "value": "data.aws_iam_policy_document"
+              },
+              {
+                "path": "properties.statement",
+                "op": "regex",
+                "value": "(?i)ecs:(UpdateService|\\*)"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "eq",
+                "value": "aws_iam_role_policy"
+              },
+              {
+                "path": "properties.policy",
+                "op": "regex",
+                "value": "(?i)ecs:(UpdateService|\\*)"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "eq",
+                "value": "aws_iam_policy"
+              },
+              {
+                "path": "properties.policy",
+                "op": "regex",
+                "value": "(?i)ecs:(UpdateService|\\*)"
+              }
+            ]
+          }
+        }
+      ],
+      "quote": "update the ECS service"
+    },
+    {
+      "id": "gh_list_describe",
+      "tier": "detail",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "data.aws_iam_policy_document"
+            ],
+            "where": [
+              {
+                "path": "statement.*.actions.*",
+                "op": "glob_covers",
+                "value": "ecs:DescribeTaskDefinition"
+              },
+              {
+                "path": "statement.*.actions.*",
+                "op": "glob_covers",
+                "value": "ecs:ListTaskDefinitions"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "aws_iam_role_policy",
+              "aws_iam_policy"
+            ],
+            "where": [
+              {
+                "path": "policy",
+                "op": "regex",
+                "value": "(?is)ecs:\\*|ecs:ListTaskDefinitions.*ecs:DescribeTaskDefinition|ecs:DescribeTaskDefinition.*ecs:ListTaskDefinitions"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "eq",
+                "value": "data.aws_iam_policy_document"
+              },
+              {
+                "path": "properties.statement",
+                "op": "regex",
+                "value": "(?is)ecs:\\*|ecs:ListTaskDefinitions.*ecs:DescribeTaskDefinition|ecs:DescribeTaskDefinition.*ecs:ListTaskDefinitions"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "eq",
+                "value": "aws_iam_role_policy"
+              },
+              {
+                "path": "properties.policy",
+                "op": "regex",
+                "value": "(?is)ecs:\\*|ecs:ListTaskDefinitions.*ecs:DescribeTaskDefinition|ecs:DescribeTaskDefinition.*ecs:ListTaskDefinitions"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "eq",
+                "value": "aws_iam_policy"
+              },
+              {
+                "path": "properties.policy",
+                "op": "regex",
+                "value": "(?is)ecs:\\*|ecs:ListTaskDefinitions.*ecs:DescribeTaskDefinition|ecs:DescribeTaskDefinition.*ecs:ListTaskDefinitions"
+              }
+            ]
+          }
+        }
+      ],
+      "quote": "list, describe"
+    },
+    {
+      "id": "gh_cleanup",
+      "tier": "detail",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "data.aws_iam_policy_document"
+            ],
+            "where": [
+              {
+                "path": "statement.*.actions.*",
+                "op": "glob_covers",
+                "value": "ecs:DeregisterTaskDefinition"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "aws_iam_role_policy",
+              "aws_iam_policy"
+            ],
+            "where": [
+              {
+                "path": "policy",
+                "op": "regex",
+                "value": "(?i)ecs:(Deregister|Delete)TaskDefinitions?|ecs:\\*"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "eq",
+                "value": "data.aws_iam_policy_document"
+              },
+              {
+                "path": "properties.statement",
+                "op": "regex",
+                "value": "(?i)ecs:(Deregister|Delete)TaskDefinitions?|ecs:\\*"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "eq",
+                "value": "aws_iam_role_policy"
+              },
+              {
+                "path": "properties.policy",
+                "op": "regex",
+                "value": "(?i)ecs:(Deregister|Delete)TaskDefinitions?|ecs:\\*"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "eq",
+                "value": "aws_iam_policy"
+              },
+              {
+                "path": "properties.policy",
+                "op": "regex",
+                "value": "(?i)ecs:(Deregister|Delete)TaskDefinitions?|ecs:\\*"
+              }
+            ]
+          }
+        }
+      ],
+      "quote": "clean up old task definitions"
+    },
+    {
+      "id": "app_ingress_from_lb_only",
+      "tier": "core",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "eq",
+                "value": "aws_security_group"
+              },
+              {
+                "path": "properties.ingress.*.cidr_blocks.*",
+                "op": "absent"
+              },
+              {
+                "path": "properties.ingress.*.from_port",
+                "op": "none_eq",
+                "value": 5432
+              }
+            ]
+          },
+          "cond": {
+            "path": "properties.ingress.*",
+            "op": "match",
+            "value": [
+              {
+                "path": "security_groups.*",
+                "op": "present"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "eq",
+                "value": "aws_vpc_security_group_ingress_rule"
+              },
+              {
+                "path": "properties.referenced_security_group_id",
+                "op": "present"
+              },
+              {
+                "path": "properties.from_port",
+                "op": "none_eq",
+                "value": 5432
+              }
+            ]
+          }
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "eq",
+                "value": "aws_security_group_rule"
+              },
+              {
+                "path": "properties.type",
+                "op": "eq",
+                "value": "ingress"
+              },
+              {
+                "path": "properties.source_security_group_id",
+                "op": "present"
+              },
+              {
+                "path": "properties.from_port",
+                "op": "none_eq",
+                "value": 5432
+              }
+            ]
+          }
+        }
+      ],
+      "quote": "only the load balancer can reach the application containers on any port",
+      "justify": "the application group admits a security-group source, not an address range; the 5432 rule is the database's"
+    },
+    {
+      "id": "db_ingress_from_app",
+      "tier": "core",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "aws_vpc_security_group_ingress_rule"
+            ],
+            "where": [
+              {
+                "path": "from_port",
+                "op": "eq",
+                "value": 5432
+              },
+              {
+                "path": "cidr_ipv4",
+                "op": "absent"
+              },
+              {
+                "path": "cidr_ipv6",
+                "op": "absent"
+              },
+              {
+                "path": "prefix_list_id",
+                "op": "absent"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "aws_security_group_rule"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "eq",
+                "value": "ingress"
+              },
+              {
+                "path": "from_port",
+                "op": "eq",
+                "value": 5432
+              },
+              {
+                "path": "cidr_blocks.*",
+                "op": "absent"
+              },
+              {
+                "path": "ipv6_cidr_blocks.*",
+                "op": "absent"
+              },
+              {
+                "path": "prefix_list_ids.*",
+                "op": "absent"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "aws_security_group"
+            ],
+            "where": [
+              {
+                "path": "ingress.*.cidr_blocks.*",
+                "op": "absent"
+              },
+              {
+                "path": "ingress.*.from_port",
+                "op": "eq",
+                "value": 5432
+              }
+            ]
+          }
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "eq",
+                "value": "aws_security_group"
+              },
+              {
+                "path": "properties.ingress.*.cidr_blocks.*",
+                "op": "absent"
+              },
+              {
+                "path": "properties.ingress.*",
+                "op": "match",
+                "value": [
+                  {
+                    "path": "from_port",
+                    "op": "eq",
+                    "value": 5432
+                  },
+                  {
+                    "path": "security_groups.*",
+                    "op": "present"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "quote": "only the application containers can reach the database on its PostgreSQL port",
+      "justify": "PostgreSQL port is 5432; the source is a security group, not an address range"
+    },
+    {
+      "id": "egress_in_vpc",
+      "tier": "core",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "aws_vpc_security_group_egress_rule"
+            ],
+            "where": [
+              {
+                "path": "cidr_ipv4",
+                "op": "present"
+              }
+            ]
+          },
+          "cond": {
+            "path": "cidr_ipv4",
+            "op": "regex",
+            "value": "^(10|172|192)\\.",
+            "every": true
+          },
+          "quantifier": "all"
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "aws_security_group_rule"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "eq",
+                "value": "egress"
+              },
+              {
+                "path": "cidr_blocks.*",
+                "op": "present"
+              }
+            ]
+          },
+          "cond": {
+            "path": "cidr_blocks.*",
+            "op": "regex",
+            "value": "^(10|172|192)\\.",
+            "every": true
+          },
+          "quantifier": "all"
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "aws_security_group"
+            ],
+            "where": [
+              {
+                "path": "egress.*.cidr_blocks.*",
+                "op": "present"
+              }
+            ]
+          },
+          "cond": {
+            "path": "egress.*.cidr_blocks.*",
+            "op": "regex",
+            "value": "^(10|172|192)\\.",
+            "every": true
+          },
+          "quantifier": "all"
+        }
+      ],
+      "quote": "may only send outbound traffic within the VPC",
+      "justify": "\"within the VPC\" means a private VPC address range, never the open internet"
+    },
+    {
+      "id": "two_ecs_roles",
+      "tier": "core",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "aws_iam_role"
+            ],
+            "where": [
+              {
+                "path": "assume_role_policy",
+                "op": "contains",
+                "value": "ecs-tasks.amazonaws.com"
+              }
+            ]
+          },
+          "min": 2
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "eq",
+                "value": "aws_iam_role"
+              },
+              {
+                "path": "properties.assume_role_policy",
+                "op": "contains",
+                "value": "ecs-tasks.amazonaws.com"
+              }
+            ]
+          },
+          "min": 2
+        }
+      ],
+      "quote": "create separate ECS execution and task roles",
+      "justify": "ECS tasks assume roles via ecs-tasks.amazonaws.com"
+    },
+    {
+      "id": "exec_role_managed_policy",
+      "tier": "detail",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "aws_iam_role_policy_attachment"
+            ],
+            "where": [
+              {
+                "path": "policy_arn",
+                "op": "regex",
+                "value": "AmazonECSTaskExecutionRolePolicy"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "__declared__"
+            ],
+            "where": [
+              {
+                "path": "type",
+                "op": "eq",
+                "value": "aws_iam_role_policy_attachment"
+              },
+              {
+                "path": "properties.policy_arn",
+                "op": "regex",
+                "value": "AmazonECSTaskExecutionRolePolicy"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "exists",
+          "select": {
+            "types": [
+              "aws_iam_role"
+            ],
+            "where": [
+              {
+                "path": "managed_policy_arns.*",
+                "op": "regex",
+                "value": "AmazonECSTaskExecutionRolePolicy"
+              }
+            ]
+          }
+        }
+      ],
+      "quote": "the standard managed ECS task execution permissions needed to pull images and write logs"
+    },
+    {
+      "id": "x_rds_private",
+      "tier": "extra",
+      "kind": "attr",
+      "select": {
+        "types": [
+          "aws_db_instance"
+        ]
+      },
+      "cond": {
+        "path": "publicly_accessible",
+        "op": "none_eq",
+        "value": "true"
+      }
+    },
+    {
+      "id": "x_listener_ssl_policy",
+      "tier": "extra",
+      "kind": "exists",
+      "select": {
+        "types": [
+          "aws_lb_listener",
+          "aws_alb_listener"
+        ],
+        "where": [
+          {
+            "path": "port",
+            "op": "eq",
+            "value": 443
+          },
+          {
+            "path": "ssl_policy",
+            "op": "regex",
+            "value": "^ELBSecurityPolicy"
+          }
+        ]
+      }
+    },
+    {
+      "id": "x_tg_ip",
+      "tier": "extra",
+      "kind": "attr",
+      "select": {
+        "types": [
+          "aws_lb_target_group",
+          "aws_alb_target_group"
+        ]
+      },
+      "cond": {
+        "path": "target_type",
+        "op": "eq",
+        "value": "ip"
+      }
+    },
+    {
+      "id": "x_vpc_dns",
+      "tier": "extra",
+      "kind": "attr",
+      "select": {
+        "types": [
+          "aws_vpc"
+        ]
+      },
+      "cond": {
+        "path": "enable_dns_support",
+        "op": "truthy"
+      }
+    },
+    {
+      "id": "extra_type_aws_db_parameter_group",
+      "kind": "exists",
+      "tier": "extra",
+      "select": {
+        "types": [
+          "aws_db_parameter_group"
+        ],
+        "where": []
+      }
+    },
+    {
+      "id": "extra_type_aws_ecs_cluster",
+      "kind": "exists",
+      "tier": "extra",
+      "select": {
+        "types": [
+          "aws_ecs_cluster"
+        ],
+        "where": []
+      }
+    },
+    {
+      "id": "extra_type_aws_route_table_association",
+      "kind": "exists",
+      "tier": "extra",
+      "select": {
+        "types": [
+          "aws_route_table_association"
+        ],
+        "where": []
+      }
+    }
+  ],
+  "notes": "PROMPT_GT_MISMATCH: database named \"mydb\" - the ground truth never sets db_name on the RDS instance, only a DATABASE_NAME=mydb container environment variable, so rds_db_name accepts either. Not expressible: which subnets are the private ones (rds_in_private_subnets only checks a subnet group); binding the CI/CD permissions to the GitHub role for the managed-policy-plus-attachment and policy-document forms (two hops); and the 'only' half of the security-group claims when rules are separate resources (the rule's own group and its source group are both refs). Inline rules are held to 'no CIDR source'. Capacity weights accept ratio-equivalent pairs on the same service."
+}

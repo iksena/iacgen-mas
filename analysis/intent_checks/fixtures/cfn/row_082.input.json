@@ -1,0 +1,496 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "a2f9711c6543a13035c4faafd95f2c98c28e74eb4cf3db55b22ca11d9b95f6d4",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "BillingTopicKey1E94F9A8",
+   "cfg": "BillingTopicKey1E94F9A8",
+   "type": "AWS::KMS::Key",
+   "values": {
+    "KeyPolicy": {
+     "Statement": [
+      {
+       "Action": [
+        "kms:*"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "AWS": [
+         "arn:aws:iam::123456789012:root"
+        ]
+       },
+       "Resource": [
+        "*"
+       ]
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "EnableKeyRotation": true,
+    "Tags": [
+     {
+      "Key": "created-by",
+      "Value": "CostManagementStack"
+     }
+    ],
+    "__resource__": {
+     "DeletionPolicy": "Delete",
+     "UpdateReplacePolicy": "Delete",
+     "Metadata": {
+      "aws:cdk:path": "CostManagementStack/BillingTopicKey/Resource"
+     }
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "BillingTopicKeyAlias9604A58C",
+   "cfg": "BillingTopicKeyAlias9604A58C",
+   "type": "AWS::KMS::Alias",
+   "values": {
+    "AliasName": "alias/billing-topic-key",
+    "TargetKeyId": {
+     "ref": "BillingTopicKey1E94F9A8",
+     "attr": "Arn"
+    },
+    "__resource__": {
+     "Metadata": {
+      "aws:cdk:path": "CostManagementStack/BillingTopicKey/Alias/Resource"
+     }
+    }
+   },
+   "refs": [
+    "BillingTopicKey1E94F9A8"
+   ]
+  },
+  {
+   "id": "BillingSNSTopicDCB11227",
+   "cfg": "BillingSNSTopicDCB11227",
+   "type": "AWS::SNS::Topic",
+   "values": {
+    "KmsMasterKeyId": {
+     "ref": "BillingTopicKey1E94F9A8",
+     "attr": "Arn"
+    },
+    "Tags": [
+     {
+      "Key": "created-by",
+      "Value": "CostManagementStack"
+     }
+    ],
+    "__resource__": {
+     "Metadata": {
+      "aws:cdk:path": "CostManagementStack/BillingSNSTopic/Resource"
+     }
+    }
+   },
+   "refs": [
+    "BillingTopicKey1E94F9A8"
+   ]
+  },
+  {
+   "id": "BillingSNSPolicyD4686BD2",
+   "cfg": "BillingSNSPolicyD4686BD2",
+   "type": "AWS::SNS::TopicPolicy",
+   "values": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "sns:publish"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "budgets.amazonaws.com",
+         "cloudwatch.amazonaws.com"
+        ]
+       },
+       "Resource": {
+        "ref": "BillingSNSTopicDCB11227"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "Topics": [
+     {
+      "ref": "BillingSNSTopicDCB11227"
+     }
+    ],
+    "__resource__": {
+     "Metadata": {
+      "aws:cdk:path": "CostManagementStack/BillingSNSPolicy/Resource"
+     }
+    }
+   },
+   "refs": [
+    "BillingSNSTopicDCB11227"
+   ]
+  },
+  {
+   "id": "BillingSNSSubscription",
+   "cfg": "BillingSNSSubscription",
+   "type": "AWS::SNS::Subscription",
+   "values": {
+    "Protocol": "sms",
+    "TopicArn": {
+     "ref": "BillingSNSTopicDCB11227"
+    },
+    "Endpoint": "+61",
+    "__resource__": {
+     "Metadata": {
+      "aws:cdk:path": "CostManagementStack/BillingSNSSubscription"
+     }
+    }
+   },
+   "refs": [
+    "BillingSNSTopicDCB11227"
+   ]
+  },
+  {
+   "id": "Budget",
+   "cfg": "Budget",
+   "type": "AWS::Budgets::Budget",
+   "values": {
+    "Budget": {
+     "BudgetLimit": {
+      "Amount": 100,
+      "Unit": "USD"
+     },
+     "BudgetName": "Budget",
+     "BudgetType": "COST",
+     "CostTypes": {
+      "IncludeCredit": false,
+      "IncludeDiscount": false,
+      "IncludeOtherSubscription": false,
+      "IncludeRecurring": false,
+      "IncludeRefund": false,
+      "IncludeSubscription": false,
+      "IncludeSupport": false,
+      "IncludeTax": false,
+      "IncludeUpfront": false,
+      "UseAmortized": false,
+      "UseBlended": false
+     },
+     "TimePeriod": {
+      "End": "1926864800",
+      "Start": "1225864800"
+     },
+     "TimeUnit": "MONTHLY"
+    },
+    "NotificationsWithSubscribers": [
+     {
+      "Notification": {
+       "ComparisonOperator": "GREATER_THAN",
+       "NotificationType": "ACTUAL",
+       "Threshold": 99,
+       "ThresholdType": "PERCENTAGE"
+      },
+      "Subscribers": [
+       {
+        "Address": {
+         "ref": "BillingSNSTopicDCB11227"
+        },
+        "SubscriptionType": "SNS"
+       }
+      ]
+     },
+     {
+      "Notification": {
+       "ComparisonOperator": "GREATER_THAN",
+       "NotificationType": "ACTUAL",
+       "Threshold": 80,
+       "ThresholdType": "PERCENTAGE"
+      },
+      "Subscribers": [
+       {
+        "Address": {
+         "ref": "BillingSNSTopicDCB11227"
+        },
+        "SubscriptionType": "SNS"
+       }
+      ]
+     }
+    ],
+    "__resource__": {
+     "Metadata": {
+      "aws:cdk:path": "CostManagementStack/Budget"
+     }
+    }
+   },
+   "refs": [
+    "BillingSNSTopicDCB11227"
+   ]
+  },
+  {
+   "id": "__parameter__.BudgetLimit",
+   "cfg": "__parameter__.BudgetLimit",
+   "type": "__parameter__",
+   "values": {
+    "name": "BudgetLimit",
+    "type": "Number",
+    "default": 100,
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.BudgetNotify",
+   "cfg": "__parameter__.BudgetNotify",
+   "type": "__parameter__",
+   "values": {
+    "name": "BudgetNotify",
+    "type": "String",
+    "default": "+61",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.BudgetNotifyMethod",
+   "cfg": "__parameter__.BudgetNotifyMethod",
+   "type": "__parameter__",
+   "values": {
+    "name": "BudgetNotifyMethod",
+    "type": "String",
+    "default": "sms",
+    "allowed_values": [
+     "sms",
+     "email"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__declared__.AWS::KMS::Key.BillingTopicKey1E94F9A8",
+   "cfg": "BillingTopicKey1E94F9A8",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::KMS::Key",
+    "name": "BillingTopicKey1E94F9A8",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "KeyPolicy": {
+      "Statement": [
+       {
+        "Action": [
+         "kms:*"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "AWS": [
+          "arn:aws:iam::123456789012:root"
+         ]
+        },
+        "Resource": [
+         "*"
+        ]
+       }
+      ],
+      "Version": "2012-10-17"
+     },
+     "EnableKeyRotation": true,
+     "Tags": [
+      {
+       "Key": "created-by",
+       "Value": "CostManagementStack"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::KMS::Alias.BillingTopicKeyAlias9604A58C",
+   "cfg": "BillingTopicKeyAlias9604A58C",
+   "type": "__declared__",
+   "refs": [
+    "BillingTopicKey1E94F9A8"
+   ],
+   "values": {
+    "type": "AWS::KMS::Alias",
+    "name": "BillingTopicKeyAlias9604A58C",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AliasName": "alias/billing-topic-key",
+     "TargetKeyId": {
+      "ref": "BillingTopicKey1E94F9A8",
+      "attr": "Arn"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SNS::Topic.BillingSNSTopicDCB11227",
+   "cfg": "BillingSNSTopicDCB11227",
+   "type": "__declared__",
+   "refs": [
+    "BillingTopicKey1E94F9A8"
+   ],
+   "values": {
+    "type": "AWS::SNS::Topic",
+    "name": "BillingSNSTopicDCB11227",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "KmsMasterKeyId": {
+      "ref": "BillingTopicKey1E94F9A8",
+      "attr": "Arn"
+     },
+     "Tags": [
+      {
+       "Key": "created-by",
+       "Value": "CostManagementStack"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SNS::TopicPolicy.BillingSNSPolicyD4686BD2",
+   "cfg": "BillingSNSPolicyD4686BD2",
+   "type": "__declared__",
+   "refs": [
+    "BillingSNSTopicDCB11227"
+   ],
+   "values": {
+    "type": "AWS::SNS::TopicPolicy",
+    "name": "BillingSNSPolicyD4686BD2",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "PolicyDocument": {
+      "Statement": [
+       {
+        "Action": [
+         "sns:publish"
+        ],
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "budgets.amazonaws.com",
+          "cloudwatch.amazonaws.com"
+         ]
+        },
+        "Resource": {
+         "ref": "BillingSNSTopicDCB11227"
+        }
+       }
+      ],
+      "Version": "2012-10-17"
+     },
+     "Topics": [
+      {
+       "ref": "BillingSNSTopicDCB11227"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::SNS::Subscription.BillingSNSSubscription",
+   "cfg": "BillingSNSSubscription",
+   "type": "__declared__",
+   "refs": [
+    "BillingSNSTopicDCB11227"
+   ],
+   "values": {
+    "type": "AWS::SNS::Subscription",
+    "name": "BillingSNSSubscription",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Protocol": "sms",
+     "TopicArn": {
+      "ref": "BillingSNSTopicDCB11227"
+     },
+     "Endpoint": "+61"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Budgets::Budget.Budget",
+   "cfg": "Budget",
+   "type": "__declared__",
+   "refs": [
+    "BillingSNSTopicDCB11227"
+   ],
+   "values": {
+    "type": "AWS::Budgets::Budget",
+    "name": "Budget",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Budget": {
+      "BudgetLimit": {
+       "Amount": 100,
+       "Unit": "USD"
+      },
+      "BudgetName": "Budget",
+      "BudgetType": "COST",
+      "CostTypes": {
+       "IncludeCredit": false,
+       "IncludeDiscount": false,
+       "IncludeOtherSubscription": false,
+       "IncludeRecurring": false,
+       "IncludeRefund": false,
+       "IncludeSubscription": false,
+       "IncludeSupport": false,
+       "IncludeTax": false,
+       "IncludeUpfront": false,
+       "UseAmortized": false,
+       "UseBlended": false
+      },
+      "TimePeriod": {
+       "End": "1926864800",
+       "Start": "1225864800"
+      },
+      "TimeUnit": "MONTHLY"
+     },
+     "NotificationsWithSubscribers": [
+      {
+       "Notification": {
+        "ComparisonOperator": "GREATER_THAN",
+        "NotificationType": "ACTUAL",
+        "Threshold": 99,
+        "ThresholdType": "PERCENTAGE"
+       },
+       "Subscribers": [
+        {
+         "Address": {
+          "ref": "BillingSNSTopicDCB11227"
+         },
+         "SubscriptionType": "SNS"
+        }
+       ]
+      },
+      {
+       "Notification": {
+        "ComparisonOperator": "GREATER_THAN",
+        "NotificationType": "ACTUAL",
+        "Threshold": 80,
+        "ThresholdType": "PERCENTAGE"
+       },
+       "Subscribers": [
+        {
+         "Address": {
+          "ref": "BillingSNSTopicDCB11227"
+         },
+         "SubscriptionType": "SNS"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  }
+ ]
+}

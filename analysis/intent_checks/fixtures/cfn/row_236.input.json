@@ -1,0 +1,276 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "1b5b56f4e19c2dd009a7601524c7b89675ec958da162b4ccc22344a2258e2e29",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "UserKeyMappingKmsKey",
+   "cfg": "UserKeyMappingKmsKey",
+   "type": "AWS::KMS::Key",
+   "values": {
+    "Description": "stack user key mapping table key",
+    "EnableKeyRotation": true,
+    "KeyPolicy": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Sid": "EnableIAMPermissions",
+       "Effect": "Allow",
+       "Principal": {
+        "AWS": [
+         "arn:aws:iam::123456789012:root"
+        ]
+       },
+       "Action": [
+        "kms:*"
+       ],
+       "Resource": [
+        "*"
+       ]
+      }
+     ]
+    },
+    "__resource__": {
+     "DeletionPolicy": "Retain",
+     "UpdateReplacePolicy": "Retain"
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "UserKeyMappingKmsAlias",
+   "cfg": "UserKeyMappingKmsAlias",
+   "type": "AWS::KMS::Alias",
+   "values": {
+    "AliasName": "alias/stack-user-key-mapping",
+    "TargetKeyId": {
+     "ref": "UserKeyMappingKmsKey"
+    }
+   },
+   "refs": [
+    "UserKeyMappingKmsKey"
+   ]
+  },
+  {
+   "id": "UserKeyMappingTable",
+   "cfg": "UserKeyMappingTable",
+   "type": "AWS::DynamoDB::Table",
+   "values": {
+    "TableName": "codex-user-keys",
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "user_id",
+      "AttributeType": "S"
+     }
+    ],
+    "KeySchema": [
+     {
+      "AttributeName": "user_id",
+      "KeyType": "HASH"
+     }
+    ],
+    "BillingMode": "PAY_PER_REQUEST",
+    "TimeToLiveSpecification": {
+     "Enabled": true,
+     "AttributeName": "ttl"
+    },
+    "PointInTimeRecoverySpecification": {
+     "PointInTimeRecoveryEnabled": true
+    },
+    "SSESpecification": {
+     "SSEEnabled": true,
+     "SSEType": "KMS",
+     "KMSMasterKeyId": {
+      "ref": "UserKeyMappingKmsKey",
+      "attr": "Arn"
+     }
+    },
+    "Tags": [
+     {
+      "Key": "project",
+      "Value": "codex-bedrock"
+     },
+     {
+      "Key": "component",
+      "Value": "jwt-middleware"
+     },
+     {
+      "Key": "managed-by",
+      "Value": "cloudformation"
+     }
+    ],
+    "__resource__": {
+     "DeletionPolicy": "Retain",
+     "UpdateReplacePolicy": "Retain"
+    }
+   },
+   "refs": [
+    "UserKeyMappingKmsKey"
+   ]
+  },
+  {
+   "id": "__parameter__.TableName",
+   "cfg": "__parameter__.TableName",
+   "type": "__parameter__",
+   "values": {
+    "name": "TableName",
+    "type": "String",
+    "default": "codex-user-keys",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.TableName",
+   "cfg": "__output__.TableName",
+   "type": "__output__",
+   "values": {
+    "name": "TableName",
+    "value": {
+     "ref": "UserKeyMappingTable"
+    },
+    "description": "DynamoDB table name",
+    "export": "stack-TableName"
+   },
+   "refs": [
+    "UserKeyMappingTable"
+   ]
+  },
+  {
+   "id": "__output__.TableArn",
+   "cfg": "__output__.TableArn",
+   "type": "__output__",
+   "values": {
+    "name": "TableArn",
+    "value": {
+     "ref": "UserKeyMappingTable",
+     "attr": "Arn"
+    },
+    "description": "DynamoDB table ARN",
+    "export": "stack-TableArn"
+   },
+   "refs": [
+    "UserKeyMappingTable"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::KMS::Key.UserKeyMappingKmsKey",
+   "cfg": "UserKeyMappingKmsKey",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::KMS::Key",
+    "name": "UserKeyMappingKmsKey",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Description": "stack user key mapping table key",
+     "EnableKeyRotation": true,
+     "KeyPolicy": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Sid": "EnableIAMPermissions",
+        "Effect": "Allow",
+        "Principal": {
+         "AWS": [
+          "arn:aws:iam::123456789012:root"
+         ]
+        },
+        "Action": [
+         "kms:*"
+        ],
+        "Resource": [
+         "*"
+        ]
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::KMS::Alias.UserKeyMappingKmsAlias",
+   "cfg": "UserKeyMappingKmsAlias",
+   "type": "__declared__",
+   "refs": [
+    "UserKeyMappingKmsKey"
+   ],
+   "values": {
+    "type": "AWS::KMS::Alias",
+    "name": "UserKeyMappingKmsAlias",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AliasName": "alias/stack-user-key-mapping",
+     "TargetKeyId": {
+      "ref": "UserKeyMappingKmsKey"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::DynamoDB::Table.UserKeyMappingTable",
+   "cfg": "UserKeyMappingTable",
+   "type": "__declared__",
+   "refs": [
+    "UserKeyMappingKmsKey"
+   ],
+   "values": {
+    "type": "AWS::DynamoDB::Table",
+    "name": "UserKeyMappingTable",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "TableName": "codex-user-keys",
+     "AttributeDefinitions": [
+      {
+       "AttributeName": "user_id",
+       "AttributeType": "S"
+      }
+     ],
+     "KeySchema": [
+      {
+       "AttributeName": "user_id",
+       "KeyType": "HASH"
+      }
+     ],
+     "BillingMode": "PAY_PER_REQUEST",
+     "TimeToLiveSpecification": {
+      "Enabled": true,
+      "AttributeName": "ttl"
+     },
+     "PointInTimeRecoverySpecification": {
+      "PointInTimeRecoveryEnabled": true
+     },
+     "SSESpecification": {
+      "SSEEnabled": true,
+      "SSEType": "KMS",
+      "KMSMasterKeyId": {
+       "ref": "UserKeyMappingKmsKey",
+       "attr": "Arn"
+      }
+     },
+     "Tags": [
+      {
+       "Key": "project",
+       "Value": "codex-bedrock"
+      },
+      {
+       "Key": "component",
+       "Value": "jwt-middleware"
+      },
+      {
+       "Key": "managed-by",
+       "Value": "cloudformation"
+      }
+     ]
+    }
+   }
+  }
+ ]
+}

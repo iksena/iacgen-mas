@@ -1,0 +1,342 @@
+{
+  "lang": "cfn",
+  "row_number": 36,
+  "source_hash": {
+    "gt": "0bdd9641d8622ecf82bfb7d88725fe1052ee91a6658e66598dd7399bb344afcc",
+    "prompt": "01102819762886cb7dee873d3f4f831d7ccaa347ca5a1b351b8b32134fc940cb"
+  },
+  "selectors": {
+    "pool": {
+      "types": [
+        "AWS::Cognito::IdentityPool"
+      ]
+    },
+    "role": {
+      "types": [
+        "AWS::IAM::Role"
+      ]
+    },
+    "att": {
+      "types": [
+        "AWS::Cognito::IdentityPoolRoleAttachment"
+      ]
+    },
+    "out": {
+      "types": [
+        "__output__"
+      ]
+    },
+    "role_cog": {
+      "types": [
+        "AWS::IAM::Role"
+      ],
+      "where": [
+        {
+          "path": "AssumeRolePolicyDocument",
+          "op": "contains",
+          "value": "cognito-identity.amazonaws.com"
+        }
+      ]
+    },
+    "att_unauth": {
+      "types": [
+        "AWS::Cognito::IdentityPoolRoleAttachment"
+      ],
+      "where": [
+        {
+          "path": "Roles.unauthenticated",
+          "op": "present"
+        }
+      ]
+    },
+    "out_id": {
+      "types": [
+        "__output__"
+      ],
+      "where": [
+        {
+          "path": "value.attr",
+          "op": "none_eq",
+          "value": "Name"
+        }
+      ]
+    }
+  },
+  "checks": [
+    {
+      "id": "pool",
+      "tier": "core",
+      "quote": "creates a Cognito Identity Pool",
+      "kind": "exists",
+      "select": "pool"
+    },
+    {
+      "id": "unauth",
+      "tier": "core",
+      "quote": "must allow unauthenticated guest access",
+      "kind": "attr",
+      "select": "pool",
+      "cond": {
+        "path": "AllowUnauthenticatedIdentities",
+        "op": "eq",
+        "value": true
+      }
+    },
+    {
+      "id": "role_assoc",
+      "tier": "core",
+      "quote": "the associated IAM role",
+      "kind": "ref",
+      "from": "att_unauth",
+      "to": "role",
+      "justify": "the prompt's role serves the unauthenticated guests, so it fills the unauthenticated slot"
+    },
+    {
+      "id": "att_pool",
+      "tier": "detail",
+      "quote": "the associated IAM role",
+      "kind": "ref",
+      "from": "att_unauth",
+      "to": "pool"
+    },
+    {
+      "id": "lex",
+      "tier": "core",
+      "quote": "Amazon Lex",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "role_cog",
+          "cond": {
+            "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+            "op": "regex",
+            "value": "(?i)^(lex:|\\*$)"
+          }
+        },
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "AWS::IAM::Policy",
+              "AWS::IAM::ManagedPolicy"
+            ],
+            "where": [
+              {
+                "path": "PolicyDocument.Statement.*.Action.*",
+                "op": "regex",
+                "value": "(?i)^(lex:|\\*$)"
+              }
+            ]
+          },
+          "to": "role_cog",
+          "bidirectional": true
+        },
+        {
+          "kind": "attr",
+          "select": "role_cog",
+          "cond": {
+            "path": "ManagedPolicyArns.*",
+            "op": "regex",
+            "value": ":aws:policy/.*Lex"
+          }
+        }
+      ],
+      "justify": "the prompt says the associated role grants this; a role associated with an identity pool is one that trusts cognito-identity"
+    },
+    {
+      "id": "translate",
+      "tier": "core",
+      "quote": "Amazon Translate",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "role_cog",
+          "cond": {
+            "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+            "op": "regex",
+            "value": "(?i)^(translate:|\\*$)"
+          }
+        },
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "AWS::IAM::Policy",
+              "AWS::IAM::ManagedPolicy"
+            ],
+            "where": [
+              {
+                "path": "PolicyDocument.Statement.*.Action.*",
+                "op": "regex",
+                "value": "(?i)^(translate:|\\*$)"
+              }
+            ]
+          },
+          "to": "role_cog",
+          "bidirectional": true
+        },
+        {
+          "kind": "attr",
+          "select": "role_cog",
+          "cond": {
+            "path": "ManagedPolicyArns.*",
+            "op": "regex",
+            "value": ":aws:policy/.*Translate"
+          }
+        }
+      ],
+      "justify": "the prompt says the associated role grants this; a role associated with an identity pool is one that trusts cognito-identity"
+    },
+    {
+      "id": "comprehend",
+      "tier": "core",
+      "quote": "Amazon Comprehend",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "role_cog",
+          "cond": {
+            "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+            "op": "regex",
+            "value": "(?i)^(comprehend:|\\*$)"
+          }
+        },
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "AWS::IAM::Policy",
+              "AWS::IAM::ManagedPolicy"
+            ],
+            "where": [
+              {
+                "path": "PolicyDocument.Statement.*.Action.*",
+                "op": "regex",
+                "value": "(?i)^(comprehend:|\\*$)"
+              }
+            ]
+          },
+          "to": "role_cog",
+          "bidirectional": true
+        },
+        {
+          "kind": "attr",
+          "select": "role_cog",
+          "cond": {
+            "path": "ManagedPolicyArns.*",
+            "op": "regex",
+            "value": ":aws:policy/.*Comprehend"
+          }
+        }
+      ],
+      "justify": "the prompt says the associated role grants this; a role associated with an identity pool is one that trusts cognito-identity"
+    },
+    {
+      "id": "sync",
+      "tier": "detail",
+      "quote": "standard Cognito Sync",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "role_cog",
+          "cond": {
+            "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+            "op": "regex",
+            "value": "(?i)^(cognito-sync:|\\*$)"
+          }
+        },
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "AWS::IAM::Policy",
+              "AWS::IAM::ManagedPolicy"
+            ],
+            "where": [
+              {
+                "path": "PolicyDocument.Statement.*.Action.*",
+                "op": "regex",
+                "value": "(?i)^(cognito-sync:|\\*$)"
+              }
+            ]
+          },
+          "to": "role_cog",
+          "bidirectional": true
+        }
+      ],
+      "justify": "the prompt says the associated role grants this; a role associated with an identity pool is one that trusts cognito-identity"
+    },
+    {
+      "id": "analytics",
+      "tier": "detail",
+      "quote": "Mobile Analytics actions",
+      "kind": "any_of",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "role_cog",
+          "cond": {
+            "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+            "op": "regex",
+            "value": "(?i)^(mobileanalytics:|\\*$)"
+          }
+        },
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "AWS::IAM::Policy",
+              "AWS::IAM::ManagedPolicy"
+            ],
+            "where": [
+              {
+                "path": "PolicyDocument.Statement.*.Action.*",
+                "op": "regex",
+                "value": "(?i)^(mobileanalytics:|\\*$)"
+              }
+            ]
+          },
+          "to": "role_cog",
+          "bidirectional": true
+        }
+      ],
+      "justify": "the prompt says the associated role grants this; a role associated with an identity pool is one that trusts cognito-identity"
+    },
+    {
+      "id": "out",
+      "tier": "detail",
+      "quote": "The template should output the identity pool ID.",
+      "kind": "ref",
+      "from": "out_id",
+      "to": "pool",
+      "justify": "Name is the pool name attribute, not the ID the prompt asks for"
+    },
+    {
+      "id": "trust_web_identity",
+      "tier": "extra",
+      "kind": "attr",
+      "select": "role",
+      "cond": {
+        "path": "AssumeRolePolicyDocument.Statement.*.Action.*",
+        "op": "eq",
+        "value": "sts:AssumeRoleWithWebIdentity"
+      }
+    },
+    {
+      "id": "trust_principal",
+      "tier": "extra",
+      "kind": "attr",
+      "select": "role",
+      "cond": {
+        "path": "AssumeRolePolicyDocument.Statement.*.Principal.Federated.*",
+        "op": "eq",
+        "value": "cognito-identity.amazonaws.com"
+      }
+    }
+  ],
+  "notes": ""
+}

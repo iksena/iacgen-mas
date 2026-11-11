@@ -1,0 +1,1007 @@
+{
+ "meta": {
+  "lang": "tf",
+  "mode": "plan",
+  "warnings": [],
+  "gt_hash": "edef56de62104a63f85815c85fb19eccd41a3882f495ba99e10955233f189a25",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "data.aws_iam_role.execution_role",
+   "cfg": "data.aws_iam_role.execution_role",
+   "type": "data.aws_iam_role",
+   "values": {},
+   "refs": [
+    "aws_iam_role.canary_execution_role"
+   ]
+  },
+  {
+   "id": "aws_iam_policy.canary_execution_policy",
+   "cfg": "aws_iam_policy.canary_execution_policy",
+   "type": "aws_iam_policy",
+   "values": {
+    "description": "Policy for executing canaries",
+    "path": "/",
+    "policy": "{\"Statement\":[{\"Action\":[\"s3:PutObject\",\"s3:GetObject\",\"s3:GetBucketLocation\",\"s3:ListAllMyBuckets\",\"cloudwatch:PutMetricData\",\"logs:CreateLogGroup\",\"logs:CreateLogStream\",\"logs:PutLogEvents\",\"ec2:CreateNetworkInterface\",\"ec2:DescribeNetworkInterfaces\",\"ec2:DeleteNetworkInterface\"],\"Effect\":\"Allow\",\"Resource\":\"*\"}],\"Version\":\"2012-10-17\"}",
+    "tags": null
+   },
+   "refs": [
+    "random_pet.iam_role_name"
+   ]
+  },
+  {
+   "id": "aws_iam_role.canary_execution_role",
+   "cfg": "aws_iam_role.canary_execution_role",
+   "type": "aws_iam_role",
+   "values": {
+    "assume_role_policy": "{\"Statement\":[{\"Action\":\"sts:AssumeRole\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"lambda.amazonaws.com\"}}],\"Version\":\"2012-10-17\"}",
+    "description": null,
+    "force_detach_policies": false,
+    "max_session_duration": 3600,
+    "path": "/",
+    "permissions_boundary": null,
+    "tags": null
+   },
+   "refs": [
+    "random_pet.iam_role_name"
+   ]
+  },
+  {
+   "id": "aws_iam_role_policy_attachment.canary_execution_attachment",
+   "cfg": "aws_iam_role_policy_attachment.canary_execution_attachment",
+   "type": "aws_iam_role_policy_attachment",
+   "values": {},
+   "refs": [
+    "aws_iam_policy.canary_execution_policy",
+    "aws_iam_role.canary_execution_role"
+   ]
+  },
+  {
+   "id": "aws_s3_bucket.artifcats_bucket",
+   "cfg": "aws_s3_bucket.artifcats_bucket",
+   "type": "aws_s3_bucket",
+   "values": {
+    "bucket": "benchmark-canary-bucket-tf5x",
+    "force_destroy": true,
+    "tags": null,
+    "timeouts": null
+   },
+   "refs": []
+  },
+  {
+   "id": "aws_s3_bucket_cors_configuration.cors",
+   "cfg": "aws_s3_bucket_cors_configuration.cors",
+   "type": "aws_s3_bucket_cors_configuration",
+   "values": {
+    "cors_rule": [
+     {
+      "allowed_headers": [
+       "Authorization"
+      ],
+      "allowed_methods": [
+       "GET",
+       "POST"
+      ],
+      "allowed_origins": [
+       "*"
+      ],
+      "expose_headers": [
+       "x-amz-server-side-encryption"
+      ],
+      "id": "",
+      "max_age_seconds": 3000
+     }
+    ],
+    "expected_bucket_owner": null
+   },
+   "refs": [
+    "aws_s3_bucket.artifcats_bucket"
+   ]
+  },
+  {
+   "id": "aws_s3_bucket_public_access_block.public_access_block",
+   "cfg": "aws_s3_bucket_public_access_block.public_access_block",
+   "type": "aws_s3_bucket_public_access_block",
+   "values": {
+    "block_public_acls": true,
+    "block_public_policy": true,
+    "ignore_public_acls": true,
+    "restrict_public_buckets": true
+   },
+   "refs": [
+    "aws_s3_bucket.artifcats_bucket"
+   ]
+  },
+  {
+   "id": "aws_s3_bucket_server_side_encryption_configuration.ssm",
+   "cfg": "aws_s3_bucket_server_side_encryption_configuration.ssm",
+   "type": "aws_s3_bucket_server_side_encryption_configuration",
+   "values": {
+    "expected_bucket_owner": null,
+    "rule": [
+     {
+      "apply_server_side_encryption_by_default": [
+       {
+        "sse_algorithm": "aws:kms"
+       }
+      ],
+      "bucket_key_enabled": false
+     }
+    ]
+   },
+   "refs": [
+    "aws_s3_bucket.artifcats_bucket",
+    "module.kms.aws_kms_key.default"
+   ]
+  },
+  {
+   "id": "aws_s3_bucket_versioning.versioning",
+   "cfg": "aws_s3_bucket_versioning.versioning",
+   "type": "aws_s3_bucket_versioning",
+   "values": {
+    "expected_bucket_owner": null,
+    "mfa": null,
+    "versioning_configuration": [
+     {
+      "status": "Suspended"
+     }
+    ]
+   },
+   "refs": [
+    "aws_s3_bucket.artifcats_bucket"
+   ]
+  },
+  {
+   "id": "aws_sns_topic.this",
+   "cfg": "aws_sns_topic.this",
+   "type": "aws_sns_topic",
+   "values": {
+    "application_failure_feedback_role_arn": null,
+    "application_success_feedback_role_arn": null,
+    "application_success_feedback_sample_rate": null,
+    "content_based_deduplication": false,
+    "delivery_policy": null,
+    "display_name": null,
+    "fifo_topic": false,
+    "firehose_failure_feedback_role_arn": null,
+    "firehose_success_feedback_role_arn": null,
+    "firehose_success_feedback_sample_rate": null,
+    "http_failure_feedback_role_arn": null,
+    "http_success_feedback_role_arn": null,
+    "http_success_feedback_sample_rate": null,
+    "lambda_failure_feedback_role_arn": null,
+    "lambda_success_feedback_role_arn": null,
+    "lambda_success_feedback_sample_rate": null,
+    "name": "benchmark-canary-topic",
+    "sqs_failure_feedback_role_arn": null,
+    "sqs_success_feedback_role_arn": null,
+    "sqs_success_feedback_sample_rate": null,
+    "tags": null
+   },
+   "refs": [
+    "module.kms.aws_kms_key.default"
+   ]
+  },
+  {
+   "id": "aws_sns_topic_policy.this",
+   "cfg": "aws_sns_topic_policy.this",
+   "type": "aws_sns_topic_policy",
+   "values": {
+    "policy": "{\"Statement\":[{\"Action\":\"sns:Publish\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"cloudwatch.amazonaws.com\"},\"Resource\":\"*\",\"Sid\":\"AllowCloudWatchAlarmsToPublish\"}],\"Version\":\"2012-10-17\"}"
+   },
+   "refs": [
+    "aws_sns_topic.this",
+    "data.aws_iam_policy_document.sns_topic_policy"
+   ]
+  },
+  {
+   "id": "aws_sns_topic_subscription.this",
+   "cfg": "aws_sns_topic_subscription.this",
+   "type": "aws_sns_topic_subscription",
+   "values": {
+    "confirmation_timeout_in_minutes": 1,
+    "delivery_policy": null,
+    "endpoint": "nobody@example.com",
+    "endpoint_auto_confirms": false,
+    "filter_policy": null,
+    "protocol": "email",
+    "raw_message_delivery": false,
+    "redrive_policy": null,
+    "subscription_role_arn": null
+   },
+   "refs": [
+    "aws_sns_topic.this"
+   ]
+  },
+  {
+   "id": "random_pet.iam_role_name",
+   "cfg": "random_pet.iam_role_name",
+   "type": "random_pet",
+   "values": {
+    "keepers": null,
+    "length": 2,
+    "prefix": null,
+    "separator": "-"
+   },
+   "refs": []
+  },
+  {
+   "id": "module.kms.aws_kms_alias.default[0]",
+   "cfg": "module.kms.aws_kms_alias.default",
+   "type": "aws_kms_alias",
+   "values": {
+    "name": "alias/benchmark-canary-key"
+   },
+   "refs": [
+    "module.kms.aws_kms_key.default"
+   ]
+  },
+  {
+   "id": "module.kms.aws_kms_key.default[0]",
+   "cfg": "module.kms.aws_kms_key.default",
+   "type": "aws_kms_key",
+   "values": {
+    "bypass_policy_lockout_safety_check": false,
+    "custom_key_store_id": null,
+    "customer_master_key_spec": "SYMMETRIC_DEFAULT",
+    "deletion_window_in_days": 10,
+    "description": "KMS master key",
+    "enable_key_rotation": true,
+    "is_enabled": true,
+    "key_usage": "ENCRYPT_DECRYPT",
+    "multi_region": false,
+    "policy": "{\"Statement\":[{\"Action\":[\"kms:Decrypt\",\"kms:Encrypt\",\"kms:GenerateDataKey\",\"kms:DescribeKey\",\"kms:UpdateKeyPolicy\"],\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"cloudwatch.amazonaws.com\"},\"Resource\":\"*\",\"Sid\":\"AllowCloudWatchToAccessTheKey\"},{\"Action\":\"kms:*\",\"Effect\":\"Allow\",\"Principal\":{\"AWS\":\"000000000000\"},\"Resource\":\"*\",\"Sid\":\"AllowKeyOwnerToUpdate\"}],\"Version\":\"2012-10-17\"}",
+    "tags": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.block_public_acls",
+   "cfg": "__parameter__.block_public_acls",
+   "type": "__parameter__",
+   "values": {
+    "name": "block_public_acls",
+    "default": true
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.block_public_policy",
+   "cfg": "__parameter__.block_public_policy",
+   "type": "__parameter__",
+   "values": {
+    "name": "block_public_policy",
+    "default": true
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.bucket_key_enabled",
+   "cfg": "__parameter__.bucket_key_enabled",
+   "type": "__parameter__",
+   "values": {
+    "name": "bucket_key_enabled",
+    "default": false
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.bucket_name",
+   "cfg": "__parameter__.bucket_name",
+   "type": "__parameter__",
+   "values": {
+    "name": "bucket_name",
+    "default": "benchmark-canary-bucket-tf5x"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.canaries_with_vpc",
+   "cfg": "__parameter__.canaries_with_vpc",
+   "type": "__parameter__",
+   "values": {
+    "name": "canaries_with_vpc",
+    "default": {}
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.cloudwatch_metric_alarms_enabled",
+   "cfg": "__parameter__.cloudwatch_metric_alarms_enabled",
+   "type": "__parameter__",
+   "values": {
+    "name": "cloudwatch_metric_alarms_enabled",
+    "default": false
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.cors_configuration",
+   "cfg": "__parameter__.cors_configuration",
+   "type": "__parameter__",
+   "values": {
+    "name": "cors_configuration",
+    "default": [
+     {
+      "allowed_headers": [
+       "Authorization"
+      ],
+      "allowed_methods": [
+       "GET",
+       "POST"
+      ],
+      "allowed_origins": [
+       "*"
+      ],
+      "expose_headers": [
+       "x-amz-server-side-encryption"
+      ],
+      "max_age_seconds": 3000
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.custom_kms_policy",
+   "cfg": "__parameter__.custom_kms_policy",
+   "type": "__parameter__",
+   "values": {
+    "name": "custom_kms_policy",
+    "default": ""
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.deletion_window_in_days",
+   "cfg": "__parameter__.deletion_window_in_days",
+   "type": "__parameter__",
+   "values": {
+    "name": "deletion_window_in_days",
+    "default": 10
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.enable_key_rotation",
+   "cfg": "__parameter__.enable_key_rotation",
+   "type": "__parameter__",
+   "values": {
+    "name": "enable_key_rotation",
+    "default": true
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.enabled",
+   "cfg": "__parameter__.enabled",
+   "type": "__parameter__",
+   "values": {
+    "name": "enabled",
+    "default": true
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.endpoint",
+   "cfg": "__parameter__.endpoint",
+   "type": "__parameter__",
+   "values": {
+    "name": "endpoint",
+    "default": "nobody@example.com"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.force_destroy",
+   "cfg": "__parameter__.force_destroy",
+   "type": "__parameter__",
+   "values": {
+    "name": "force_destroy",
+    "default": true
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.ignore_public_acls",
+   "cfg": "__parameter__.ignore_public_acls",
+   "type": "__parameter__",
+   "values": {
+    "name": "ignore_public_acls",
+    "default": true
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.kms_key_alias",
+   "cfg": "__parameter__.kms_key_alias",
+   "type": "__parameter__",
+   "values": {
+    "name": "kms_key_alias",
+    "default": "alias/benchmark-canary-key"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.protocol",
+   "cfg": "__parameter__.protocol",
+   "type": "__parameter__",
+   "values": {
+    "name": "protocol",
+    "default": "email"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.region",
+   "cfg": "__parameter__.region",
+   "type": "__parameter__",
+   "values": {
+    "name": "region",
+    "default": "us-east-1"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.restrict_public_buckets",
+   "cfg": "__parameter__.restrict_public_buckets",
+   "type": "__parameter__",
+   "values": {
+    "name": "restrict_public_buckets",
+    "default": true
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.security_group_ids",
+   "cfg": "__parameter__.security_group_ids",
+   "type": "__parameter__",
+   "values": {
+    "name": "security_group_ids",
+    "default": [
+     ""
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.sns_topic_name",
+   "cfg": "__parameter__.sns_topic_name",
+   "type": "__parameter__",
+   "values": {
+    "name": "sns_topic_name",
+    "default": "benchmark-canary-topic"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.sse_algorithm",
+   "cfg": "__parameter__.sse_algorithm",
+   "type": "__parameter__",
+   "values": {
+    "name": "sse_algorithm",
+    "default": "aws:kms"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.subnet_ids",
+   "cfg": "__parameter__.subnet_ids",
+   "type": "__parameter__",
+   "values": {
+    "name": "subnet_ids",
+    "default": [
+     ""
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.tags",
+   "cfg": "__parameter__.tags",
+   "type": "__parameter__",
+   "values": {
+    "name": "tags",
+    "default": {}
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.versioning_enabled",
+   "cfg": "__parameter__.versioning_enabled",
+   "type": "__parameter__",
+   "values": {
+    "name": "versioning_enabled",
+    "default": false
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.canary_arns",
+   "cfg": "__output__.canary_arns",
+   "type": "__output__",
+   "values": {
+    "name": "canary_arns",
+    "value": {},
+    "description": "ARNs of all canaries created"
+   },
+   "refs": [
+    "aws_synthetics_canary.dynamic_canaries_with_vpc"
+   ]
+  },
+  {
+   "id": "__declared__.data.aws_caller_identity.current",
+   "cfg": "data.aws_caller_identity.current",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "data.aws_caller_identity",
+    "name": "current",
+    "gated": false,
+    "gate": null,
+    "properties": {}
+   }
+  },
+  {
+   "id": "__declared__.data.aws_iam_policy_document.sns_topic_policy",
+   "cfg": "data.aws_iam_policy_document.sns_topic_policy",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "data.aws_iam_policy_document",
+    "name": "sns_topic_policy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "version": "2012-10-17",
+     "statement": [
+      {
+       "sid": "AllowCloudWatchAlarmsToPublish",
+       "effect": "Allow",
+       "principals": [
+        {
+         "type": "Service",
+         "identifiers": [
+          "cloudwatch.amazonaws.com"
+         ]
+        }
+       ],
+       "actions": [
+        "sns:Publish"
+       ],
+       "resources": [
+        "*"
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.data.aws_iam_role.execution_role",
+   "cfg": "data.aws_iam_role.execution_role",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_role.canary_execution_role"
+   ],
+   "values": {
+    "type": "data.aws_iam_role",
+    "name": "execution_role",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "${aws_iam_role.canary_execution_role.name}",
+     "depends_on": [
+      "${aws_iam_role.canary_execution_role}"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.random_pet.iam_role_name",
+   "cfg": "random_pet.iam_role_name",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "random_pet",
+    "name": "iam_role_name",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "length": 2,
+     "separator": "-"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role.canary_execution_role",
+   "cfg": "aws_iam_role.canary_execution_role",
+   "type": "__declared__",
+   "refs": [
+    "random_pet.iam_role_name"
+   ],
+   "values": {
+    "type": "aws_iam_role",
+    "name": "canary_execution_role",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "${random_pet.iam_role_name.id}-canary",
+     "assume_role_policy": "${jsonencode({'Version': '2012-10-17', 'Statement': [{'Effect': 'Allow', 'Principal': {'Service': 'lambda.amazonaws.com'}, 'Action': 'sts:AssumeRole'}]})}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_policy.canary_execution_policy",
+   "cfg": "aws_iam_policy.canary_execution_policy",
+   "type": "__declared__",
+   "refs": [
+    "random_pet.iam_role_name"
+   ],
+   "values": {
+    "type": "aws_iam_policy",
+    "name": "canary_execution_policy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "${random_pet.iam_role_name.id}-canary-policy",
+     "description": "Policy for executing canaries",
+     "policy": "${jsonencode({'Version': '2012-10-17', 'Statement': [{'Effect': 'Allow', 'Action': ['s3:PutObject', 's3:GetObject', 's3:GetBucketLocation', 's3:ListAllMyBuckets', 'cloudwatch:PutMetricData', 'logs:CreateLogGroup', 'logs:CreateLogStream', 'logs:PutLogEvents', 'ec2:CreateNetworkInterface', 'ec2:DescribeNetworkInterfaces', 'ec2:DeleteNetworkInterface'], 'Resource': '*'}]})}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_role_policy_attachment.canary_execution_attachment",
+   "cfg": "aws_iam_role_policy_attachment.canary_execution_attachment",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_policy.canary_execution_policy",
+    "aws_iam_role.canary_execution_role"
+   ],
+   "values": {
+    "type": "aws_iam_role_policy_attachment",
+    "name": "canary_execution_attachment",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "role": "${aws_iam_role.canary_execution_role.name}",
+     "policy_arn": "${aws_iam_policy.canary_execution_policy.arn}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_sns_topic.this",
+   "cfg": "aws_sns_topic.this",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_sns_topic",
+    "name": "this",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "benchmark-canary-topic",
+     "kms_master_key_id": "${var.enabled ? module.kms.key_arn : None}",
+     "tags": [
+      {}
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_sns_topic_policy.this",
+   "cfg": "aws_sns_topic_policy.this",
+   "type": "__declared__",
+   "refs": [
+    "aws_sns_topic.this",
+    "data.aws_iam_policy_document.sns_topic_policy"
+   ],
+   "values": {
+    "type": "aws_sns_topic_policy",
+    "name": "this",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "arn": "${aws_sns_topic.this.arn}",
+     "policy": "${data.aws_iam_policy_document.sns_topic_policy.json}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_sns_topic_subscription.this",
+   "cfg": "aws_sns_topic_subscription.this",
+   "type": "__declared__",
+   "refs": [
+    "aws_sns_topic.this"
+   ],
+   "values": {
+    "type": "aws_sns_topic_subscription",
+    "name": "this",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "topic_arn": "${aws_sns_topic.this.arn}",
+     "protocol": "email",
+     "endpoint": "nobody@example.com"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_synthetics_canary.dynamic_canaries_with_vpc",
+   "cfg": "aws_synthetics_canary.dynamic_canaries_with_vpc",
+   "type": "__declared__",
+   "refs": [
+    "aws_s3_bucket.artifcats_bucket",
+    "data.aws_iam_role.execution_role"
+   ],
+   "values": {
+    "type": "aws_synthetics_canary",
+    "name": "dynamic_canaries_with_vpc",
+    "gated": true,
+    "gate": "local.canaries_with_vpc",
+    "properties": {
+     "for_each": "${local.canaries_with_vpc}",
+     "name": "${each.value.name}",
+     "artifact_s3_location": "s3://${aws_s3_bucket.artifcats_bucket.id}/",
+     "execution_role_arn": "${data.aws_iam_role.execution_role.arn}",
+     "handler": "${each.value.handler}",
+     "runtime_version": "${each.value.runtime_version}",
+     "start_canary": "${each.value.start_canary}",
+     "failure_retention_period": "${each.value.failure_retention_period}",
+     "success_retention_period": "${each.value.success_retention_period}",
+     "schedule": [
+      {
+       "expression": "${each.value.schedule_expression}"
+      }
+     ],
+     "vpc_config": [
+      {
+       "subnet_ids": [
+        ""
+       ],
+       "security_group_ids": [
+        ""
+       ]
+      }
+     ],
+     "run_config": [
+      {
+       "timeout_in_seconds": 120,
+       "environment_variables": "${each.value.environment_variables}"
+      }
+     ],
+     "zip_file": "${each.value.zip_file}",
+     "s3_bucket": "${each.value.s3_bucket}",
+     "s3_key": "${each.value.s3_key}",
+     "s3_version": "${each.value.s3_version}",
+     "depends_on": [
+      "${aws_s3_bucket.artifcats_bucket}"
+     ],
+     "tags": [
+      {}
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_cloudwatch_metric_alarm.fail_alarm",
+   "cfg": "aws_cloudwatch_metric_alarm.fail_alarm",
+   "type": "__declared__",
+   "refs": [
+    "aws_sns_topic.this"
+   ],
+   "values": {
+    "type": "aws_cloudwatch_metric_alarm",
+    "name": "fail_alarm",
+    "gated": true,
+    "gate": "var.canaries_with_vpc",
+    "properties": {
+     "for_each": [
+      {}
+     ],
+     "alarm_name": "${each.value.name}-fail-alarm",
+     "comparison_operator": "GreaterThanOrEqualToThreshold",
+     "evaluation_periods": "1",
+     "metric_name": "Failed",
+     "namespace": "CloudWatchSynthetics",
+     "period": "60",
+     "statistic": "Sum",
+     "threshold": "1",
+     "actions_enabled": true,
+     "dimensions": {
+      "CanaryName": "${each.value.name}"
+     },
+     "alarm_actions": [
+      "${aws_sns_topic.this.arn}"
+     ],
+     "alarm_description": "Canary is down: ${each.value.name}",
+     "tags": [
+      {}
+     ],
+     "depends_on": [
+      "${aws_sns_topic.this}"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_cloudwatch_metric_alarm.success_alarm",
+   "cfg": "aws_cloudwatch_metric_alarm.success_alarm",
+   "type": "__declared__",
+   "refs": [
+    "aws_sns_topic.this"
+   ],
+   "values": {
+    "type": "aws_cloudwatch_metric_alarm",
+    "name": "success_alarm",
+    "gated": true,
+    "gate": "var.cloudwatch_metric_alarms_enabled ? var.canaries_with_vpc : {}",
+    "properties": {
+     "for_each": "${var.cloudwatch_metric_alarms_enabled ? var.canaries_with_vpc : {}}",
+     "alarm_name": "${each.value.name}-success-alarm",
+     "comparison_operator": "LessThanThreshold",
+     "evaluation_periods": "1",
+     "metric_name": "SuccessPercent",
+     "namespace": "CloudWatchSynthetics",
+     "period": "60",
+     "statistic": "Average",
+     "threshold": "90",
+     "actions_enabled": true,
+     "dimensions": {
+      "CanaryName": "${each.value.name}"
+     },
+     "ok_actions": [
+      "${aws_sns_topic.this.arn}"
+     ],
+     "alarm_description": "Canary is up: ${each.value.name}",
+     "tags": [
+      {}
+     ],
+     "depends_on": [
+      "${aws_sns_topic.this}"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_s3_bucket.artifcats_bucket",
+   "cfg": "aws_s3_bucket.artifcats_bucket",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_s3_bucket",
+    "name": "artifcats_bucket",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "bucket": "benchmark-canary-bucket-tf5x",
+     "force_destroy": true,
+     "tags": [
+      {}
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_s3_bucket_public_access_block.public_access_block",
+   "cfg": "aws_s3_bucket_public_access_block.public_access_block",
+   "type": "__declared__",
+   "refs": [
+    "aws_s3_bucket.artifcats_bucket"
+   ],
+   "values": {
+    "type": "aws_s3_bucket_public_access_block",
+    "name": "public_access_block",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "bucket": "${aws_s3_bucket.artifcats_bucket.id}",
+     "block_public_acls": true,
+     "block_public_policy": true,
+     "ignore_public_acls": true,
+     "restrict_public_buckets": true
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_s3_bucket_server_side_encryption_configuration.ssm",
+   "cfg": "aws_s3_bucket_server_side_encryption_configuration.ssm",
+   "type": "__declared__",
+   "refs": [
+    "aws_s3_bucket.artifcats_bucket"
+   ],
+   "values": {
+    "type": "aws_s3_bucket_server_side_encryption_configuration",
+    "name": "ssm",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "bucket": "${aws_s3_bucket.artifcats_bucket.id}",
+     "rule": [
+      {
+       "apply_server_side_encryption_by_default": [
+        {
+         "kms_master_key_id": "${module.kms.key_arn}",
+         "sse_algorithm": "aws:kms"
+        }
+       ],
+       "bucket_key_enabled": false
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_s3_bucket_versioning.versioning",
+   "cfg": "aws_s3_bucket_versioning.versioning",
+   "type": "__declared__",
+   "refs": [
+    "aws_s3_bucket.artifcats_bucket"
+   ],
+   "values": {
+    "type": "aws_s3_bucket_versioning",
+    "name": "versioning",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "bucket": "${aws_s3_bucket.artifcats_bucket.id}",
+     "versioning_configuration": [
+      {
+       "status": "${var.versioning_enabled ? \"Enabled\" : \"Suspended\"}"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_s3_bucket_cors_configuration.cors",
+   "cfg": "aws_s3_bucket_cors_configuration.cors",
+   "type": "__declared__",
+   "refs": [
+    "aws_s3_bucket.artifcats_bucket",
+    "cors_rule.value"
+   ],
+   "values": {
+    "type": "aws_s3_bucket_cors_configuration",
+    "name": "cors",
+    "gated": true,
+    "gate": "var.cors_configuration",
+    "properties": {
+     "bucket": "${aws_s3_bucket.artifcats_bucket.id}",
+     "dynamic": {
+      "cors_rule": {
+       "for_each": [
+        {
+         "allowed_headers": [
+          "Authorization"
+         ],
+         "allowed_methods": [
+          "GET",
+          "POST"
+         ],
+         "allowed_origins": [
+          "*"
+         ],
+         "expose_headers": [
+          "x-amz-server-side-encryption"
+         ],
+         "max_age_seconds": 3000
+        }
+       ],
+       "content": [
+        {
+         "allowed_headers": "${cors_rule.value.allowed_headers}",
+         "allowed_methods": "${cors_rule.value.allowed_methods}",
+         "allowed_origins": "${cors_rule.value.allowed_origins}",
+         "expose_headers": "${cors_rule.value.expose_headers}",
+         "max_age_seconds": "${cors_rule.value.max_age_seconds}"
+        }
+       ]
+      }
+     }
+    }
+   }
+  }
+ ]
+}

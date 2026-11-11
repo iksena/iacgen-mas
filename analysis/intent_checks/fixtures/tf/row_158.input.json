@@ -1,0 +1,967 @@
+{
+ "meta": {
+  "lang": "tf",
+  "mode": "plan",
+  "warnings": [],
+  "gt_hash": "53d14e1cbd558fbf38d8e5ffb18b650c173edd322ef23e2b352a9e362ef9ee84",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "aws_default_network_acl.default",
+   "cfg": "aws_default_network_acl.default",
+   "type": "aws_default_network_acl",
+   "values": {
+    "egress": [
+     {
+      "action": "allow",
+      "cidr_block": "0.0.0.0/0",
+      "from_port": 0,
+      "icmp_code": null,
+      "icmp_type": null,
+      "ipv6_cidr_block": "",
+      "protocol": "-1",
+      "rule_no": 100,
+      "to_port": 0
+     }
+    ],
+    "ingress": [
+     {
+      "action": "allow",
+      "cidr_block": "0.0.0.0/0",
+      "from_port": 0,
+      "icmp_code": null,
+      "icmp_type": null,
+      "ipv6_cidr_block": "",
+      "protocol": "-1",
+      "rule_no": 100,
+      "to_port": 0
+     }
+    ],
+    "region": "us-east-1",
+    "subnet_ids": null,
+    "tags": {
+     "Name": "lambda-rds-dev-default-nacl"
+    },
+    "tags_all": {
+     "Name": "lambda-rds-dev-default-nacl"
+    }
+   },
+   "refs": [
+    "aws_vpc.dev-vpc"
+   ]
+  },
+  {
+   "id": "aws_default_security_group.default",
+   "cfg": "aws_default_security_group.default",
+   "type": "aws_default_security_group",
+   "values": {
+    "region": "us-east-1",
+    "revoke_rules_on_delete": false,
+    "tags": null
+   },
+   "refs": [
+    "aws_vpc.dev-vpc"
+   ]
+  },
+  {
+   "id": "aws_internet_gateway.igw",
+   "cfg": "aws_internet_gateway.igw",
+   "type": "aws_internet_gateway",
+   "values": {
+    "region": "us-east-1",
+    "tags": {
+     "Name": "lambda-rds-dev-igw"
+    },
+    "tags_all": {
+     "Name": "lambda-rds-dev-igw"
+    },
+    "timeouts": null
+   },
+   "refs": [
+    "aws_vpc.dev-vpc"
+   ]
+  },
+  {
+   "id": "aws_route_table.public",
+   "cfg": "aws_route_table.public",
+   "type": "aws_route_table",
+   "values": {
+    "region": "us-east-1",
+    "route": [
+     {
+      "carrier_gateway_id": "",
+      "cidr_block": "0.0.0.0/0",
+      "core_network_arn": "",
+      "destination_prefix_list_id": "",
+      "egress_only_gateway_id": "",
+      "ipv6_cidr_block": "",
+      "local_gateway_id": "",
+      "nat_gateway_id": "",
+      "network_interface_id": "",
+      "odb_network_arn": "",
+      "transit_gateway_id": "",
+      "vpc_endpoint_id": "",
+      "vpc_peering_connection_id": ""
+     }
+    ],
+    "tags": {
+     "Name": "lambda-rds-public-subnet"
+    },
+    "tags_all": {
+     "Name": "lambda-rds-public-subnet"
+    },
+    "timeouts": null
+   },
+   "refs": [
+    "aws_internet_gateway.igw",
+    "aws_vpc.dev-vpc"
+   ]
+  },
+  {
+   "id": "aws_route_table_association.bastion-host-route-table",
+   "cfg": "aws_route_table_association.bastion-host-route-table",
+   "type": "aws_route_table_association",
+   "values": {
+    "gateway_id": null,
+    "region": "us-east-1",
+    "timeouts": null
+   },
+   "refs": [
+    "aws_route_table.public",
+    "aws_subnet.lambda-rds-bastion-host-subnet"
+   ]
+  },
+  {
+   "id": "aws_security_group.bastion-host",
+   "cfg": "aws_security_group.bastion-host",
+   "type": "aws_security_group",
+   "values": {
+    "description": "Bastion host to access RDS DB",
+    "egress": [
+     {
+      "cidr_blocks": [],
+      "description": "",
+      "from_port": 0,
+      "ipv6_cidr_blocks": [],
+      "prefix_list_ids": [],
+      "protocol": "-1",
+      "self": false,
+      "to_port": 0
+     }
+    ],
+    "ingress": [
+     {
+      "cidr_blocks": [
+       "10.32.0.0/20"
+      ],
+      "description": "",
+      "from_port": 22,
+      "ipv6_cidr_blocks": [],
+      "prefix_list_ids": [],
+      "protocol": "tcp",
+      "security_groups": [],
+      "self": false,
+      "to_port": 22
+     }
+    ],
+    "name": "lambda-rds-dev-bastion-host",
+    "region": "us-east-1",
+    "revoke_rules_on_delete": false,
+    "tags": null,
+    "timeouts": null
+   },
+   "refs": [
+    "aws_security_group.postgres-db",
+    "aws_vpc.dev-vpc"
+   ]
+  },
+  {
+   "id": "aws_security_group.lambda-functions",
+   "cfg": "aws_security_group.lambda-functions",
+   "type": "aws_security_group",
+   "values": {
+    "description": "Lambda functions running on the dev VPC",
+    "egress": [
+     {
+      "cidr_blocks": [
+       "10.32.0.0/20"
+      ],
+      "description": "",
+      "from_port": 0,
+      "ipv6_cidr_blocks": [],
+      "prefix_list_ids": [],
+      "protocol": "-1",
+      "security_groups": [],
+      "self": false,
+      "to_port": 0
+     }
+    ],
+    "name": "lambda-rds-dev-lambda-functions",
+    "region": "us-east-1",
+    "revoke_rules_on_delete": false,
+    "tags": null,
+    "timeouts": null
+   },
+   "refs": [
+    "aws_vpc.dev-vpc"
+   ]
+  },
+  {
+   "id": "aws_security_group.postgres-db",
+   "cfg": "aws_security_group.postgres-db",
+   "type": "aws_security_group",
+   "values": {
+    "description": "RDS PostgreSQL on dev VPC",
+    "egress": [
+     {
+      "cidr_blocks": [
+       "10.32.0.0/20"
+      ],
+      "description": "",
+      "from_port": 0,
+      "ipv6_cidr_blocks": [],
+      "prefix_list_ids": [],
+      "protocol": "-1",
+      "security_groups": [],
+      "self": false,
+      "to_port": 0
+     }
+    ],
+    "name": "lambda-rds-dev-postgres-db",
+    "region": "us-east-1",
+    "revoke_rules_on_delete": false,
+    "tags": null,
+    "timeouts": null
+   },
+   "refs": [
+    "aws_vpc.dev-vpc"
+   ]
+  },
+  {
+   "id": "aws_security_group_rule.postgres-db-ingress-bastion-rule",
+   "cfg": "aws_security_group_rule.postgres-db-ingress-bastion-rule",
+   "type": "aws_security_group_rule",
+   "values": {
+    "cidr_blocks": null,
+    "description": null,
+    "from_port": 5432,
+    "ipv6_cidr_blocks": null,
+    "prefix_list_ids": null,
+    "protocol": "tcp",
+    "region": "us-east-1",
+    "self": false,
+    "timeouts": null,
+    "to_port": 5432,
+    "type": "ingress"
+   },
+   "refs": [
+    "aws_security_group.bastion-host",
+    "aws_security_group.postgres-db"
+   ]
+  },
+  {
+   "id": "aws_security_group_rule.postgres-db-ingress-lambda-rule",
+   "cfg": "aws_security_group_rule.postgres-db-ingress-lambda-rule",
+   "type": "aws_security_group_rule",
+   "values": {
+    "cidr_blocks": null,
+    "description": null,
+    "from_port": 5432,
+    "ipv6_cidr_blocks": null,
+    "prefix_list_ids": null,
+    "protocol": "tcp",
+    "region": "us-east-1",
+    "self": false,
+    "timeouts": null,
+    "to_port": 5432,
+    "type": "ingress"
+   },
+   "refs": [
+    "aws_security_group.lambda-functions",
+    "aws_security_group.postgres-db"
+   ]
+  },
+  {
+   "id": "aws_subnet.lambda-rds-bastion-host-subnet",
+   "cfg": "aws_subnet.lambda-rds-bastion-host-subnet",
+   "type": "aws_subnet",
+   "values": {
+    "assign_ipv6_address_on_creation": false,
+    "availability_zone": "us-east-1a",
+    "cidr_block": "10.32.15.0/24",
+    "customer_owned_ipv4_pool": null,
+    "enable_dns64": false,
+    "enable_lni_at_device_index": null,
+    "enable_resource_name_dns_a_record_on_launch": false,
+    "enable_resource_name_dns_aaaa_record_on_launch": false,
+    "ipv4_ipam_pool_id": null,
+    "ipv4_netmask_length": null,
+    "ipv6_ipam_pool_id": null,
+    "ipv6_native": false,
+    "ipv6_netmask_length": null,
+    "map_customer_owned_ip_on_launch": null,
+    "map_public_ip_on_launch": false,
+    "outpost_arn": null,
+    "region": "us-east-1",
+    "tags": {
+     "Name": "lambda-rds-bastion-host-subnet"
+    },
+    "tags_all": {
+     "Name": "lambda-rds-bastion-host-subnet"
+    },
+    "timeouts": null
+   },
+   "refs": [
+    "aws_vpc.dev-vpc",
+    "data.aws_availability_zones.available"
+   ]
+  },
+  {
+   "id": "aws_subnet.lambda-rds-db-subnet-1",
+   "cfg": "aws_subnet.lambda-rds-db-subnet-1",
+   "type": "aws_subnet",
+   "values": {
+    "assign_ipv6_address_on_creation": false,
+    "availability_zone": "us-east-1a",
+    "cidr_block": "10.32.0.0/28",
+    "customer_owned_ipv4_pool": null,
+    "enable_dns64": false,
+    "enable_lni_at_device_index": null,
+    "enable_resource_name_dns_a_record_on_launch": false,
+    "enable_resource_name_dns_aaaa_record_on_launch": false,
+    "ipv4_ipam_pool_id": null,
+    "ipv4_netmask_length": null,
+    "ipv6_ipam_pool_id": null,
+    "ipv6_native": false,
+    "ipv6_netmask_length": null,
+    "map_customer_owned_ip_on_launch": null,
+    "map_public_ip_on_launch": false,
+    "outpost_arn": null,
+    "region": "us-east-1",
+    "tags": {
+     "Name": "lambda-rds-db-subnet-1"
+    },
+    "tags_all": {
+     "Name": "lambda-rds-db-subnet-1"
+    },
+    "timeouts": null
+   },
+   "refs": [
+    "aws_vpc.dev-vpc",
+    "data.aws_availability_zones.available"
+   ]
+  },
+  {
+   "id": "aws_subnet.lambda-rds-db-subnet-2",
+   "cfg": "aws_subnet.lambda-rds-db-subnet-2",
+   "type": "aws_subnet",
+   "values": {
+    "assign_ipv6_address_on_creation": false,
+    "availability_zone": "us-east-1b",
+    "cidr_block": "10.32.0.16/28",
+    "customer_owned_ipv4_pool": null,
+    "enable_dns64": false,
+    "enable_lni_at_device_index": null,
+    "enable_resource_name_dns_a_record_on_launch": false,
+    "enable_resource_name_dns_aaaa_record_on_launch": false,
+    "ipv4_ipam_pool_id": null,
+    "ipv4_netmask_length": null,
+    "ipv6_ipam_pool_id": null,
+    "ipv6_native": false,
+    "ipv6_netmask_length": null,
+    "map_customer_owned_ip_on_launch": null,
+    "map_public_ip_on_launch": false,
+    "outpost_arn": null,
+    "region": "us-east-1",
+    "tags": {
+     "Name": "lambda-rds-db-subnet-2"
+    },
+    "tags_all": {
+     "Name": "lambda-rds-db-subnet-2"
+    },
+    "timeouts": null
+   },
+   "refs": [
+    "aws_vpc.dev-vpc",
+    "data.aws_availability_zones.available"
+   ]
+  },
+  {
+   "id": "aws_subnet.lambda-rds-dev-lambda-subnet",
+   "cfg": "aws_subnet.lambda-rds-dev-lambda-subnet",
+   "type": "aws_subnet",
+   "values": {
+    "assign_ipv6_address_on_creation": false,
+    "availability_zone": "us-east-1a",
+    "cidr_block": "10.32.1.0/24",
+    "customer_owned_ipv4_pool": null,
+    "enable_dns64": false,
+    "enable_lni_at_device_index": null,
+    "enable_resource_name_dns_a_record_on_launch": false,
+    "enable_resource_name_dns_aaaa_record_on_launch": false,
+    "ipv4_ipam_pool_id": null,
+    "ipv4_netmask_length": null,
+    "ipv6_ipam_pool_id": null,
+    "ipv6_native": false,
+    "ipv6_netmask_length": null,
+    "map_customer_owned_ip_on_launch": null,
+    "map_public_ip_on_launch": false,
+    "outpost_arn": null,
+    "region": "us-east-1",
+    "tags": {
+     "Name": "lambda-rds-dev-lambda-subnet"
+    },
+    "tags_all": {
+     "Name": "lambda-rds-dev-lambda-subnet"
+    },
+    "timeouts": null
+   },
+   "refs": [
+    "aws_vpc.dev-vpc",
+    "data.aws_availability_zones.available"
+   ]
+  },
+  {
+   "id": "aws_vpc.dev-vpc",
+   "cfg": "aws_vpc.dev-vpc",
+   "type": "aws_vpc",
+   "values": {
+    "assign_generated_ipv6_cidr_block": null,
+    "cidr_block": "10.32.0.0/20",
+    "enable_dns_hostnames": true,
+    "enable_dns_support": true,
+    "instance_tenancy": "default",
+    "ipv4_ipam_pool_id": null,
+    "ipv4_netmask_length": null,
+    "ipv6_ipam_pool_id": null,
+    "ipv6_netmask_length": null,
+    "region": "us-east-1",
+    "tags": {
+     "Name": "lambda-rds-dev"
+    },
+    "tags_all": {
+     "Name": "lambda-rds-dev"
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.bastion_host_security_group_id",
+   "cfg": "__output__.bastion_host_security_group_id",
+   "type": "__output__",
+   "values": {
+    "name": "bastion_host_security_group_id",
+    "value": null,
+    "description": "The security group id of the Bastion Host"
+   },
+   "refs": [
+    "aws_security_group.bastion-host"
+   ]
+  },
+  {
+   "id": "__output__.bastion_host_subnet_id",
+   "cfg": "__output__.bastion_host_subnet_id",
+   "type": "__output__",
+   "values": {
+    "name": "bastion_host_subnet_id",
+    "value": null,
+    "description": "The subnet id of the bastion host"
+   },
+   "refs": [
+    "aws_subnet.lambda-rds-bastion-host-subnet"
+   ]
+  },
+  {
+   "id": "__output__.db_availability_zone",
+   "cfg": "__output__.db_availability_zone",
+   "type": "__output__",
+   "values": {
+    "name": "db_availability_zone",
+    "value": "us-east-1a",
+    "description": "The availability zone id of the RDS cluster"
+   },
+   "refs": [
+    "data.aws_availability_zones.available"
+   ]
+  },
+  {
+   "id": "__output__.db_security_group_id",
+   "cfg": "__output__.db_security_group_id",
+   "type": "__output__",
+   "values": {
+    "name": "db_security_group_id",
+    "value": null,
+    "description": "The security group id of the RDS cluster"
+   },
+   "refs": [
+    "aws_security_group.postgres-db"
+   ]
+  },
+  {
+   "id": "__output__.db_subnet_id_1",
+   "cfg": "__output__.db_subnet_id_1",
+   "type": "__output__",
+   "values": {
+    "name": "db_subnet_id_1",
+    "value": null,
+    "description": "The subnet 1 id of the RDS cluster"
+   },
+   "refs": [
+    "aws_subnet.lambda-rds-db-subnet-1"
+   ]
+  },
+  {
+   "id": "__output__.db_subnet_id_2",
+   "cfg": "__output__.db_subnet_id_2",
+   "type": "__output__",
+   "values": {
+    "name": "db_subnet_id_2",
+    "value": null,
+    "description": "The subnet 2 id of the RDS cluster"
+   },
+   "refs": [
+    "aws_subnet.lambda-rds-db-subnet-2"
+   ]
+  },
+  {
+   "id": "__output__.lambda_functions_security_group_id",
+   "cfg": "__output__.lambda_functions_security_group_id",
+   "type": "__output__",
+   "values": {
+    "name": "lambda_functions_security_group_id",
+    "value": null,
+    "description": "The security group id of the Lambda Functions"
+   },
+   "refs": [
+    "aws_security_group.lambda-functions"
+   ]
+  },
+  {
+   "id": "__output__.lambda_functions_subnet_id",
+   "cfg": "__output__.lambda_functions_subnet_id",
+   "type": "__output__",
+   "values": {
+    "name": "lambda_functions_subnet_id",
+    "value": null,
+    "description": "The subnet id of the Lambda Functions"
+   },
+   "refs": [
+    "aws_subnet.lambda-rds-dev-lambda-subnet"
+   ]
+  },
+  {
+   "id": "__output__.vpc",
+   "cfg": "__output__.vpc",
+   "type": "__output__",
+   "values": {
+    "name": "vpc",
+    "value": null,
+    "description": "The dev VPC"
+   },
+   "refs": [
+    "aws_vpc.dev-vpc"
+   ]
+  },
+  {
+   "id": "__declared__.data.aws_availability_zones.available",
+   "cfg": "data.aws_availability_zones.available",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "data.aws_availability_zones",
+    "name": "available",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "state": "available"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_internet_gateway.igw",
+   "cfg": "aws_internet_gateway.igw",
+   "type": "__declared__",
+   "refs": [
+    "aws_vpc.dev-vpc"
+   ],
+   "values": {
+    "type": "aws_internet_gateway",
+    "name": "igw",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "vpc_id": "${aws_vpc.dev-vpc.id}",
+     "tags": {
+      "Name": "lambda-rds-dev-igw"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_route_table.public",
+   "cfg": "aws_route_table.public",
+   "type": "__declared__",
+   "refs": [
+    "aws_internet_gateway.igw",
+    "aws_vpc.dev-vpc"
+   ],
+   "values": {
+    "type": "aws_route_table",
+    "name": "public",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "vpc_id": "${aws_vpc.dev-vpc.id}",
+     "route": [
+      {
+       "cidr_block": "0.0.0.0/0",
+       "gateway_id": "${aws_internet_gateway.igw.id}"
+      }
+     ],
+     "tags": {
+      "Name": "lambda-rds-public-subnet"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_route_table_association.bastion-host-route-table",
+   "cfg": "aws_route_table_association.bastion-host-route-table",
+   "type": "__declared__",
+   "refs": [
+    "aws_route_table.public",
+    "aws_subnet.lambda-rds-bastion-host-subnet"
+   ],
+   "values": {
+    "type": "aws_route_table_association",
+    "name": "bastion-host-route-table",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "subnet_id": "${aws_subnet.lambda-rds-bastion-host-subnet.id}",
+     "route_table_id": "${aws_route_table.public.id}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_security_group.postgres-db",
+   "cfg": "aws_security_group.postgres-db",
+   "type": "__declared__",
+   "refs": [
+    "aws_vpc.dev-vpc"
+   ],
+   "values": {
+    "type": "aws_security_group",
+    "name": "postgres-db",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "description": "RDS PostgreSQL on dev VPC",
+     "name": "lambda-rds-dev-postgres-db",
+     "vpc_id": "${aws_vpc.dev-vpc.id}",
+     "egress": [
+      {
+       "from_port": 0,
+       "to_port": 0,
+       "protocol": "${-1}",
+       "cidr_blocks": [
+        "${local.vpc_cidr_block}"
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_security_group_rule.postgres-db-ingress-bastion-rule",
+   "cfg": "aws_security_group_rule.postgres-db-ingress-bastion-rule",
+   "type": "__declared__",
+   "refs": [
+    "aws_security_group.bastion-host",
+    "aws_security_group.postgres-db"
+   ],
+   "values": {
+    "type": "aws_security_group_rule",
+    "name": "postgres-db-ingress-bastion-rule",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "security_group_id": "${aws_security_group.postgres-db.id}",
+     "from_port": 5432,
+     "to_port": 5432,
+     "protocol": "tcp",
+     "type": "ingress",
+     "source_security_group_id": "${aws_security_group.bastion-host.id}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_security_group_rule.postgres-db-ingress-lambda-rule",
+   "cfg": "aws_security_group_rule.postgres-db-ingress-lambda-rule",
+   "type": "__declared__",
+   "refs": [
+    "aws_security_group.lambda-functions",
+    "aws_security_group.postgres-db"
+   ],
+   "values": {
+    "type": "aws_security_group_rule",
+    "name": "postgres-db-ingress-lambda-rule",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "security_group_id": "${aws_security_group.postgres-db.id}",
+     "from_port": 5432,
+     "to_port": 5432,
+     "protocol": "tcp",
+     "type": "ingress",
+     "source_security_group_id": "${aws_security_group.lambda-functions.id}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_security_group.lambda-functions",
+   "cfg": "aws_security_group.lambda-functions",
+   "type": "__declared__",
+   "refs": [
+    "aws_vpc.dev-vpc"
+   ],
+   "values": {
+    "type": "aws_security_group",
+    "name": "lambda-functions",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "description": "Lambda functions running on the dev VPC",
+     "name": "lambda-rds-dev-lambda-functions",
+     "vpc_id": "${aws_vpc.dev-vpc.id}",
+     "egress": [
+      {
+       "from_port": 0,
+       "to_port": 0,
+       "protocol": "${-1}",
+       "cidr_blocks": [
+        "${local.vpc_cidr_block}"
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_security_group.bastion-host",
+   "cfg": "aws_security_group.bastion-host",
+   "type": "__declared__",
+   "refs": [
+    "aws_security_group.postgres-db",
+    "aws_vpc.dev-vpc"
+   ],
+   "values": {
+    "type": "aws_security_group",
+    "name": "bastion-host",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "description": "Bastion host to access RDS DB",
+     "name": "lambda-rds-dev-bastion-host",
+     "vpc_id": "${aws_vpc.dev-vpc.id}",
+     "egress": [
+      {
+       "from_port": 0,
+       "to_port": 0,
+       "protocol": "${-1}",
+       "security_groups": [
+        "${aws_security_group.postgres-db.id}"
+       ]
+      }
+     ],
+     "ingress": [
+      {
+       "from_port": 22,
+       "to_port": 22,
+       "protocol": "tcp",
+       "cidr_blocks": [
+        "${aws_vpc.dev-vpc.cidr_block}"
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_subnet.lambda-rds-db-subnet-1",
+   "cfg": "aws_subnet.lambda-rds-db-subnet-1",
+   "type": "__declared__",
+   "refs": [
+    "aws_vpc.dev-vpc",
+    "data.aws_availability_zones.available"
+   ],
+   "values": {
+    "type": "aws_subnet",
+    "name": "lambda-rds-db-subnet-1",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "vpc_id": "${aws_vpc.dev-vpc.id}",
+     "availability_zone": "${local.availability_zone}",
+     "cidr_block": "10.32.0.0/28",
+     "tags": {
+      "Name": "lambda-rds-db-subnet-1"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_subnet.lambda-rds-db-subnet-2",
+   "cfg": "aws_subnet.lambda-rds-db-subnet-2",
+   "type": "__declared__",
+   "refs": [
+    "aws_vpc.dev-vpc",
+    "data.aws_availability_zones.available"
+   ],
+   "values": {
+    "type": "aws_subnet",
+    "name": "lambda-rds-db-subnet-2",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "vpc_id": "${aws_vpc.dev-vpc.id}",
+     "availability_zone": "${local.secondary_availability_zone}",
+     "cidr_block": "10.32.0.16/28",
+     "tags": {
+      "Name": "lambda-rds-db-subnet-2"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_subnet.lambda-rds-dev-lambda-subnet",
+   "cfg": "aws_subnet.lambda-rds-dev-lambda-subnet",
+   "type": "__declared__",
+   "refs": [
+    "aws_vpc.dev-vpc",
+    "data.aws_availability_zones.available"
+   ],
+   "values": {
+    "type": "aws_subnet",
+    "name": "lambda-rds-dev-lambda-subnet",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "vpc_id": "${aws_vpc.dev-vpc.id}",
+     "availability_zone": "${local.availability_zone}",
+     "cidr_block": "10.32.1.0/24",
+     "tags": {
+      "Name": "lambda-rds-dev-lambda-subnet"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_subnet.lambda-rds-bastion-host-subnet",
+   "cfg": "aws_subnet.lambda-rds-bastion-host-subnet",
+   "type": "__declared__",
+   "refs": [
+    "aws_vpc.dev-vpc",
+    "data.aws_availability_zones.available"
+   ],
+   "values": {
+    "type": "aws_subnet",
+    "name": "lambda-rds-bastion-host-subnet",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "vpc_id": "${aws_vpc.dev-vpc.id}",
+     "availability_zone": "${local.availability_zone}",
+     "cidr_block": "10.32.15.0/24",
+     "tags": {
+      "Name": "lambda-rds-bastion-host-subnet"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_vpc.dev-vpc",
+   "cfg": "aws_vpc.dev-vpc",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_vpc",
+    "name": "dev-vpc",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "cidr_block": "${local.vpc_cidr_block}",
+     "enable_dns_hostnames": true,
+     "tags": {
+      "Name": "lambda-rds-dev"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_default_security_group.default",
+   "cfg": "aws_default_security_group.default",
+   "type": "__declared__",
+   "refs": [
+    "aws_vpc.dev-vpc"
+   ],
+   "values": {
+    "type": "aws_default_security_group",
+    "name": "default",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "vpc_id": "${aws_vpc.dev-vpc.id}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_default_network_acl.default",
+   "cfg": "aws_default_network_acl.default",
+   "type": "__declared__",
+   "refs": [
+    "aws_vpc.dev-vpc"
+   ],
+   "values": {
+    "type": "aws_default_network_acl",
+    "name": "default",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "default_network_acl_id": "${aws_vpc.dev-vpc.default_network_acl_id}",
+     "ingress": [
+      {
+       "protocol": "${-1}",
+       "rule_no": 100,
+       "action": "allow",
+       "cidr_block": "0.0.0.0/0",
+       "from_port": 0,
+       "to_port": 0
+      }
+     ],
+     "egress": [
+      {
+       "protocol": "${-1}",
+       "rule_no": 100,
+       "action": "allow",
+       "cidr_block": "0.0.0.0/0",
+       "from_port": 0,
+       "to_port": 0
+      }
+     ],
+     "lifecycle": [
+      {
+       "ignore_changes": [
+        "${subnet_ids}"
+       ]
+      }
+     ],
+     "tags": {
+      "Name": "lambda-rds-dev-default-nacl"
+     }
+    }
+   }
+  }
+ ]
+}

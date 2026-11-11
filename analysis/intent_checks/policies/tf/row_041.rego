@@ -1,0 +1,762 @@
+package intent.tf.row_041
+
+import rego.v1
+
+import data.intent.lib
+
+spec := {
+ "selectors": {
+  "sg_tcp": {
+   "types": [
+    "aws_security_group"
+   ],
+   "where": [
+    {
+     "path": [
+      "name"
+     ],
+     "op": "eq",
+     "value": "allow_tcp"
+    }
+   ]
+  },
+  "sg_udp": {
+   "types": [
+    "aws_security_group"
+   ],
+   "where": [
+    {
+     "path": [
+      "name"
+     ],
+     "op": "eq",
+     "value": "allow_udp"
+    }
+   ]
+  },
+  "sg_icmp": {
+   "types": [
+    "aws_security_group"
+   ],
+   "where": [
+    {
+     "path": [
+      "name"
+     ],
+     "op": "eq",
+     "value": "allow_icmp"
+    }
+   ]
+  },
+  "sg_all": {
+   "types": [
+    "aws_security_group"
+   ],
+   "where": [
+    {
+     "path": [
+      "name"
+     ],
+     "op": "eq",
+     "value": "allow_all"
+    }
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "sg_tcp_name",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "named \"allow_tcp\"",
+   "select": "sg_tcp"
+  },
+  {
+   "id": "sg_tcp_description",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "with the description \"Allow TCP traffic\"",
+   "select": "sg_tcp",
+   "cond": {
+    "path": [
+     "description"
+    ],
+    "op": "eq",
+    "value": "Allow TCP traffic"
+   }
+  },
+  {
+   "id": "sg_tcp_egress",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "egress rule for TCP traffic on port 10000",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "sg_tcp",
+     "cond": {
+      "path": [
+       "egress",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "protocol"
+        ],
+        "op": "in",
+        "value": [
+         "tcp",
+         "6"
+        ]
+       },
+       {
+        "path": [
+         "from_port"
+        ],
+        "op": "lte",
+        "value": 10000
+       },
+       {
+        "path": [
+         "to_port"
+        ],
+        "op": "gte",
+        "value": 10000
+       },
+       {
+        "path": [
+         "from_port"
+        ],
+        "op": "gte",
+        "value": 1
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_security_group_rule"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "egress"
+       },
+       {
+        "path": [
+         "protocol"
+        ],
+        "op": "in",
+        "value": [
+         "tcp",
+         "6"
+        ]
+       },
+       {
+        "path": [
+         "from_port"
+        ],
+        "op": "lte",
+        "value": 10000
+       },
+       {
+        "path": [
+         "from_port"
+        ],
+        "op": "gte",
+        "value": 1
+       },
+       {
+        "path": [
+         "to_port"
+        ],
+        "op": "gte",
+        "value": 10000
+       }
+      ]
+     },
+     "to": "sg_tcp"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_vpc_security_group_egress_rule"
+      ],
+      "where": [
+       {
+        "path": [
+         "ip_protocol"
+        ],
+        "op": "in",
+        "value": [
+         "tcp",
+         "6"
+        ]
+       },
+       {
+        "path": [
+         "from_port"
+        ],
+        "op": "lte",
+        "value": 10000
+       },
+       {
+        "path": [
+         "from_port"
+        ],
+        "op": "gte",
+        "value": 1
+       },
+       {
+        "path": [
+         "to_port"
+        ],
+        "op": "gte",
+        "value": 10000
+       }
+      ]
+     },
+     "to": "sg_tcp"
+    }
+   ],
+   "justify": "gte 1 only guards against a null (unknown) port; the stated port is 10000"
+  },
+  {
+   "id": "sg_udp_name",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "named \"allow_udp\"",
+   "select": "sg_udp"
+  },
+  {
+   "id": "sg_udp_description",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "with the description \"Allow UDP traffic\"",
+   "select": "sg_udp",
+   "cond": {
+    "path": [
+     "description"
+    ],
+    "op": "eq",
+    "value": "Allow UDP traffic"
+   }
+  },
+  {
+   "id": "sg_udp_egress",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "egress rule for UDP traffic on port 10000",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "sg_udp",
+     "cond": {
+      "path": [
+       "egress",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "protocol"
+        ],
+        "op": "in",
+        "value": [
+         "udp",
+         "17"
+        ]
+       },
+       {
+        "path": [
+         "from_port"
+        ],
+        "op": "lte",
+        "value": 10000
+       },
+       {
+        "path": [
+         "to_port"
+        ],
+        "op": "gte",
+        "value": 10000
+       },
+       {
+        "path": [
+         "from_port"
+        ],
+        "op": "gte",
+        "value": 1
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_security_group_rule"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "egress"
+       },
+       {
+        "path": [
+         "protocol"
+        ],
+        "op": "in",
+        "value": [
+         "udp",
+         "17"
+        ]
+       },
+       {
+        "path": [
+         "from_port"
+        ],
+        "op": "lte",
+        "value": 10000
+       },
+       {
+        "path": [
+         "from_port"
+        ],
+        "op": "gte",
+        "value": 1
+       },
+       {
+        "path": [
+         "to_port"
+        ],
+        "op": "gte",
+        "value": 10000
+       }
+      ]
+     },
+     "to": "sg_udp"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_vpc_security_group_egress_rule"
+      ],
+      "where": [
+       {
+        "path": [
+         "ip_protocol"
+        ],
+        "op": "in",
+        "value": [
+         "udp",
+         "17"
+        ]
+       },
+       {
+        "path": [
+         "from_port"
+        ],
+        "op": "lte",
+        "value": 10000
+       },
+       {
+        "path": [
+         "from_port"
+        ],
+        "op": "gte",
+        "value": 1
+       },
+       {
+        "path": [
+         "to_port"
+        ],
+        "op": "gte",
+        "value": 10000
+       }
+      ]
+     },
+     "to": "sg_udp"
+    }
+   ],
+   "justify": "gte 1 only guards against a null (unknown) port; the stated port is 10000"
+  },
+  {
+   "id": "sg_icmp_name",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "named \"allow_icmp\"",
+   "select": "sg_icmp"
+  },
+  {
+   "id": "sg_icmp_description",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "with the description \"Allow ICMP traffic\"",
+   "select": "sg_icmp",
+   "cond": {
+    "path": [
+     "description"
+    ],
+    "op": "eq",
+    "value": "Allow ICMP traffic"
+   }
+  },
+  {
+   "id": "sg_icmp_egress",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "an egress rule for ICMP traffic",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "sg_icmp",
+     "cond": {
+      "path": [
+       "egress",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "protocol"
+        ],
+        "op": "in",
+        "value": [
+         "icmp",
+         "1"
+        ]
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_security_group_rule"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "egress"
+       },
+       {
+        "path": [
+         "protocol"
+        ],
+        "op": "in",
+        "value": [
+         "icmp",
+         "1"
+        ]
+       }
+      ]
+     },
+     "to": "sg_icmp"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_vpc_security_group_egress_rule"
+      ],
+      "where": [
+       {
+        "path": [
+         "ip_protocol"
+        ],
+        "op": "in",
+        "value": [
+         "icmp",
+         "1"
+        ]
+       }
+      ]
+     },
+     "to": "sg_icmp"
+    }
+   ]
+  },
+  {
+   "id": "sg_icmp_egress_port",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "ICMP traffic on port 10000",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "sg_icmp",
+     "cond": {
+      "path": [
+       "egress",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "protocol"
+        ],
+        "op": "in",
+        "value": [
+         "icmp",
+         "1"
+        ]
+       },
+       {
+        "path": [
+         "from_port"
+        ],
+        "op": "lte",
+        "value": 10000
+       },
+       {
+        "path": [
+         "to_port"
+        ],
+        "op": "gte",
+        "value": 10000
+       },
+       {
+        "path": [
+         "from_port"
+        ],
+        "op": "gte",
+        "value": 1
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_security_group_rule"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "egress"
+       },
+       {
+        "path": [
+         "protocol"
+        ],
+        "op": "in",
+        "value": [
+         "icmp",
+         "1"
+        ]
+       },
+       {
+        "path": [
+         "from_port"
+        ],
+        "op": "lte",
+        "value": 10000
+       },
+       {
+        "path": [
+         "from_port"
+        ],
+        "op": "gte",
+        "value": 1
+       },
+       {
+        "path": [
+         "to_port"
+        ],
+        "op": "gte",
+        "value": 10000
+       }
+      ]
+     },
+     "to": "sg_icmp"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_vpc_security_group_egress_rule"
+      ],
+      "where": [
+       {
+        "path": [
+         "ip_protocol"
+        ],
+        "op": "in",
+        "value": [
+         "icmp",
+         "1"
+        ]
+       },
+       {
+        "path": [
+         "from_port"
+        ],
+        "op": "lte",
+        "value": 10000
+       },
+       {
+        "path": [
+         "from_port"
+        ],
+        "op": "gte",
+        "value": 1
+       },
+       {
+        "path": [
+         "to_port"
+        ],
+        "op": "gte",
+        "value": 10000
+       }
+      ]
+     },
+     "to": "sg_icmp"
+    }
+   ],
+   "justify": "gte 1 only guards against a null (unknown) port; the stated port is 10000"
+  },
+  {
+   "id": "sg_all_name",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "named \"allow_all\"",
+   "select": "sg_all"
+  },
+  {
+   "id": "sg_all_description",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "with the description \"Allow ALL traffic\"",
+   "select": "sg_all",
+   "cond": {
+    "path": [
+     "description"
+    ],
+    "op": "eq",
+    "value": "Allow ALL traffic"
+   }
+  },
+  {
+   "id": "sg_all_egress",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "egress rule allowing all protocols on port 0",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "sg_all",
+     "cond": {
+      "path": [
+       "egress",
+       "*"
+      ],
+      "op": "match",
+      "value": [
+       {
+        "path": [
+         "protocol"
+        ],
+        "op": "in",
+        "value": [
+         "-1",
+         "all"
+        ]
+       },
+       {
+        "path": [
+         "from_port"
+        ],
+        "op": "eq",
+        "value": 0
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_security_group_rule"
+      ],
+      "where": [
+       {
+        "path": [
+         "type"
+        ],
+        "op": "eq",
+        "value": "egress"
+       },
+       {
+        "path": [
+         "protocol"
+        ],
+        "op": "in",
+        "value": [
+         "-1",
+         "all"
+        ]
+       },
+       {
+        "path": [
+         "from_port"
+        ],
+        "op": "eq",
+        "value": 0
+       }
+      ]
+     },
+     "to": "sg_all"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_vpc_security_group_egress_rule"
+      ],
+      "where": [
+       {
+        "path": [
+         "ip_protocol"
+        ],
+        "op": "in",
+        "value": [
+         "-1",
+         "all"
+        ]
+       }
+      ]
+     },
+     "to": "sg_all"
+    }
+   ]
+  }
+ ]
+}
+
+results := lib.evaluate(spec)
+
+targets := lib.targets(spec)

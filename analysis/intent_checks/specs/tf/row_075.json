@@ -1,0 +1,253 @@
+{
+ "lang": "tf",
+ "row_number": 75,
+ "source_hash": {
+  "gt": "82169915932ff0e679c697fb98fa97226b767a0ff40526719d809646c922545c",
+  "prompt": "0a79e108abcc72d2250759b8f67b3b17e97fbe3fa98dd7c7db46e4338a7a0b6a"
+ },
+ "checks": [
+  {
+   "id": "vpc",
+   "kind": "exists",
+   "tier": "core",
+   "select": {
+    "types": [
+     "aws_vpc"
+    ]
+   },
+   "quote": "creates a VPC with CIDR block 192.168.0.0/16"
+  },
+  {
+   "id": "vpc_cidr",
+   "kind": "attr",
+   "tier": "core",
+   "select": {
+    "types": [
+     "aws_vpc"
+    ]
+   },
+   "cond": {
+    "path": "cidr_block",
+    "op": "eq",
+    "value": "192.168.0.0/16"
+   },
+   "quote": "creates a VPC with CIDR block 192.168.0.0/16"
+  },
+  {
+   "id": "public_subnet_cidr",
+   "kind": "attr",
+   "tier": "core",
+   "select": {
+    "types": [
+     "aws_subnet"
+    ]
+   },
+   "cond": {
+    "path": "cidr_block",
+    "op": "eq",
+    "value": "192.168.1.0/24"
+   },
+   "quote": "a public subnet (192.168.1.0/24)"
+  },
+  {
+   "id": "private_subnet_cidr",
+   "kind": "attr",
+   "tier": "core",
+   "select": {
+    "types": [
+     "aws_subnet"
+    ]
+   },
+   "cond": {
+    "path": "cidr_block",
+    "op": "eq",
+    "value": "192.168.4.0/24"
+   },
+   "quote": "a private subnet (192.168.4.0/24)"
+  },
+  {
+   "id": "two_subnets",
+   "kind": "exists",
+   "tier": "core",
+   "select": {
+    "types": [
+     "aws_subnet"
+    ]
+   },
+   "min": 2,
+   "quote": "containing a public subnet (192.168.1.0/24) and a private subnet (192.168.4.0/24)"
+  },
+  {
+   "id": "subnet_in_vpc",
+   "kind": "all_of",
+   "tier": "detail",
+   "quote": "containing a public subnet",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": "cidr_block",
+        "op": "eq",
+        "value": "192.168.1.0/24"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_vpc"
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": "cidr_block",
+        "op": "eq",
+        "value": "192.168.4.0/24"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "aws_vpc"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "single_az",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "in a single availability zone",
+   "checks": [
+    {
+     "kind": "join",
+     "from": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": "cidr_block",
+        "op": "eq",
+        "value": "192.168.1.0/24"
+       }
+      ]
+     },
+     "from_path": "availability_zone",
+     "to": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": "cidr_block",
+        "op": "eq",
+        "value": "192.168.4.0/24"
+       }
+      ]
+     },
+     "to_path": "availability_zone"
+    },
+    {
+     "kind": "join",
+     "from": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": "cidr_block",
+        "op": "eq",
+        "value": "192.168.1.0/24"
+       }
+      ]
+     },
+     "from_path": "availability_zone_id",
+     "to": {
+      "types": [
+       "aws_subnet"
+      ],
+      "where": [
+       {
+        "path": "cidr_block",
+        "op": "eq",
+        "value": "192.168.4.0/24"
+       }
+      ]
+     },
+     "to_path": "availability_zone_id"
+    }
+   ]
+  },
+  {
+   "id": "eip",
+   "kind": "exists",
+   "tier": "core",
+   "select": {
+    "types": [
+     "aws_eip"
+    ]
+   },
+   "quote": "plus a standalone Elastic IP"
+  },
+  {
+   "id": "eip_standalone",
+   "kind": "all_of",
+   "tier": "detail",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_eip"
+      ]
+     },
+     "cond": {
+      "path": "instance",
+      "op": "absent"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_eip"
+      ]
+     },
+     "cond": {
+      "path": "network_interface",
+      "op": "absent"
+     }
+    }
+   ],
+   "quote": "standalone Elastic IP"
+  },
+  {
+   "id": "vpc_dns_support",
+   "kind": "attr",
+   "tier": "extra",
+   "select": {
+    "types": [
+     "aws_vpc"
+    ]
+   },
+   "cond": {
+    "path": "enable_dns_support",
+    "op": "truthy"
+   }
+  }
+ ],
+ "notes": "Single AZ is checked as the public and private subnets having the same availability_zone (or zone id) by value; a subnet whose AZ is left unset (AWS picks one) cannot show this and fails. PROMPT_GT_MISMATCH: the prompt calls 192.168.1.0/24 a public subnet, but the ground truth has no internet gateway, route or public-IP mapping, so 'public' is not checked. 'Standalone' is checked on the EIP itself (no instance/network_interface); a separate aws_eip_association cannot be forbidden."
+}

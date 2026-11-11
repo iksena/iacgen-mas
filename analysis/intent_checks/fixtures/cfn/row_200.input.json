@@ -1,0 +1,3099 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "ef487161b9cd79a86e4feaee8d714ca31076090d5469b7f78ca663189a9fa260",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "VPC",
+   "cfg": "VPC",
+   "type": "AWS::EC2::VPC",
+   "values": {
+    "CidrBlock": "10.0.0.0/16",
+    "EnableDnsHostnames": true,
+    "EnableDnsSupport": true,
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "csvpc-dev-VPC"
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "PrivateSubnet1",
+   "cfg": "PrivateSubnet1",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "AvailabilityZone": "us-east-1a",
+    "CidrBlock": "10.0.3.0/24",
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "csvpc-dev-Private-Subnet-1"
+     }
+    ]
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "PrivateSubnet2",
+   "cfg": "PrivateSubnet2",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "AvailabilityZone": "us-east-1b",
+    "CidrBlock": "10.0.4.0/24",
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "csvpc-dev-Private-Subnet-2"
+     }
+    ]
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "PrivateSubnet3",
+   "cfg": "PrivateSubnet3",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "AvailabilityZone": "us-east-1c",
+    "CidrBlock": "10.0.1.0/24",
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "csvpc-dev-Private-Subnet-3"
+     }
+    ]
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "PrivateRouteTable",
+   "cfg": "PrivateRouteTable",
+   "type": "AWS::EC2::RouteTable",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "csvpc-dev-Private-Routes"
+     }
+    ]
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "PrivateSubnet1RouteTableAssociation",
+   "cfg": "PrivateSubnet1RouteTableAssociation",
+   "type": "AWS::EC2::SubnetRouteTableAssociation",
+   "values": {
+    "RouteTableId": {
+     "ref": "PrivateRouteTable"
+    },
+    "SubnetId": {
+     "ref": "PrivateSubnet1"
+    }
+   },
+   "refs": [
+    "PrivateRouteTable",
+    "PrivateSubnet1"
+   ]
+  },
+  {
+   "id": "PrivateSubnet2RouteTableAssociation",
+   "cfg": "PrivateSubnet2RouteTableAssociation",
+   "type": "AWS::EC2::SubnetRouteTableAssociation",
+   "values": {
+    "RouteTableId": {
+     "ref": "PrivateRouteTable"
+    },
+    "SubnetId": {
+     "ref": "PrivateSubnet2"
+    }
+   },
+   "refs": [
+    "PrivateRouteTable",
+    "PrivateSubnet2"
+   ]
+  },
+  {
+   "id": "PrivateSubnet3RouteTableAssociation",
+   "cfg": "PrivateSubnet3RouteTableAssociation",
+   "type": "AWS::EC2::SubnetRouteTableAssociation",
+   "values": {
+    "RouteTableId": {
+     "ref": "PrivateRouteTable"
+    },
+    "SubnetId": {
+     "ref": "PrivateSubnet3"
+    }
+   },
+   "refs": [
+    "PrivateRouteTable",
+    "PrivateSubnet3"
+   ]
+  },
+  {
+   "id": "VPCFlowLogRole",
+   "cfg": "VPCFlowLogRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "vpc-flow-logs.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "Policies": [
+     {
+      "PolicyName": "VPCFlowLogPolicy",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents",
+          "logs:DescribeLogGroups",
+          "logs:DescribeLogStreams"
+         ],
+         "Resource": [
+          "*"
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "VPCFlowLogKMSKey",
+   "cfg": "VPCFlowLogKMSKey",
+   "type": "AWS::KMS::Key",
+   "values": {
+    "Description": "KMS Key for VPC Flow Logs encryption",
+    "EnableKeyRotation": true,
+    "KeyPolicy": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Sid": "Enable IAM User Permissions",
+       "Effect": "Allow",
+       "Principal": {
+        "AWS": [
+         "arn:aws:iam::123456789012:root"
+        ]
+       },
+       "Action": [
+        "kms:*"
+       ],
+       "Resource": [
+        "*"
+       ]
+      },
+      {
+       "Sid": "Allow CloudWatch Logs",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "logs.us-east-1.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "kms:Encrypt",
+        "kms:Decrypt",
+        "kms:ReEncrypt*",
+        "kms:GenerateDataKey*",
+        "kms:DescribeKey"
+       ],
+       "Resource": [
+        "*"
+       ]
+      }
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "VPCFlowLogKMSKeyAlias",
+   "cfg": "VPCFlowLogKMSKeyAlias",
+   "type": "AWS::KMS::Alias",
+   "values": {
+    "AliasName": "alias/csvpc-dev-vpc-flowlogs",
+    "TargetKeyId": {
+     "ref": "VPCFlowLogKMSKey"
+    }
+   },
+   "refs": [
+    "VPCFlowLogKMSKey"
+   ]
+  },
+  {
+   "id": "VPCFlowLogGroup",
+   "cfg": "VPCFlowLogGroup",
+   "type": "AWS::Logs::LogGroup",
+   "values": {
+    "RetentionInDays": 7,
+    "KmsKeyId": {
+     "ref": "VPCFlowLogKMSKey",
+     "attr": "Arn"
+    },
+    "__resource__": {
+     "DeletionPolicy": "Delete"
+    }
+   },
+   "refs": [
+    "VPCFlowLogKMSKey"
+   ]
+  },
+  {
+   "id": "VPCFlowLog",
+   "cfg": "VPCFlowLog",
+   "type": "AWS::EC2::FlowLog",
+   "values": {
+    "ResourceType": "VPC",
+    "ResourceId": {
+     "ref": "VPC"
+    },
+    "TrafficType": "ALL",
+    "LogDestinationType": "cloud-watch-logs",
+    "LogDestination": {
+     "ref": "VPCFlowLogGroup",
+     "attr": "Arn"
+    },
+    "DeliverLogsPermissionArn": {
+     "ref": "VPCFlowLogRole",
+     "attr": "Arn"
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "csvpc-dev-VPC-FlowLog"
+     }
+    ]
+   },
+   "refs": [
+    "VPC",
+    "VPCFlowLogGroup",
+    "VPCFlowLogRole"
+   ]
+  },
+  {
+   "id": "VPCEndpointSecurityGroup",
+   "cfg": "VPCEndpointSecurityGroup",
+   "type": "AWS::EC2::SecurityGroup",
+   "values": {
+    "GroupDescription": "Security group for VPC endpoints",
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "SecurityGroupIngress": [
+     {
+      "IpProtocol": "tcp",
+      "FromPort": 443,
+      "ToPort": 443,
+      "CidrIp": "10.0.0.0/16",
+      "Description": "HTTPS access from Private VPC"
+     }
+    ],
+    "SecurityGroupEgress": [
+     {
+      "IpProtocol": "tcp",
+      "FromPort": 443,
+      "ToPort": 443,
+      "CidrIp": "127.0.0.1/32",
+      "Description": "Explicit deny - no outbound access required for Interfaces and VPC endpoints"
+     }
+    ],
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "csvpc-dev-VPCEndpoint-SG"
+     }
+    ]
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "CloudWatchLogsVPCEndpoint",
+   "cfg": "CloudWatchLogsVPCEndpoint",
+   "type": "AWS::EC2::VPCEndpoint",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "ServiceName": "com.amazonaws.us-east-1.logs",
+    "VpcEndpointType": "Interface",
+    "SubnetIds": [
+     {
+      "ref": "PrivateSubnet1"
+     },
+     {
+      "ref": "PrivateSubnet2"
+     },
+     {
+      "ref": "PrivateSubnet3"
+     }
+    ],
+    "SecurityGroupIds": [
+     {
+      "ref": "VPCEndpointSecurityGroup"
+     }
+    ],
+    "PrivateDnsEnabled": true,
+    "PolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": "*",
+       "Action": [
+        "logs:PutLogEvents",
+        "logs:PutRetentionPolicy",
+        "logs:DescribeLogStreams",
+        "logs:DescribeLogGroups",
+        "logs:CreateLogStream",
+        "logs:CreateLogGroup"
+       ],
+       "Resource": [
+        "*"
+       ]
+      }
+     ]
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "csvpc-dev-CloudWatch-Logs-VPCEndpoint"
+     }
+    ]
+   },
+   "refs": [
+    "PrivateSubnet1",
+    "PrivateSubnet2",
+    "PrivateSubnet3",
+    "VPC",
+    "VPCEndpointSecurityGroup"
+   ]
+  },
+  {
+   "id": "CloudWatchMonitoringVPCEndpoint",
+   "cfg": "CloudWatchMonitoringVPCEndpoint",
+   "type": "AWS::EC2::VPCEndpoint",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "ServiceName": "com.amazonaws.us-east-1.monitoring",
+    "VpcEndpointType": "Interface",
+    "SubnetIds": [
+     {
+      "ref": "PrivateSubnet1"
+     },
+     {
+      "ref": "PrivateSubnet2"
+     },
+     {
+      "ref": "PrivateSubnet3"
+     }
+    ],
+    "SecurityGroupIds": [
+     {
+      "ref": "VPCEndpointSecurityGroup"
+     }
+    ],
+    "PrivateDnsEnabled": true,
+    "PolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": "*",
+       "Action": [
+        "cloudwatch:PutMetricData"
+       ],
+       "Resource": [
+        "*"
+       ]
+      }
+     ]
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "csvpc-dev-CloudWatch-Monitoring-VPCEndpoint"
+     }
+    ]
+   },
+   "refs": [
+    "PrivateSubnet1",
+    "PrivateSubnet2",
+    "PrivateSubnet3",
+    "VPC",
+    "VPCEndpointSecurityGroup"
+   ]
+  },
+  {
+   "id": "ECRDockerVPCEndpoint",
+   "cfg": "ECRDockerVPCEndpoint",
+   "type": "AWS::EC2::VPCEndpoint",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "ServiceName": "com.amazonaws.us-east-1.ecr.dkr",
+    "VpcEndpointType": "Interface",
+    "SubnetIds": [
+     {
+      "ref": "PrivateSubnet1"
+     },
+     {
+      "ref": "PrivateSubnet2"
+     },
+     {
+      "ref": "PrivateSubnet3"
+     }
+    ],
+    "SecurityGroupIds": [
+     {
+      "ref": "VPCEndpointSecurityGroup"
+     }
+    ],
+    "PrivateDnsEnabled": true,
+    "PolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": "*",
+       "Action": [
+        "ecr:GetDownloadUrlForLayer",
+        "ecr:BatchGetImage",
+        "ecr:BatchCheckLayerAvailability"
+       ],
+       "Resource": [
+        "*"
+       ]
+      }
+     ]
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "csvpc-dev-ECR-Docker-VPCEndpoint"
+     }
+    ]
+   },
+   "refs": [
+    "PrivateSubnet1",
+    "PrivateSubnet2",
+    "PrivateSubnet3",
+    "VPC",
+    "VPCEndpointSecurityGroup"
+   ]
+  },
+  {
+   "id": "ECRAPIVPCEndpoint",
+   "cfg": "ECRAPIVPCEndpoint",
+   "type": "AWS::EC2::VPCEndpoint",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "ServiceName": "com.amazonaws.us-east-1.ecr.api",
+    "VpcEndpointType": "Interface",
+    "SubnetIds": [
+     {
+      "ref": "PrivateSubnet1"
+     },
+     {
+      "ref": "PrivateSubnet2"
+     },
+     {
+      "ref": "PrivateSubnet3"
+     }
+    ],
+    "SecurityGroupIds": [
+     {
+      "ref": "VPCEndpointSecurityGroup"
+     }
+    ],
+    "PrivateDnsEnabled": true,
+    "PolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": "*",
+       "Action": [
+        "ecr:GetAuthorizationToken"
+       ],
+       "Resource": [
+        "*"
+       ]
+      }
+     ]
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "csvpc-dev-ECR-API-VPCEndpoint"
+     }
+    ]
+   },
+   "refs": [
+    "PrivateSubnet1",
+    "PrivateSubnet2",
+    "PrivateSubnet3",
+    "VPC",
+    "VPCEndpointSecurityGroup"
+   ]
+  },
+  {
+   "id": "DynamoDBGatewayEndpoint",
+   "cfg": "DynamoDBGatewayEndpoint",
+   "type": "AWS::EC2::VPCEndpoint",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "ServiceName": "com.amazonaws.us-east-1.dynamodb",
+    "VpcEndpointType": "Gateway",
+    "RouteTableIds": [
+     {
+      "ref": "PrivateRouteTable"
+     }
+    ],
+    "PolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": "*",
+       "Action": [
+        "dynamodb:GetItem",
+        "dynamodb:Query",
+        "dynamodb:Scan",
+        "dynamodb:DescribeTable"
+       ],
+       "Resource": [
+        "arn:aws:dynamodb:us-east-1:123456789012:table/*",
+        "arn:aws:dynamodb:us-east-1:123456789012:table/*/index/*"
+       ]
+      }
+     ]
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "csvpc-dev-DynamoDB-GatewayEndpoint"
+     }
+    ]
+   },
+   "refs": [
+    "PrivateRouteTable",
+    "VPC"
+   ]
+  },
+  {
+   "id": "SSMVPCEndpoint",
+   "cfg": "SSMVPCEndpoint",
+   "type": "AWS::EC2::VPCEndpoint",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "ServiceName": "com.amazonaws.us-east-1.ssm",
+    "VpcEndpointType": "Interface",
+    "SubnetIds": [
+     {
+      "ref": "PrivateSubnet1"
+     },
+     {
+      "ref": "PrivateSubnet2"
+     },
+     {
+      "ref": "PrivateSubnet3"
+     }
+    ],
+    "SecurityGroupIds": [
+     {
+      "ref": "VPCEndpointSecurityGroup"
+     }
+    ],
+    "PrivateDnsEnabled": true,
+    "PolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": "*",
+       "Action": [
+        "ssm:GetParameter",
+        "ssm:GetParameters"
+       ],
+       "Resource": [
+        "arn:aws:ssm:us-east-1:123456789012:parameter/app/customersupportvpc/*"
+       ]
+      }
+     ]
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "csvpc-dev-SSM-VPCEndpoint"
+     }
+    ]
+   },
+   "refs": [
+    "PrivateSubnet1",
+    "PrivateSubnet2",
+    "PrivateSubnet3",
+    "VPC",
+    "VPCEndpointSecurityGroup"
+   ]
+  },
+  {
+   "id": "KMSVPCEndpoint",
+   "cfg": "KMSVPCEndpoint",
+   "type": "AWS::EC2::VPCEndpoint",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "ServiceName": "com.amazonaws.us-east-1.kms",
+    "VpcEndpointType": "Interface",
+    "SubnetIds": [
+     {
+      "ref": "PrivateSubnet1"
+     },
+     {
+      "ref": "PrivateSubnet2"
+     },
+     {
+      "ref": "PrivateSubnet3"
+     }
+    ],
+    "SecurityGroupIds": [
+     {
+      "ref": "VPCEndpointSecurityGroup"
+     }
+    ],
+    "PrivateDnsEnabled": true,
+    "PolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": "*",
+       "Action": [
+        "kms:Decrypt",
+        "kms:GenerateDataKey",
+        "kms:DescribeKey"
+       ],
+       "Resource": [
+        "*"
+       ]
+      }
+     ]
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "csvpc-dev-KMS-VPCEndpoint"
+     }
+    ]
+   },
+   "refs": [
+    "PrivateSubnet1",
+    "PrivateSubnet2",
+    "PrivateSubnet3",
+    "VPC",
+    "VPCEndpointSecurityGroup"
+   ]
+  },
+  {
+   "id": "SecretsManagerVPCEndpoint",
+   "cfg": "SecretsManagerVPCEndpoint",
+   "type": "AWS::EC2::VPCEndpoint",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "ServiceName": "com.amazonaws.us-east-1.secretsmanager",
+    "VpcEndpointType": "Interface",
+    "SubnetIds": [
+     {
+      "ref": "PrivateSubnet1"
+     },
+     {
+      "ref": "PrivateSubnet2"
+     },
+     {
+      "ref": "PrivateSubnet3"
+     }
+    ],
+    "SecurityGroupIds": [
+     {
+      "ref": "VPCEndpointSecurityGroup"
+     }
+    ],
+    "PolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": "*",
+       "Action": [
+        "secretsmanager:GetSecretValue",
+        "secretsmanager:DescribeSecret"
+       ],
+       "Resource": [
+        "*"
+       ]
+      }
+     ]
+    },
+    "PrivateDnsEnabled": true,
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "csvpc-dev-SecretsManager-VPCEndpoint"
+     }
+    ]
+   },
+   "refs": [
+    "PrivateSubnet1",
+    "PrivateSubnet2",
+    "PrivateSubnet3",
+    "VPC",
+    "VPCEndpointSecurityGroup"
+   ]
+  },
+  {
+   "id": "RDSDataVPCEndpoint",
+   "cfg": "RDSDataVPCEndpoint",
+   "type": "AWS::EC2::VPCEndpoint",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "ServiceName": "com.amazonaws.us-east-1.rds-data",
+    "VpcEndpointType": "Interface",
+    "SubnetIds": [
+     {
+      "ref": "PrivateSubnet1"
+     },
+     {
+      "ref": "PrivateSubnet2"
+     },
+     {
+      "ref": "PrivateSubnet3"
+     }
+    ],
+    "SecurityGroupIds": [
+     {
+      "ref": "VPCEndpointSecurityGroup"
+     }
+    ],
+    "PrivateDnsEnabled": true,
+    "PolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": "*",
+       "Action": [
+        "rds-data:ExecuteStatement",
+        "rds-data:BatchExecuteStatement",
+        "rds-data:BeginTransaction",
+        "rds-data:CommitTransaction",
+        "rds-data:RollbackTransaction"
+       ],
+       "Resource": [
+        "*"
+       ]
+      }
+     ]
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "csvpc-dev-RDS-Data-VPCEndpoint"
+     }
+    ]
+   },
+   "refs": [
+    "PrivateSubnet1",
+    "PrivateSubnet2",
+    "PrivateSubnet3",
+    "VPC",
+    "VPCEndpointSecurityGroup"
+   ]
+  },
+  {
+   "id": "S3VPCEndpoint",
+   "cfg": "S3VPCEndpoint",
+   "type": "AWS::EC2::VPCEndpoint",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "ServiceName": "com.amazonaws.us-east-1.s3",
+    "VpcEndpointType": "Gateway",
+    "RouteTableIds": [
+     {
+      "ref": "PrivateRouteTable"
+     }
+    ],
+    "PolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": "*",
+       "Action": [
+        "s3:GetObject",
+        "s3:PutObject"
+       ],
+       "Resource": [
+        "arn:aws:s3:::cloudformation-custom-resource-response-*/*"
+       ]
+      }
+     ]
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "csvpc-dev-S3-VPCEndpoint"
+     }
+    ]
+   },
+   "refs": [
+    "PrivateRouteTable",
+    "VPC"
+   ]
+  },
+  {
+   "id": "XRayVPCEndpoint",
+   "cfg": "XRayVPCEndpoint",
+   "type": "AWS::EC2::VPCEndpoint",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "ServiceName": "com.amazonaws.us-east-1.xray",
+    "VpcEndpointType": "Interface",
+    "SubnetIds": [
+     {
+      "ref": "PrivateSubnet1"
+     },
+     {
+      "ref": "PrivateSubnet2"
+     },
+     {
+      "ref": "PrivateSubnet3"
+     }
+    ],
+    "SecurityGroupIds": [
+     {
+      "ref": "VPCEndpointSecurityGroup"
+     }
+    ],
+    "PrivateDnsEnabled": true,
+    "PolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": "*",
+       "Action": [
+        "xray:PutTraceSegments",
+        "xray:PutTelemetryRecords",
+        "xray:GetSamplingRules",
+        "xray:GetSamplingTargets",
+        "xray:GetSamplingStatisticSummaries"
+       ],
+       "Resource": [
+        "*"
+       ]
+      }
+     ]
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "csvpc-dev-XRay-VPCEndpoint"
+     }
+    ]
+   },
+   "refs": [
+    "PrivateSubnet1",
+    "PrivateSubnet2",
+    "PrivateSubnet3",
+    "VPC",
+    "VPCEndpointSecurityGroup"
+   ]
+  },
+  {
+   "id": "BedrockRuntimeVPCEndpoint",
+   "cfg": "BedrockRuntimeVPCEndpoint",
+   "type": "AWS::EC2::VPCEndpoint",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "ServiceName": "com.amazonaws.us-east-1.bedrock-runtime",
+    "VpcEndpointType": "Interface",
+    "SubnetIds": [
+     {
+      "ref": "PrivateSubnet1"
+     },
+     {
+      "ref": "PrivateSubnet2"
+     },
+     {
+      "ref": "PrivateSubnet3"
+     }
+    ],
+    "SecurityGroupIds": [
+     {
+      "ref": "VPCEndpointSecurityGroup"
+     }
+    ],
+    "PrivateDnsEnabled": true,
+    "PolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": "*",
+       "Action": [
+        "bedrock:InvokeModel",
+        "bedrock:InvokeModelWithResponseStream"
+       ],
+       "Resource": [
+        "*"
+       ]
+      }
+     ]
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "csvpc-dev-BedrockRuntime-VPCEndpoint"
+     }
+    ]
+   },
+   "refs": [
+    "PrivateSubnet1",
+    "PrivateSubnet2",
+    "PrivateSubnet3",
+    "VPC",
+    "VPCEndpointSecurityGroup"
+   ]
+  },
+  {
+   "id": "BedrockAgentCoreVPCEndpoint",
+   "cfg": "BedrockAgentCoreVPCEndpoint",
+   "type": "AWS::EC2::VPCEndpoint",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "ServiceName": "com.amazonaws.us-east-1.bedrock-agentcore",
+    "VpcEndpointType": "Interface",
+    "SubnetIds": [
+     {
+      "ref": "PrivateSubnet1"
+     },
+     {
+      "ref": "PrivateSubnet2"
+     },
+     {
+      "ref": "PrivateSubnet3"
+     }
+    ],
+    "SecurityGroupIds": [
+     {
+      "ref": "VPCEndpointSecurityGroup"
+     }
+    ],
+    "PrivateDnsEnabled": true,
+    "PolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": "*",
+       "Action": [
+        "*"
+       ],
+       "Resource": [
+        "*"
+       ]
+      }
+     ]
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "csvpc-dev-BedrockAgentCore-VPCEndpoint"
+     }
+    ]
+   },
+   "refs": [
+    "PrivateSubnet1",
+    "PrivateSubnet2",
+    "PrivateSubnet3",
+    "VPC",
+    "VPCEndpointSecurityGroup"
+   ]
+  },
+  {
+   "id": "BedrockAgentCoreGatewayVPCEndpoint",
+   "cfg": "BedrockAgentCoreGatewayVPCEndpoint",
+   "type": "AWS::EC2::VPCEndpoint",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "ServiceName": "com.amazonaws.us-east-1.bedrock-agentcore.gateway",
+    "VpcEndpointType": "Interface",
+    "SubnetIds": [
+     {
+      "ref": "PrivateSubnet1"
+     },
+     {
+      "ref": "PrivateSubnet2"
+     },
+     {
+      "ref": "PrivateSubnet3"
+     }
+    ],
+    "SecurityGroupIds": [
+     {
+      "ref": "VPCEndpointSecurityGroup"
+     }
+    ],
+    "PrivateDnsEnabled": true,
+    "PolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": "*",
+       "Action": [
+        "*"
+       ],
+       "Resource": [
+        "*"
+       ]
+      }
+     ]
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "csvpc-dev-BedrockAgentCoreGateway-VPCEndpoint"
+     }
+    ]
+   },
+   "refs": [
+    "PrivateSubnet1",
+    "PrivateSubnet2",
+    "PrivateSubnet3",
+    "VPC",
+    "VPCEndpointSecurityGroup"
+   ]
+  },
+  {
+   "id": "AgentRuntimeSecurityGroup",
+   "cfg": "AgentRuntimeSecurityGroup",
+   "type": "AWS::EC2::SecurityGroup",
+   "values": {
+    "GroupDescription": "Security group for Agent Runtime",
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "SecurityGroupIngress": [],
+    "SecurityGroupEgress": [],
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "csvpc-dev-AgentRuntime-SG"
+     }
+    ]
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "AgentRuntimeToVPCEndpointRule",
+   "cfg": "AgentRuntimeToVPCEndpointRule",
+   "type": "AWS::EC2::SecurityGroupEgress",
+   "values": {
+    "GroupId": {
+     "ref": "AgentRuntimeSecurityGroup"
+    },
+    "IpProtocol": "tcp",
+    "FromPort": 443,
+    "ToPort": 443,
+    "DestinationSecurityGroupId": {
+     "ref": "VPCEndpointSecurityGroup"
+    },
+    "Description": "HTTPS access to VPC Endpoint Security Group"
+   },
+   "refs": [
+    "AgentRuntimeSecurityGroup",
+    "VPCEndpointSecurityGroup"
+   ]
+  },
+  {
+   "id": "MCPRuntimeSecurityGroup",
+   "cfg": "MCPRuntimeSecurityGroup",
+   "type": "AWS::EC2::SecurityGroup",
+   "values": {
+    "GroupDescription": "Security group for MCP Runtime",
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "SecurityGroupIngress": [],
+    "SecurityGroupEgress": [],
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "csvpc-dev-MCPRuntime-SG"
+     }
+    ]
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "MCPRuntimeToVPCEndpointRule",
+   "cfg": "MCPRuntimeToVPCEndpointRule",
+   "type": "AWS::EC2::SecurityGroupEgress",
+   "values": {
+    "GroupId": {
+     "ref": "MCPRuntimeSecurityGroup"
+    },
+    "IpProtocol": "tcp",
+    "FromPort": 443,
+    "ToPort": 443,
+    "DestinationSecurityGroupId": {
+     "ref": "VPCEndpointSecurityGroup"
+    },
+    "Description": "HTTPS access to VPC Endpoint Security Group"
+   },
+   "refs": [
+    "MCPRuntimeSecurityGroup",
+    "VPCEndpointSecurityGroup"
+   ]
+  },
+  {
+   "id": "MCPRuntimeToDynamoDBRule",
+   "cfg": "MCPRuntimeToDynamoDBRule",
+   "type": "AWS::EC2::SecurityGroupEgress",
+   "values": {
+    "GroupId": {
+     "ref": "MCPRuntimeSecurityGroup"
+    },
+    "IpProtocol": "tcp",
+    "FromPort": 443,
+    "ToPort": 443,
+    "DestinationPrefixListId": "pl-02cd2c6b",
+    "Description": "HTTPS access to DynamoDB via Gateway Endpoint"
+   },
+   "refs": [
+    "MCPRuntimeSecurityGroup"
+   ]
+  },
+  {
+   "id": "GatewayLambdaSecurityGroup",
+   "cfg": "GatewayLambdaSecurityGroup",
+   "type": "AWS::EC2::SecurityGroup",
+   "values": {
+    "GroupDescription": "Security group for Gateway Lambda functions in VPC",
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "SecurityGroupIngress": [],
+    "SecurityGroupEgress": [],
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "csvpc-dev-GatewayLambda-SG"
+     }
+    ]
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "GatewayLambdaToVPCEndpointRule",
+   "cfg": "GatewayLambdaToVPCEndpointRule",
+   "type": "AWS::EC2::SecurityGroupEgress",
+   "values": {
+    "GroupId": {
+     "ref": "GatewayLambdaSecurityGroup"
+    },
+    "IpProtocol": "tcp",
+    "FromPort": 443,
+    "ToPort": 443,
+    "DestinationSecurityGroupId": {
+     "ref": "VPCEndpointSecurityGroup"
+    },
+    "Description": "HTTPS access to VPC Endpoint Security Group"
+   },
+   "refs": [
+    "GatewayLambdaSecurityGroup",
+    "VPCEndpointSecurityGroup"
+   ]
+  },
+  {
+   "id": "GatewayLambdaToDynamoDBRule",
+   "cfg": "GatewayLambdaToDynamoDBRule",
+   "type": "AWS::EC2::SecurityGroupEgress",
+   "values": {
+    "GroupId": {
+     "ref": "GatewayLambdaSecurityGroup"
+    },
+    "IpProtocol": "tcp",
+    "FromPort": 443,
+    "ToPort": 443,
+    "DestinationPrefixListId": "pl-02cd2c6b",
+    "Description": "HTTPS access to DynamoDB via Gateway Endpoint"
+   },
+   "refs": [
+    "GatewayLambdaSecurityGroup"
+   ]
+  },
+  {
+   "id": "__parameter__.Environment",
+   "cfg": "__parameter__.Environment",
+   "type": "__parameter__",
+   "values": {
+    "name": "Environment",
+    "type": "String",
+    "default": "dev",
+    "allowed_values": [
+     "dev",
+     "test",
+     "prod"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.VpcCidr",
+   "cfg": "__parameter__.VpcCidr",
+   "type": "__parameter__",
+   "values": {
+    "name": "VpcCidr",
+    "type": "String",
+    "default": "10.0.0.0/16",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.PrivateSubnet3Cidr",
+   "cfg": "__parameter__.PrivateSubnet3Cidr",
+   "type": "__parameter__",
+   "values": {
+    "name": "PrivateSubnet3Cidr",
+    "type": "String",
+    "default": "10.0.1.0/24",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.PrivateSubnet1Cidr",
+   "cfg": "__parameter__.PrivateSubnet1Cidr",
+   "type": "__parameter__",
+   "values": {
+    "name": "PrivateSubnet1Cidr",
+    "type": "String",
+    "default": "10.0.3.0/24",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.PrivateSubnet2Cidr",
+   "cfg": "__parameter__.PrivateSubnet2Cidr",
+   "type": "__parameter__",
+   "values": {
+    "name": "PrivateSubnet2Cidr",
+    "type": "String",
+    "default": "10.0.4.0/24",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.StackName",
+   "cfg": "__output__.StackName",
+   "type": "__output__",
+   "values": {
+    "name": "StackName",
+    "value": "stack",
+    "description": "Stack name for cross-stack references",
+    "export": "stack-StackName"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.VPC",
+   "cfg": "__output__.VPC",
+   "type": "__output__",
+   "values": {
+    "name": "VPC",
+    "value": {
+     "ref": "VPC"
+    },
+    "description": "A reference to the created VPC",
+    "export": "stack-VPCID"
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "__output__.PrivateSubnets",
+   "cfg": "__output__.PrivateSubnets",
+   "type": "__output__",
+   "values": {
+    "name": "PrivateSubnets",
+    "value": {
+     "Fn::Join": [
+      ",",
+      [
+       {
+        "ref": "PrivateSubnet1"
+       },
+       {
+        "ref": "PrivateSubnet2"
+       },
+       {
+        "ref": "PrivateSubnet3"
+       }
+      ]
+     ]
+    },
+    "description": "A list of all private subnets",
+    "export": "stack-PrivateSubnets"
+   },
+   "refs": [
+    "PrivateSubnet1",
+    "PrivateSubnet2",
+    "PrivateSubnet3"
+   ]
+  },
+  {
+   "id": "__output__.DynamoDBPrefixListId",
+   "cfg": "__output__.DynamoDBPrefixListId",
+   "type": "__output__",
+   "values": {
+    "name": "DynamoDBPrefixListId",
+    "value": "pl-02cd2c6b",
+    "description": "DynamoDB Prefix List ID used for security group rules",
+    "export": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.PrivateSubnet1RDSDataVPCEndpoint",
+   "cfg": "__output__.PrivateSubnet1RDSDataVPCEndpoint",
+   "type": "__output__",
+   "values": {
+    "name": "PrivateSubnet1RDSDataVPCEndpoint",
+    "value": {
+     "ref": "PrivateSubnet1"
+    },
+    "description": "A reference to the private subnet in the 1st Availability Zone",
+    "export": "stack-PrivateSubnet1"
+   },
+   "refs": [
+    "PrivateSubnet1"
+   ]
+  },
+  {
+   "id": "__output__.PrivateSubnet2",
+   "cfg": "__output__.PrivateSubnet2",
+   "type": "__output__",
+   "values": {
+    "name": "PrivateSubnet2",
+    "value": {
+     "ref": "PrivateSubnet2"
+    },
+    "description": "A reference to the private subnet in the 2nd Availability Zone",
+    "export": "stack-PrivateSubnet2"
+   },
+   "refs": [
+    "PrivateSubnet2"
+   ]
+  },
+  {
+   "id": "__output__.PrivateSubnet3",
+   "cfg": "__output__.PrivateSubnet3",
+   "type": "__output__",
+   "values": {
+    "name": "PrivateSubnet3",
+    "value": {
+     "ref": "PrivateSubnet3"
+    },
+    "description": "A reference to the private subnet in the 3rd Availability Zone",
+    "export": "stack-PrivateSubnet3"
+   },
+   "refs": [
+    "PrivateSubnet3"
+   ]
+  },
+  {
+   "id": "__output__.PrivateRouteTable",
+   "cfg": "__output__.PrivateRouteTable",
+   "type": "__output__",
+   "values": {
+    "name": "PrivateRouteTable",
+    "value": {
+     "ref": "PrivateRouteTable"
+    },
+    "description": "A reference to the private route table",
+    "export": "stack-PrivateRouteTable"
+   },
+   "refs": [
+    "PrivateRouteTable"
+   ]
+  },
+  {
+   "id": "__output__.MCPRuntimeSecurityGroup",
+   "cfg": "__output__.MCPRuntimeSecurityGroup",
+   "type": "__output__",
+   "values": {
+    "name": "MCPRuntimeSecurityGroup",
+    "value": {
+     "ref": "MCPRuntimeSecurityGroup"
+    },
+    "description": "Security group for MCP Runtime",
+    "export": "stack-MCPRuntimeSecurityGroup"
+   },
+   "refs": [
+    "MCPRuntimeSecurityGroup"
+   ]
+  },
+  {
+   "id": "__output__.AgentRuntimeSecurityGroup",
+   "cfg": "__output__.AgentRuntimeSecurityGroup",
+   "type": "__output__",
+   "values": {
+    "name": "AgentRuntimeSecurityGroup",
+    "value": {
+     "ref": "AgentRuntimeSecurityGroup"
+    },
+    "description": "Security group for Agent Runtime",
+    "export": "stack-AgentRuntimeSecurityGroup"
+   },
+   "refs": [
+    "AgentRuntimeSecurityGroup"
+   ]
+  },
+  {
+   "id": "__output__.GatewayLambdaSecurityGroup",
+   "cfg": "__output__.GatewayLambdaSecurityGroup",
+   "type": "__output__",
+   "values": {
+    "name": "GatewayLambdaSecurityGroup",
+    "value": {
+     "ref": "GatewayLambdaSecurityGroup"
+    },
+    "description": "Security group for Gateway Lambda functions",
+    "export": "stack-GatewayLambdaSecurityGroup"
+   },
+   "refs": [
+    "GatewayLambdaSecurityGroup"
+   ]
+  },
+  {
+   "id": "__output__.RDSDataVPCEndpoint",
+   "cfg": "__output__.RDSDataVPCEndpoint",
+   "type": "__output__",
+   "values": {
+    "name": "RDSDataVPCEndpoint",
+    "value": {
+     "ref": "RDSDataVPCEndpoint"
+    },
+    "description": "VPC Endpoint for RDS Data API",
+    "export": "stack-RDSDataVPCEndpoint"
+   },
+   "refs": [
+    "RDSDataVPCEndpoint"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPC.VPC",
+   "cfg": "VPC",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::VPC",
+    "name": "VPC",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "CidrBlock": "10.0.0.0/16",
+     "EnableDnsHostnames": true,
+     "EnableDnsSupport": true,
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "csvpc-dev-VPC"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.PrivateSubnet1",
+   "cfg": "PrivateSubnet1",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "PrivateSubnet1",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "AvailabilityZone": "us-east-1a",
+     "CidrBlock": "10.0.3.0/24",
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "csvpc-dev-Private-Subnet-1"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.PrivateSubnet2",
+   "cfg": "PrivateSubnet2",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "PrivateSubnet2",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "AvailabilityZone": "us-east-1b",
+     "CidrBlock": "10.0.4.0/24",
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "csvpc-dev-Private-Subnet-2"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.PrivateSubnet3",
+   "cfg": "PrivateSubnet3",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "PrivateSubnet3",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "AvailabilityZone": "us-east-1c",
+     "CidrBlock": "10.0.1.0/24",
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "csvpc-dev-Private-Subnet-3"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::RouteTable.PrivateRouteTable",
+   "cfg": "PrivateRouteTable",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::RouteTable",
+    "name": "PrivateRouteTable",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "csvpc-dev-Private-Routes"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetRouteTableAssociation.PrivateSubnet1RouteTableAssociation",
+   "cfg": "PrivateSubnet1RouteTableAssociation",
+   "type": "__declared__",
+   "refs": [
+    "PrivateRouteTable",
+    "PrivateSubnet1"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetRouteTableAssociation",
+    "name": "PrivateSubnet1RouteTableAssociation",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RouteTableId": {
+      "ref": "PrivateRouteTable"
+     },
+     "SubnetId": {
+      "ref": "PrivateSubnet1"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetRouteTableAssociation.PrivateSubnet2RouteTableAssociation",
+   "cfg": "PrivateSubnet2RouteTableAssociation",
+   "type": "__declared__",
+   "refs": [
+    "PrivateRouteTable",
+    "PrivateSubnet2"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetRouteTableAssociation",
+    "name": "PrivateSubnet2RouteTableAssociation",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RouteTableId": {
+      "ref": "PrivateRouteTable"
+     },
+     "SubnetId": {
+      "ref": "PrivateSubnet2"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetRouteTableAssociation.PrivateSubnet3RouteTableAssociation",
+   "cfg": "PrivateSubnet3RouteTableAssociation",
+   "type": "__declared__",
+   "refs": [
+    "PrivateRouteTable",
+    "PrivateSubnet3"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetRouteTableAssociation",
+    "name": "PrivateSubnet3RouteTableAssociation",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RouteTableId": {
+      "ref": "PrivateRouteTable"
+     },
+     "SubnetId": {
+      "ref": "PrivateSubnet3"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.VPCFlowLogRole",
+   "cfg": "VPCFlowLogRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "VPCFlowLogRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "vpc-flow-logs.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "Policies": [
+      {
+       "PolicyName": "VPCFlowLogPolicy",
+       "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+         {
+          "Effect": "Allow",
+          "Action": [
+           "logs:CreateLogGroup",
+           "logs:CreateLogStream",
+           "logs:PutLogEvents",
+           "logs:DescribeLogGroups",
+           "logs:DescribeLogStreams"
+          ],
+          "Resource": [
+           "*"
+          ]
+         }
+        ]
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::KMS::Key.VPCFlowLogKMSKey",
+   "cfg": "VPCFlowLogKMSKey",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::KMS::Key",
+    "name": "VPCFlowLogKMSKey",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Description": "KMS Key for VPC Flow Logs encryption",
+     "EnableKeyRotation": true,
+     "KeyPolicy": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Sid": "Enable IAM User Permissions",
+        "Effect": "Allow",
+        "Principal": {
+         "AWS": [
+          "arn:aws:iam::123456789012:root"
+         ]
+        },
+        "Action": [
+         "kms:*"
+        ],
+        "Resource": [
+         "*"
+        ]
+       },
+       {
+        "Sid": "Allow CloudWatch Logs",
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "logs.us-east-1.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "kms:Encrypt",
+         "kms:Decrypt",
+         "kms:ReEncrypt*",
+         "kms:GenerateDataKey*",
+         "kms:DescribeKey"
+        ],
+        "Resource": [
+         "*"
+        ]
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::KMS::Alias.VPCFlowLogKMSKeyAlias",
+   "cfg": "VPCFlowLogKMSKeyAlias",
+   "type": "__declared__",
+   "refs": [
+    "VPCFlowLogKMSKey"
+   ],
+   "values": {
+    "type": "AWS::KMS::Alias",
+    "name": "VPCFlowLogKMSKeyAlias",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AliasName": "alias/csvpc-dev-vpc-flowlogs",
+     "TargetKeyId": {
+      "ref": "VPCFlowLogKMSKey"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Logs::LogGroup.VPCFlowLogGroup",
+   "cfg": "VPCFlowLogGroup",
+   "type": "__declared__",
+   "refs": [
+    "VPCFlowLogKMSKey"
+   ],
+   "values": {
+    "type": "AWS::Logs::LogGroup",
+    "name": "VPCFlowLogGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RetentionInDays": 7,
+     "KmsKeyId": {
+      "ref": "VPCFlowLogKMSKey",
+      "attr": "Arn"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::FlowLog.VPCFlowLog",
+   "cfg": "VPCFlowLog",
+   "type": "__declared__",
+   "refs": [
+    "VPC",
+    "VPCFlowLogGroup",
+    "VPCFlowLogRole"
+   ],
+   "values": {
+    "type": "AWS::EC2::FlowLog",
+    "name": "VPCFlowLog",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "ResourceType": "VPC",
+     "ResourceId": {
+      "ref": "VPC"
+     },
+     "TrafficType": "ALL",
+     "LogDestinationType": "cloud-watch-logs",
+     "LogDestination": {
+      "ref": "VPCFlowLogGroup",
+      "attr": "Arn"
+     },
+     "DeliverLogsPermissionArn": {
+      "ref": "VPCFlowLogRole",
+      "attr": "Arn"
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "csvpc-dev-VPC-FlowLog"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SecurityGroup.VPCEndpointSecurityGroup",
+   "cfg": "VPCEndpointSecurityGroup",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::SecurityGroup",
+    "name": "VPCEndpointSecurityGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "GroupDescription": "Security group for VPC endpoints",
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "SecurityGroupIngress": [
+      {
+       "IpProtocol": "tcp",
+       "FromPort": 443,
+       "ToPort": 443,
+       "CidrIp": "10.0.0.0/16",
+       "Description": "HTTPS access from Private VPC"
+      }
+     ],
+     "SecurityGroupEgress": [
+      {
+       "IpProtocol": "tcp",
+       "FromPort": 443,
+       "ToPort": 443,
+       "CidrIp": "127.0.0.1/32",
+       "Description": "Explicit deny - no outbound access required for Interfaces and VPC endpoints"
+      }
+     ],
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "csvpc-dev-VPCEndpoint-SG"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCEndpoint.CloudWatchLogsVPCEndpoint",
+   "cfg": "CloudWatchLogsVPCEndpoint",
+   "type": "__declared__",
+   "refs": [
+    "PrivateSubnet1",
+    "PrivateSubnet2",
+    "PrivateSubnet3",
+    "VPC",
+    "VPCEndpointSecurityGroup"
+   ],
+   "values": {
+    "type": "AWS::EC2::VPCEndpoint",
+    "name": "CloudWatchLogsVPCEndpoint",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "ServiceName": "com.amazonaws.us-east-1.logs",
+     "VpcEndpointType": "Interface",
+     "SubnetIds": [
+      {
+       "ref": "PrivateSubnet1"
+      },
+      {
+       "ref": "PrivateSubnet2"
+      },
+      {
+       "ref": "PrivateSubnet3"
+      }
+     ],
+     "SecurityGroupIds": [
+      {
+       "ref": "VPCEndpointSecurityGroup"
+      }
+     ],
+     "PrivateDnsEnabled": true,
+     "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": "*",
+        "Action": [
+         "logs:PutLogEvents",
+         "logs:PutRetentionPolicy",
+         "logs:DescribeLogStreams",
+         "logs:DescribeLogGroups",
+         "logs:CreateLogStream",
+         "logs:CreateLogGroup"
+        ],
+        "Resource": [
+         "*"
+        ]
+       }
+      ]
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "csvpc-dev-CloudWatch-Logs-VPCEndpoint"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCEndpoint.CloudWatchMonitoringVPCEndpoint",
+   "cfg": "CloudWatchMonitoringVPCEndpoint",
+   "type": "__declared__",
+   "refs": [
+    "PrivateSubnet1",
+    "PrivateSubnet2",
+    "PrivateSubnet3",
+    "VPC",
+    "VPCEndpointSecurityGroup"
+   ],
+   "values": {
+    "type": "AWS::EC2::VPCEndpoint",
+    "name": "CloudWatchMonitoringVPCEndpoint",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "ServiceName": "com.amazonaws.us-east-1.monitoring",
+     "VpcEndpointType": "Interface",
+     "SubnetIds": [
+      {
+       "ref": "PrivateSubnet1"
+      },
+      {
+       "ref": "PrivateSubnet2"
+      },
+      {
+       "ref": "PrivateSubnet3"
+      }
+     ],
+     "SecurityGroupIds": [
+      {
+       "ref": "VPCEndpointSecurityGroup"
+      }
+     ],
+     "PrivateDnsEnabled": true,
+     "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": "*",
+        "Action": [
+         "cloudwatch:PutMetricData"
+        ],
+        "Resource": [
+         "*"
+        ]
+       }
+      ]
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "csvpc-dev-CloudWatch-Monitoring-VPCEndpoint"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCEndpoint.ECRDockerVPCEndpoint",
+   "cfg": "ECRDockerVPCEndpoint",
+   "type": "__declared__",
+   "refs": [
+    "PrivateSubnet1",
+    "PrivateSubnet2",
+    "PrivateSubnet3",
+    "VPC",
+    "VPCEndpointSecurityGroup"
+   ],
+   "values": {
+    "type": "AWS::EC2::VPCEndpoint",
+    "name": "ECRDockerVPCEndpoint",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "ServiceName": "com.amazonaws.us-east-1.ecr.dkr",
+     "VpcEndpointType": "Interface",
+     "SubnetIds": [
+      {
+       "ref": "PrivateSubnet1"
+      },
+      {
+       "ref": "PrivateSubnet2"
+      },
+      {
+       "ref": "PrivateSubnet3"
+      }
+     ],
+     "SecurityGroupIds": [
+      {
+       "ref": "VPCEndpointSecurityGroup"
+      }
+     ],
+     "PrivateDnsEnabled": true,
+     "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": "*",
+        "Action": [
+         "ecr:GetDownloadUrlForLayer",
+         "ecr:BatchGetImage",
+         "ecr:BatchCheckLayerAvailability"
+        ],
+        "Resource": [
+         "*"
+        ]
+       }
+      ]
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "csvpc-dev-ECR-Docker-VPCEndpoint"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCEndpoint.ECRAPIVPCEndpoint",
+   "cfg": "ECRAPIVPCEndpoint",
+   "type": "__declared__",
+   "refs": [
+    "PrivateSubnet1",
+    "PrivateSubnet2",
+    "PrivateSubnet3",
+    "VPC",
+    "VPCEndpointSecurityGroup"
+   ],
+   "values": {
+    "type": "AWS::EC2::VPCEndpoint",
+    "name": "ECRAPIVPCEndpoint",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "ServiceName": "com.amazonaws.us-east-1.ecr.api",
+     "VpcEndpointType": "Interface",
+     "SubnetIds": [
+      {
+       "ref": "PrivateSubnet1"
+      },
+      {
+       "ref": "PrivateSubnet2"
+      },
+      {
+       "ref": "PrivateSubnet3"
+      }
+     ],
+     "SecurityGroupIds": [
+      {
+       "ref": "VPCEndpointSecurityGroup"
+      }
+     ],
+     "PrivateDnsEnabled": true,
+     "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": "*",
+        "Action": [
+         "ecr:GetAuthorizationToken"
+        ],
+        "Resource": [
+         "*"
+        ]
+       }
+      ]
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "csvpc-dev-ECR-API-VPCEndpoint"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCEndpoint.DynamoDBGatewayEndpoint",
+   "cfg": "DynamoDBGatewayEndpoint",
+   "type": "__declared__",
+   "refs": [
+    "PrivateRouteTable",
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::VPCEndpoint",
+    "name": "DynamoDBGatewayEndpoint",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "ServiceName": "com.amazonaws.us-east-1.dynamodb",
+     "VpcEndpointType": "Gateway",
+     "RouteTableIds": [
+      {
+       "ref": "PrivateRouteTable"
+      }
+     ],
+     "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": "*",
+        "Action": [
+         "dynamodb:GetItem",
+         "dynamodb:Query",
+         "dynamodb:Scan",
+         "dynamodb:DescribeTable"
+        ],
+        "Resource": [
+         "arn:aws:dynamodb:us-east-1:123456789012:table/*",
+         "arn:aws:dynamodb:us-east-1:123456789012:table/*/index/*"
+        ]
+       }
+      ]
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "csvpc-dev-DynamoDB-GatewayEndpoint"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCEndpoint.SSMVPCEndpoint",
+   "cfg": "SSMVPCEndpoint",
+   "type": "__declared__",
+   "refs": [
+    "PrivateSubnet1",
+    "PrivateSubnet2",
+    "PrivateSubnet3",
+    "VPC",
+    "VPCEndpointSecurityGroup"
+   ],
+   "values": {
+    "type": "AWS::EC2::VPCEndpoint",
+    "name": "SSMVPCEndpoint",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "ServiceName": "com.amazonaws.us-east-1.ssm",
+     "VpcEndpointType": "Interface",
+     "SubnetIds": [
+      {
+       "ref": "PrivateSubnet1"
+      },
+      {
+       "ref": "PrivateSubnet2"
+      },
+      {
+       "ref": "PrivateSubnet3"
+      }
+     ],
+     "SecurityGroupIds": [
+      {
+       "ref": "VPCEndpointSecurityGroup"
+      }
+     ],
+     "PrivateDnsEnabled": true,
+     "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": "*",
+        "Action": [
+         "ssm:GetParameter",
+         "ssm:GetParameters"
+        ],
+        "Resource": [
+         "arn:aws:ssm:us-east-1:123456789012:parameter/app/customersupportvpc/*"
+        ]
+       }
+      ]
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "csvpc-dev-SSM-VPCEndpoint"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCEndpoint.KMSVPCEndpoint",
+   "cfg": "KMSVPCEndpoint",
+   "type": "__declared__",
+   "refs": [
+    "PrivateSubnet1",
+    "PrivateSubnet2",
+    "PrivateSubnet3",
+    "VPC",
+    "VPCEndpointSecurityGroup"
+   ],
+   "values": {
+    "type": "AWS::EC2::VPCEndpoint",
+    "name": "KMSVPCEndpoint",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "ServiceName": "com.amazonaws.us-east-1.kms",
+     "VpcEndpointType": "Interface",
+     "SubnetIds": [
+      {
+       "ref": "PrivateSubnet1"
+      },
+      {
+       "ref": "PrivateSubnet2"
+      },
+      {
+       "ref": "PrivateSubnet3"
+      }
+     ],
+     "SecurityGroupIds": [
+      {
+       "ref": "VPCEndpointSecurityGroup"
+      }
+     ],
+     "PrivateDnsEnabled": true,
+     "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": "*",
+        "Action": [
+         "kms:Decrypt",
+         "kms:GenerateDataKey",
+         "kms:DescribeKey"
+        ],
+        "Resource": [
+         "*"
+        ]
+       }
+      ]
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "csvpc-dev-KMS-VPCEndpoint"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCEndpoint.SecretsManagerVPCEndpoint",
+   "cfg": "SecretsManagerVPCEndpoint",
+   "type": "__declared__",
+   "refs": [
+    "PrivateSubnet1",
+    "PrivateSubnet2",
+    "PrivateSubnet3",
+    "VPC",
+    "VPCEndpointSecurityGroup"
+   ],
+   "values": {
+    "type": "AWS::EC2::VPCEndpoint",
+    "name": "SecretsManagerVPCEndpoint",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "ServiceName": "com.amazonaws.us-east-1.secretsmanager",
+     "VpcEndpointType": "Interface",
+     "SubnetIds": [
+      {
+       "ref": "PrivateSubnet1"
+      },
+      {
+       "ref": "PrivateSubnet2"
+      },
+      {
+       "ref": "PrivateSubnet3"
+      }
+     ],
+     "SecurityGroupIds": [
+      {
+       "ref": "VPCEndpointSecurityGroup"
+      }
+     ],
+     "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": "*",
+        "Action": [
+         "secretsmanager:GetSecretValue",
+         "secretsmanager:DescribeSecret"
+        ],
+        "Resource": [
+         "*"
+        ]
+       }
+      ]
+     },
+     "PrivateDnsEnabled": true,
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "csvpc-dev-SecretsManager-VPCEndpoint"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCEndpoint.RDSDataVPCEndpoint",
+   "cfg": "RDSDataVPCEndpoint",
+   "type": "__declared__",
+   "refs": [
+    "PrivateSubnet1",
+    "PrivateSubnet2",
+    "PrivateSubnet3",
+    "VPC",
+    "VPCEndpointSecurityGroup"
+   ],
+   "values": {
+    "type": "AWS::EC2::VPCEndpoint",
+    "name": "RDSDataVPCEndpoint",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "ServiceName": "com.amazonaws.us-east-1.rds-data",
+     "VpcEndpointType": "Interface",
+     "SubnetIds": [
+      {
+       "ref": "PrivateSubnet1"
+      },
+      {
+       "ref": "PrivateSubnet2"
+      },
+      {
+       "ref": "PrivateSubnet3"
+      }
+     ],
+     "SecurityGroupIds": [
+      {
+       "ref": "VPCEndpointSecurityGroup"
+      }
+     ],
+     "PrivateDnsEnabled": true,
+     "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": "*",
+        "Action": [
+         "rds-data:ExecuteStatement",
+         "rds-data:BatchExecuteStatement",
+         "rds-data:BeginTransaction",
+         "rds-data:CommitTransaction",
+         "rds-data:RollbackTransaction"
+        ],
+        "Resource": [
+         "*"
+        ]
+       }
+      ]
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "csvpc-dev-RDS-Data-VPCEndpoint"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCEndpoint.S3VPCEndpoint",
+   "cfg": "S3VPCEndpoint",
+   "type": "__declared__",
+   "refs": [
+    "PrivateRouteTable",
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::VPCEndpoint",
+    "name": "S3VPCEndpoint",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "ServiceName": "com.amazonaws.us-east-1.s3",
+     "VpcEndpointType": "Gateway",
+     "RouteTableIds": [
+      {
+       "ref": "PrivateRouteTable"
+      }
+     ],
+     "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": "*",
+        "Action": [
+         "s3:GetObject",
+         "s3:PutObject"
+        ],
+        "Resource": [
+         "arn:aws:s3:::cloudformation-custom-resource-response-*/*"
+        ]
+       }
+      ]
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "csvpc-dev-S3-VPCEndpoint"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCEndpoint.XRayVPCEndpoint",
+   "cfg": "XRayVPCEndpoint",
+   "type": "__declared__",
+   "refs": [
+    "PrivateSubnet1",
+    "PrivateSubnet2",
+    "PrivateSubnet3",
+    "VPC",
+    "VPCEndpointSecurityGroup"
+   ],
+   "values": {
+    "type": "AWS::EC2::VPCEndpoint",
+    "name": "XRayVPCEndpoint",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "ServiceName": "com.amazonaws.us-east-1.xray",
+     "VpcEndpointType": "Interface",
+     "SubnetIds": [
+      {
+       "ref": "PrivateSubnet1"
+      },
+      {
+       "ref": "PrivateSubnet2"
+      },
+      {
+       "ref": "PrivateSubnet3"
+      }
+     ],
+     "SecurityGroupIds": [
+      {
+       "ref": "VPCEndpointSecurityGroup"
+      }
+     ],
+     "PrivateDnsEnabled": true,
+     "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": "*",
+        "Action": [
+         "xray:PutTraceSegments",
+         "xray:PutTelemetryRecords",
+         "xray:GetSamplingRules",
+         "xray:GetSamplingTargets",
+         "xray:GetSamplingStatisticSummaries"
+        ],
+        "Resource": [
+         "*"
+        ]
+       }
+      ]
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "csvpc-dev-XRay-VPCEndpoint"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCEndpoint.BedrockRuntimeVPCEndpoint",
+   "cfg": "BedrockRuntimeVPCEndpoint",
+   "type": "__declared__",
+   "refs": [
+    "PrivateSubnet1",
+    "PrivateSubnet2",
+    "PrivateSubnet3",
+    "VPC",
+    "VPCEndpointSecurityGroup"
+   ],
+   "values": {
+    "type": "AWS::EC2::VPCEndpoint",
+    "name": "BedrockRuntimeVPCEndpoint",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "ServiceName": "com.amazonaws.us-east-1.bedrock-runtime",
+     "VpcEndpointType": "Interface",
+     "SubnetIds": [
+      {
+       "ref": "PrivateSubnet1"
+      },
+      {
+       "ref": "PrivateSubnet2"
+      },
+      {
+       "ref": "PrivateSubnet3"
+      }
+     ],
+     "SecurityGroupIds": [
+      {
+       "ref": "VPCEndpointSecurityGroup"
+      }
+     ],
+     "PrivateDnsEnabled": true,
+     "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": "*",
+        "Action": [
+         "bedrock:InvokeModel",
+         "bedrock:InvokeModelWithResponseStream"
+        ],
+        "Resource": [
+         "*"
+        ]
+       }
+      ]
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "csvpc-dev-BedrockRuntime-VPCEndpoint"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCEndpoint.BedrockAgentCoreVPCEndpoint",
+   "cfg": "BedrockAgentCoreVPCEndpoint",
+   "type": "__declared__",
+   "refs": [
+    "PrivateSubnet1",
+    "PrivateSubnet2",
+    "PrivateSubnet3",
+    "VPC",
+    "VPCEndpointSecurityGroup"
+   ],
+   "values": {
+    "type": "AWS::EC2::VPCEndpoint",
+    "name": "BedrockAgentCoreVPCEndpoint",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "ServiceName": "com.amazonaws.us-east-1.bedrock-agentcore",
+     "VpcEndpointType": "Interface",
+     "SubnetIds": [
+      {
+       "ref": "PrivateSubnet1"
+      },
+      {
+       "ref": "PrivateSubnet2"
+      },
+      {
+       "ref": "PrivateSubnet3"
+      }
+     ],
+     "SecurityGroupIds": [
+      {
+       "ref": "VPCEndpointSecurityGroup"
+      }
+     ],
+     "PrivateDnsEnabled": true,
+     "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": "*",
+        "Action": [
+         "*"
+        ],
+        "Resource": [
+         "*"
+        ]
+       }
+      ]
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "csvpc-dev-BedrockAgentCore-VPCEndpoint"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCEndpoint.BedrockAgentCoreGatewayVPCEndpoint",
+   "cfg": "BedrockAgentCoreGatewayVPCEndpoint",
+   "type": "__declared__",
+   "refs": [
+    "PrivateSubnet1",
+    "PrivateSubnet2",
+    "PrivateSubnet3",
+    "VPC",
+    "VPCEndpointSecurityGroup"
+   ],
+   "values": {
+    "type": "AWS::EC2::VPCEndpoint",
+    "name": "BedrockAgentCoreGatewayVPCEndpoint",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "ServiceName": "com.amazonaws.us-east-1.bedrock-agentcore.gateway",
+     "VpcEndpointType": "Interface",
+     "SubnetIds": [
+      {
+       "ref": "PrivateSubnet1"
+      },
+      {
+       "ref": "PrivateSubnet2"
+      },
+      {
+       "ref": "PrivateSubnet3"
+      }
+     ],
+     "SecurityGroupIds": [
+      {
+       "ref": "VPCEndpointSecurityGroup"
+      }
+     ],
+     "PrivateDnsEnabled": true,
+     "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": "*",
+        "Action": [
+         "*"
+        ],
+        "Resource": [
+         "*"
+        ]
+       }
+      ]
+     },
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "csvpc-dev-BedrockAgentCoreGateway-VPCEndpoint"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SecurityGroup.AgentRuntimeSecurityGroup",
+   "cfg": "AgentRuntimeSecurityGroup",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::SecurityGroup",
+    "name": "AgentRuntimeSecurityGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "GroupDescription": "Security group for Agent Runtime",
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "SecurityGroupIngress": [],
+     "SecurityGroupEgress": [],
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "csvpc-dev-AgentRuntime-SG"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SecurityGroupEgress.AgentRuntimeToVPCEndpointRule",
+   "cfg": "AgentRuntimeToVPCEndpointRule",
+   "type": "__declared__",
+   "refs": [
+    "AgentRuntimeSecurityGroup",
+    "VPCEndpointSecurityGroup"
+   ],
+   "values": {
+    "type": "AWS::EC2::SecurityGroupEgress",
+    "name": "AgentRuntimeToVPCEndpointRule",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "GroupId": {
+      "ref": "AgentRuntimeSecurityGroup"
+     },
+     "IpProtocol": "tcp",
+     "FromPort": 443,
+     "ToPort": 443,
+     "DestinationSecurityGroupId": {
+      "ref": "VPCEndpointSecurityGroup"
+     },
+     "Description": "HTTPS access to VPC Endpoint Security Group"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SecurityGroup.MCPRuntimeSecurityGroup",
+   "cfg": "MCPRuntimeSecurityGroup",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::SecurityGroup",
+    "name": "MCPRuntimeSecurityGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "GroupDescription": "Security group for MCP Runtime",
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "SecurityGroupIngress": [],
+     "SecurityGroupEgress": [],
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "csvpc-dev-MCPRuntime-SG"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SecurityGroupEgress.MCPRuntimeToVPCEndpointRule",
+   "cfg": "MCPRuntimeToVPCEndpointRule",
+   "type": "__declared__",
+   "refs": [
+    "MCPRuntimeSecurityGroup",
+    "VPCEndpointSecurityGroup"
+   ],
+   "values": {
+    "type": "AWS::EC2::SecurityGroupEgress",
+    "name": "MCPRuntimeToVPCEndpointRule",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "GroupId": {
+      "ref": "MCPRuntimeSecurityGroup"
+     },
+     "IpProtocol": "tcp",
+     "FromPort": 443,
+     "ToPort": 443,
+     "DestinationSecurityGroupId": {
+      "ref": "VPCEndpointSecurityGroup"
+     },
+     "Description": "HTTPS access to VPC Endpoint Security Group"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SecurityGroupEgress.MCPRuntimeToDynamoDBRule",
+   "cfg": "MCPRuntimeToDynamoDBRule",
+   "type": "__declared__",
+   "refs": [
+    "MCPRuntimeSecurityGroup"
+   ],
+   "values": {
+    "type": "AWS::EC2::SecurityGroupEgress",
+    "name": "MCPRuntimeToDynamoDBRule",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "GroupId": {
+      "ref": "MCPRuntimeSecurityGroup"
+     },
+     "IpProtocol": "tcp",
+     "FromPort": 443,
+     "ToPort": 443,
+     "DestinationPrefixListId": "pl-02cd2c6b",
+     "Description": "HTTPS access to DynamoDB via Gateway Endpoint"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SecurityGroup.GatewayLambdaSecurityGroup",
+   "cfg": "GatewayLambdaSecurityGroup",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::SecurityGroup",
+    "name": "GatewayLambdaSecurityGroup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "GroupDescription": "Security group for Gateway Lambda functions in VPC",
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "SecurityGroupIngress": [],
+     "SecurityGroupEgress": [],
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "csvpc-dev-GatewayLambda-SG"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SecurityGroupEgress.GatewayLambdaToVPCEndpointRule",
+   "cfg": "GatewayLambdaToVPCEndpointRule",
+   "type": "__declared__",
+   "refs": [
+    "GatewayLambdaSecurityGroup",
+    "VPCEndpointSecurityGroup"
+   ],
+   "values": {
+    "type": "AWS::EC2::SecurityGroupEgress",
+    "name": "GatewayLambdaToVPCEndpointRule",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "GroupId": {
+      "ref": "GatewayLambdaSecurityGroup"
+     },
+     "IpProtocol": "tcp",
+     "FromPort": 443,
+     "ToPort": 443,
+     "DestinationSecurityGroupId": {
+      "ref": "VPCEndpointSecurityGroup"
+     },
+     "Description": "HTTPS access to VPC Endpoint Security Group"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SecurityGroupEgress.GatewayLambdaToDynamoDBRule",
+   "cfg": "GatewayLambdaToDynamoDBRule",
+   "type": "__declared__",
+   "refs": [
+    "GatewayLambdaSecurityGroup"
+   ],
+   "values": {
+    "type": "AWS::EC2::SecurityGroupEgress",
+    "name": "GatewayLambdaToDynamoDBRule",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "GroupId": {
+      "ref": "GatewayLambdaSecurityGroup"
+     },
+     "IpProtocol": "tcp",
+     "FromPort": 443,
+     "ToPort": 443,
+     "DestinationPrefixListId": "pl-02cd2c6b",
+     "Description": "HTTPS access to DynamoDB via Gateway Endpoint"
+    }
+   }
+  }
+ ]
+}

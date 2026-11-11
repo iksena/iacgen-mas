@@ -1,0 +1,659 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "3a0a0d9be839aa726f75247efab2da876ae276a2777b13af90db124c9a83772d",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "VPC",
+   "cfg": "VPC",
+   "type": "AWS::EC2::VPC",
+   "values": {
+    "CidrBlock": "10.0.0.0/16",
+    "EnableDnsHostnames": true,
+    "Tags": [
+     {
+      "Key": "Application",
+      "Value": "stack"
+     },
+     {
+      "Key": "Network",
+      "Value": "Public"
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "PublicSubnet",
+   "cfg": "PublicSubnet",
+   "type": "AWS::EC2::Subnet",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "CidrBlock": "10.0.0.0/19",
+    "AvailabilityZone": "us-east-1b",
+    "Tags": [
+     {
+      "Key": "Application",
+      "Value": "stack"
+     },
+     {
+      "Key": "Network",
+      "Value": "Public"
+     },
+     {
+      "Key": "Role",
+      "Value": "Public Subnet"
+     }
+    ]
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "InternetGateway",
+   "cfg": "InternetGateway",
+   "type": "AWS::EC2::InternetGateway",
+   "values": {
+    "Tags": [
+     {
+      "Key": "Application",
+      "Value": "stack"
+     },
+     {
+      "Key": "Network",
+      "Value": "Public"
+     }
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "AttachGateway",
+   "cfg": "AttachGateway",
+   "type": "AWS::EC2::VPCGatewayAttachment",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "InternetGatewayId": {
+     "ref": "InternetGateway"
+    }
+   },
+   "refs": [
+    "InternetGateway",
+    "VPC"
+   ]
+  },
+  {
+   "id": "PublicRouteTable",
+   "cfg": "PublicRouteTable",
+   "type": "AWS::EC2::RouteTable",
+   "values": {
+    "VpcId": {
+     "ref": "VPC"
+    },
+    "Tags": [
+     {
+      "Key": "Application",
+      "Value": "stack"
+     },
+     {
+      "Key": "Network",
+      "Value": "Public Subnet"
+     }
+    ]
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "PublicRoute",
+   "cfg": "PublicRoute",
+   "type": "AWS::EC2::Route",
+   "values": {
+    "RouteTableId": {
+     "ref": "PublicRouteTable"
+    },
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "GatewayId": {
+     "ref": "InternetGateway"
+    }
+   },
+   "refs": [
+    "InternetGateway",
+    "PublicRouteTable"
+   ]
+  },
+  {
+   "id": "PublicSubnetRouteTableAssociation",
+   "cfg": "PublicSubnetRouteTableAssociation",
+   "type": "AWS::EC2::SubnetRouteTableAssociation",
+   "values": {
+    "SubnetId": {
+     "ref": "PublicSubnet"
+    },
+    "RouteTableId": {
+     "ref": "PublicRouteTable"
+    }
+   },
+   "refs": [
+    "PublicRouteTable",
+    "PublicSubnet"
+   ]
+  },
+  {
+   "id": "HostedZone",
+   "cfg": "HostedZone",
+   "type": "AWS::Route53::HostedZone",
+   "values": {
+    "HostedZoneConfig": {
+     "Comment": "Hosted zone for example.com"
+    },
+    "Name": "example.com",
+    "VPCs": [
+     {
+      "VPCId": {
+       "ref": "VPC"
+      },
+      "VPCRegion": "us-east-1"
+     }
+    ]
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "PuppetMasterDNSRecord",
+   "cfg": "PuppetMasterDNSRecord",
+   "type": "AWS::Route53::RecordSet",
+   "values": {
+    "HostedZoneId": {
+     "Fn::Join": [
+      "",
+      [
+       "/hostedzone/",
+       {
+        "ref": "HostedZone"
+       }
+      ]
+     ]
+    },
+    "Name": "puppet.example.com",
+    "Type": "A",
+    "TTL": "900",
+    "ResourceRecords": [
+     "10.0.0.10"
+    ]
+   },
+   "refs": [
+    "HostedZone"
+   ]
+  },
+  {
+   "id": "PuppetAgentLinuxDNSRecord",
+   "cfg": "PuppetAgentLinuxDNSRecord",
+   "type": "AWS::Route53::RecordSet",
+   "values": {
+    "HostedZoneId": {
+     "Fn::Join": [
+      "",
+      [
+       "/hostedzone/",
+       {
+        "ref": "HostedZone"
+       }
+      ]
+     ]
+    },
+    "Name": "linuxagent.example.com",
+    "Type": "A",
+    "TTL": "900",
+    "ResourceRecords": [
+     "10.0.0.11"
+    ]
+   },
+   "refs": [
+    "HostedZone"
+   ]
+  },
+  {
+   "id": "PuppetAgentWindowsDNSRecord",
+   "cfg": "PuppetAgentWindowsDNSRecord",
+   "type": "AWS::Route53::RecordSet",
+   "values": {
+    "HostedZoneId": {
+     "Fn::Join": [
+      "",
+      [
+       "/hostedzone/",
+       {
+        "ref": "HostedZone"
+       }
+      ]
+     ]
+    },
+    "Name": "windowsagent.example.com",
+    "Type": "A",
+    "TTL": "900",
+    "ResourceRecords": [
+     "10.0.0.12"
+    ]
+   },
+   "refs": [
+    "HostedZone"
+   ]
+  },
+  {
+   "id": "__parameter__.SubnetCIDR",
+   "cfg": "__parameter__.SubnetCIDR",
+   "type": "__parameter__",
+   "values": {
+    "name": "SubnetCIDR",
+    "type": "String",
+    "default": "10.0.0.0/19",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.VPCCIDR",
+   "cfg": "__parameter__.VPCCIDR",
+   "type": "__parameter__",
+   "values": {
+    "name": "VPCCIDR",
+    "type": "String",
+    "default": "10.0.0.0/16",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.PuppetMasterIP",
+   "cfg": "__parameter__.PuppetMasterIP",
+   "type": "__parameter__",
+   "values": {
+    "name": "PuppetMasterIP",
+    "type": "String",
+    "default": "10.0.0.10",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.PuppetAgentLinuxIP",
+   "cfg": "__parameter__.PuppetAgentLinuxIP",
+   "type": "__parameter__",
+   "values": {
+    "name": "PuppetAgentLinuxIP",
+    "type": "String",
+    "default": "10.0.0.11",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.PuppetAgentWindowsIP",
+   "cfg": "__parameter__.PuppetAgentWindowsIP",
+   "type": "__parameter__",
+   "values": {
+    "name": "PuppetAgentWindowsIP",
+    "type": "String",
+    "default": "10.0.0.12",
+    "allowed_values": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.VPC",
+   "cfg": "__output__.VPC",
+   "type": "__output__",
+   "values": {
+    "name": "VPC",
+    "value": {
+     "ref": "VPC"
+    },
+    "description": "VPC ID",
+    "export": null
+   },
+   "refs": [
+    "VPC"
+   ]
+  },
+  {
+   "id": "__output__.SubnetId",
+   "cfg": "__output__.SubnetId",
+   "type": "__output__",
+   "values": {
+    "name": "SubnetId",
+    "value": {
+     "ref": "PublicSubnet"
+    },
+    "description": "Subnet ID for the public subnet",
+    "export": null
+   },
+   "refs": [
+    "PublicSubnet"
+   ]
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPC.VPC",
+   "cfg": "VPC",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::VPC",
+    "name": "VPC",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "CidrBlock": "10.0.0.0/16",
+     "EnableDnsHostnames": true,
+     "Tags": [
+      {
+       "Key": "Application",
+       "Value": "stack"
+      },
+      {
+       "Key": "Network",
+       "Value": "Public"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Subnet.PublicSubnet",
+   "cfg": "PublicSubnet",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::Subnet",
+    "name": "PublicSubnet",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "CidrBlock": "10.0.0.0/19",
+     "AvailabilityZone": "us-east-1b",
+     "Tags": [
+      {
+       "Key": "Application",
+       "Value": "stack"
+      },
+      {
+       "Key": "Network",
+       "Value": "Public"
+      },
+      {
+       "Key": "Role",
+       "Value": "Public Subnet"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::InternetGateway.InternetGateway",
+   "cfg": "InternetGateway",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::EC2::InternetGateway",
+    "name": "InternetGateway",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Tags": [
+      {
+       "Key": "Application",
+       "Value": "stack"
+      },
+      {
+       "Key": "Network",
+       "Value": "Public"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::VPCGatewayAttachment.AttachGateway",
+   "cfg": "AttachGateway",
+   "type": "__declared__",
+   "refs": [
+    "InternetGateway",
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::VPCGatewayAttachment",
+    "name": "AttachGateway",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "InternetGatewayId": {
+      "ref": "InternetGateway"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::RouteTable.PublicRouteTable",
+   "cfg": "PublicRouteTable",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::EC2::RouteTable",
+    "name": "PublicRouteTable",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "VpcId": {
+      "ref": "VPC"
+     },
+     "Tags": [
+      {
+       "Key": "Application",
+       "Value": "stack"
+      },
+      {
+       "Key": "Network",
+       "Value": "Public Subnet"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::Route.PublicRoute",
+   "cfg": "PublicRoute",
+   "type": "__declared__",
+   "refs": [
+    "InternetGateway",
+    "PublicRouteTable"
+   ],
+   "values": {
+    "type": "AWS::EC2::Route",
+    "name": "PublicRoute",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "RouteTableId": {
+      "ref": "PublicRouteTable"
+     },
+     "DestinationCidrBlock": "0.0.0.0/0",
+     "GatewayId": {
+      "ref": "InternetGateway"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::EC2::SubnetRouteTableAssociation.PublicSubnetRouteTableAssociation",
+   "cfg": "PublicSubnetRouteTableAssociation",
+   "type": "__declared__",
+   "refs": [
+    "PublicRouteTable",
+    "PublicSubnet"
+   ],
+   "values": {
+    "type": "AWS::EC2::SubnetRouteTableAssociation",
+    "name": "PublicSubnetRouteTableAssociation",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "SubnetId": {
+      "ref": "PublicSubnet"
+     },
+     "RouteTableId": {
+      "ref": "PublicRouteTable"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Route53::HostedZone.HostedZone",
+   "cfg": "HostedZone",
+   "type": "__declared__",
+   "refs": [
+    "VPC"
+   ],
+   "values": {
+    "type": "AWS::Route53::HostedZone",
+    "name": "HostedZone",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "HostedZoneConfig": {
+      "Comment": "Hosted zone for example.com"
+     },
+     "Name": "example.com",
+     "VPCs": [
+      {
+       "VPCId": {
+        "ref": "VPC"
+       },
+       "VPCRegion": "us-east-1"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Route53::RecordSet.PuppetMasterDNSRecord",
+   "cfg": "PuppetMasterDNSRecord",
+   "type": "__declared__",
+   "refs": [
+    "HostedZone"
+   ],
+   "values": {
+    "type": "AWS::Route53::RecordSet",
+    "name": "PuppetMasterDNSRecord",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "HostedZoneId": {
+      "Fn::Join": [
+       "",
+       [
+        "/hostedzone/",
+        {
+         "ref": "HostedZone"
+        }
+       ]
+      ]
+     },
+     "Name": "puppet.example.com",
+     "Type": "A",
+     "TTL": "900",
+     "ResourceRecords": [
+      "10.0.0.10"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Route53::RecordSet.PuppetAgentLinuxDNSRecord",
+   "cfg": "PuppetAgentLinuxDNSRecord",
+   "type": "__declared__",
+   "refs": [
+    "HostedZone"
+   ],
+   "values": {
+    "type": "AWS::Route53::RecordSet",
+    "name": "PuppetAgentLinuxDNSRecord",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "HostedZoneId": {
+      "Fn::Join": [
+       "",
+       [
+        "/hostedzone/",
+        {
+         "ref": "HostedZone"
+        }
+       ]
+      ]
+     },
+     "Name": "linuxagent.example.com",
+     "Type": "A",
+     "TTL": "900",
+     "ResourceRecords": [
+      "10.0.0.11"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Route53::RecordSet.PuppetAgentWindowsDNSRecord",
+   "cfg": "PuppetAgentWindowsDNSRecord",
+   "type": "__declared__",
+   "refs": [
+    "HostedZone"
+   ],
+   "values": {
+    "type": "AWS::Route53::RecordSet",
+    "name": "PuppetAgentWindowsDNSRecord",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "HostedZoneId": {
+      "Fn::Join": [
+       "",
+       [
+        "/hostedzone/",
+        {
+         "ref": "HostedZone"
+        }
+       ]
+      ]
+     },
+     "Name": "windowsagent.example.com",
+     "Type": "A",
+     "TTL": "900",
+     "ResourceRecords": [
+      "10.0.0.12"
+     ]
+    }
+   }
+  }
+ ]
+}

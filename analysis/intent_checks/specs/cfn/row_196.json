@@ -1,0 +1,930 @@
+{
+  "lang": "cfn",
+  "row_number": 196,
+  "source_hash": {
+    "gt": "12f97a8c762d0c03952f14333b6ef600fab298f0fe49fa9dc4456a2c35ebfbff",
+    "prompt": "c94208768f10ebc86213cee42c1aef1ad4f6066bcdab55819f70f90c21b3512c"
+  },
+  "selectors": {
+    "vpc": {
+      "types": [
+        "AWS::EC2::VPC"
+      ]
+    },
+    "subnets": {
+      "types": [
+        "AWS::EC2::Subnet"
+      ]
+    },
+    "igw": {
+      "types": [
+        "AWS::EC2::InternetGateway"
+      ]
+    },
+    "nat": {
+      "types": [
+        "AWS::EC2::NatGateway"
+      ]
+    },
+    "rts": {
+      "types": [
+        "AWS::EC2::RouteTable"
+      ]
+    },
+    "s3ep": {
+      "types": [
+        "AWS::EC2::VPCEndpoint"
+      ],
+      "where": [
+        {
+          "path": "ServiceName",
+          "op": "regex",
+          "value": "(?i)\\.s3$"
+        }
+      ]
+    },
+    "sg": {
+      "types": [
+        "AWS::EC2::SecurityGroup"
+      ]
+    },
+    "kms": {
+      "types": [
+        "AWS::KMS::Key"
+      ]
+    },
+    "lg": {
+      "types": [
+        "AWS::Logs::LogGroup"
+      ]
+    },
+    "role": {
+      "types": [
+        "AWS::IAM::Role"
+      ]
+    },
+    "flow": {
+      "types": [
+        "AWS::EC2::FlowLog"
+      ]
+    },
+    "ifep": {
+      "types": [
+        "AWS::EC2::VPCEndpoint"
+      ],
+      "where": [
+        {
+          "path": "VpcEndpointType",
+          "op": "eq",
+          "value": "Interface"
+        }
+      ]
+    },
+    "ep_sg_only_https": {
+      "types": [
+        "AWS::EC2::SecurityGroup"
+      ],
+      "where": [
+        {
+          "path": "SecurityGroupIngress",
+          "op": "len_eq",
+          "value": 1
+        },
+        {
+          "path": "SecurityGroupIngress.*",
+          "op": "match",
+          "value": [
+            {
+              "path": "IpProtocol",
+              "op": "eq",
+              "value": "tcp"
+            },
+            {
+              "path": "FromPort",
+              "op": "eq",
+              "value": 443
+            },
+            {
+              "path": "ToPort",
+              "op": "eq",
+              "value": 443
+            }
+          ]
+        }
+      ]
+    },
+    "sg_one_rule": {
+      "types": [
+        "AWS::EC2::SecurityGroup"
+      ],
+      "where": [
+        {
+          "path": "SecurityGroupIngress",
+          "op": "len_eq",
+          "value": 1
+        }
+      ]
+    },
+    "ep_sg_vpc_cidr_ref": {
+      "types": [
+        "AWS::EC2::SecurityGroup"
+      ],
+      "where": [
+        {
+          "path": "SecurityGroupIngress",
+          "op": "len_eq",
+          "value": 1
+        },
+        {
+          "path": "SecurityGroupIngress.*.CidrIp",
+          "op": "regex",
+          "value": "(?i)CidrBlock"
+        }
+      ]
+    }
+  },
+  "checks": [
+    {
+      "id": "vpc",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "creates a shared VPC",
+      "select": "vpc"
+    },
+    {
+      "id": "four_subnets",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "two public subnets and two private subnets",
+      "justify": "2+2 subnets",
+      "select": "subnets",
+      "min": 4
+    },
+    {
+      "id": "two_azs",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "spread across two Availability Zones",
+      "justify": "two AZs",
+      "select": "subnets",
+      "distinct_path": "AvailabilityZone",
+      "min": 2
+    },
+    {
+      "id": "subnet_cidrs",
+      "kind": "exists",
+      "tier": "detail",
+      "quote": "each with its own CIDR block parameter",
+      "justify": "four subnets, each its own CIDR",
+      "select": "subnets",
+      "distinct_path": "CidrBlock",
+      "min": 4
+    },
+    {
+      "id": "cidr_params",
+      "kind": "any_of",
+      "tier": "detail",
+      "quote": "each with its own CIDR block parameter",
+      "justify": "four subnets each with its own CIDR parameter; subnet ranges are narrower than the VPC's, so the VPC parameter is not counted",
+      "checks": [
+        {
+          "kind": "exists",
+          "min": 4,
+          "select": {
+            "types": [
+              "__parameter__"
+            ],
+            "where": [
+              {
+                "path": "default",
+                "op": "regex",
+                "value": "^[0-9.]+/(1[7-9]|2[0-8])$"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "exists",
+          "min": 4,
+          "select": {
+            "types": [
+              "__parameter__"
+            ],
+            "where": [
+              {
+                "path": "name",
+                "op": "regex",
+                "value": "(?i)subnet.*(cidr|range|block)|(cidr|range|block).*subnet"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "igw",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "an Internet Gateway for the public subnets",
+      "select": "igw"
+    },
+    {
+      "id": "igw_route",
+      "kind": "ref",
+      "tier": "core",
+      "quote": "an Internet Gateway for the public subnets",
+      "from": {
+        "types": [
+          "AWS::EC2::Route"
+        ]
+      },
+      "to": "igw"
+    },
+    {
+      "id": "nat_per_az",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "a NAT Gateway per Availability Zone",
+      "justify": "two AZs, one NAT each",
+      "select": "nat",
+      "min": 2
+    },
+    {
+      "id": "nat_distinct_subnets",
+      "kind": "exists",
+      "tier": "detail",
+      "quote": "a NAT Gateway per Availability Zone",
+      "justify": "one NAT per AZ",
+      "select": "nat",
+      "distinct_path": "SubnetId",
+      "min": 2
+    },
+    {
+      "id": "private_route_nat",
+      "kind": "ref",
+      "tier": "core",
+      "quote": "a NAT Gateway per Availability Zone for outbound access from the private subnets",
+      "from": {
+        "types": [
+          "AWS::EC2::Route"
+        ],
+        "where": [
+          {
+            "path": "DestinationCidrBlock",
+            "op": "eq",
+            "value": "0.0.0.0/0"
+          }
+        ]
+      },
+      "to": "nat",
+      "justify": "outbound access implies a default route"
+    },
+    {
+      "id": "private_routes_each_nat",
+      "kind": "exists",
+      "tier": "detail",
+      "quote": "a NAT Gateway per Availability Zone for outbound access from the private subnets",
+      "justify": "two AZs, so routes point at two different NAT gateways",
+      "select": {
+        "types": [
+          "AWS::EC2::Route"
+        ],
+        "where": [
+          {
+            "path": "NatGatewayId",
+            "op": "present"
+          }
+        ]
+      },
+      "distinct_path": "NatGatewayId",
+      "min": 2
+    },
+    {
+      "id": "route_tables",
+      "kind": "exists",
+      "tier": "detail",
+      "quote": "the associated route tables and subnet associations",
+      "justify": "public and private tables",
+      "select": "rts",
+      "min": 2
+    },
+    {
+      "id": "assoc",
+      "kind": "exists",
+      "tier": "detail",
+      "quote": "the associated route tables and subnet associations",
+      "justify": "four subnets associated",
+      "select": {
+        "types": [
+          "AWS::EC2::SubnetRouteTableAssociation"
+        ]
+      },
+      "min": 4
+    },
+    {
+      "id": "s3_gateway",
+      "kind": "any_of",
+      "tier": "core",
+      "quote": "an S3 gateway endpoint",
+      "checks": [
+        {
+          "kind": "attr",
+          "select": "s3ep",
+          "cond": {
+            "path": "VpcEndpointType",
+            "op": "eq",
+            "value": "Gateway"
+          }
+        },
+        {
+          "kind": "attr",
+          "select": "s3ep",
+          "cond": {
+            "path": "VpcEndpointType",
+            "op": "absent"
+          }
+        }
+      ]
+    },
+    {
+      "id": "s3_route_tables",
+      "kind": "ref",
+      "tier": "core",
+      "quote": "reachable from all route tables",
+      "from": "s3ep",
+      "to": "rts"
+    },
+    {
+      "id": "s3_all_rts",
+      "kind": "attr",
+      "tier": "detail",
+      "quote": "reachable from all route tables",
+      "justify": "public plus one private table per AZ",
+      "select": "s3ep",
+      "cond": {
+        "path": "RouteTableIds",
+        "op": "len_gte",
+        "value": 3
+      }
+    },
+    {
+      "id": "ep_ssm",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "for Systems Manager, EC2, CloudWatch Logs, CloudWatch Monitoring, STS, EMR, and KMS",
+      "justify": "service name suffix for Systems Manager",
+      "select": {
+        "types": [
+          "AWS::EC2::VPCEndpoint"
+        ],
+        "where": [
+          {
+            "path": "VpcEndpointType",
+            "op": "eq",
+            "value": "Interface"
+          },
+          {
+            "path": "ServiceName",
+            "op": "regex",
+            "value": "(?i)\\.ssm$"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ep_ec2",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "for Systems Manager, EC2, CloudWatch Logs, CloudWatch Monitoring, STS, EMR, and KMS",
+      "justify": "service name suffix for EC2",
+      "select": {
+        "types": [
+          "AWS::EC2::VPCEndpoint"
+        ],
+        "where": [
+          {
+            "path": "VpcEndpointType",
+            "op": "eq",
+            "value": "Interface"
+          },
+          {
+            "path": "ServiceName",
+            "op": "regex",
+            "value": "(?i)\\.ec2$"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ep_logs",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "for Systems Manager, EC2, CloudWatch Logs, CloudWatch Monitoring, STS, EMR, and KMS",
+      "justify": "service name suffix for CloudWatch Logs",
+      "select": {
+        "types": [
+          "AWS::EC2::VPCEndpoint"
+        ],
+        "where": [
+          {
+            "path": "VpcEndpointType",
+            "op": "eq",
+            "value": "Interface"
+          },
+          {
+            "path": "ServiceName",
+            "op": "regex",
+            "value": "(?i)\\.logs$"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ep_monitoring",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "for Systems Manager, EC2, CloudWatch Logs, CloudWatch Monitoring, STS, EMR, and KMS",
+      "justify": "service name suffix for CloudWatch Monitoring",
+      "select": {
+        "types": [
+          "AWS::EC2::VPCEndpoint"
+        ],
+        "where": [
+          {
+            "path": "VpcEndpointType",
+            "op": "eq",
+            "value": "Interface"
+          },
+          {
+            "path": "ServiceName",
+            "op": "regex",
+            "value": "(?i)\\.monitoring$"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ep_sts",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "for Systems Manager, EC2, CloudWatch Logs, CloudWatch Monitoring, STS, EMR, and KMS",
+      "justify": "service name suffix for STS",
+      "select": {
+        "types": [
+          "AWS::EC2::VPCEndpoint"
+        ],
+        "where": [
+          {
+            "path": "VpcEndpointType",
+            "op": "eq",
+            "value": "Interface"
+          },
+          {
+            "path": "ServiceName",
+            "op": "regex",
+            "value": "(?i)\\.sts$"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ep_emr",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "for Systems Manager, EC2, CloudWatch Logs, CloudWatch Monitoring, STS, EMR, and KMS",
+      "justify": "service name suffix for EMR",
+      "select": {
+        "types": [
+          "AWS::EC2::VPCEndpoint"
+        ],
+        "where": [
+          {
+            "path": "VpcEndpointType",
+            "op": "eq",
+            "value": "Interface"
+          },
+          {
+            "path": "ServiceName",
+            "op": "regex",
+            "value": "(?i)\\.(elasticmapreduce|emr-containers|emr-serverless)$"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ep_kms",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "for Systems Manager, EC2, CloudWatch Logs, CloudWatch Monitoring, STS, EMR, and KMS",
+      "justify": "service name suffix for KMS",
+      "select": {
+        "types": [
+          "AWS::EC2::VPCEndpoint"
+        ],
+        "where": [
+          {
+            "path": "VpcEndpointType",
+            "op": "eq",
+            "value": "Interface"
+          },
+          {
+            "path": "ServiceName",
+            "op": "regex",
+            "value": "(?i)\\.kms$"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ep_sg",
+      "kind": "all_of",
+      "tier": "core",
+      "quote": "interface VPC endpoints, protected by a dedicated security group",
+      "checks": [
+        {
+          "kind": "ref",
+          "from": "ifep",
+          "to": "sg"
+        },
+        {
+          "kind": "attr",
+          "select": "ifep",
+          "quantifier": "all",
+          "cond": {
+            "path": "SecurityGroupIds.*",
+            "op": "present"
+          }
+        }
+      ]
+    },
+    {
+      "id": "ep_private_dns",
+      "kind": "attr",
+      "tier": "detail",
+      "quote": "so that instances in the private subnets can reach these AWS services without going through the NAT Gateway",
+      "justify": "PrivateDnsEnabled defaults to false; without it the service hostnames resolve to public addresses and traffic takes the NAT",
+      "select": "ifep",
+      "quantifier": "all",
+      "cond": {
+        "path": "PrivateDnsEnabled",
+        "op": "truthy"
+      }
+    },
+    {
+      "id": "sg_https",
+      "kind": "any_of",
+      "tier": "core",
+      "quote": "only allows HTTPS from the VPC's own CIDR range",
+      "justify": "HTTPS implies TCP 443; only means no other ingress rule",
+      "checks": [
+        {
+          "kind": "ref",
+          "from": "ifep",
+          "to": "ep_sg_only_https"
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "AWS::EC2::SecurityGroupIngress"
+            ]
+          },
+          "quantifier": "all",
+          "cond": {
+            "path": "",
+            "op": "match",
+            "value": [
+              {
+                "path": "IpProtocol",
+                "op": "eq",
+                "value": "tcp"
+              },
+              {
+                "path": "FromPort",
+                "op": "eq",
+                "value": 443
+              },
+              {
+                "path": "ToPort",
+                "op": "eq",
+                "value": 443
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "sg_vpc_cidr",
+      "kind": "any_of",
+      "tier": "core",
+      "quote": "only allows HTTPS from the VPC's own CIDR range",
+      "checks": [
+        {
+          "kind": "join",
+          "from": "sg_one_rule",
+          "from_path": "SecurityGroupIngress.*.CidrIp",
+          "to": "vpc",
+          "to_path": "CidrBlock"
+        },
+        {
+          "kind": "ref",
+          "from": "ifep",
+          "to": "ep_sg_vpc_cidr_ref"
+        },
+        {
+          "kind": "join",
+          "from": {
+            "types": [
+              "AWS::EC2::SecurityGroupIngress"
+            ]
+          },
+          "from_path": "CidrIp",
+          "to": "vpc",
+          "to_path": "CidrBlock"
+        },
+        {
+          "kind": "attr",
+          "select": {
+            "types": [
+              "AWS::EC2::SecurityGroupIngress"
+            ]
+          },
+          "quantifier": "all",
+          "cond": {
+            "path": "CidrIp",
+            "op": "regex",
+            "value": "(?i)CidrBlock"
+          }
+        }
+      ]
+    },
+    {
+      "id": "flow_all",
+      "kind": "attr",
+      "tier": "core",
+      "quote": "enable VPC Flow Logs for all traffic",
+      "select": "flow",
+      "cond": {
+        "path": "TrafficType",
+        "op": "eq",
+        "value": "ALL"
+      }
+    },
+    {
+      "id": "flow_vpc",
+      "kind": "ref",
+      "tier": "core",
+      "quote": "enable VPC Flow Logs for all traffic",
+      "from": "flow",
+      "to": "vpc"
+    },
+    {
+      "id": "kms_key",
+      "kind": "exists",
+      "tier": "core",
+      "quote": "a dedicated customer-managed KMS key that the stack creates itself",
+      "select": "kms"
+    },
+    {
+      "id": "lg_kms",
+      "kind": "ref",
+      "tier": "core",
+      "quote": "encrypted with a dedicated customer-managed KMS key",
+      "from": "lg",
+      "to": "kms"
+    },
+    {
+      "id": "flow_lg",
+      "kind": "any_of",
+      "tier": "core",
+      "quote": "delivering to a CloudWatch Logs group",
+      "checks": [
+        {
+          "kind": "ref",
+          "from": "flow",
+          "to": "lg"
+        },
+        {
+          "kind": "join",
+          "from": "flow",
+          "from_path": "LogGroupName",
+          "to": "lg",
+          "to_path": "LogGroupName"
+        },
+        {
+          "kind": "join",
+          "from": "flow",
+          "from_path": "LogDestination",
+          "to": "lg",
+          "to_path": "LogGroupName"
+        }
+      ]
+    },
+    {
+      "id": "flow_role",
+      "kind": "ref",
+      "tier": "core",
+      "quote": "through a dedicated IAM role",
+      "from": "flow",
+      "to": "role"
+    },
+    {
+      "id": "role_trust",
+      "kind": "ref",
+      "tier": "detail",
+      "quote": "through a dedicated IAM role",
+      "justify": "flow logs service principal",
+      "from": "flow",
+      "to": {
+        "types": [
+          "AWS::IAM::Role"
+        ],
+        "where": [
+          {
+            "path": "AssumeRolePolicyDocument",
+            "op": "contains",
+            "value": "vpc-flow-logs.amazonaws.com"
+          }
+        ]
+      }
+    },
+    {
+      "id": "out_vpc",
+      "kind": "ref",
+      "tier": "detail",
+      "quote": "The VPC ID",
+      "from": {
+        "types": [
+          "__output__"
+        ],
+        "where": [
+          {
+            "path": "value.ref",
+            "op": "present"
+          },
+          {
+            "path": "value.attr",
+            "op": "absent"
+          }
+        ]
+      },
+      "to": "vpc"
+    },
+    {
+      "id": "out_cidr",
+      "kind": "any_of",
+      "tier": "detail",
+      "quote": "VPC CIDR",
+      "checks": [
+        {
+          "kind": "ref",
+          "from": {
+            "types": [
+              "__output__"
+            ],
+            "where": [
+              {
+                "path": "value.attr",
+                "op": "eq",
+                "value": "CidrBlock"
+              }
+            ]
+          },
+          "to": "vpc"
+        },
+        {
+          "kind": "join",
+          "from": {
+            "types": [
+              "__output__"
+            ]
+          },
+          "from_path": "value",
+          "to": "vpc",
+          "to_path": "CidrBlock"
+        }
+      ]
+    },
+    {
+      "id": "out_subnets",
+      "kind": "any_of",
+      "tier": "detail",
+      "quote": "all subnet IDs should be exposed as stack outputs",
+      "justify": "four subnets: as single-ID outputs, as two lists, or as one list",
+      "checks": [
+        {
+          "kind": "exists",
+          "min": 4,
+          "select": {
+            "types": [
+              "__output__"
+            ],
+            "where": [
+              {
+                "path": "name",
+                "op": "regex",
+                "value": "(?i)subnet"
+              },
+              {
+                "path": "value.ref",
+                "op": "present"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "exists",
+          "min": 2,
+          "select": {
+            "types": [
+              "__output__"
+            ],
+            "where": [
+              {
+                "path": "name",
+                "op": "regex",
+                "value": "(?i)subnet"
+              },
+              {
+                "path": "value",
+                "op": "regex",
+                "value": "(?s)(ref|\\$\\{).*(ref|\\$\\{)"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "exists",
+          "min": 1,
+          "select": {
+            "types": [
+              "__output__"
+            ],
+            "where": [
+              {
+                "path": "value",
+                "op": "regex",
+                "value": "(?s)((ref|\\$\\{).*){4}"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "x_dns",
+      "kind": "attr",
+      "tier": "extra",
+      "select": "vpc",
+      "cond": {
+        "path": "EnableDnsHostnames",
+        "op": "truthy"
+      }
+    },
+    {
+      "id": "x_retention",
+      "kind": "attr",
+      "tier": "extra",
+      "select": "lg",
+      "cond": {
+        "path": "RetentionInDays",
+        "op": "present"
+      }
+    },
+    {
+      "id": "x_keypol_flow",
+      "kind": "attr",
+      "tier": "extra",
+      "select": "kms",
+      "cond": {
+        "path": "KeyPolicy",
+        "op": "contains",
+        "value": "vpc-flow-logs.amazonaws.com"
+      }
+    },
+    {
+      "id": "x_eip",
+      "kind": "exists",
+      "tier": "extra",
+      "select": {
+        "types": [
+          "AWS::EC2::EIP"
+        ]
+      },
+      "min": 2
+    },
+    {
+      "id": "extra_type_aws_ec2_vpcgatewayattachment",
+      "kind": "exists",
+      "tier": "extra",
+      "select": {
+        "types": [
+          "AWS::EC2::VPCGatewayAttachment"
+        ],
+        "where": []
+      }
+    }
+  ],
+  "notes": "sg_https and the GetAtt branch of sg_vpc_cidr bind to the endpoints' group only in the inline form; the join branch (literal or parameter CIDR equal to the VPC's) cannot be bound to the endpoints' group; a separate AWS::EC2::SecurityGroupIngress cannot be tied to the endpoints in the check language, and an added separate rule from a wider source passes sg_vpc_cidr. 'each with its own CIDR block parameter': a VPC narrower than /17 could count toward cidr_params. 'to support EMR on EKS and Celeborn' is a purpose, not visible in a VPC template."
+}

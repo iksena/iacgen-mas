@@ -1,0 +1,810 @@
+{
+ "meta": {
+  "lang": "cfn",
+  "mode": "parsed",
+  "warnings": [],
+  "gt_hash": "68c27904e56c1c0f02f177af43a13bea9cb572fd8fed3502d58831e98602dd55",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "KMSKey",
+   "cfg": "KMSKey",
+   "type": "AWS::KMS::Key",
+   "values": {
+    "Description": "Encryption key for backups",
+    "EnableKeyRotation": true,
+    "Enabled": true,
+    "KeyPolicy": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "AWS": [
+         "arn:aws:iam::123456789012:root"
+        ]
+       },
+       "Action": [
+        "kms:*"
+       ],
+       "Resource": [
+        "*"
+       ]
+      }
+     ]
+    }
+   },
+   "refs": []
+  },
+  {
+   "id": "BackupVaultWithDailyBackups",
+   "cfg": "BackupVaultWithDailyBackups",
+   "type": "AWS::Backup::BackupVault",
+   "values": {
+    "BackupVaultName": "BackupVaultWithDailyBackups",
+    "EncryptionKeyArn": {
+     "ref": "KMSKey",
+     "attr": "Arn"
+    }
+   },
+   "refs": [
+    "KMSKey"
+   ]
+  },
+  {
+   "id": "BackupVaultWithWeeklyBackups",
+   "cfg": "BackupVaultWithWeeklyBackups",
+   "type": "AWS::Backup::BackupVault",
+   "values": {
+    "BackupVaultName": "BackupVaultWithWeeklyBackups",
+    "EncryptionKeyArn": {
+     "ref": "KMSKey",
+     "attr": "Arn"
+    }
+   },
+   "refs": [
+    "KMSKey"
+   ]
+  },
+  {
+   "id": "BackupVaultWithMonthlyBackups",
+   "cfg": "BackupVaultWithMonthlyBackups",
+   "type": "AWS::Backup::BackupVault",
+   "values": {
+    "BackupVaultName": "BackupVaultWithMonthlyBackups",
+    "EncryptionKeyArn": {
+     "ref": "KMSKey",
+     "attr": "Arn"
+    }
+   },
+   "refs": [
+    "KMSKey"
+   ]
+  },
+  {
+   "id": "BackupPlanWithDailyBackups",
+   "cfg": "BackupPlanWithDailyBackups",
+   "type": "AWS::Backup::BackupPlan",
+   "values": {
+    "BackupPlan": {
+     "BackupPlanName": "BackupPlanWithDailyBackups",
+     "BackupPlanRule": [
+      {
+       "RuleName": "RuleWithDailyBackups",
+       "TargetBackupVault": {
+        "ref": "BackupVaultWithDailyBackups"
+       },
+       "ScheduleExpression": "cron(15 5 ? * * *)",
+       "Lifecycle": {
+        "DeleteAfterDays": 14
+       }
+      }
+     ]
+    },
+    "__resource__": {
+     "DependsOn": [
+      "BackupVaultWithDailyBackups"
+     ]
+    }
+   },
+   "refs": [
+    "BackupVaultWithDailyBackups"
+   ]
+  },
+  {
+   "id": "BackupPlanWithWeeklyBackups",
+   "cfg": "BackupPlanWithWeeklyBackups",
+   "type": "AWS::Backup::BackupPlan",
+   "values": {
+    "BackupPlan": {
+     "BackupPlanName": "BackupPlanWithWeeklyBackups",
+     "BackupPlanRule": [
+      {
+       "RuleName": "RuleWithWeeklyBackups",
+       "TargetBackupVault": {
+        "ref": "BackupVaultWithWeeklyBackups"
+       },
+       "ScheduleExpression": "cron(15 5 ? * 1 *)",
+       "Lifecycle": {
+        "DeleteAfterDays": 56
+       }
+      }
+     ]
+    },
+    "__resource__": {
+     "DependsOn": [
+      "BackupVaultWithWeeklyBackups"
+     ]
+    }
+   },
+   "refs": [
+    "BackupVaultWithWeeklyBackups"
+   ]
+  },
+  {
+   "id": "BackupPlanWithMonthlyBackups",
+   "cfg": "BackupPlanWithMonthlyBackups",
+   "type": "AWS::Backup::BackupPlan",
+   "values": {
+    "BackupPlan": {
+     "BackupPlanName": "BackupPlanWithMonthlyBackups",
+     "BackupPlanRule": [
+      {
+       "RuleName": "RuleWithMonthlyBackups",
+       "TargetBackupVault": {
+        "ref": "BackupVaultWithMonthlyBackups"
+       },
+       "ScheduleExpression": "cron(15 5 1 * ? *)",
+       "Lifecycle": {
+        "DeleteAfterDays": 365
+       }
+      }
+     ]
+    },
+    "__resource__": {
+     "DependsOn": [
+      "BackupVaultWithMonthlyBackups"
+     ]
+    }
+   },
+   "refs": [
+    "BackupVaultWithMonthlyBackups"
+   ]
+  },
+  {
+   "id": "BackupRole",
+   "cfg": "BackupRole",
+   "type": "AWS::IAM::Role",
+   "values": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Effect": "Allow",
+       "Principal": {
+        "Service": [
+         "backup.amazonaws.com"
+        ]
+       },
+       "Action": [
+        "sts:AssumeRole"
+       ]
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     "arn:aws:iam::aws:policy/service-role/AWSBackupServiceRolePolicyForBackup"
+    ]
+   },
+   "refs": []
+  },
+  {
+   "id": "TagBasedBackupSelectionDaily",
+   "cfg": "TagBasedBackupSelectionDaily",
+   "type": "AWS::Backup::BackupSelection",
+   "values": {
+    "BackupSelection": {
+     "SelectionName": "TagBasedBackupSelectionDaily",
+     "IamRoleArn": {
+      "ref": "BackupRole",
+      "attr": "Arn"
+     },
+     "ListOfTags": [
+      {
+       "ConditionType": "STRINGEQUALS",
+       "ConditionKey": "backup",
+       "ConditionValue": "daily"
+      }
+     ]
+    },
+    "BackupPlanId": {
+     "ref": "BackupPlanWithDailyBackups"
+    },
+    "__resource__": {
+     "DependsOn": [
+      "BackupPlanWithDailyBackups"
+     ]
+    }
+   },
+   "refs": [
+    "BackupPlanWithDailyBackups",
+    "BackupRole"
+   ]
+  },
+  {
+   "id": "TagBasedBackupSelectionWeekly",
+   "cfg": "TagBasedBackupSelectionWeekly",
+   "type": "AWS::Backup::BackupSelection",
+   "values": {
+    "BackupSelection": {
+     "SelectionName": "TagBasedBackupSelectionWeekly",
+     "IamRoleArn": {
+      "ref": "BackupRole",
+      "attr": "Arn"
+     },
+     "ListOfTags": [
+      {
+       "ConditionType": "STRINGEQUALS",
+       "ConditionKey": "backup",
+       "ConditionValue": "weekly"
+      }
+     ]
+    },
+    "BackupPlanId": {
+     "ref": "BackupPlanWithWeeklyBackups"
+    },
+    "__resource__": {
+     "DependsOn": [
+      "BackupPlanWithWeeklyBackups"
+     ]
+    }
+   },
+   "refs": [
+    "BackupPlanWithWeeklyBackups",
+    "BackupRole"
+   ]
+  },
+  {
+   "id": "TagBasedBackupSelectionMonthly",
+   "cfg": "TagBasedBackupSelectionMonthly",
+   "type": "AWS::Backup::BackupSelection",
+   "values": {
+    "BackupSelection": {
+     "SelectionName": "TagBasedBackupSelectionMonthly",
+     "IamRoleArn": {
+      "ref": "BackupRole",
+      "attr": "Arn"
+     },
+     "ListOfTags": [
+      {
+       "ConditionType": "STRINGEQUALS",
+       "ConditionKey": "backup",
+       "ConditionValue": "monthly"
+      }
+     ]
+    },
+    "BackupPlanId": {
+     "ref": "BackupPlanWithMonthlyBackups"
+    },
+    "__resource__": {
+     "DependsOn": [
+      "BackupPlanWithMonthlyBackups"
+     ]
+    }
+   },
+   "refs": [
+    "BackupPlanWithMonthlyBackups",
+    "BackupRole"
+   ]
+  },
+  {
+   "id": "TagOptiondailybackup",
+   "cfg": "TagOptiondailybackup",
+   "type": "AWS::ServiceCatalog::TagOption",
+   "values": {
+    "Active": true,
+    "Value": "daily",
+    "Key": "backup"
+   },
+   "refs": []
+  },
+  {
+   "id": "TagOptionweeklybackup",
+   "cfg": "TagOptionweeklybackup",
+   "type": "AWS::ServiceCatalog::TagOption",
+   "values": {
+    "Active": true,
+    "Value": "weekly",
+    "Key": "backup"
+   },
+   "refs": []
+  },
+  {
+   "id": "TagOptionmonthlybackup",
+   "cfg": "TagOptionmonthlybackup",
+   "type": "AWS::ServiceCatalog::TagOption",
+   "values": {
+    "Active": true,
+    "Value": "monthly",
+    "Key": "backup"
+   },
+   "refs": []
+  },
+  {
+   "id": "__output__.KMSKeyForBackup",
+   "cfg": "__output__.KMSKeyForBackup",
+   "type": "__output__",
+   "values": {
+    "name": "KMSKeyForBackup",
+    "value": {
+     "ref": "KMSKey",
+     "attr": "Arn"
+    },
+    "description": "The KMS Key used for Encryption of backups",
+    "export": null
+   },
+   "refs": [
+    "KMSKey"
+   ]
+  },
+  {
+   "id": "__output__.BackupRoleArn",
+   "cfg": "__output__.BackupRoleArn",
+   "type": "__output__",
+   "values": {
+    "name": "BackupRoleArn",
+    "value": {
+     "ref": "BackupRole",
+     "attr": "Arn"
+    },
+    "description": "IAM Service Role for AWS Backup service",
+    "export": null
+   },
+   "refs": [
+    "BackupRole"
+   ]
+  },
+  {
+   "id": "__output__.DailyBackupVault",
+   "cfg": "__output__.DailyBackupVault",
+   "type": "__output__",
+   "values": {
+    "name": "DailyBackupVault",
+    "value": {
+     "ref": "BackupVaultWithDailyBackups",
+     "attr": "BackupVaultName"
+    },
+    "description": "Vault for daily backups",
+    "export": null
+   },
+   "refs": [
+    "BackupVaultWithDailyBackups"
+   ]
+  },
+  {
+   "id": "__output__.WeeklyBackupVault",
+   "cfg": "__output__.WeeklyBackupVault",
+   "type": "__output__",
+   "values": {
+    "name": "WeeklyBackupVault",
+    "value": {
+     "ref": "BackupVaultWithWeeklyBackups",
+     "attr": "BackupVaultName"
+    },
+    "description": "Vault for weekly backups",
+    "export": null
+   },
+   "refs": [
+    "BackupVaultWithWeeklyBackups"
+   ]
+  },
+  {
+   "id": "__output__.MonthlyBackupVault",
+   "cfg": "__output__.MonthlyBackupVault",
+   "type": "__output__",
+   "values": {
+    "name": "MonthlyBackupVault",
+    "value": {
+     "ref": "BackupVaultWithMonthlyBackups",
+     "attr": "BackupVaultName"
+    },
+    "description": "Vault for monthly backups",
+    "export": null
+   },
+   "refs": [
+    "BackupVaultWithMonthlyBackups"
+   ]
+  },
+  {
+   "id": "__output__.ServiceCatalogTagOptions",
+   "cfg": "__output__.ServiceCatalogTagOptions",
+   "type": "__output__",
+   "values": {
+    "name": "ServiceCatalogTagOptions",
+    "value": "backup:daily, backup:weekly, backup:monthly",
+    "description": "Key value pairs required for backups. Associate these Tag Options with Service Catalog portfolios and products to enable tag based backups.",
+    "export": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__declared__.AWS::KMS::Key.KMSKey",
+   "cfg": "KMSKey",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::KMS::Key",
+    "name": "KMSKey",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Description": "Encryption key for backups",
+     "EnableKeyRotation": true,
+     "Enabled": true,
+     "KeyPolicy": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "AWS": [
+          "arn:aws:iam::123456789012:root"
+         ]
+        },
+        "Action": [
+         "kms:*"
+        ],
+        "Resource": [
+         "*"
+        ]
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Backup::BackupVault.BackupVaultWithDailyBackups",
+   "cfg": "BackupVaultWithDailyBackups",
+   "type": "__declared__",
+   "refs": [
+    "KMSKey"
+   ],
+   "values": {
+    "type": "AWS::Backup::BackupVault",
+    "name": "BackupVaultWithDailyBackups",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "BackupVaultName": "BackupVaultWithDailyBackups",
+     "EncryptionKeyArn": {
+      "ref": "KMSKey",
+      "attr": "Arn"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Backup::BackupVault.BackupVaultWithWeeklyBackups",
+   "cfg": "BackupVaultWithWeeklyBackups",
+   "type": "__declared__",
+   "refs": [
+    "KMSKey"
+   ],
+   "values": {
+    "type": "AWS::Backup::BackupVault",
+    "name": "BackupVaultWithWeeklyBackups",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "BackupVaultName": "BackupVaultWithWeeklyBackups",
+     "EncryptionKeyArn": {
+      "ref": "KMSKey",
+      "attr": "Arn"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Backup::BackupVault.BackupVaultWithMonthlyBackups",
+   "cfg": "BackupVaultWithMonthlyBackups",
+   "type": "__declared__",
+   "refs": [
+    "KMSKey"
+   ],
+   "values": {
+    "type": "AWS::Backup::BackupVault",
+    "name": "BackupVaultWithMonthlyBackups",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "BackupVaultName": "BackupVaultWithMonthlyBackups",
+     "EncryptionKeyArn": {
+      "ref": "KMSKey",
+      "attr": "Arn"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Backup::BackupPlan.BackupPlanWithDailyBackups",
+   "cfg": "BackupPlanWithDailyBackups",
+   "type": "__declared__",
+   "refs": [
+    "BackupVaultWithDailyBackups"
+   ],
+   "values": {
+    "type": "AWS::Backup::BackupPlan",
+    "name": "BackupPlanWithDailyBackups",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "BackupPlan": {
+      "BackupPlanName": "BackupPlanWithDailyBackups",
+      "BackupPlanRule": [
+       {
+        "RuleName": "RuleWithDailyBackups",
+        "TargetBackupVault": {
+         "ref": "BackupVaultWithDailyBackups"
+        },
+        "ScheduleExpression": "cron(15 5 ? * * *)",
+        "Lifecycle": {
+         "DeleteAfterDays": 14
+        }
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Backup::BackupPlan.BackupPlanWithWeeklyBackups",
+   "cfg": "BackupPlanWithWeeklyBackups",
+   "type": "__declared__",
+   "refs": [
+    "BackupVaultWithWeeklyBackups"
+   ],
+   "values": {
+    "type": "AWS::Backup::BackupPlan",
+    "name": "BackupPlanWithWeeklyBackups",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "BackupPlan": {
+      "BackupPlanName": "BackupPlanWithWeeklyBackups",
+      "BackupPlanRule": [
+       {
+        "RuleName": "RuleWithWeeklyBackups",
+        "TargetBackupVault": {
+         "ref": "BackupVaultWithWeeklyBackups"
+        },
+        "ScheduleExpression": "cron(15 5 ? * 1 *)",
+        "Lifecycle": {
+         "DeleteAfterDays": 56
+        }
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Backup::BackupPlan.BackupPlanWithMonthlyBackups",
+   "cfg": "BackupPlanWithMonthlyBackups",
+   "type": "__declared__",
+   "refs": [
+    "BackupVaultWithMonthlyBackups"
+   ],
+   "values": {
+    "type": "AWS::Backup::BackupPlan",
+    "name": "BackupPlanWithMonthlyBackups",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "BackupPlan": {
+      "BackupPlanName": "BackupPlanWithMonthlyBackups",
+      "BackupPlanRule": [
+       {
+        "RuleName": "RuleWithMonthlyBackups",
+        "TargetBackupVault": {
+         "ref": "BackupVaultWithMonthlyBackups"
+        },
+        "ScheduleExpression": "cron(15 5 1 * ? *)",
+        "Lifecycle": {
+         "DeleteAfterDays": 365
+        }
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::IAM::Role.BackupRole",
+   "cfg": "BackupRole",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::IAM::Role",
+    "name": "BackupRole",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+       {
+        "Effect": "Allow",
+        "Principal": {
+         "Service": [
+          "backup.amazonaws.com"
+         ]
+        },
+        "Action": [
+         "sts:AssumeRole"
+        ]
+       }
+      ]
+     },
+     "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AWSBackupServiceRolePolicyForBackup"
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Backup::BackupSelection.TagBasedBackupSelectionDaily",
+   "cfg": "TagBasedBackupSelectionDaily",
+   "type": "__declared__",
+   "refs": [
+    "BackupPlanWithDailyBackups",
+    "BackupRole"
+   ],
+   "values": {
+    "type": "AWS::Backup::BackupSelection",
+    "name": "TagBasedBackupSelectionDaily",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "BackupSelection": {
+      "SelectionName": "TagBasedBackupSelectionDaily",
+      "IamRoleArn": {
+       "ref": "BackupRole",
+       "attr": "Arn"
+      },
+      "ListOfTags": [
+       {
+        "ConditionType": "STRINGEQUALS",
+        "ConditionKey": "backup",
+        "ConditionValue": "daily"
+       }
+      ]
+     },
+     "BackupPlanId": {
+      "ref": "BackupPlanWithDailyBackups"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Backup::BackupSelection.TagBasedBackupSelectionWeekly",
+   "cfg": "TagBasedBackupSelectionWeekly",
+   "type": "__declared__",
+   "refs": [
+    "BackupPlanWithWeeklyBackups",
+    "BackupRole"
+   ],
+   "values": {
+    "type": "AWS::Backup::BackupSelection",
+    "name": "TagBasedBackupSelectionWeekly",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "BackupSelection": {
+      "SelectionName": "TagBasedBackupSelectionWeekly",
+      "IamRoleArn": {
+       "ref": "BackupRole",
+       "attr": "Arn"
+      },
+      "ListOfTags": [
+       {
+        "ConditionType": "STRINGEQUALS",
+        "ConditionKey": "backup",
+        "ConditionValue": "weekly"
+       }
+      ]
+     },
+     "BackupPlanId": {
+      "ref": "BackupPlanWithWeeklyBackups"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::Backup::BackupSelection.TagBasedBackupSelectionMonthly",
+   "cfg": "TagBasedBackupSelectionMonthly",
+   "type": "__declared__",
+   "refs": [
+    "BackupPlanWithMonthlyBackups",
+    "BackupRole"
+   ],
+   "values": {
+    "type": "AWS::Backup::BackupSelection",
+    "name": "TagBasedBackupSelectionMonthly",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "BackupSelection": {
+      "SelectionName": "TagBasedBackupSelectionMonthly",
+      "IamRoleArn": {
+       "ref": "BackupRole",
+       "attr": "Arn"
+      },
+      "ListOfTags": [
+       {
+        "ConditionType": "STRINGEQUALS",
+        "ConditionKey": "backup",
+        "ConditionValue": "monthly"
+       }
+      ]
+     },
+     "BackupPlanId": {
+      "ref": "BackupPlanWithMonthlyBackups"
+     }
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ServiceCatalog::TagOption.TagOptiondailybackup",
+   "cfg": "TagOptiondailybackup",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::ServiceCatalog::TagOption",
+    "name": "TagOptiondailybackup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Active": true,
+     "Value": "daily",
+     "Key": "backup"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ServiceCatalog::TagOption.TagOptionweeklybackup",
+   "cfg": "TagOptionweeklybackup",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::ServiceCatalog::TagOption",
+    "name": "TagOptionweeklybackup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Active": true,
+     "Value": "weekly",
+     "Key": "backup"
+    }
+   }
+  },
+  {
+   "id": "__declared__.AWS::ServiceCatalog::TagOption.TagOptionmonthlybackup",
+   "cfg": "TagOptionmonthlybackup",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "AWS::ServiceCatalog::TagOption",
+    "name": "TagOptionmonthlybackup",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "Active": true,
+     "Value": "monthly",
+     "Key": "backup"
+    }
+   }
+  }
+ ]
+}

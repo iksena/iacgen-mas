@@ -1,0 +1,340 @@
+{
+ "meta": {
+  "lang": "tf",
+  "mode": "plan",
+  "warnings": [],
+  "gt_hash": "1e30a88c8a6aa745c20559d6125d164448efe813d09315b93629ea0d094b095a",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "aws_backup_plan.backup_plan",
+   "cfg": "aws_backup_plan.backup_plan",
+   "type": "aws_backup_plan",
+   "values": {
+    "advanced_backup_setting": [],
+    "name": "benchmark-vault-backup-plan",
+    "region": "us-east-1",
+    "rule": [
+     {
+      "completion_window": 180,
+      "copy_action": [],
+      "enable_continuous_backup": false,
+      "lifecycle": [
+       {
+        "cold_storage_after": null,
+        "delete_after": 30
+       }
+      ],
+      "recovery_point_tags": null,
+      "rule_name": "benchmark-vault-backup-rule",
+      "scan_action": [],
+      "schedule": "cron(0 5 * * ? *)",
+      "schedule_expression_timezone": "Etc/UTC",
+      "start_window": 60,
+      "target_logically_air_gapped_backup_vault_arn": "",
+      "target_vault_name": "benchmark-vault"
+     }
+    ],
+    "scan_setting": [],
+    "tags": null
+   },
+   "refs": [
+    "aws_backup_vault.backup_vault"
+   ]
+  },
+  {
+   "id": "aws_backup_selection.backup_plan_selection",
+   "cfg": "aws_backup_selection.backup_plan_selection",
+   "type": "aws_backup_selection",
+   "values": {
+    "condition": [
+     {
+      "string_equals": [
+       {
+        "key": "aws:ResourceTag/benchmark-backup",
+        "value": "true"
+       }
+      ],
+      "string_like": [],
+      "string_not_equals": [],
+      "string_not_like": []
+     }
+    ],
+    "iam_role_arn": "arn:aws:iam::000000000000:role/service-role/AWSBackupDefaultServiceRole",
+    "name": "benchmark-vault-backup-rule-tag-selection",
+    "region": "us-east-1",
+    "resources": [
+     "*"
+    ],
+    "selection_tag": []
+   },
+   "refs": [
+    "aws_backup_plan.backup_plan",
+    "data.aws_caller_identity.current"
+   ]
+  },
+  {
+   "id": "aws_backup_vault.backup_vault",
+   "cfg": "aws_backup_vault.backup_vault",
+   "type": "aws_backup_vault",
+   "values": {
+    "force_destroy": false,
+    "name": "benchmark-vault",
+    "region": "us-east-1",
+    "tags": null,
+    "timeouts": null
+   },
+   "refs": [
+    "aws_kms_key.aws_backup_key"
+   ]
+  },
+  {
+   "id": "aws_backup_vault_lock_configuration.backup_vault_lock_configuration",
+   "cfg": "aws_backup_vault_lock_configuration.backup_vault_lock_configuration",
+   "type": "aws_backup_vault_lock_configuration",
+   "values": {
+    "backup_vault_name": "benchmark-vault",
+    "changeable_for_days": 3,
+    "max_retention_days": 90,
+    "min_retention_days": 7,
+    "region": "us-east-1"
+   },
+   "refs": [
+    "aws_backup_vault.backup_vault"
+   ]
+  },
+  {
+   "id": "aws_kms_key.aws_backup_key",
+   "cfg": "aws_kms_key.aws_backup_key",
+   "type": "aws_kms_key",
+   "values": {
+    "bypass_policy_lockout_safety_check": false,
+    "custom_key_store_id": null,
+    "customer_master_key_spec": "SYMMETRIC_DEFAULT",
+    "deletion_window_in_days": 30,
+    "description": "AWS Backup KMS key",
+    "enable_key_rotation": true,
+    "is_enabled": true,
+    "key_usage": "ENCRYPT_DECRYPT",
+    "region": "us-east-1",
+    "tags": null,
+    "timeouts": null,
+    "xks_key_id": null
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.backup_tag",
+   "cfg": "__parameter__.backup_tag",
+   "type": "__parameter__",
+   "values": {
+    "name": "backup_tag",
+    "default": "benchmark-backup"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.backups_expire_days",
+   "cfg": "__parameter__.backups_expire_days",
+   "type": "__parameter__",
+   "values": {
+    "name": "backups_expire_days",
+    "default": 30
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.completion_window",
+   "cfg": "__parameter__.completion_window",
+   "type": "__parameter__",
+   "values": {
+    "name": "completion_window",
+    "default": 180
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.max_retention_days",
+   "cfg": "__parameter__.max_retention_days",
+   "type": "__parameter__",
+   "values": {
+    "name": "max_retention_days",
+    "default": 90
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.min_retention_days",
+   "cfg": "__parameter__.min_retention_days",
+   "type": "__parameter__",
+   "values": {
+    "name": "min_retention_days",
+    "default": 7
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.schedule",
+   "cfg": "__parameter__.schedule",
+   "type": "__parameter__",
+   "values": {
+    "name": "schedule",
+    "default": "cron(0 5 * * ? *)"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.start_window",
+   "cfg": "__parameter__.start_window",
+   "type": "__parameter__",
+   "values": {
+    "name": "start_window",
+    "default": 60
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.vault_name",
+   "cfg": "__parameter__.vault_name",
+   "type": "__parameter__",
+   "values": {
+    "name": "vault_name",
+    "default": "benchmark-vault"
+   },
+   "refs": []
+  },
+  {
+   "id": "__declared__.data.aws_caller_identity.current",
+   "cfg": "data.aws_caller_identity.current",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "data.aws_caller_identity",
+    "name": "current",
+    "gated": false,
+    "gate": null,
+    "properties": {}
+   }
+  },
+  {
+   "id": "__declared__.aws_kms_key.aws_backup_key",
+   "cfg": "aws_kms_key.aws_backup_key",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_kms_key",
+    "name": "aws_backup_key",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "description": "AWS Backup KMS key",
+     "deletion_window_in_days": 30,
+     "enable_key_rotation": true
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_backup_vault.backup_vault",
+   "cfg": "aws_backup_vault.backup_vault",
+   "type": "__declared__",
+   "refs": [
+    "aws_kms_key.aws_backup_key"
+   ],
+   "values": {
+    "type": "aws_backup_vault",
+    "name": "backup_vault",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "benchmark-vault",
+     "kms_key_arn": "${aws_kms_key.aws_backup_key.arn}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_backup_plan.backup_plan",
+   "cfg": "aws_backup_plan.backup_plan",
+   "type": "__declared__",
+   "refs": [
+    "aws_backup_vault.backup_vault"
+   ],
+   "values": {
+    "type": "aws_backup_plan",
+    "name": "backup_plan",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "${var.vault_name}-backup-plan",
+     "rule": [
+      {
+       "rule_name": "${var.vault_name}-backup-rule",
+       "target_vault_name": "${aws_backup_vault.backup_vault.name}",
+       "schedule": "cron(0 5 * * ? *)",
+       "start_window": 60,
+       "completion_window": 180,
+       "lifecycle": [
+        {
+         "delete_after": 30
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_backup_selection.backup_plan_selection",
+   "cfg": "aws_backup_selection.backup_plan_selection",
+   "type": "__declared__",
+   "refs": [
+    "aws_backup_plan.backup_plan",
+    "data.aws_caller_identity.current"
+   ],
+   "values": {
+    "type": "aws_backup_selection",
+    "name": "backup_plan_selection",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "iam_role_arn": "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/service-role/AWSBackupDefaultServiceRole",
+     "name": "${var.vault_name}-backup-rule-tag-selection",
+     "plan_id": "${aws_backup_plan.backup_plan.id}",
+     "resources": [
+      "*"
+     ],
+     "condition": [
+      {
+       "string_equals": [
+        {
+         "key": "aws:ResourceTag/${var.backup_tag}",
+         "value": "true"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_backup_vault_lock_configuration.backup_vault_lock_configuration",
+   "cfg": "aws_backup_vault_lock_configuration.backup_vault_lock_configuration",
+   "type": "__declared__",
+   "refs": [
+    "aws_backup_vault.backup_vault"
+   ],
+   "values": {
+    "type": "aws_backup_vault_lock_configuration",
+    "name": "backup_vault_lock_configuration",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "backup_vault_name": "${aws_backup_vault.backup_vault.name}",
+     "changeable_for_days": 3,
+     "min_retention_days": 7,
+     "max_retention_days": 90
+    }
+   }
+  }
+ ]
+}

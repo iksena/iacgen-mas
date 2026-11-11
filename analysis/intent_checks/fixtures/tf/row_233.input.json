@@ -1,0 +1,353 @@
+{
+ "meta": {
+  "lang": "tf",
+  "mode": "plan",
+  "warnings": [],
+  "gt_hash": "2a6ef1fd2d2b9c795403ebb14b650a0dd3216f0313fc10c4c5906a2ccaf96940",
+  "adapter_version": 8
+ },
+ "resources": [
+  {
+   "id": "aws_iam_policy.cost-report-policy",
+   "cfg": "aws_iam_policy.cost-report-policy",
+   "type": "aws_iam_policy",
+   "values": {
+    "delay_after_policy_creation_in_ms": null,
+    "description": "Permissions for cost reporting",
+    "name": "cost-report-policy",
+    "path": "/",
+    "policy": "{\"Statement\":[{\"Action\":[\"ce:*\"],\"Effect\":\"Allow\",\"Resource\":[\"*\"],\"Sid\":\"VisualEditor0\"}],\"Version\":\"2012-10-17\"}",
+    "tags": null
+   },
+   "refs": []
+  },
+  {
+   "id": "aws_iam_user.cost-report-user",
+   "cfg": "aws_iam_user.cost-report-user",
+   "type": "aws_iam_user",
+   "values": {
+    "force_destroy": false,
+    "name": "mattermost-cost-report-dev",
+    "path": "/",
+    "permissions_boundary": null,
+    "tags": null
+   },
+   "refs": []
+  },
+  {
+   "id": "aws_iam_user_policy_attachment.attachment",
+   "cfg": "aws_iam_user_policy_attachment.attachment",
+   "type": "aws_iam_user_policy_attachment",
+   "values": {
+    "user": "mattermost-cost-report-dev"
+   },
+   "refs": [
+    "aws_iam_policy.cost-report-policy",
+    "aws_iam_user.cost-report-user"
+   ]
+  },
+  {
+   "id": "__parameter__.create_db_disaster_user",
+   "cfg": "__parameter__.create_db_disaster_user",
+   "type": "__parameter__",
+   "values": {
+    "name": "create_db_disaster_user",
+    "default": false
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.create_exports_user",
+   "cfg": "__parameter__.create_exports_user",
+   "type": "__parameter__",
+   "values": {
+    "name": "create_exports_user",
+    "default": false
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.create_packer_user",
+   "cfg": "__parameter__.create_packer_user",
+   "type": "__parameter__",
+   "values": {
+    "name": "create_packer_user",
+    "default": false
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.environment",
+   "cfg": "__parameter__.environment",
+   "type": "__parameter__",
+   "values": {
+    "name": "environment",
+    "default": "dev"
+   },
+   "refs": []
+  },
+  {
+   "id": "__parameter__.exports_bucket_arn",
+   "cfg": "__parameter__.exports_bucket_arn",
+   "type": "__parameter__",
+   "values": {
+    "name": "exports_bucket_arn",
+    "default": ""
+   },
+   "refs": []
+  },
+  {
+   "id": "__declared__.aws_iam_user.cost-report-user",
+   "cfg": "aws_iam_user.cost-report-user",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_iam_user",
+    "name": "cost-report-user",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "mattermost-cost-report-${var.environment}",
+     "path": "/"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_policy.cost-report-policy",
+   "cfg": "aws_iam_policy.cost-report-policy",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_iam_policy",
+    "name": "cost-report-policy",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "name": "cost-report-policy",
+     "path": "/",
+     "description": "Permissions for cost reporting",
+     "policy": "{\n    \"Version\": \"2012-10-17\",\n    \"Statement\": [\n        {\n            \"Sid\": \"VisualEditor0\",\n            \"Effect\": \"Allow\",\n            \"Action\": [\n                \"ce:*\"\n            ],\n            \"Resource\": [\n                \"*\"\n            ]\n        }\n    ]\n}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_user_policy_attachment.attachment",
+   "cfg": "aws_iam_user_policy_attachment.attachment",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_policy.cost-report-policy",
+    "aws_iam_user.cost-report-user"
+   ],
+   "values": {
+    "type": "aws_iam_user_policy_attachment",
+    "name": "attachment",
+    "gated": false,
+    "gate": null,
+    "properties": {
+     "user": "${aws_iam_user.cost-report-user.name}",
+     "policy_arn": "${aws_iam_policy.cost-report-policy.arn}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_user.db_disaster_recovery",
+   "cfg": "aws_iam_user.db_disaster_recovery",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_iam_user",
+    "name": "db_disaster_recovery",
+    "gated": true,
+    "gate": "var.create_db_disaster_user ? 1 : 0",
+    "properties": {
+     "count": "${var.create_db_disaster_user ? 1 : 0}",
+     "name": "mattermost-cloud-${var.environment}-db-disaster-recovery",
+     "path": "/"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_policy.db_disaster_recovery",
+   "cfg": "aws_iam_policy.db_disaster_recovery",
+   "type": "__declared__",
+   "refs": [
+    "data.aws_caller_identity.current",
+    "data.aws_region.current"
+   ],
+   "values": {
+    "type": "aws_iam_policy",
+    "name": "db_disaster_recovery",
+    "gated": true,
+    "gate": "var.create_db_disaster_user ? 1 : 0",
+    "properties": {
+     "count": "${var.create_db_disaster_user ? 1 : 0}",
+     "name": "mattermost-cloud-${var.environment}-db-disaster-recovery-policy",
+     "description": "A policy attached to DB Disaster Recovery IAM user",
+     "path": "/",
+     "policy": "${jsonencode({'Version': '2012-10-17', 'Statement': [{'Action': ['rds:*', 'kms:*'], 'Effect': 'Allow', 'Resource': '*'}, {'Action': ['secretsmanager:GetSecretValue'], 'Effect': 'Allow', 'Resource': '${local.secret_manager_rds}'}]})}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_user_policy_attachment.db_disaster_recovery",
+   "cfg": "aws_iam_user_policy_attachment.db_disaster_recovery",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_policy.db_disaster_recovery",
+    "aws_iam_user.db_disaster_recovery"
+   ],
+   "values": {
+    "type": "aws_iam_user_policy_attachment",
+    "name": "db_disaster_recovery",
+    "gated": true,
+    "gate": "var.create_db_disaster_user ? 1 : 0",
+    "properties": {
+     "count": "${var.create_db_disaster_user ? 1 : 0}",
+     "user": "${aws_iam_user.db_disaster_recovery[0].name}",
+     "policy_arn": "${aws_iam_policy.db_disaster_recovery[0].arn}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_user.exports",
+   "cfg": "aws_iam_user.exports",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_iam_user",
+    "name": "exports",
+    "gated": true,
+    "gate": "var.create_exports_user ? 1 : 0",
+    "properties": {
+     "count": "${var.create_exports_user ? 1 : 0}",
+     "name": "mattermost-cloud-${var.environment}-exports",
+     "path": "/"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_policy.exports",
+   "cfg": "aws_iam_policy.exports",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_iam_policy",
+    "name": "exports",
+    "gated": true,
+    "gate": "var.create_exports_user ? 1 : 0",
+    "properties": {
+     "count": "${var.create_exports_user ? 1 : 0}",
+     "name": "mattermost-cloud-${var.environment}-exports-policy",
+     "description": "A policy attached to exports IAM user",
+     "path": "/",
+     "policy": "${jsonencode({'Version': '2012-10-17', 'Statement': [{'Action': ['s3:ListBucket', 's3:GetBucketLocation', 's3:GetBucketTagging'], 'Effect': 'Allow', 'Resource': '${var.exports_bucket_arn}'}, {'Action': ['s3:PutObject', 's3:PutObjectAcl', 's3:GetObject', 's3:GetObjectAcl', 's3:DeleteObject', 's3:GetObjectVersionAcl'], 'Effect': 'Allow', 'Resource': '${var.exports_bucket_arn}/*'}]})}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_user_policy_attachment.exports",
+   "cfg": "aws_iam_user_policy_attachment.exports",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_policy.exports",
+    "aws_iam_user.exports"
+   ],
+   "values": {
+    "type": "aws_iam_user_policy_attachment",
+    "name": "exports",
+    "gated": true,
+    "gate": "var.create_exports_user ? 1 : 0",
+    "properties": {
+     "count": "${var.create_exports_user ? 1 : 0}",
+     "user": "${aws_iam_user.exports[0].name}",
+     "policy_arn": "${aws_iam_policy.exports[0].arn}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.data.aws_caller_identity.current",
+   "cfg": "data.aws_caller_identity.current",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "data.aws_caller_identity",
+    "name": "current",
+    "gated": false,
+    "gate": null,
+    "properties": {}
+   }
+  },
+  {
+   "id": "__declared__.data.aws_region.current",
+   "cfg": "data.aws_region.current",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "data.aws_region",
+    "name": "current",
+    "gated": false,
+    "gate": null,
+    "properties": {}
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_user.packer",
+   "cfg": "aws_iam_user.packer",
+   "type": "__declared__",
+   "refs": [],
+   "values": {
+    "type": "aws_iam_user",
+    "name": "packer",
+    "gated": true,
+    "gate": "var.create_packer_user ? 1 : 0",
+    "properties": {
+     "count": "${var.create_packer_user ? 1 : 0}",
+     "name": "mattermost-cloud-${var.environment}-packer",
+     "path": "/"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_policy.packer",
+   "cfg": "aws_iam_policy.packer",
+   "type": "__declared__",
+   "refs": [
+    "data.aws_caller_identity.current",
+    "data.aws_region.current"
+   ],
+   "values": {
+    "type": "aws_iam_policy",
+    "name": "packer",
+    "gated": true,
+    "gate": "var.create_packer_user ? 1 : 0",
+    "properties": {
+     "count": "${var.create_packer_user ? 1 : 0}",
+     "name": "mattermost-cloud-${var.environment}-packer-policy",
+     "description": "A policy attached to packer IAM user",
+     "path": "/",
+     "policy": "{\n    \"Version\": \"2012-10-17\",\n    \"Statement\": [\n        {\n            \"Sid\": \"LambdaPolicyAllResources\",\n            \"Effect\": \"Allow\",\n            \"Action\": [\n                \"lambda:ListCodeSigningConfigs\",\n                \"lambda:ListEventSourceMappings\",\n                \"lambda:ListVersionsByFunction\",\n                \"lambda:ListFunctionsByCodeSigningConfig\",\n                \"lambda:ListTags\",\n                \"lambda:GetPolicy\"\n            ],\n            \"Resource\": \"*\"\n        },\n        {\n            \"Sid\": \"LambdaPolicySpecificResource\",\n            \"Effect\": \"Allow\",\n            \"Action\": [\n                \"lambda:GetFunction\",\n                \"lambda:GetFunctionConfiguration\",\n                \"lambda:GetFunctionCodeSigningConfig\",\n                \"lambda:GetFunctionEventInvokeConfig\",\n                \"lambda:GetCodeSigningConfig\"\n            ],\n            \"Resource\": [\n                \"arn:aws:lambda:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:function:bind-server-network-attachment\"\n            ]\n        },\n        {\n            \"Sid\": \"S3Policy\",\n            \"Effect\": \"Allow\",\n            \"Action\": [\n                \"s3:GetObjectAttributes\",\n                \"s3:ListBucket\",\n                \"s3:GetObjectLegalHold\",\n                \"s3:GetObjectVersionAttributes\",\n                \"s3:GetObjectVersionTorrent\",\n                \"s3:GetObject\",\n                \"s3:GetObjectTorrent\",\n                \"s3:GetObjectVersionAcl\",\n                \"s3:GetObjectTagging\",\n                \"s3:PutObject\"\n            ],\n            \"Resource\": [\n                \"arn:aws:s3:::terraform-cloud-monitoring-state-bucket-${var.environment}/*\",\n                \"arn:aws:s3:::terraform-cloud-monitoring-state-bucket-${var.environment}\"\n            ]\n        },\n        {\n            \"Sid\": \"AllOtherServicesPolicy\",\n            \"Effect\": \"Allow\",\n            \"Action\": [\n              \"autoscaling:DescribeAutoScalingGroups\",\n              \"autoscaling:DescribeLifecycleHooks\",\n              \"autoscaling:DescribeInstanceRefreshes\",\n              \"autoscaling:UpdateAutoScalingGroup\",\n              \"autoscaling:PutLifecycleHook\",\n              \"autoscaling:StartInstanceRefresh\",\n              \"ec2:AttachVolume\",\n              \"ec2:AuthorizeSecurityGroupIngress\",\n              \"ec2:CopyImage\",\n              \"ec2:CreateImage\",\n              \"ec2:CreateKeypair\",\n              \"ec2:CreateLaunchTemplateVersion\",\n              \"ec2:CreateSecurityGroup\",\n              \"ec2:CreateSnapshot\",\n              \"ec2:CreateTags\",\n              \"ec2:CreateVolume\",\n              \"ec2:DeleteKeyPair\",\n              \"ec2:DeleteSecurityGroup\",\n              \"ec2:DeleteSnapshot\",\n              \"ec2:DeleteVolume\",\n              \"ec2:DeregisterImage\",\n              \"ec2:DescribeImageAttribute\",\n              \"ec2:DescribeImages\",\n              \"ec2:DescribeInstanceStatus\",\n              \"ec2:DescribeInstances\",\n              \"ec2:DescribeKeyPairs\",\n              \"ec2:DescribeLaunchTemplateVersions\",\n              \"ec2:DescribeLaunchTemplates\",\n              \"ec2:DescribeNetworkInterfaces\",\n              \"ec2:DescribeRegions\",\n              \"ec2:DescribeSecurityGroups\",\n              \"ec2:DescribeSnapshots\",\n              \"ec2:DescribeSubnets\",\n              \"ec2:DescribeTags\",\n              \"ec2:DescribeVolumes\",\n              \"ec2:DescribeVpcAttribute\",\n              \"ec2:DescribeVpcs\",\n              \"ec2:DetachVolume\",\n              \"ec2:GetPasswordData\",\n              \"ec2:ModifyImageAttribute\",\n              \"ec2:ModifyInstanceAttribute\",\n              \"ec2:ModifyLaunchTemplate\",\n              \"ec2:ModifySnapshotAttribute\",\n              \"ec2:RegisterImage\",\n              \"ec2:RunInstances\",\n              \"ec2:StopInstances\",\n              \"ec2:TerminateInstances\",\n              \"events:DescribeRule\",\n              \"events:ListTagsForResource\",\n              \"events:ListTargetsByRule\",\n              \"iam:GetInstanceProfile\",\n              \"iam:GetRole\",\n              \"iam:GetRolePolicy\",\n              \"iam:ListAttachedRolePolicies\",\n              \"iam:ListRolePolicies\",\n              \"ssm:GetParameter\",\n              \"ssm:GetParameters\"\n            ],\n            \"Resource\": \"*\"\n        },\n        {\n          \"Effect\": \"Allow\",\n          \"Action\": \"iam:PassRole\",\n          \"Resource\": [\n            \"arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.environment}-bind-server-role\"\n          ]\n        }\n    ]\n}"
+    }
+   }
+  },
+  {
+   "id": "__declared__.aws_iam_user_policy_attachment.packer",
+   "cfg": "aws_iam_user_policy_attachment.packer",
+   "type": "__declared__",
+   "refs": [
+    "aws_iam_policy.packer",
+    "aws_iam_user.packer"
+   ],
+   "values": {
+    "type": "aws_iam_user_policy_attachment",
+    "name": "packer",
+    "gated": true,
+    "gate": "var.create_packer_user ? 1 : 0",
+    "properties": {
+     "count": "${var.create_packer_user ? 1 : 0}",
+     "user": "${aws_iam_user.packer[0].name}",
+     "policy_arn": "${aws_iam_policy.packer[0].arn}"
+    }
+   }
+  }
+ ]
+}

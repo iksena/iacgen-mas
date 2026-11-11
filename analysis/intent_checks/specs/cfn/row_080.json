@@ -1,0 +1,610 @@
+{
+ "lang": "cfn",
+ "row_number": 80,
+ "source_hash": {
+  "gt": "9cfee0d6772319e30d9819ca5c31105980f95e81314c715032feb017096f7dfe",
+  "prompt": "aa8636ebf9187b6f2510686e16ec1ec94fc05e0a6df2f9b2fc907c793ca3e133"
+ },
+ "selectors": {
+  "fn": {
+   "types": [
+    "AWS::Lambda::Function"
+   ]
+  },
+  "role": {
+   "types": [
+    "AWS::IAM::Role"
+   ],
+   "where": [
+    {
+     "path": "AssumeRolePolicyDocument.Statement.*.Principal.Service.*",
+     "op": "eq",
+     "value": "lambda.amazonaws.com"
+    }
+   ]
+  },
+  "cr": {
+   "types": [
+    "__declared__"
+   ],
+   "where": [
+    {
+     "path": "type",
+     "op": "regex",
+     "value": "^(Custom::|AWS::CloudFormation::CustomResource$)"
+    },
+    {
+     "path": "gated",
+     "op": "falsy"
+    }
+   ]
+  },
+  "lg": {
+   "types": [
+    "AWS::Logs::LogGroup"
+   ]
+  },
+  "outs": {
+   "types": [
+    "__output__"
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "fn",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "a Lambda function named \"ReusableDelegationSet\"",
+   "select": "fn"
+  },
+  {
+   "id": "fn_name",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "a Lambda function named \"ReusableDelegationSet\" (with a configurable name)",
+   "select": "fn",
+   "cond": {
+    "path": "FunctionName",
+    "op": "eq",
+    "value": "ReusableDelegationSet"
+   }
+  },
+  {
+   "id": "name_param",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "(with a configurable name)",
+   "select": {
+    "types": [
+     "__parameter__"
+    ]
+   },
+   "cond": {
+    "path": "default",
+    "op": "eq",
+    "value": "ReusableDelegationSet"
+   }
+  },
+  {
+   "id": "custom_resource",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "using a custom resource backed by a Lambda function",
+   "justify": "custom resources have a Custom:: type or AWS::CloudFormation::CustomResource",
+   "select": "cr"
+  },
+  {
+   "id": "custom_ref_fn",
+   "kind": "ref",
+   "tier": "core",
+   "quote": "a custom resource backed by a Lambda function",
+   "from": "cr",
+   "to": "fn"
+  },
+  {
+   "id": "role",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "The Lambda function should have an IAM role",
+   "select": "role"
+  },
+  {
+   "id": "fn_role",
+   "kind": "ref",
+   "tier": "detail",
+   "quote": "The Lambda function should have an IAM role",
+   "from": "fn",
+   "to": "role"
+  },
+  {
+   "id": "r53_create",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "permissions to manage Route53 delegation sets (create, delete, get, list)",
+   "justify": "create",
+   "checks": [
+    {
+     "kind": "ref",
+     "bidirectional": true,
+     "to": "role",
+     "from": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy",
+       "AWS::IAM::RolePolicy"
+      ],
+      "where": [
+       {
+        "path": "PolicyDocument.Statement.*.Action.*",
+        "op": "glob_covers",
+        "value": "route53:CreateReusableDelegationSet"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "role",
+     "cond": {
+      "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+      "op": "glob_covers",
+      "value": "route53:CreateReusableDelegationSet"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "role",
+     "cond": {
+      "path": "ManagedPolicyArns.*",
+      "op": "regex",
+      "value": "AmazonRoute53FullAccess"
+     }
+    }
+   ]
+  },
+  {
+   "id": "r53_delete",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "permissions to manage Route53 delegation sets (create, delete, get, list)",
+   "justify": "delete",
+   "checks": [
+    {
+     "kind": "ref",
+     "bidirectional": true,
+     "to": "role",
+     "from": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy",
+       "AWS::IAM::RolePolicy"
+      ],
+      "where": [
+       {
+        "path": "PolicyDocument.Statement.*.Action.*",
+        "op": "glob_covers",
+        "value": "route53:DeleteReusableDelegationSet"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "role",
+     "cond": {
+      "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+      "op": "glob_covers",
+      "value": "route53:DeleteReusableDelegationSet"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "role",
+     "cond": {
+      "path": "ManagedPolicyArns.*",
+      "op": "regex",
+      "value": "AmazonRoute53FullAccess"
+     }
+    }
+   ]
+  },
+  {
+   "id": "r53_get",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "permissions to manage Route53 delegation sets (create, delete, get, list)",
+   "justify": "get",
+   "checks": [
+    {
+     "kind": "ref",
+     "bidirectional": true,
+     "to": "role",
+     "from": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy",
+       "AWS::IAM::RolePolicy"
+      ],
+      "where": [
+       {
+        "path": "PolicyDocument.Statement.*.Action.*",
+        "op": "glob_covers",
+        "value": "route53:GetReusableDelegationSet"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "role",
+     "cond": {
+      "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+      "op": "glob_covers",
+      "value": "route53:GetReusableDelegationSet"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "role",
+     "cond": {
+      "path": "ManagedPolicyArns.*",
+      "op": "regex",
+      "value": "AmazonRoute53FullAccess"
+     }
+    }
+   ]
+  },
+  {
+   "id": "r53_list",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "permissions to manage Route53 delegation sets (create, delete, get, list)",
+   "justify": "list",
+   "checks": [
+    {
+     "kind": "ref",
+     "bidirectional": true,
+     "to": "role",
+     "from": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy",
+       "AWS::IAM::RolePolicy"
+      ],
+      "where": [
+       {
+        "path": "PolicyDocument.Statement.*.Action.*",
+        "op": "glob_covers",
+        "value": "route53:ListReusableDelegationSets"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "role",
+     "cond": {
+      "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+      "op": "glob_covers",
+      "value": "route53:ListReusableDelegationSets"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "role",
+     "cond": {
+      "path": "ManagedPolicyArns.*",
+      "op": "regex",
+      "value": "AmazonRoute53FullAccess"
+     }
+    }
+   ]
+  },
+  {
+   "id": "logs_perm",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "be allowed to write logs to CloudWatch",
+   "justify": "the AWS-managed basic execution role grants log writing",
+   "checks": [
+    {
+     "kind": "ref",
+     "bidirectional": true,
+     "to": "role",
+     "from": {
+      "types": [
+       "AWS::IAM::Policy",
+       "AWS::IAM::ManagedPolicy",
+       "AWS::IAM::RolePolicy"
+      ],
+      "where": [
+       {
+        "path": "PolicyDocument.Statement.*.Action.*",
+        "op": "glob_covers",
+        "value": "logs:PutLogEvents"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "role",
+     "cond": {
+      "path": "Policies.*.PolicyDocument.Statement.*.Action.*",
+      "op": "glob_covers",
+      "value": "logs:PutLogEvents"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "role",
+     "cond": {
+      "path": "ManagedPolicyArns.*",
+      "op": "regex",
+      "value": "AWSLambda(Basic|VPCAccess)ExecutionRole"
+     }
+    }
+   ]
+  },
+  {
+   "id": "retention",
+   "kind": "attr",
+   "tier": "core",
+   "quote": "a configurable retention period defaulting to 14 days",
+   "select": "lg",
+   "cond": {
+    "path": "RetentionInDays",
+    "op": "eq",
+    "value": 14
+   }
+  },
+  {
+   "id": "retention_param",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "a configurable retention period defaulting to 14 days",
+   "select": {
+    "types": [
+     "__parameter__"
+    ]
+   },
+   "cond": {
+    "path": "default",
+    "op": "eq",
+    "value": 14
+   }
+  },
+  {
+   "id": "lg_for_fn",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "write logs to CloudWatch with a configurable retention period",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "lg",
+     "to": "fn"
+    },
+    {
+     "kind": "attr",
+     "select": "lg",
+     "cond": {
+      "path": "LogGroupName",
+      "op": "contains",
+      "value": "/aws/lambda/"
+     }
+    }
+   ]
+  },
+  {
+   "id": "code_create",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "can create, update, and delete the delegation set",
+   "select": "fn",
+   "cond": {
+    "path": "Code.ZipFile",
+    "op": "regex",
+    "value": "(?i)create_?reusable_?delegation_?set"
+   }
+  },
+  {
+   "id": "code_update",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "can create, update, and delete the delegation set",
+   "select": "fn",
+   "cond": {
+    "path": "Code.ZipFile",
+    "op": "regex",
+    "value": "(?i)\\bupdate\\b"
+   }
+  },
+  {
+   "id": "code_delete",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "can create, update, and delete the delegation set",
+   "select": "fn",
+   "cond": {
+    "path": "Code.ZipFile",
+    "op": "regex",
+    "value": "(?i)['\"]delete['\"]|delete_?reusable_?delegation_?set"
+   }
+  },
+  {
+   "id": "out_id",
+   "kind": "any_of",
+   "tier": "core",
+   "quote": "the outputs should expose the delegation set ID",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__output__"
+      ],
+      "where": [
+       {
+        "path": "value.attr",
+        "op": "absent"
+       }
+      ]
+     },
+     "to": "cr"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__output__"
+      ],
+      "where": [
+       {
+        "path": "value.attr",
+        "op": "regex",
+        "value": "(?i)id$"
+       }
+      ]
+     },
+     "to": "cr"
+    }
+   ]
+  },
+  {
+   "id": "out_ns",
+   "kind": "all_of",
+   "tier": "core",
+   "quote": "the four nameserver names (awsdns01-04)",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__output__"
+      ],
+      "where": [
+       {
+        "path": "",
+        "op": "regex",
+        "value": "(?i)\"(name_?server_?(name_?)?0?1(_?(name|host_?name))?|ns_?0?1(_?(name|host_?name))?|(aws_?)?dns_?0?1)\""
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__output__"
+      ],
+      "where": [
+       {
+        "path": "",
+        "op": "regex",
+        "value": "(?i)\"(name_?server_?(name_?)?0?2(_?(name|host_?name))?|ns_?0?2(_?(name|host_?name))?|(aws_?)?dns_?0?2)\""
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__output__"
+      ],
+      "where": [
+       {
+        "path": "",
+        "op": "regex",
+        "value": "(?i)\"(name_?server_?(name_?)?0?3(_?(name|host_?name))?|ns_?0?3(_?(name|host_?name))?|(aws_?)?dns_?0?3)\""
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__output__"
+      ],
+      "where": [
+       {
+        "path": "",
+        "op": "regex",
+        "value": "(?i)\"(name_?server_?(name_?)?0?4(_?(name|host_?name))?|ns_?0?4(_?(name|host_?name))?|(aws_?)?dns_?0?4)\""
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "out_ipv4",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "their corresponding IPv4 and IPv6 addresses",
+   "justify": "one IPv4 address per each of four nameservers",
+   "select": {
+    "types": [
+     "__output__"
+    ],
+    "where": [
+     {
+      "path": "",
+      "op": "regex",
+      "value": "(?i)ipv4"
+     }
+    ]
+   },
+   "min": 4
+  },
+  {
+   "id": "out_ipv6",
+   "kind": "exists",
+   "tier": "core",
+   "quote": "their corresponding IPv4 and IPv6 addresses",
+   "justify": "one IPv6 address per each of four nameservers",
+   "select": {
+    "types": [
+     "__output__"
+    ],
+    "where": [
+     {
+      "path": "",
+      "op": "regex",
+      "value": "(?i)ipv6"
+     }
+    ]
+   },
+   "min": 4
+  },
+  {
+   "id": "out_export",
+   "kind": "attr",
+   "tier": "detail",
+   "quote": "all exported with the stack name prefix",
+   "select": "outs",
+   "quantifier": "all",
+   "cond": {
+    "path": "export",
+    "op": "regex",
+    "value": "(?i)^stack[-:_./]"
+   },
+   "justify": "the adapter resolves AWS::StackName to stack, and the prompt asks for that prefix"
+  },
+  {
+   "id": "x_runtime",
+   "kind": "attr",
+   "tier": "extra",
+   "select": "fn",
+   "cond": {
+    "path": "Runtime",
+    "op": "regex",
+    "value": "^python"
+   }
+  }
+ ],
+ "notes": "cr is read from __declared__ because a custom resource's type name is free (Custom::*); gated falsy keeps it to resources the defaults create. out_ns matches a whole quoted output name or GetAtt attribute, so ipv4awsdns01 or NameServer1IPv4 can't stand in for a nameserver name. Output tiers are parallel: returning these values is the point of the custom resource. PROMPT_GT_MISMATCH: the prompt says the function can delete the delegation set, but the ground truth's Delete branch never calls delete_reusable_delegation_set, so code_delete keeps what both guarantee: a Delete request is handled."
+}

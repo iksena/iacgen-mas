@@ -1,0 +1,753 @@
+{
+ "lang": "cfn",
+ "row_number": 99,
+ "source_hash": {
+  "gt": "75aaef510bdc3c9ad71827d17286f4d829159efacb3b17c77ee3c2e9381f69b7",
+  "prompt": "658fae5e1a34225e07110466aa2030a4e42619ad6aefeb13500e993e1b66bc48"
+ },
+ "selectors": {
+  "recipe": {
+   "types": [
+    "AWS::ImageBuilder::ImageRecipe"
+   ]
+  },
+  "infra": {
+   "types": [
+    "AWS::ImageBuilder::InfrastructureConfiguration"
+   ]
+  },
+  "image": {
+   "types": [
+    "AWS::ImageBuilder::Image",
+    "AWS::ImageBuilder::ImagePipeline"
+   ]
+  },
+  "dist": {
+   "types": [
+    "AWS::ImageBuilder::DistributionConfiguration"
+   ]
+  },
+  "vpc": {
+   "types": [
+    "AWS::EC2::VPC"
+   ]
+  },
+  "subnet": {
+   "types": [
+    "AWS::EC2::Subnet"
+   ]
+  },
+  "nat": {
+   "types": [
+    "AWS::EC2::NatGateway"
+   ]
+  },
+  "igw": {
+   "types": [
+    "AWS::EC2::InternetGateway"
+   ]
+  },
+  "sg": {
+   "types": [
+    "AWS::EC2::SecurityGroup"
+   ]
+  },
+  "role": {
+   "types": [
+    "AWS::IAM::Role"
+   ]
+  },
+  "profile": {
+   "types": [
+    "AWS::IAM::InstanceProfile"
+   ]
+  },
+  "private_subnet": {
+   "types": [
+    "AWS::EC2::Subnet"
+   ],
+   "where": [
+    {
+     "path": "MapPublicIpOnLaunch",
+     "op": "none_eq",
+     "value": "true"
+    }
+   ]
+  },
+  "params": {
+   "types": [
+    "__parameter__"
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "image_recipe",
+   "tier": "core",
+   "kind": "exists",
+   "select": "recipe",
+   "quote": "builds a custom Amazon Linux 2023 AMI using EC2 Image Builder"
+  },
+  {
+   "id": "parent_al2023",
+   "tier": "core",
+   "kind": "attr",
+   "select": "recipe",
+   "cond": {
+    "path": "ParentImage",
+    "op": "regex",
+    "value": "(?i)(amazon-linux-2023|al2023)"
+   },
+   "quote": "Amazon Linux 2023",
+   "justify": "Amazon Linux 2023 parent image"
+  },
+  {
+   "id": "image",
+   "tier": "core",
+   "kind": "exists",
+   "select": "image",
+   "quote": "builds a custom Amazon Linux 2023 AMI using EC2 Image Builder"
+  },
+  {
+   "id": "infra_config",
+   "tier": "core",
+   "kind": "exists",
+   "select": "infra",
+   "quote": "using EC2 Image Builder"
+  },
+  {
+   "id": "root_volume_32",
+   "tier": "core",
+   "kind": "attr",
+   "select": "recipe",
+   "cond": {
+    "path": "BlockDeviceMappings.*.Ebs.VolumeSize",
+    "op": "eq",
+    "value": 32
+   },
+   "quote": "a configurable EBS root volume size defaulting to 32 GB"
+  },
+  {
+   "id": "volume_param",
+   "tier": "detail",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": "default",
+      "op": "eq",
+      "value": 32
+     }
+    ]
+   },
+   "quote": "a configurable EBS root volume size defaulting to 32 GB"
+  },
+  {
+   "id": "recipe_version",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "join",
+     "from": "recipe",
+     "from_path": "Version",
+     "to": "params",
+     "to_path": "default"
+    },
+    {
+     "kind": "attr",
+     "select": "recipe",
+     "cond": {
+      "path": "Version",
+      "op": "regex",
+      "value": "^<param:"
+     }
+    }
+   ],
+   "quote": "a configurable image version",
+   "justify": "a parameter with no default renders as <param:name> in the normalised input, so this reads as 'configurable', not as a value"
+  },
+  {
+   "id": "ssm_agent",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "recipe",
+     "cond": {
+      "path": "AdditionalInstanceConfiguration.UserDataOverride",
+      "op": "regex",
+      "value": "(?i)ssm-agent"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "AWS::ImageBuilder::Component"
+      ]
+     },
+     "cond": {
+      "path": "Data",
+      "op": "regex",
+      "value": "(?i)ssm-agent"
+     }
+    }
+   ],
+   "quote": "The build should install the latest SSM Agent"
+  },
+  {
+   "id": "mongodb_repo",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "recipe",
+     "cond": {
+      "path": "AdditionalInstanceConfiguration.UserDataOverride",
+      "op": "regex",
+      "value": "(?is)mongodb.{0,200}8\\.0"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "AWS::ImageBuilder::Component"
+      ]
+     },
+     "cond": {
+      "path": "Data",
+      "op": "regex",
+      "value": "(?is)mongodb.{0,200}8\\.0"
+     }
+    }
+   ],
+   "quote": "add the MongoDB 8.0 Amazon Linux yum repository"
+  },
+  {
+   "id": "mongodb_tools",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "recipe",
+     "cond": {
+      "path": "AdditionalInstanceConfiguration.UserDataOverride",
+      "op": "regex",
+      "value": "(?i)mongodb-database-tools"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "AWS::ImageBuilder::Component"
+      ]
+     },
+     "cond": {
+      "path": "Data",
+      "op": "regex",
+      "value": "(?i)mongodb-database-tools"
+     }
+    }
+   ],
+   "quote": "the mongodb-database-tools and mongosh packages"
+  },
+  {
+   "id": "mongosh",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "recipe",
+     "cond": {
+      "path": "AdditionalInstanceConfiguration.UserDataOverride",
+      "op": "regex",
+      "value": "(?i)mongosh"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "AWS::ImageBuilder::Component"
+      ]
+     },
+     "cond": {
+      "path": "Data",
+      "op": "regex",
+      "value": "(?i)mongosh"
+     }
+    }
+   ],
+   "quote": "the mongodb-database-tools and mongosh packages"
+  },
+  {
+   "id": "synapse_client",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "recipe",
+     "cond": {
+      "path": "AdditionalInstanceConfiguration.UserDataOverride",
+      "op": "regex",
+      "value": "(?i)synapseclient"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "AWS::ImageBuilder::Component"
+      ]
+     },
+     "cond": {
+      "path": "Data",
+      "op": "regex",
+      "value": "(?i)synapseclient"
+     }
+    }
+   ],
+   "quote": "install Python along with the Synapse Python client library",
+   "justify": "Synapse Python client = synapseclient"
+  },
+  {
+   "id": "dotnet_sdk",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "recipe",
+     "cond": {
+      "path": "AdditionalInstanceConfiguration.UserDataOverride",
+      "op": "regex",
+      "value": "(?i)dotnet"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "AWS::ImageBuilder::Component"
+      ]
+     },
+     "cond": {
+      "path": "Data",
+      "op": "regex",
+      "value": "(?i)dotnet"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "recipe",
+     "cond": {
+      "path": "Components.*.ComponentArn",
+      "op": "regex",
+      "value": "(?i):component/dotnet"
+     }
+    }
+   ],
+   "quote": "install the .NET SDK needed to run a GitHub Actions self-hosted runner",
+   "justify": ".NET SDK = dotnet"
+  },
+  {
+   "id": "vpc",
+   "tier": "core",
+   "kind": "exists",
+   "select": "vpc",
+   "quote": "the template must create its own small self-contained VPC"
+  },
+  {
+   "id": "two_subnets",
+   "tier": "core",
+   "kind": "exists",
+   "select": "subnet",
+   "min": 2,
+   "quote": "a private subnet for the build and test instance and a separate public subnet hosting a NAT Gateway",
+   "justify": "private subnet + separate public subnet"
+  },
+  {
+   "id": "nat_gateway",
+   "tier": "core",
+   "kind": "exists",
+   "select": "nat",
+   "quote": "a separate public subnet hosting a NAT Gateway so the private instance can reach the internet"
+  },
+  {
+   "id": "igw",
+   "tier": "core",
+   "kind": "exists",
+   "select": "igw",
+   "quote": "along with the internet gateway"
+  },
+  {
+   "id": "security_group",
+   "tier": "core",
+   "kind": "exists",
+   "select": "sg",
+   "quote": "the internet gateway, route tables, and security group needed to support the build"
+  },
+  {
+   "id": "route_tables",
+   "tier": "detail",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "AWS::EC2::RouteTable"
+    ]
+   },
+   "min": 2,
+   "quote": "route tables",
+   "justify": "plural route tables"
+  },
+  {
+   "id": "nat_in_subnet",
+   "tier": "detail",
+   "kind": "ref",
+   "from": "nat",
+   "to": "subnet",
+   "quote": "a separate public subnet hosting a NAT Gateway"
+  },
+  {
+   "id": "private_route_nat",
+   "tier": "detail",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "AWS::EC2::Route"
+    ],
+    "where": [
+     {
+      "path": "DestinationCidrBlock",
+      "op": "eq",
+      "value": "0.0.0.0/0"
+     },
+     {
+      "path": "NatGatewayId",
+      "op": "present"
+     }
+    ]
+   },
+   "quote": "so the private instance can reach the internet",
+   "justify": "internet = default route 0.0.0.0/0"
+  },
+  {
+   "id": "public_route_igw",
+   "tier": "detail",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "AWS::EC2::Route"
+    ],
+    "where": [
+     {
+      "path": "DestinationCidrBlock",
+      "op": "eq",
+      "value": "0.0.0.0/0"
+     },
+     {
+      "path": "GatewayId",
+      "op": "present"
+     }
+    ]
+   },
+   "quote": "the internet gateway, route tables",
+   "justify": "internet = default route 0.0.0.0/0"
+  },
+  {
+   "id": "infra_wiring",
+   "tier": "detail",
+   "kind": "all_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "infra",
+     "to": "private_subnet"
+    },
+    {
+     "kind": "ref",
+     "from": "infra",
+     "to": "sg"
+    },
+    {
+     "kind": "ref",
+     "from": "infra",
+     "to": "profile"
+    }
+   ],
+   "quote": "a private subnet for the build and test instance",
+   "justify": "private = not auto-assigning public IPs"
+  },
+  {
+   "id": "iam_role",
+   "tier": "core",
+   "kind": "exists",
+   "select": "role",
+   "quote": "the IAM role and instance profile that Image Builder needs to perform the build"
+  },
+  {
+   "id": "instance_profile",
+   "tier": "core",
+   "kind": "exists",
+   "select": "profile",
+   "quote": "the IAM role and instance profile that Image Builder needs to perform the build"
+  },
+  {
+   "id": "profile_role",
+   "tier": "detail",
+   "kind": "ref",
+   "from": "profile",
+   "to": "role",
+   "quote": "the IAM role and instance profile"
+  },
+  {
+   "id": "distribution",
+   "tier": "core",
+   "kind": "exists",
+   "select": "dist",
+   "quote": "configure a distribution step"
+  },
+  {
+   "id": "org_arns",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "dist",
+     "cond": {
+      "path": "Distributions.*.AmiDistributionConfiguration.LaunchPermissionConfiguration.OrganizationArns.*",
+      "op": "regex",
+      "value": "(?i):organization/"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "AWS::ImageBuilder::DistributionConfiguration"
+       }
+      ]
+     },
+     "cond": {
+      "path": "properties.Distributions.*.AmiDistributionConfiguration.LaunchPermissionConfiguration.OrganizationArns.*",
+      "op": "regex",
+      "value": "(?i):organization/"
+     }
+    }
+   ],
+   "quote": "shares the resulting AMI with a given AWS Organization, identified by a configurable organization ID"
+  },
+  {
+   "id": "all_accounts",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "dist",
+     "cond": {
+      "path": "Distributions.*.AmiDistributionConfiguration.LaunchPermissionConfiguration.UserGroups.*",
+      "op": "eq",
+      "value": "all"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "AWS::ImageBuilder::DistributionConfiguration"
+       }
+      ]
+     },
+     "cond": {
+      "path": "properties.Distributions.*.AmiDistributionConfiguration.LaunchPermissionConfiguration.UserGroups.*",
+      "op": "eq",
+      "value": "all"
+     }
+    }
+   ],
+   "quote": "makes the AMI available to all AWS accounts"
+  },
+  {
+   "id": "image_wiring",
+   "tier": "detail",
+   "kind": "all_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "image",
+     "to": "recipe"
+    },
+    {
+     "kind": "ref",
+     "from": "image",
+     "to": "infra"
+    },
+    {
+     "kind": "ref",
+     "from": "image",
+     "to": "dist"
+    }
+   ],
+   "quote": "configure a distribution step that shares the resulting AMI"
+  },
+  {
+   "id": "igw_attached",
+   "tier": "detail",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "AWS::EC2::VPCGatewayAttachment"
+    ]
+   },
+   "quote": "the internet gateway"
+  },
+  {
+   "id": "org_id_parameter",
+   "tier": "detail",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": "default",
+        "op": "regex",
+        "value": "(^o-|:organization/)"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "regex",
+        "value": "(?i)org"
+       }
+      ]
+     }
+    }
+   ],
+   "quote": "identified by a configurable organization ID",
+   "justify": "AWS Organization IDs start with o-"
+  },
+  {
+   "id": "x_role_policies",
+   "tier": "extra",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "role",
+     "cond": {
+      "path": "ManagedPolicyArns.*",
+      "op": "regex",
+      "value": "EC2InstanceProfileForImageBuilder"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "AWS::IAM::Role"
+      ]
+     },
+     "cond": {
+      "path": "Policies.*.PolicyDocument.Statement.*",
+      "op": "match",
+      "value": [
+       {
+        "path": "Effect",
+        "op": "eq",
+        "value": "Allow"
+       },
+       {
+        "path": "Action.*",
+        "op": "glob_covers",
+        "value": "ssm:*"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "x_role_trust_ec2",
+   "tier": "extra",
+   "kind": "attr",
+   "select": "role",
+   "cond": {
+    "path": "AssumeRolePolicyDocument.Statement.*.Principal.Service.*",
+    "op": "eq",
+    "value": "ec2.amazonaws.com"
+   }
+  },
+  {
+   "id": "x_recipe_components",
+   "tier": "extra",
+   "kind": "attr",
+   "select": "recipe",
+   "cond": {
+    "path": "Components",
+    "op": "present"
+   }
+  },
+  {
+   "id": "extra_type_aws_ec2_eip",
+   "kind": "exists",
+   "tier": "extra",
+   "select": {
+    "types": [
+     "AWS::EC2::EIP"
+    ],
+    "where": []
+   }
+  },
+  {
+   "id": "extra_type_aws_ec2_subnetroutetableassociation",
+   "kind": "exists",
+   "tier": "extra",
+   "select": {
+    "types": [
+     "AWS::EC2::SubnetRouteTableAssociation"
+    ],
+    "where": []
+   }
+  }
+ ],
+ "notes": "Package installs accepted from recipe UserDataOverride, custom Component Data, or (.NET) a managed component. Instance role policies are unstated in the prompt so only extra. A distribution gated off by default still counts if it declares the organization ARN and the all group, since the ID is configurable. Which subnet is 'private' isn't fully observable: infra_wiring requires the build subnet not to auto-assign public IPs, and whether its route goes through the NAT would take a chain of references a leaf can't express. A literal ami- parent image fails parent_al2023 on purpose, because nothing in the template then shows it is Amazon Linux 2023."
+}

@@ -1,0 +1,271 @@
+{
+ "lang": "tf",
+ "row_number": 347,
+ "source_hash": {
+  "gt": "2bde24f908c51d73ca4892b29dadf80cb96fd0f7bd25f4ed12b6c421276aebd0",
+  "prompt": "fe309018f08c208a0b3b196c27f4d718feb9104ca02f5ed1a0caa7ac5c793049"
+ },
+ "selectors": {
+  "fs": {
+   "types": [
+    "aws_efs_file_system"
+   ]
+  },
+  "bp": {
+   "types": [
+    "aws_efs_backup_policy"
+   ]
+  },
+  "mt": {
+   "types": [
+    "aws_efs_mount_target"
+   ]
+  },
+  "sg": {
+   "types": [
+    "aws_security_group"
+   ]
+  },
+  "pol": {
+   "types": [
+    "aws_efs_file_system_policy"
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "efs",
+   "kind": "exists",
+   "select": "fs",
+   "tier": "core",
+   "quote": "creates an encrypted Amazon EFS file system"
+  },
+  {
+   "id": "encrypted",
+   "kind": "attr",
+   "select": "fs",
+   "tier": "core",
+   "quote": "an encrypted Amazon EFS file system",
+   "cond": {
+    "path": "encrypted",
+    "op": "truthy"
+   }
+  },
+  {
+   "id": "perf",
+   "kind": "attr",
+   "select": "fs",
+   "tier": "core",
+   "quote": "using the general purpose performance mode",
+   "cond": {
+    "path": "performance_mode",
+    "op": "regex",
+    "value": "(?i)^general_?purpose$"
+   }
+  },
+  {
+   "id": "throughput",
+   "kind": "attr",
+   "select": "fs",
+   "tier": "core",
+   "quote": "bursting throughput mode",
+   "cond": {
+    "path": "throughput_mode",
+    "op": "eq",
+    "value": "bursting"
+   }
+  },
+  {
+   "id": "default_key",
+   "kind": "any_of",
+   "tier": "detail",
+   "quote": "the default AWS-managed encryption key",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_efs_file_system"
+       },
+       {
+        "path": "properties.kms_key_id",
+        "op": "absent"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_efs_file_system"
+       },
+       {
+        "path": "properties.kms_key_id",
+        "op": "regex",
+        "value": "(?i)alias/aws/elasticfilesystem"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_efs_file_system"
+       },
+       {
+        "path": "properties.kms_key_id",
+        "op": "regex",
+        "value": "^\\$\\{var\\.[A-Za-z0-9_]+\\}$"
+       }
+      ]
+     }
+    }
+   ],
+   "justify": "an unset kms_key_id (omitted, or a variable reference) means the default AWS-managed EFS key"
+  },
+  {
+   "id": "creation_token_generated",
+   "kind": "attr",
+   "select": "fs",
+   "tier": "detail",
+   "quote": "a Terraform-generated creation token",
+   "cond": {
+    "path": "creation_token",
+    "op": "absent"
+   }
+  },
+  {
+   "id": "no_mt_sg_policy_by_default",
+   "kind": "exists",
+   "tier": "detail",
+   "quote": "No mount targets, security group, file system policy, or lifecycle transitions should be created by default",
+   "select": {
+    "types": [
+     "aws_efs_file_system",
+     "aws_efs_mount_target",
+     "aws_security_group",
+     "aws_efs_file_system_policy"
+    ]
+   },
+   "min": 1,
+   "max": 1,
+   "justify": "the one file system the prompt asks for is the only resource among these types; mount targets, security groups and file system policies must number zero by default"
+  },
+  {
+   "id": "no_lifecycle_transitions",
+   "kind": "exists",
+   "tier": "detail",
+   "quote": "No mount targets, security group, file system policy, or lifecycle transitions should be created by default",
+   "select": {
+    "types": [
+     "aws_efs_file_system"
+    ],
+    "where": [
+     {
+      "path": "lifecycle_policy.*",
+      "op": "absent"
+     }
+    ]
+   }
+  },
+  {
+   "id": "backup_policy",
+   "kind": "exists",
+   "select": "bp",
+   "tier": "core",
+   "quote": "attaches a backup policy with automatic backups enabled"
+  },
+  {
+   "id": "backup_enabled",
+   "kind": "attr",
+   "select": "bp",
+   "tier": "core",
+   "quote": "automatic backups enabled",
+   "cond": {
+    "path": "backup_policy.*.status",
+    "op": "eq",
+    "value": "ENABLED"
+   }
+  },
+  {
+   "id": "backup_on_fs",
+   "kind": "ref",
+   "from": "bp",
+   "to": "fs",
+   "tier": "detail",
+   "quote": "attaches a backup policy"
+  },
+  {
+   "id": "extra_type_aws_efs_file_system_policy",
+   "kind": "exists",
+   "tier": "extra",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": "type",
+      "op": "eq",
+      "value": "aws_efs_file_system_policy"
+     }
+    ]
+   }
+  },
+  {
+   "id": "extra_type_aws_efs_mount_target",
+   "kind": "exists",
+   "tier": "extra",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": "type",
+      "op": "eq",
+      "value": "aws_efs_mount_target"
+     }
+    ]
+   }
+  },
+  {
+   "id": "extra_type_aws_security_group",
+   "kind": "exists",
+   "tier": "extra",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": "type",
+      "op": "eq",
+      "value": "aws_security_group"
+     }
+    ]
+   }
+  }
+ ],
+ "notes": "'Terraform-generated creation token' is checked as no literal creation_token in the plan (omitted, or unknown because a random_*/generated value feeds it). 'Default AWS-managed key': the declared file system omits kms_key_id, uses the aws/elasticfilesystem alias, or passes a variable; planned kms_key_id cannot be used because a CMK reference plans as null. Residual gap: a variable whose default is a CMK ARN passes. 'No lifecycle transitions' is checked as an empty planned lifecycle_policy. 'No mount targets / security group / file system policy by default' is checked as exactly one resource across the file system, mount target, security group and file system policy types (the file system itself), since exists cannot assert a zero count directly."
+}

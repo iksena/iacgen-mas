@@ -1,0 +1,917 @@
+{
+ "lang": "tf",
+ "row_number": 234,
+ "source_hash": {
+  "gt": "ef690f1855b99d74f1b635882cfe51d152c81004f9f36bff257c7999be8acc27",
+  "prompt": "6e8849871d02577bf20540935e8dd8c70ded116d782151d20eff13382c3e5098"
+ },
+ "selectors": {
+  "role": {
+   "types": [
+    "aws_iam_role"
+   ],
+   "where": [
+    {
+     "path": "name",
+     "op": "eq",
+     "value": "HealthOmicsRole"
+    }
+   ]
+  },
+  "user": {
+   "types": [
+    "aws_iam_user"
+   ],
+   "where": [
+    {
+     "path": "name",
+     "op": "eq",
+     "value": "workbench-health-omics"
+    }
+   ]
+  },
+  "bucket": {
+   "types": [
+    "aws_s3_bucket"
+   ],
+   "where": [
+    {
+     "path": "bucket",
+     "op": "eq",
+     "value": "tf-benchmark-omics-output-bucket"
+    }
+   ]
+  },
+  "kms": {
+   "types": [
+    "aws_kms_key"
+   ]
+  },
+  "user_policy": {
+   "types": [
+    "aws_iam_policy",
+    "aws_iam_user_policy"
+   ],
+   "where": [
+    {
+     "path": "name",
+     "op": "eq",
+     "value": "HealthOmicsUserPolicy"
+    }
+   ]
+  },
+  "service_policy": {
+   "types": [
+    "aws_iam_policy",
+    "aws_iam_role_policy"
+   ],
+   "where": [
+    {
+     "path": "name",
+     "op": "eq",
+     "value": "HealthOmicsServicePolicy"
+    }
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "role_named",
+   "tier": "core",
+   "quote": "the IAM role should be named \"HealthOmicsRole\"",
+   "kind": "exists",
+   "select": "role"
+  },
+  {
+   "id": "role_trust_omics",
+   "tier": "core",
+   "quote": "a role trust policy that allows the omics.amazonaws.com service to assume the role",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": "role",
+     "cond": {
+      "path": "assume_role_policy",
+      "op": "regex",
+      "value": "omics\\.amazonaws\\.com"
+     }
+    },
+    {
+     "kind": "ref",
+     "from": "role",
+     "to": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "data.aws_iam_policy_document"
+       },
+       {
+        "path": "properties",
+        "op": "regex",
+        "value": "omics\\.amazonaws\\.com"
+       },
+       {
+        "path": "properties",
+        "op": "regex",
+        "value": "sts:AssumeRole"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "user_named",
+   "tier": "core",
+   "quote": "the service account user should be named \"workbench-health-omics\"",
+   "kind": "exists",
+   "select": "user"
+  },
+  {
+   "id": "user_programmatic_access",
+   "tier": "core",
+   "quote": "a user with programmatic access",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_access_key"
+      ]
+     },
+     "to": "user"
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "aws_iam_access_key"
+      ]
+     },
+     "cond": {
+      "path": "user",
+      "op": "eq",
+      "value": "workbench-health-omics"
+     }
+    }
+   ]
+  },
+  {
+   "id": "user_policy_named",
+   "tier": "core",
+   "quote": "the policies for the service and user should be named \"HealthOmicsServicePolicy\" and \"HealthOmicsUserPolicy\" respectively",
+   "kind": "exists",
+   "select": "user_policy"
+  },
+  {
+   "id": "service_policy_named",
+   "tier": "core",
+   "quote": "the policies for the service and user should be named \"HealthOmicsServicePolicy\" and \"HealthOmicsUserPolicy\" respectively",
+   "kind": "exists",
+   "select": "service_policy"
+  },
+  {
+   "id": "user_policy_attached",
+   "tier": "detail",
+   "quote": "a user with programmatic access and a policy allowing pass-role and full omics actions",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_user_policy_attachment"
+      ],
+      "where": [
+       {
+        "path": "user",
+        "op": "eq",
+        "value": "workbench-health-omics"
+       }
+      ]
+     },
+     "to": "user_policy"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_user_policy"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "eq",
+        "value": "HealthOmicsUserPolicy"
+       }
+      ]
+     },
+     "to": "user"
+    }
+   ]
+  },
+  {
+   "id": "policy_pass_role",
+   "tier": "core",
+   "quote": "a user with programmatic access and a policy allowing pass-role",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "user_policy",
+     "to": {
+      "types": [
+       "data.aws_iam_policy_document"
+      ],
+      "where": [
+       {
+        "path": "statement.*.actions.*",
+        "op": "glob_covers",
+        "value": "iam:PassRole"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "user_policy",
+     "cond": {
+      "path": "policy",
+      "op": "regex",
+      "value": "(?i)iam:(PassRole|\\*)"
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "in",
+        "value": [
+         "aws_iam_policy",
+         "aws_iam_user_policy"
+        ]
+       },
+       {
+        "path": "properties.name",
+        "op": "eq",
+        "value": "HealthOmicsUserPolicy"
+       },
+       {
+        "path": "properties.policy",
+        "op": "regex",
+        "value": "(?i)iam:(PassRole|\\*)"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "policy_full_omics",
+   "tier": "core",
+   "quote": "full omics actions",
+   "kind": "any_of",
+   "justify": "full omics actions means omics:*",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "user_policy",
+     "to": {
+      "types": [
+       "data.aws_iam_policy_document"
+      ],
+      "where": [
+       {
+        "path": "statement.*.actions.*",
+        "op": "glob_covers",
+        "value": "omics:*"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "user_policy",
+     "cond": {
+      "path": "policy",
+      "op": "regex",
+      "value": "(?i)\"omics:\\*\"|\"\\*\""
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "in",
+        "value": [
+         "aws_iam_policy",
+         "aws_iam_user_policy"
+        ]
+       },
+       {
+        "path": "properties.name",
+        "op": "eq",
+        "value": "HealthOmicsUserPolicy"
+       },
+       {
+        "path": "properties.policy",
+        "op": "regex",
+        "value": "(?i)\"omics:\\*\"|\"\\*\""
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "policy_s3_read",
+   "tier": "detail",
+   "quote": "read-only access to the output bucket and any optional additional S3 buckets",
+   "kind": "any_of",
+   "justify": "read-only access to buckets means reading objects (s3:GetObject) and no write actions",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "user_policy",
+     "to": {
+      "types": [
+       "data.aws_iam_policy_document"
+      ],
+      "where": [
+       {
+        "path": "statement.*.actions.*",
+        "op": "glob_covers",
+        "value": "s3:GetObject"
+       },
+       {
+        "path": "statement.*.actions.*",
+        "op": "none_eq",
+        "value": "s3:PutObject"
+       },
+       {
+        "path": "statement.*.actions.*",
+        "op": "none_eq",
+        "value": "s3:*"
+       },
+       {
+        "path": "statement.*.actions.*",
+        "op": "none_eq",
+        "value": "s3:Put*"
+       },
+       {
+        "path": "statement.*.actions.*",
+        "op": "none_eq",
+        "value": "s3:DeleteObject"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "attr",
+     "select": "user_policy",
+     "cond": {
+      "path": "policy",
+      "op": "regex",
+      "value": "(?i)s3:(GetObject|Get\\*|\\*)"
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "in",
+        "value": [
+         "aws_iam_policy",
+         "aws_iam_user_policy"
+        ]
+       },
+       {
+        "path": "properties.name",
+        "op": "eq",
+        "value": "HealthOmicsUserPolicy"
+       },
+       {
+        "path": "properties.policy",
+        "op": "regex",
+        "value": "(?i)s3:(GetObject|Get\\*|\\*)"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "additional_buckets_input",
+   "tier": "detail",
+   "quote": "any optional additional S3 buckets",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "regex",
+        "value": "(?i)(bucket|s3)"
+       },
+       {
+        "path": "default",
+        "op": "regex",
+        "value": "^\\["
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "regex",
+        "value": "(?i)(additional|extra|other|optional).*(bucket|s3)"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "output_bucket_named",
+   "tier": "core",
+   "quote": "the output bucket should be named \"tf-benchmark-omics-output-bucket\"",
+   "kind": "exists",
+   "select": "bucket"
+  },
+  {
+   "id": "output_bucket_public_blocked",
+   "tier": "core",
+   "quote": "all public access blocked",
+   "kind": "ref",
+   "from": {
+    "types": [
+     "aws_s3_bucket_public_access_block"
+    ],
+    "where": [
+     {
+      "path": "block_public_acls",
+      "op": "truthy"
+     },
+     {
+      "path": "block_public_policy",
+      "op": "truthy"
+     },
+     {
+      "path": "ignore_public_acls",
+      "op": "truthy"
+     },
+     {
+      "path": "restrict_public_buckets",
+      "op": "truthy"
+     }
+    ]
+   },
+   "to": "bucket",
+   "justify": "all public access blocked means all four public access block flags are on"
+  },
+  {
+   "id": "output_bucket_sse_kms",
+   "tier": "core",
+   "quote": "SSE-KMS encryption using a customer-managed key",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_s3_bucket_server_side_encryption_configuration"
+      ],
+      "where": [
+       {
+        "path": "rule.*.apply_server_side_encryption_by_default.*.sse_algorithm",
+        "op": "eq",
+        "value": "aws:kms"
+       }
+      ]
+     },
+     "to": "bucket"
+    },
+    {
+     "kind": "attr",
+     "select": "bucket",
+     "cond": {
+      "path": "server_side_encryption_configuration.*.rule.*.apply_server_side_encryption_by_default.*.sse_algorithm",
+      "op": "eq",
+      "value": "aws:kms"
+     }
+    }
+   ]
+  },
+  {
+   "id": "output_bucket_cmk",
+   "tier": "core",
+   "quote": "SSE-KMS encryption using a customer-managed key",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_s3_bucket_server_side_encryption_configuration"
+      ],
+      "where": [
+       {
+        "path": "rule.*.apply_server_side_encryption_by_default.*.sse_algorithm",
+        "op": "eq",
+        "value": "aws:kms"
+       }
+      ]
+     },
+     "to": "kms"
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_s3_bucket_server_side_encryption_configuration"
+       },
+       {
+        "path": "properties",
+        "op": "regex",
+        "value": "kms_master_key_id"
+       },
+       {
+        "path": "properties",
+        "op": "regex",
+        "value": "aws_kms_key|aws_kms_alias"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": "bucket",
+     "to": "kms"
+    }
+   ]
+  },
+  {
+   "id": "kms_key_exists",
+   "tier": "core",
+   "quote": "a customer-managed key",
+   "kind": "exists",
+   "select": "kms"
+  },
+  {
+   "id": "ecr_repositories",
+   "tier": "core",
+   "quote": "ECR repositories for storing container images",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": "type",
+      "op": "eq",
+      "value": "aws_ecr_repository"
+     }
+    ]
+   }
+  },
+  {
+   "id": "ecr_repository_policy",
+   "tier": "core",
+   "quote": "a repository policy allowing the HealthOmics service to pull images",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": "type",
+      "op": "eq",
+      "value": "aws_ecr_repository_policy"
+     }
+    ]
+   }
+  },
+  {
+   "id": "ecr_policy_omics_pull",
+   "tier": "core",
+   "quote": "a repository policy allowing the HealthOmics service to pull images",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_ecr_repository_policy"
+       },
+       {
+        "path": "properties",
+        "op": "regex",
+        "value": "omics\\.amazonaws\\.com"
+       },
+       {
+        "path": "properties",
+        "op": "regex",
+        "value": "(?i)ecr:(BatchGetImage|GetDownloadUrlForLayer|\\*)"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_ecr_repository_policy"
+       }
+      ]
+     },
+     "to": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "data.aws_iam_policy_document"
+       },
+       {
+        "path": "properties",
+        "op": "regex",
+        "value": "omics\\.amazonaws\\.com"
+       },
+       {
+        "path": "properties",
+        "op": "regex",
+        "value": "(?i)ecr:(BatchGetImage|GetDownloadUrlForLayer|\\*)"
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "aws_ecr_repository_policy"
+      ],
+      "where": [
+       {
+        "path": "policy",
+        "op": "regex",
+        "value": "omics\\.amazonaws\\.com"
+       },
+       {
+        "path": "policy",
+        "op": "regex",
+        "value": "(?i)ecr:(BatchGetImage|GetDownloadUrlForLayer|\\*)"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "ecr_names_input",
+   "tier": "detail",
+   "quote": "support should be included for specifying a set of ECR repository names",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__parameter__"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "regex",
+        "value": "(?i)(repositor|repos?_?names?|ecr.*names?|ecr_?repos)"
+       },
+       {
+        "path": "default",
+        "op": "regex",
+        "value": "^\\["
+       }
+      ]
+     }
+    },
+    {
+     "kind": "exists",
+     "select": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "aws_ecr_repository"
+       },
+       {
+        "path": "gate",
+        "op": "regex",
+        "value": "(?i)var\\."
+       },
+       {
+        "path": "properties.for_each",
+        "op": "present"
+       }
+      ]
+     }
+    }
+   ],
+   "justify": "a configurable set of repository names means the repository resource is driven by an input variable"
+  },
+  {
+   "id": "external_accounts_input",
+   "tier": "detail",
+   "quote": "a list of external AWS account IDs to grant cross-account ECR access",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__parameter__"
+    ],
+    "where": [
+     {
+      "path": "name",
+      "op": "regex",
+      "value": "(?i)(external|cross|account_?ids|accounts)"
+     },
+     {
+      "path": "name",
+      "op": "regex",
+      "value": "(?i)account"
+     },
+     {
+      "path": "default",
+      "op": "regex",
+      "value": "^\\["
+     }
+    ]
+   }
+  },
+  {
+   "id": "kms_rotation",
+   "tier": "extra",
+   "kind": "attr",
+   "select": "kms",
+   "cond": {
+    "path": "enable_key_rotation",
+    "op": "truthy"
+   }
+  },
+  {
+   "id": "role_uses_service_policy",
+   "tier": "detail",
+   "kind": "any_of",
+   "quote": "the policies for the service and user should be named \"HealthOmicsServicePolicy\"",
+   "checks": [
+    {
+     "kind": "ref",
+     "from": "role",
+     "to": "service_policy"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_role_policy_attachment"
+      ],
+      "where": [
+       {
+        "path": "role",
+        "op": "eq",
+        "value": "HealthOmicsRole"
+       }
+      ]
+     },
+     "to": "service_policy"
+    },
+    {
+     "kind": "ref",
+     "from": {
+      "types": [
+       "aws_iam_role_policy"
+      ],
+      "where": [
+       {
+        "path": "name",
+        "op": "eq",
+        "value": "HealthOmicsServicePolicy"
+       }
+      ]
+     },
+     "to": "role"
+    }
+   ]
+  },
+  {
+   "id": "service_policy_logs",
+   "tier": "extra",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": "type",
+      "op": "in",
+      "value": [
+       "aws_iam_policy",
+       "aws_iam_user_policy",
+       "aws_iam_role_policy",
+       "data.aws_iam_policy_document"
+      ]
+     },
+     {
+      "path": "properties",
+      "op": "regex",
+      "value": "(?i)logs:PutLogEvents"
+     }
+    ]
+   }
+  },
+  {
+   "id": "service_policy_put_object",
+   "tier": "extra",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": "type",
+      "op": "in",
+      "value": [
+       "aws_iam_policy",
+       "aws_iam_user_policy",
+       "aws_iam_role_policy",
+       "data.aws_iam_policy_document"
+      ]
+     },
+     {
+      "path": "properties",
+      "op": "regex",
+      "value": "(?i)s3:PutObject"
+     }
+    ]
+   }
+  }
+ ],
+ "notes": "The default region (us-east-1) is not checked: a literal region in the provider block is invisible in the plan. PROMPT_GT_MISMATCH: the prompt says external account IDs are granted cross-account ECR access, but the ground truth only declares the external_ecr_accounts variable; its repository policy document grants only omics.amazonaws.com, so only the input (a list variable) is checked. Pass-role, omics:* and S3 read are bound to the policy named HealthOmicsUserPolicy (planned policy document, planned inline policy text, or declared inline text). Read-only is enforced (no s3:PutObject/s3:*/s3:Put*/s3:DeleteObject) only on the policy-document branch; the inline-text branches cannot express a negative. Bucket-ARN scoping of the read-only statements and the SSE key being the same resource as the referenced CMK are not expressible."
+}

@@ -1,0 +1,354 @@
+{
+ "lang": "cfn",
+ "row_number": 97,
+ "source_hash": {
+  "gt": "74591f4e25e975688f5336c8fb34aa29e63f4af55b01f3425eeeec84bdb8e674",
+  "prompt": "90891018f5042b62a8311fe2b50a386a04e8c055731ffb70c685887f376ffe4f"
+ },
+ "selectors": {
+  "subs": {
+   "types": [
+    "__declared__"
+   ],
+   "where": [
+    {
+     "path": "type",
+     "op": "eq",
+     "value": "AWS::SNS::Subscription"
+    }
+   ]
+  },
+  "https": {
+   "types": [
+    "__declared__"
+   ],
+   "where": [
+    {
+     "path": "type",
+     "op": "eq",
+     "value": "AWS::SNS::Subscription"
+    },
+    {
+     "path": "properties.Protocol",
+     "op": "eq",
+     "value": "https"
+    }
+   ]
+  },
+  "params": {
+   "types": [
+    "__parameter__"
+   ]
+  }
+ },
+ "checks": [
+  {
+   "id": "sub_email",
+   "tier": "core",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": "type",
+      "op": "eq",
+      "value": "AWS::SNS::Subscription"
+     },
+     {
+      "path": "properties.Protocol",
+      "op": "eq",
+      "value": "email"
+     }
+    ]
+   },
+   "quote": "an email address",
+   "justify": "email subscription protocol"
+  },
+  {
+   "id": "sub_sqs",
+   "tier": "core",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": "type",
+      "op": "eq",
+      "value": "AWS::SNS::Subscription"
+     },
+     {
+      "path": "properties.Protocol",
+      "op": "eq",
+      "value": "sqs"
+     }
+    ]
+   },
+   "quote": "an SQS queue ARN",
+   "justify": "sqs subscription protocol"
+  },
+  {
+   "id": "sub_lambda",
+   "tier": "core",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": "type",
+      "op": "eq",
+      "value": "AWS::SNS::Subscription"
+     },
+     {
+      "path": "properties.Protocol",
+      "op": "eq",
+      "value": "lambda"
+     }
+    ]
+   },
+   "quote": "a Lambda function ARN",
+   "justify": "lambda subscription protocol"
+  },
+  {
+   "id": "sub_https",
+   "tier": "core",
+   "kind": "exists",
+   "select": {
+    "types": [
+     "__declared__"
+    ],
+    "where": [
+     {
+      "path": "type",
+      "op": "eq",
+      "value": "AWS::SNS::Subscription"
+     },
+     {
+      "path": "properties.Protocol",
+      "op": "eq",
+      "value": "https"
+     }
+    ]
+   },
+   "quote": "an HTTPS endpoint URL"
+  },
+  {
+   "id": "subs_conditional",
+   "tier": "core",
+   "kind": "attr",
+   "select": "subs",
+   "cond": {
+    "path": "gated",
+    "op": "truthy"
+   },
+   "quantifier": "all",
+   "quote": "conditionally create each corresponding SNS subscription only when its respective parameter differs from a sentinel default value"
+  },
+  {
+   "id": "https_backoff",
+   "tier": "core",
+   "kind": "attr",
+   "select": "https",
+   "cond": {
+    "path": "properties.DeliveryPolicy",
+    "op": "regex",
+    "value": "(?i)exponential"
+   },
+   "quote": "the HTTPS subscription should include a delivery policy configured with an exponential backoff retry strategy"
+  },
+  {
+   "id": "topic_arn_from_input",
+   "tier": "core",
+   "kind": "any_of",
+   "checks": [
+    {
+     "kind": "join",
+     "from": "subs",
+     "from_path": "properties.TopicArn",
+     "to": "params",
+     "to_path": "default"
+    },
+    {
+     "kind": "attr",
+     "select": "subs",
+     "cond": {
+      "path": "properties.TopicArn",
+      "op": "regex",
+      "value": "^<param:"
+     }
+    }
+   ],
+   "quote": "taking the SNS topic ARN as a required input configuration value"
+  },
+  {
+   "id": "topic_not_provisioned",
+   "tier": "core",
+   "kind": "attr",
+   "select": {
+    "types": [
+     "__declared__"
+    ]
+   },
+   "quantifier": "all",
+   "cond": {
+    "path": "type",
+    "op": "none_eq",
+    "value": "AWS::SNS::Topic"
+   },
+   "quote": "an identifier passed in, not something the template provisions"
+  },
+  {
+   "id": "endpoints_from_parameters",
+   "tier": "core",
+   "kind": "all_of",
+   "checks": [
+    {
+     "kind": "join",
+     "from": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "AWS::SNS::Subscription"
+       },
+       {
+        "path": "properties.Protocol",
+        "op": "eq",
+        "value": "email"
+       }
+      ]
+     },
+     "from_path": "properties.Endpoint",
+     "to": "params",
+     "to_path": "default"
+    },
+    {
+     "kind": "join",
+     "from": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "AWS::SNS::Subscription"
+       },
+       {
+        "path": "properties.Protocol",
+        "op": "eq",
+        "value": "sqs"
+       }
+      ]
+     },
+     "from_path": "properties.Endpoint",
+     "to": "params",
+     "to_path": "default"
+    },
+    {
+     "kind": "join",
+     "from": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "AWS::SNS::Subscription"
+       },
+       {
+        "path": "properties.Protocol",
+        "op": "eq",
+        "value": "lambda"
+       }
+      ]
+     },
+     "from_path": "properties.Endpoint",
+     "to": "params",
+     "to_path": "default"
+    },
+    {
+     "kind": "join",
+     "from": {
+      "types": [
+       "__declared__"
+      ],
+      "where": [
+       {
+        "path": "type",
+        "op": "eq",
+        "value": "AWS::SNS::Subscription"
+       },
+       {
+        "path": "properties.Protocol",
+        "op": "eq",
+        "value": "https"
+       }
+      ]
+     },
+     "from_path": "properties.Endpoint",
+     "to": "params",
+     "to_path": "default"
+    }
+   ],
+   "quote": "optional parameters for an email address, an SQS queue ARN, a Lambda function ARN, and an HTTPS endpoint URL"
+  },
+  {
+   "id": "endpoints_not_provisioned",
+   "tier": "detail",
+   "kind": "all_of",
+   "checks": [
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ]
+     },
+     "quantifier": "all",
+     "cond": {
+      "path": "type",
+      "op": "none_eq",
+      "value": "AWS::SQS::Queue"
+     }
+    },
+    {
+     "kind": "attr",
+     "select": {
+      "types": [
+       "__declared__"
+      ]
+     },
+     "quantifier": "all",
+     "cond": {
+      "path": "type",
+      "op": "none_eq",
+      "value": "AWS::Lambda::Function"
+     }
+    }
+   ],
+   "quote": "each also supplied as plain identifier/configuration values rather than resources the template builds"
+  },
+  {
+   "id": "x_delivery_retries",
+   "tier": "extra",
+   "kind": "attr",
+   "select": "https",
+   "cond": {
+    "path": "properties.DeliveryPolicy",
+    "op": "regex",
+    "value": "numRetries"
+   }
+  }
+ ],
+ "notes": "Outputs: the ground truth's four ARN outputs each carry a Condition that is false under defaults, so its normalised view has none and an output check would fail on it; 'every subscription exposes its ARN as an output' stays unchecked (tested against the fixture). The sentinel comparison lives in Conditions, which aren't in the normalised input, so subs_conditional shows each subscription is gated, not what gates it. endpoints_from_parameters requires each endpoint's value to equal a parameter default, which also shows the parameter has a sentinel default. PROMPT_GT_MISMATCH: prompt calls the topic ARN 'required' but the ground truth gives SNSTopicArn a placeholder default; no check on required-ness, and a parameter with or without a default both pass topic_arn_from_input. endpoints_not_provisioned is detail while topic_not_provisioned is core because the topic is the scenario's primary input and the endpoints are a trailing clause. Nearly every requirement here is primary, so the core share is high on purpose."
+}
